@@ -1,11 +1,13 @@
-<?php // app/Models/Empresa.php
+<?php
+
+namespace App\Models;
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class Empresa extends Model {
-    protected $fillable = ['razao_social','nome_fantasia','cnpj','email','telefone','endereco','ativo'];
-    public function usuarios(){ return $this->hasMany(Usuario::class); }
-
-    public function cidade(){ return $this->belongsTo(Cidade::class); }
+class Empresa extends Model
+{
+    protected $fillable = ['nome','cnpj','email','telefone','ativo'];
+    protected $casts = ['ativo'=>'bool'];
 }

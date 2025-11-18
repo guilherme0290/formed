@@ -5,7 +5,8 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration {
-    public function up(): void {
+    public function up(): void
+    {
         Schema::create('papeis', function (Blueprint $t) {
             $t->id();
             $t->string('nome');
@@ -27,22 +28,22 @@ return new class extends Migration {
             $t->foreignId('papel_id')->constrained('papeis')->cascadeOnDelete();
             $t->foreignId('permissao_id')->constrained('permissoes')->cascadeOnDelete();
             $t->timestamps();
-            $t->unique(['papel_id','permissao_id']);
+            $t->unique(['papel_id', 'permissao_id']);
         });
 
-        Schema::create('usuario_papel', function (Blueprint $t) {
+        // Pivot entre usuários e papéis
+        Schema::create('papel_user', function (Blueprint $t) {
             $t->id();
-            $t->foreignId('usuario_id')->constrained('usuarios')->cascadeOnDelete();
+            $t->foreignId('user_id')->constrained('users')->cascadeOnDelete();
             $t->foreignId('papel_id')->constrained('papeis')->cascadeOnDelete();
             $t->timestamps();
-            $t->unique(['usuario_id','papel_id']);
+            $t->unique(['user_id', 'papel_id']);
         });
     }
-    public function down(): void {
-        Schema::dropIfExists('usuario_papel');
+
+    public function down(): void
+    {
+        Schema::dropIfExists('papel_user');
         Schema::dropIfExists('papel_permissao');
-        Schema::dropIfExists('permissoes');
-        Schema::dropIfExists('papeis');
     }
 };
-
