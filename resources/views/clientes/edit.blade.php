@@ -15,6 +15,8 @@
         </div>
     @endif
 
+
+
     <div class="flex items-center justify-between mb-6">
         <h1 class="text-2xl font-semibold text-gray-800">
             {{ $cliente->exists ? 'Editar Cliente' : 'Cadastrar Cliente' }}
@@ -189,7 +191,7 @@
         </div>
     </form>
 
-    {{-- jQuery + Máscaras --}}
+    {{-- jQuery + MÁSCARAS (CNPJ, CEP, Telefone) --}}
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
     <script>
@@ -200,11 +202,8 @@
             // CEP
             $('#cep').mask('00000-000');
 
-            // Telefone
+            // Telefone (celular/padrão BR)
             $('input[name="telefone"]').mask('(00) 00000-0000');
-
-            // Número (apenas números)
-            $('input[name="numero"]').mask('000000', { reverse: true });
         });
     </script>
 

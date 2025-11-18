@@ -242,8 +242,7 @@ class ClienteController extends Controller
 
                 'email.email'           => 'Informe um e-mail válido (ex: nome@empresa.com).',
 
-                'cidade_id.required'    => 'Selecione a cidade do cliente.',
-                'cidade_id.exists'      => 'A cidade selecionada é inválida. Escolha uma cidade da lista.',
+
             ]
         );
     }
