@@ -218,21 +218,34 @@ class ClienteController extends Controller
      */
     protected function validateData(Request $r): array
     {
-        return $r->validate([
-            'razao_social'   => ['required', 'string', 'max:255'],
-            'nome_fantasia'  => ['nullable', 'string', 'max:255'],
-            'cnpj'           => ['required', 'string', 'max:20'],
-            'email'          => ['nullable', 'email', 'max:255'],
-            'telefone'       => ['nullable', 'string', 'max:30'],
-            'cep'            => ['nullable', 'string', 'max:20'],
-            'endereco'       => ['nullable', 'string', 'max:255'],
-            'numero'         => ['nullable', 'string', 'max:20'],
-            'bairro'         => ['nullable', 'string', 'max:150'],
-            'complemento'    => ['nullable', 'string', 'max:255'],
-            // deixando sem exists, porque você está usando ID da API; se depois
-            // usar tabela local de cidades é só trocar para exists:cidades,id
-            'cidade_id'      => ['nullable', 'exists:cidades,id'],
-        ]);
+        return $r->validate(
+            [
+                'razao_social'   => ['required', 'string', 'max:255'],
+                'nome_fantasia'  => ['nullable', 'string', 'max:255'],
+                'cnpj'           => ['required', 'string', 'max:20'],
+                'email'          => ['nullable', 'email', 'max:255'],
+                'telefone'       => ['nullable', 'string', 'max:30'],
+                'cep'            => ['nullable', 'string', 'max:20'],
+                'endereco'       => ['nullable', 'string', 'max:255'],
+                'numero'         => ['nullable', 'string', 'max:20'],
+                'bairro'         => ['nullable', 'string', 'max:150'],
+                'complemento'    => ['nullable', 'string', 'max:255'],
+                'cidade_id'      => ['required', 'exists:cidades,id'],
+            ],
+            [
+                // mensagens amigáveis 💬
+                'razao_social.required' => 'Informe a razão social do cliente.',
+                'razao_social.max'      => 'A razão social deve ter no máximo 255 caracteres.',
+
+                'cnpj.required'         => 'Informe o CNPJ do cliente.',
+                'cnpj.max'              => 'O CNPJ está muito longo. Confira o número digitado.',
+
+                'email.email'           => 'Informe um e-mail válido (ex: nome@empresa.com).',
+
+                'cidade_id.required'    => 'Selecione a cidade do cliente.',
+                'cidade_id.exists'      => 'A cidade selecionada é inválida. Escolha uma cidade da lista.',
+            ]
+        );
     }
 
     /**
@@ -255,37 +268,53 @@ class ClienteController extends Controller
     {
         $uf = strtoupper($uf);
 
-        // Mapa UF -> ID do IBGE
-        $mapa = [
-            'AC' => 12, 'AL' => 27, 'AP' => 16, 'AM' => 13, 'BA' => 29,
-            'CE' => 23, 'DF' => 53, 'ES' => 32, 'GO' => 52, 'MA' => 21,
-            'MT' => 51, 'MS' => 50, 'MG' => 31, 'PA' => 15, 'PB' => 25,
-            'PR' => 41, 'PE' => 26, 'PI' => 22, 'RJ' => 33, 'RN' => 24,
-            'RS' => 43, 'RO' => 11, 'RR' => 14, 'SC' => 42, 'SP' => 35,
-            'SE' => 28, 'TO' => 17,
-        ];
+        // 1) Estado no banco
+        $estado = Estado::where('uf', $uf)->first();
 
-        if (!isset($mapa[$uf])) {
+        if (! $estado) {
             return response()->json([]);
         }
 
-        $id = $mapa[$uf];
+        // 2) Cidades do banco
+        $cidadesDb = Cidade::where('estado_id', $estado->id)->get(['id', 'nome']);
 
-        $resp = Http::get("https://servicodados.ibge.gov.br/api/v1/localidades/estados/{$id}/municipios");
+        // chave normalizada -> cidade_id
+        $map = [];
+        foreach ($cidadesDb as $c) {
+            $nomeNormalizado = strtolower(
+                preg_replace('/[^a-z0-9]/', '', iconv('UTF-8', 'ASCII//TRANSLIT', $c->nome))
+            );
+            $map[$nomeNormalizado] = $c->id;
+        }
 
-        if ($resp->failed()) {
+        // 3) API IBGE
+        $resp = Http::get("https://servicodados.ibge.gov.br/api/v1/localidades/estados/{$uf}/municipios");
+
+        if (! $resp->successful()) {
             return response()->json([]);
         }
 
-        $dados = $resp->json();
+        $resultado = [];
 
-        $cidades = collect($dados)->map(function ($c) {
-            return [
-                'id'   => $c['id'],
-                'nome' => $c['nome'],
-            ];
-        })->all();
+        foreach ($resp->json() as $m) {
 
-        return response()->json($cidades);
+            $nomeApi = $m['nome'] ?? null;
+            if (!$nomeApi) continue;
+
+            $nomeApiNormalizado = strtolower(
+                preg_replace('/[^a-z0-9]/', '', iconv('UTF-8', 'ASCII//TRANSLIT', $nomeApi))
+            );
+
+            $cidadeId = $map[$nomeApiNormalizado] ?? null;
+
+            if ($cidadeId) {
+                $resultado[] = [
+                    'id'   => $cidadeId,  // 👈 ID DO SEU BANCO!
+                    'nome' => $nomeApi,
+                ];
+            }
+        }
+
+        return response()->json($resultado);
     }
 }

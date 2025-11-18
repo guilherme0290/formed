@@ -15,16 +15,6 @@
         </div>
     @endif
 
-    @if ($errors->any())
-        <div class="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-            <ul class="list-disc ms-5">
-                @foreach($errors->all() as $err)
-                    <li>{{ $err }}</li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
-
     <div class="flex items-center justify-between mb-6">
         <h1 class="text-2xl font-semibold text-gray-800">
             {{ $cliente->exists ? 'Editar Cliente' : 'Cadastrar Cliente' }}
@@ -46,18 +36,27 @@
                 <label class="text-sm">CNPJ</label>
                 <input name="cnpj" value="{{ old('cnpj', $cliente->cnpj) }}"
                        class="w-full border-gray-300 rounded-lg px-3 py-2">
+                @error('cnpj')
+                <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                @enderror
             </div>
 
             <div>
                 <label class="text-sm">Razão Social</label>
                 <input name="razao_social" value="{{ old('razao_social', $cliente->razao_social) }}"
                        class="w-full border-gray-300 rounded-lg px-3 py-2">
+                @error('razao_social')
+                <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                @enderror
             </div>
 
             <div>
                 <label class="text-sm">Nome Fantasia</label>
                 <input name="nome_fantasia" value="{{ old('nome_fantasia', $cliente->nome_fantasia) }}"
                        class="w-full border-gray-300 rounded-lg px-3 py-2">
+                @error('nome_fantasia')
+                <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                @enderror
             </div>
         </div>
 
@@ -77,12 +76,18 @@
                 <label class="text-sm">E-mail</label>
                 <input name="email" value="{{ old('email', $cliente->email) }}"
                        class="w-full border-gray-300 rounded-lg px-3 py-2">
+                @error('email')
+                <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                @enderror
             </div>
 
             <div>
                 <label class="text-sm">Telefone</label>
                 <input name="telefone" value="{{ old('telefone', $cliente->telefone) }}"
                        class="w-full border-gray-300 rounded-lg px-3 py-2">
+                @error('telefone')
+                <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                @enderror
             </div>
         </div>
 
@@ -96,6 +101,9 @@
                     <input id="cep" name="cep" value="{{ old('cep', $cliente->cep) }}"
                            class="w-full border-gray-300 rounded-lg px-3 py-2"
                            placeholder="Somente números">
+                    @error('cep')
+                    <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <div>
@@ -125,6 +133,9 @@
                             </option>
                         @endforeach
                     </select>
+                    @error('cidade_id')
+                    <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
             </div>
 
@@ -133,18 +144,27 @@
                     <label class="text-sm">Endereço</label>
                     <input id="endereco" name="endereco" value="{{ old('endereco', $cliente->endereco) }}"
                            class="w-full border-gray-300 rounded-lg px-3 py-2">
+                    @error('endereco')
+                    <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <div>
                     <label class="text-sm">Número</label>
                     <input name="numero" value="{{ old('numero', $cliente->numero) }}"
                            class="w-full border-gray-300 rounded-lg px-3 py-2">
+                    @error('numero')
+                    <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <div>
                     <label class="text-sm">Bairro</label>
                     <input id="bairro" name="bairro" value="{{ old('bairro', $cliente->bairro) }}"
                            class="w-full border-gray-300 rounded-lg px-3 py-2">
+                    @error('bairro')
+                    <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
             </div>
 
@@ -152,6 +172,9 @@
                 <label class="text-sm">Complemento</label>
                 <input name="complemento" value="{{ old('complemento', $cliente->complemento) }}"
                        class="w-full border-gray-300 rounded-lg px-3 py-2">
+                @error('complemento')
+                <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                @enderror
             </div>
         </div>
 
@@ -165,6 +188,25 @@
             </button>
         </div>
     </form>
+
+    {{-- jQuery + Máscaras --}}
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
+    <script>
+        $(function () {
+            // CNPJ
+            $('input[name="cnpj"]').mask('00.000.000/0000-00');
+
+            // CEP
+            $('#cep').mask('00000-000');
+
+            // Telefone
+            $('input[name="telefone"]').mask('(00) 00000-0000');
+
+            // Número (apenas números)
+            $('input[name="numero"]').mask('000000', { reverse: true });
+        });
+    </script>
 
     {{-- SCRIPT UF → CIDADES (IBGE via sua API) --}}
     <script>
