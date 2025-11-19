@@ -26,7 +26,8 @@
             <a class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/10">
                 <span>👥</span> Cliente
             </a>
-            <a href="{{ route('operacional.painel') }}" class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/10">
+            <a href="{{ route('operacional.painel') }}"
+               class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/10">
                 <span>🗂️</span> Operacional
             </a>
             <a class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/10">

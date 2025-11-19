@@ -31,6 +31,7 @@ class DatabaseSeeder extends Seeder
 
             KanbanColunaSeeder::class,
             TarefaSeeder::class,
+
         ]);
     }
 }

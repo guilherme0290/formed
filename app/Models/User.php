@@ -49,6 +49,6 @@ class User extends Authenticatable
 
     public function papel(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Papel::class, 'papel_id');
+        return $this->belongsTo(Papel::class);
     }
 }

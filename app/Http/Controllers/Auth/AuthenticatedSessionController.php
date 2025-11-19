@@ -25,10 +25,22 @@ class AuthenticatedSessionController extends Controller
     public function store(LoginRequest $request): RedirectResponse
     {
         $request->authenticate();
-
         $request->session()->regenerate();
 
-        return redirect()->intended(route('operacional.kanban', absolute: false));
+        $destino = $request->input('redirect');
+
+        return match ($destino) {
+            'operacional' => redirect()->route('operacional.kanban'),
+            'master'      => redirect()->route('master.dashboard'),
+
+
+            // por enquanto, apontando pro master até os outros módulos existirem:
+            //'comercial'   => redirect()->route('master.dashboard'),
+            //'cliente'     => redirect()->route('master.dashboard'),
+            //'financeiro'  => redirect()->route('master.dashboard'),
+
+           // default       => redirect()->route('master.dashboard'),
+        };
     }
 
     /**

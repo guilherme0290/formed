@@ -17,8 +17,12 @@
         <form method="POST" action="{{ route('login') }}">
             @csrf
 
+            <input type="hidden" name="redirect" value="{{ old('redirect', request('redirect')) }}">
+
+
             <!-- E-mail -->
             <div>
+
                 <x-input-label for="email" :value="__('E-mail')" />
                 <x-text-input id="email"
                               class="block mt-1 w-full"

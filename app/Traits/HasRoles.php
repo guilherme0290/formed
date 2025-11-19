@@ -14,7 +14,7 @@ trait HasRoles
 
     public function hasRole(string $nome): bool
     {
-        return $this->papeis()->where('nome', $nome)->exists();
+        return $this->papel()->where('nome', $nome)->exists();
     }
 
     public function hasAnyRole(array $nomes): bool
