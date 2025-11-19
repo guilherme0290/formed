@@ -9,16 +9,28 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        if (! User::where('email', 'test@example.com')->exists()) {
-            User::factory()->create([
-                'name' => 'Test User',
-                'email' => 'test@example.com',
-            ]);
-        }
+        // Usuário de teste (opcional)
+        User::firstOrCreate(
+            ['email' => 'test@example.com'],
+            ['name' => 'Test User', 'password' => bcrypt('password')]
+        );
 
+        // Ordem recomendada (respeita dependências)
         $this->call([
             EstadoSeeder::class,
+            CidadeSeeder::class,
+            EmpresaSeeder::class,
+
+            PapelSeeder::class,
+            PermissaoSeeder::class,
+
+            UserSeeder::class,
+
+            ClienteSeeder::class,
+            ServicoSeeder::class,
+
             KanbanColunaSeeder::class,
+            TarefaSeeder::class,
 
         ]);
     }

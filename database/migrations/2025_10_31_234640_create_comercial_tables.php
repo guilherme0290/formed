@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use App\Models\User;
 
 return new class extends Migration {
     public function up(): void {
@@ -10,7 +11,9 @@ return new class extends Migration {
             $t->id();
             $t->foreignId('empresa_id')->constrained('empresas')->cascadeOnDelete();
             $t->foreignId('cliente_id')->constrained('clientes')->cascadeOnDelete();
-            $t->foreignId('vendedor_id')->constrained('usuarios')->cascadeOnDelete();
+            // vendedor (User)
+            $t->foreignIdFor(User::class, 'vendedor_id')->constrained()->cascadeOnDelete();
+
             $t->string('codigo')->nullable();
             $t->enum('status',['Rascunho','Enviada','Aprovada','Rejeitada','Expirada'])->default('Rascunho');
             $t->date('data_emissao')->nullable();
@@ -38,6 +41,7 @@ return new class extends Migration {
             $t->foreignId('empresa_id')->constrained('empresas')->cascadeOnDelete();
             $t->foreignId('cliente_id')->constrained('clientes')->cascadeOnDelete();
             $t->foreignId('proposta_id')->nullable()->constrained('propostas')->nullOnDelete();
+
             $t->enum('status',['Ativo','Suspenso','Cancelado','Encerrado'])->default('Ativo');
             $t->date('data_inicio');
             $t->date('data_fim')->nullable();
@@ -62,17 +66,24 @@ return new class extends Migration {
         Schema::create('comissoes', function (Blueprint $t) {
             $t->id();
             $t->foreignId('empresa_id')->constrained('empresas')->cascadeOnDelete();
-            $t->foreignId('usuario_id')->constrained('usuarios')->cascadeOnDelete(); // vendedor
-            $t->nullableMorphs('referencia'); // proposta ou contrato (polimórfico)
+
+            // vendedor (User) — padronizado para user_id
+            $t->foreignIdFor(User::class, 'user_id')->constrained()->cascadeOnDelete();
+
+            // referência polimórfica (proposta/contrato)
+            $t->nullableMorphs('referencia'); // referencia_type, referencia_id
+
             $t->string('competencia', 7); // AAAA-MM
-            $t->decimal('percentual',5,2)->default(0); // ex. 5.00 (%)
+            $t->decimal('percentual',5,2)->default(0); // ex.: 5.00 (%)
             $t->decimal('base',12,2)->default(0);
             $t->decimal('valor',12,2)->default(0);
             $t->enum('status',['Prevista','Aprovada','Paga'])->default('Prevista');
             $t->timestamps();
-            $t->index(['empresa_id','usuario_id','competencia']);
+
+            $t->index(['empresa_id','user_id','competencia']);
         });
     }
+
     public function down(): void {
         Schema::dropIfExists('comissoes');
         Schema::dropIfExists('contrato_itens');

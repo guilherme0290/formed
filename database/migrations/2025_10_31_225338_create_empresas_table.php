@@ -8,12 +8,10 @@ return new class extends Migration {
     public function up(): void {
         Schema::create('empresas', function (Blueprint $t) {
             $t->id();
-            $t->string('razao_social');
-            $t->string('nome_fantasia')->nullable();
-            $t->string('cnpj', 18)->unique();
+            $t->string('nome');
+            $t->string('cnpj', 18)->nullable();
             $t->string('email')->nullable();
-            $t->string('telefone')->nullable();
-            $t->string('endereco')->nullable();
+            $t->string('telefone', 30)->nullable();
             $t->boolean('ativo')->default(true);
             $t->timestamps();
         });

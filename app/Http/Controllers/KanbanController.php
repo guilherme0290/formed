@@ -1,38 +1,21 @@
 <?php
+
 namespace App\Http\Controllers;
+
 use Illuminate\Http\Request;
-use App\Flowforge\TarefaBoard;
+use App\Models\KanbanColuna;
 use App\Models\Tarefa;
-use App\Models\TarefaLog;
 
 class KanbanController extends Controller
 {
-    public function index(Request $r, TarefaBoard $board)
+    public function index(Request $request)
     {
-        // Renderiza o board do Flowforge em uma view
-        return view('operacional.kanban', [
-            'board' => $board,
-        ]);
-    }
+        // Carrega colunas com tarefas básicas (ajuste se tiver escopo por empresa)
+        $colunas = KanbanColuna::query()
+            ->with(['tarefas' => fn($q) => $q->latest('updated_at')])
+            ->orderBy('ordem')
+            ->get();
 
-    public function mover(Request $r)
-    {
-        // Exemplo de log custom ao mover (Flowforge já atualiza coluna/ordem)
-        $data = $r->validate([
-            'tarefa_id' => 'required|integer|exists:tarefas,id',
-            'de_coluna' => 'nullable|integer',
-            'para_coluna' => 'required|integer',
-        ]);
-
-        TarefaLog::create([
-            'tarefa_id' => $data['tarefa_id'],
-            'usuario_id' => auth()->id(),
-            'coluna_origem_id' => $data['de_coluna'] ?? null,
-            'coluna_destino_id' => $data['para_coluna'],
-            'acao' => 'moveu_coluna',
-            'meta' => null,
-        ]);
-
-        return response()->json(['ok'=>true]);
+        return view('operacional.kanban', compact('colunas'));
     }
 }

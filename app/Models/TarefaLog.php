@@ -1,11 +1,43 @@
-<?php // app/Models/TarefaLog.php
+<?php
+
 namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class TarefaLog extends Model {
-    protected $fillable = ['tarefa_id','usuario_id','coluna_origem_id','coluna_destino_id','acao','meta'];
-    protected $casts = ['meta'=>'array'];
-    public function tarefa(){ return $this->belongsTo(Tarefa::class); }
-    public function usuario(){ return $this->belongsTo(Usuario::class); }
+class TarefaLog extends Model
+{
+    use HasFactory;
+
+    protected $table = 'tarefas_logs';
+
+    protected $fillable = [
+        'tarefa_id',
+        'user_id',
+        'de_coluna_id',
+        'para_coluna_id',
+        'acao',
+        'observacao',
+    ];
+
+    public function tarefa(): BelongsTo
+    {
+        return $this->belongsTo(Tarefa::class);
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function deColuna(): BelongsTo
+    {
+        return $this->belongsTo(KanbanColuna::class, 'de_coluna_id');
+    }
+
+    public function paraColuna(): BelongsTo
+    {
+        return $this->belongsTo(KanbanColuna::class, 'para_coluna_id');
+    }
 }
-

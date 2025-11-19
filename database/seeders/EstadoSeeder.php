@@ -1,21 +1,49 @@
 <?php
+
 namespace Database\Seeders;
+
 use Illuminate\Database\Seeder;
 use App\Models\Estado;
 
-class EstadoSeeder extends Seeder {
-    public function run(): void {
-        $ufs = [
-            ['nome'=>'Acre','uf'=>'AC'],['nome'=>'Alagoas','uf'=>'AL'],['nome'=>'Amapá','uf'=>'AP'],
-            ['nome'=>'Amazonas','uf'=>'AM'],['nome'=>'Bahia','uf'=>'BA'],['nome'=>'Ceará','uf'=>'CE'],
-            ['nome'=>'Distrito Federal','uf'=>'DF'],['nome'=>'Espírito Santo','uf'=>'ES'],['nome'=>'Goiás','uf'=>'GO'],
-            ['nome'=>'Maranhão','uf'=>'MA'],['nome'=>'Mato Grosso','uf'=>'MT'],['nome'=>'Mato Grosso do Sul','uf'=>'MS'],
-            ['nome'=>'Minas Gerais','uf'=>'MG'],['nome'=>'Pará','uf'=>'PA'],['nome'=>'Paraíba','uf'=>'PB'],
-            ['nome'=>'Paraná','uf'=>'PR'],['nome'=>'Pernambuco','uf'=>'PE'],['nome'=>'Piauí','uf'=>'PI'],
-            ['nome'=>'Rio de Janeiro','uf'=>'RJ'],['nome'=>'Rio Grande do Norte','uf'=>'RN'],['nome'=>'Rio Grande do Sul','uf'=>'RS'],
-            ['nome'=>'Rondônia','uf'=>'RO'],['nome'=>'Roraima','uf'=>'RR'],['nome'=>'Santa Catarina','uf'=>'SC'],
-            ['nome'=>'São Paulo','uf'=>'SP'],['nome'=>'Sergipe','uf'=>'SE'],['nome'=>'Tocantins','uf'=>'TO'],
+class EstadoSeeder extends Seeder
+{
+    public function run(): void
+    {
+        $estados = [
+            ['uf' => 'AC', 'nome' => 'Acre'],
+            ['uf' => 'AL', 'nome' => 'Alagoas'],
+            ['uf' => 'AP', 'nome' => 'Amapá'],
+            ['uf' => 'AM', 'nome' => 'Amazonas'],
+            ['uf' => 'BA', 'nome' => 'Bahia'],
+            ['uf' => 'CE', 'nome' => 'Ceará'],
+            ['uf' => 'DF', 'nome' => 'Distrito Federal'],
+            ['uf' => 'ES', 'nome' => 'Espírito Santo'],
+            ['uf' => 'GO', 'nome' => 'Goiás'],
+            ['uf' => 'MA', 'nome' => 'Maranhão'],
+            ['uf' => 'MT', 'nome' => 'Mato Grosso'],
+            ['uf' => 'MS', 'nome' => 'Mato Grosso do Sul'],
+            ['uf' => 'MG', 'nome' => 'Minas Gerais'],
+            ['uf' => 'PA', 'nome' => 'Pará'],
+            ['uf' => 'PB', 'nome' => 'Paraíba'],
+            ['uf' => 'PR', 'nome' => 'Paraná'],
+            ['uf' => 'PE', 'nome' => 'Pernambuco'],
+            ['uf' => 'PI', 'nome' => 'Piauí'],
+            ['uf' => 'RJ', 'nome' => 'Rio de Janeiro'],
+            ['uf' => 'RN', 'nome' => 'Rio Grande do Norte'],
+            ['uf' => 'RS', 'nome' => 'Rio Grande do Sul'],
+            ['uf' => 'RO', 'nome' => 'Rondônia'],
+            ['uf' => 'RR', 'nome' => 'Roraima'],
+            ['uf' => 'SC', 'nome' => 'Santa Catarina'],
+            ['uf' => 'SP', 'nome' => 'São Paulo'],
+            ['uf' => 'SE', 'nome' => 'Sergipe'],
+            ['uf' => 'TO', 'nome' => 'Tocantins'],
         ];
-        foreach($ufs as $u){ Estado::firstOrCreate(['uf'=>$u['uf']], $u); }
+
+        foreach ($estados as $e) {
+            Estado::updateOrCreate(
+                ['uf' => $e['uf']],
+                ['nome' => $e['nome']]
+            );
+        }
     }
 }
