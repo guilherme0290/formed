@@ -7,9 +7,11 @@ use App\Models\KanbanColuna;
 use App\Models\Tarefa;
 use App\Models\Servico;
 use App\Models\Cliente;
+use App\Models\Funcionario;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class PainelController extends Controller
 {
@@ -53,10 +55,40 @@ class PainelController extends Controller
         // Agrupa por coluna
         $tarefasPorColuna = $tarefas->groupBy('coluna_id');
 
-        // Stats do topo (chaves pelo id da coluna)
-        $stats = [];
+        // ===== STATS DO TOPO =====
+        // chaves fixas para bater com o Blade
+        $stats = [
+            'pendente'           => 0,
+            'em_execucao'        => 0,
+            'aguardando_cliente' => 0,
+            'concluido'          => 0,
+            'atrasado'           => 0,
+        ];
+
         foreach ($colunas as $coluna) {
-            $stats[$coluna->id] = $tarefasPorColuna->get($coluna->id, collect())->count();
+            $qtd  = $tarefasPorColuna->get($coluna->id, collect())->count();
+            $nome = mb_strtolower($coluna->nome, 'UTF-8');
+
+            // mapeia pelo nome da coluna
+            if (str_contains($nome, 'fazer') || str_contains($nome, 'pendente')) {
+                $stats['pendente'] += $qtd;
+            } elseif (str_contains($nome, 'andamento') || str_contains($nome, 'execução') || str_contains($nome, 'execucao')) {
+                $stats['em_execucao'] += $qtd;
+            } elseif (str_contains($nome, 'aprova') || str_contains($nome, 'aguardando')) {
+                $stats['aguardando_cliente'] += $qtd;
+            } elseif (str_contains($nome, 'conclu')) {
+                $stats['concluido'] += $qtd;
+            }
+        }
+
+        // atrasado = data_prevista passada e não finalizado
+        // (se você não usar data_prevista, pode adaptar depois para inicio_previsto)
+        if (Schema::hasColumn('tarefas', 'data_prevista')) {
+            $stats['atrasado'] = Tarefa::where('empresa_id', $empresa)
+                ->whereNull('finalizado_em')
+                ->whereNotNull('data_prevista')
+                ->whereDate('data_prevista', '<', now()->toDateString())
+                ->count();
         }
 
         // Responsáveis
@@ -105,26 +137,15 @@ class PainelController extends Controller
         $tarefa->coluna_id = $paraColuna;
 
         $coluna = KanbanColuna::findOrFail($paraColuna);
-        // se não tiver slug, cai no "Ativa"
-        $tarefa->status = $coluna->slug ?: 'Ativa';
+
+        // status = nome da coluna
+        $tarefa->status = $coluna->nome;
 
         if ($coluna->finaliza && ! $tarefa->finalizado_em) {
             $tarefa->finalizado_em = now();
         }
 
         $tarefa->save();
-
-        // ⚠️ logs desativados por enquanto, pois não existe tabela tarefas_logs
-        /*
-        TarefaLog::create([
-            'tarefa_id'      => $tarefa->id,
-            'user_id'        => $user->id ?? null,
-            'de_coluna_id'   => $deColuna,
-            'para_coluna_id' => $paraColuna,
-            'acao'           => 'movida',
-            'observacao'     => null,
-        ]);
-        */
 
         return response()->json([
             'ok'     => true,
@@ -169,30 +190,48 @@ class PainelController extends Controller
             }
         }
 
-        $tarefa = Tarefa::create([
+        // monta dados da tarefa
+        $dadosTarefa = [
             'empresa_id'      => $empresa,
             'coluna_id'       => $coluna->id,
             'responsavel_id'  => $user->id,
-            'cliente_id'      => $dados['cliente_id'],   // grava só o cliente
+            'cliente_id'      => $dados['cliente_id'],
+            'servico_id'      => $dados['servico_id'] ?? null,
             'titulo'          => $tituloBase,
             'descricao'       => $dados['observacoes'] ?? '',
             'prioridade'      => $dados['prioridade'] ?: 'Normal',
             'status'          => $coluna->nome,
-            'inicio_previsto' => $inicioPrevisto,
+            'inicio_previsto' => $inicioPrevisto,   // <- aqui vai a data do exame
             'fim_previsto'    => $fimPrevisto,
-        ]);
+        ];
 
-        // ⚠️ sem logs por enquanto (tabela tarefas_logs não existe)
-        /*
-        TarefaLog::create([
-            'tarefa_id'      => $tarefa->id,
-            'user_id'        => $user->id,
-            'de_coluna_id'   => null,
-            'para_coluna_id' => $coluna->id,
-            'acao'           => 'criada',
-            'observacao'     => 'Tarefa criada via painel operacional (cliente existente).',
-        ]);
-        */
+        // se existir coluna data_prevista, também grava a data do exame lá
+        if (Schema::hasColumn('tarefas', 'data_prevista')) {
+            $dadosTarefa['data_prevista'] = $dados['data'];
+        }
+
+        // cria tarefa
+        $tarefa = Tarefa::create($dadosTarefa);
+
+        // se vier dados do funcionário, cria também
+        if ($r->filled('funcionario_nome')) {
+            Funcionario::create([
+                'empresa_id'            => $empresa,
+                'cliente_id'            => $dados['cliente_id'],
+                'nome'                  => $r->input('funcionario_nome'),
+                'cpf'                   => $r->input('funcionario_cpf'),
+                'rg'                    => $r->input('funcionario_rg'),
+                'data_nascimento'       => $r->input('funcionario_nascimento'),
+                'data_admissao'         => $r->input('funcionario_admissao'),
+                'funcao'                => $r->input('funcionario_funcao'),
+                'treinamento_nr'        => $r->boolean('funcionario_treinamento_nr'),
+                'exame_admissional'     => $r->boolean('exame_admissional'),
+                'exame_periodico'       => $r->boolean('exame_periodico'),
+                'exame_demissional'     => $r->boolean('exame_demissional'),
+                'exame_mudanca_funcao'  => $r->boolean('exame_mudanca_funcao'),
+                'exame_retorno_trabalho'=> $r->boolean('exame_retorno_trabalho'),
+            ]);
+        }
 
         return redirect()
             ->route('operacional.kanban')
@@ -226,10 +265,12 @@ class PainelController extends Controller
         DB::beginTransaction();
 
         try {
+            // cria cliente
             $cliente = Cliente::create([
                 'empresa_id'    => $empresa,
                 'razao_social'  => $dados['razao_social'],
                 'nome_fantasia' => $dados['nome_fantasia'] ?? $dados['razao_social'],
+
                 'cnpj'          => $dados['cnpj'] ?? null,
                 'email'         => $dados['email'] ?? null,
                 'telefone'      => $dados['telefone'] ?? null,
@@ -253,36 +294,53 @@ class PainelController extends Controller
                 }
             }
 
-            $tarefa = Tarefa::create([
+            // monta dados da tarefa
+            $dadosTarefa = [
                 'empresa_id'      => $empresa,
                 'coluna_id'       => $coluna->id,
                 'responsavel_id'  => $user->id,
-                'cliente_id'      => $cliente->id,   // grava o novo cliente
+                'cliente_id'      => $cliente->id,
+                'servico_id'      => $dados['servico_id'],
                 'titulo'          => $tituloBase,
                 'descricao'       => $dados['observacoes'] ?? '',
                 'prioridade'      => $dados['prioridade'] ?: 'Normal',
                 'status'          => $coluna->nome,
                 'inicio_previsto' => $inicioPrevisto,
                 'fim_previsto'    => $fimPrevisto,
-            ]);
+            ];
 
-            // ⚠️ logs desativados
-            /*
-            TarefaLog::create([
-                'tarefa_id'      => $tarefa->id,
-                'user_id'        => $user->id,
-                'de_coluna_id'   => null,
-                'para_coluna_id' => $coluna->id,
-                'acao'           => 'criada',
-                'observacao'     => 'Tarefa criada via painel operacional (cliente novo).',
-            ]);
-            */
+            if (Schema::hasColumn('tarefas', 'data_prevista')) {
+                $dadosTarefa['data_prevista'] = $dados['data'];
+            }
+
+            // cria tarefa
+            $tarefa = Tarefa::create($dadosTarefa);
+
+            // cria funcionário se informado
+            if ($r->filled('funcionario_nome')) {
+                Funcionario::create([
+                    'empresa_id'            => $empresa,
+                    'cliente_id'            => $cliente->id,
+                    'nome'                  => $r->input('funcionario_nome'),
+                    'cpf'                   => $r->input('funcionario_cpf'),
+                    'rg'                    => $r->input('funcionario_rg'),
+                    'data_nascimento'       => $r->input('funcionario_nascimento'),
+                    'data_admissao'         => $r->input('funcionario_admissao'),
+                    'funcao'                => $r->input('funcionario_funcao'),
+                    'treinamento_nr'        => $r->boolean('funcionario_treinamento_nr'),
+                    'exame_admissional'     => $r->boolean('exame_admissional'),
+                    'exame_periodico'       => $r->boolean('exame_periodico'),
+                    'exame_demissional'     => $r->boolean('exame_demissional'),
+                    'exame_mudanca_funcao'  => $r->boolean('exame_mudanca_funcao'),
+                    'exame_retorno_trabalho'=> $r->boolean('exame_retorno_trabalho'),
+                ]);
+            }
 
             DB::commit();
 
             return redirect()
                 ->route('operacional.kanban')
-                ->with('ok', 'Cliente e tarefa criados com sucesso!');
+                ->with('ok', 'Cliente, funcionário e tarefa criados com sucesso!');
 
         } catch (\Throwable $e) {
             DB::rollBack();

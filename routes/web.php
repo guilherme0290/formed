@@ -12,6 +12,7 @@ use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\TabelaPrecoController;
 use App\Http\Controllers\TabelaPrecoItemController;
 use App\Http\Controllers\Api\ServicosApiController;
+use App\Http\Controllers\Operacional\FuncionarioController;
 
 
 
@@ -59,6 +60,13 @@ Route::middleware('auth')->group(function () {
         // ✅ Criar tarefa (cliente novo)
         Route::post('/tarefas/loja/novo-cliente', [PainelController::class, 'storeLojaNovo'])
             ->name('tarefas.loja.novo');
+
+        Route::get('clientes/{cliente}/funcionarios/novo', [FuncionarioController::class, 'create'])
+            ->name('clientes.funcionarios.create');
+
+        Route::post('clientes/{cliente}/funcionarios', [FuncionarioController::class, 'store'])
+            ->name('clientes.funcionarios.store');
+
     });
 
     // ======================================================
