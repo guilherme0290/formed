@@ -2,6 +2,28 @@
 @section('title', 'Painel Operacional')
 
 @section('content')
+
+    @if (session('ok'))
+        <div class="mb-4 rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700">
+            {{ session('ok') }}
+        </div>
+    @endif
+
+    @if (session('erro'))
+        <div class="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+            {{ session('erro') }}
+        </div>
+    @endif
+
+    @if ($errors->any())
+        <div class="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+            <ul class="list-disc ms-5">
+                @foreach($errors->all() as $err)
+                    <li>{{ $err }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
     <div class="max-w-7xl mx-auto px-6 py-6">
 
         {{-- Barra de busca --}}
@@ -201,7 +223,6 @@
                     @csrf
 
                     <input type="hidden" name="tipo_cliente" id="tipoCliente" value="existente">
-                    <input type="hidden" name="status_inicial" id="statusInicial" value="pendente">
 
                     {{-- Cabeçalho --}}
                     <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
@@ -361,6 +382,9 @@
 
                         {{-- PASSO 3 --}}
                         <div class="passo hidden" data-step="3">
+                            {{-- hidden que vai para o controller --}}
+                            <input type="hidden" name="status_inicial" id="statusInicial">
+
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                 <div>
                                     <label class="block text-xs font-medium text-slate-500 mb-1">Responsável *</label>
@@ -568,4 +592,3 @@
         });
     </script>
 @endsection
-

@@ -8,4 +8,4 @@ window.Alpine = Alpine;
 
 Alpine.start();
 
-indow.Sortable = Sortable;
+window.Sortable = Sortable;

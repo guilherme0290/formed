@@ -13,10 +13,9 @@ use App\Http\Controllers\TabelaPrecoController;
 use App\Http\Controllers\TabelaPrecoItemController;
 use App\Http\Controllers\Api\ServicosApiController;
 
-use App\Http\Controllers\KanbanController;
+
 
 use App\Http\Controllers\Operacional\PainelController;
-use App\Http\Controllers\Operacional\TarefaLojaController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\Api\ClientesApiController;
 
@@ -43,24 +42,22 @@ Route::middleware('auth')->group(function () {
     // ======================================================
     Route::prefix('operacional')->name('operacional.')->group(function () {
 
-        // Painel principal (igual ao layout bonito)
         Route::get('/kanban', [PainelController::class, 'index'])->name('kanban');
 
-        // Alias opcional /operacional/painel
         Route::get('/painel', function () {
             return redirect()->route('operacional.kanban');
         })->name('painel');
 
-        // Drag & Drop: mover tarefa entre colunas
+        // Drag & Drop
         Route::post('/tarefas/{tarefa}/mover', [PainelController::class, 'mover'])
             ->name('tarefas.mover');
 
-        // Criar tarefa vinda da LOJA (cliente já existe)
-        Route::post('/tarefas/loja/existente', [TarefaLojaController::class, 'storeExistente'])
+        // ✅ Criar tarefa (cliente existente)
+        Route::post('/tarefas/loja/existente', [PainelController::class, 'storeLojaExistente'])
             ->name('tarefas.loja.existente');
 
-        // Criar tarefa vinda da LOJA (cliente novo)
-        Route::post('/tarefas/loja/novo-cliente', [TarefaLojaController::class, 'storeNovoCliente'])
+        // ✅ Criar tarefa (cliente novo)
+        Route::post('/tarefas/loja/novo-cliente', [PainelController::class, 'storeLojaNovo'])
             ->name('tarefas.loja.novo');
     });
 
