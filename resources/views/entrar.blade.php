@@ -17,59 +17,51 @@
             {{-- Cards dos módulos --}}
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center">
 
-                {{-- Comercial --}}
-                <div class="w-full max-w-xs bg-white rounded-3xl shadow-lg border border-slate-100 p-6 flex flex-col justify-between">
+                {{-- Comercial (desabilitado) --}}
+                <div class="w-full max-w-xs bg-white rounded-3xl shadow-lg border border-slate-100 p-6 flex flex-col justify-between opacity-70">
                     <div>
                         <div class="inline-flex items-center justify-center h-12 w-12 rounded-2xl bg-blue-100 text-blue-600 mb-4 text-xl">
                             📊
                         </div>
                         <h2 class="text-lg font-semibold text-slate-900 mb-1">Comercial</h2>
                         <p class="text-sm text-slate-500">Propostas, Contratos e Comissões</p>
+                        <p class="mt-2 text-xs font-semibold text-amber-500 uppercase tracking-wide">
+                            Em desenvolvimento
+                        </p>
                     </div>
 
                     <div class="mt-6">
-                        @guest
-                            <a href="{{ route('login', ['redirect' => 'comercial']) }}"
-                               class="inline-flex w-full items-center justify-center px-4 py-2.5 rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-500 text-white text-sm font-medium shadow-md">
-                                Acessar Painel
-                            </a>
-                        @else
-                            {{-- por enquanto, manda pro master --}}
-                            <a href="{{ route('master.dashboard') }}"
-                               class="inline-flex w-full items-center justify-center px-4 py-2.5 rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-500 text-white text-sm font-medium shadow-md">
-                                Acessar Painel
-                            </a>
-                        @endguest
+                        <button type="button"
+                                disabled
+                                class="inline-flex w-full items-center justify-center px-4 py-2.5 rounded-2xl bg-slate-200 text-slate-400 text-sm font-medium shadow-md cursor-not-allowed">
+                            Em desenvolvimento
+                        </button>
                     </div>
                 </div>
 
-                {{-- Cliente --}}
-                <div class="w-full max-w-xs bg-white rounded-3xl shadow-lg border border-slate-100 p-6 flex flex-col justify-between">
+                {{-- Cliente (desabilitado) --}}
+                <div class="w-full max-w-xs bg-white rounded-3xl shadow-lg border border-slate-100 p-6 flex flex-col justify-between opacity-70">
                     <div>
                         <div class="inline-flex items-center justify-center h-12 w-12 rounded-2xl bg-emerald-100 text-emerald-600 mb-4 text-xl">
                             👥
                         </div>
                         <h2 class="text-lg font-semibold text-slate-900 mb-1">Cliente</h2>
                         <p class="text-sm text-slate-500">Agendamentos e Solicitações</p>
+                        <p class="mt-2 text-xs font-semibold text-amber-500 uppercase tracking-wide">
+                            Em desenvolvimento
+                        </p>
                     </div>
 
                     <div class="mt-6">
-                        @guest
-                            <a href="{{ route('login', ['redirect' => 'cliente']) }}"
-                               class="inline-flex w-full items-center justify-center px-4 py-2.5 rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-500 text-white text-sm font-medium shadow-md">
-                                Acessar Painel
-                            </a>
-                        @else
-                            {{-- por enquanto, manda pro master --}}
-                            <a href="{{ route('master.dashboard') }}"
-                               class="inline-flex w-full items-center justify-center px-4 py-2.5 rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-500 text-white text-sm font-medium shadow-md">
-                                Acessar Painel
-                            </a>
-                        @endguest
+                        <button type="button"
+                                disabled
+                                class="inline-flex w-full items-center justify-center px-4 py-2.5 rounded-2xl bg-slate-200 text-slate-400 text-sm font-medium shadow-md cursor-not-allowed">
+                            Em desenvolvimento
+                        </button>
                     </div>
                 </div>
 
-                {{-- Operacional --}}
+                {{-- Operacional (habilitado) --}}
                 <div class="w-full max-w-xs bg-white rounded-3xl shadow-lg border border-slate-100 p-6 flex flex-col justify-between">
                     <div>
                         <div class="inline-flex items-center justify-center h-12 w-12 rounded-2xl bg-purple-100 text-purple-600 mb-4 text-xl">
@@ -94,33 +86,29 @@
                     </div>
                 </div>
 
-                {{-- Financeiro --}}
-                <div class="w-full max-w-xs bg-white rounded-3xl shadow-lg border border-slate-100 p-6 flex flex-col justify-between">
+                {{-- Financeiro (desabilitado) --}}
+                <div class="w-full max-w-xs bg-white rounded-3xl shadow-lg border border-slate-100 p-6 flex flex-col justify-between opacity-70">
                     <div>
                         <div class="inline-flex items-center justify-center h-12 w-12 rounded-2xl bg-amber-100 text-amber-500 mb-4 text-xl">
                             💰
                         </div>
                         <h2 class="text-lg font-semibold text-slate-900 mb-1">Financeiro</h2>
                         <p class="text-sm text-slate-500">Faturamento e Documentos</p>
+                        <p class="mt-2 text-xs font-semibold text-amber-500 uppercase tracking-wide">
+                            Em desenvolvimento
+                        </p>
                     </div>
 
                     <div class="mt-6">
-                        @guest
-                            <a href="{{ route('login', ['redirect' => 'financeiro']) }}"
-                               class="inline-flex w-full items-center justify-center px-4 py-2.5 rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-500 text-white text-sm font-medium shadow-md">
-                                Acessar Painel
-                            </a>
-                        @else
-                            {{-- por enquanto, manda pro master --}}
-                            <a href="{{ route('master.dashboard') }}"
-                               class="inline-flex w-full items-center justify-center px-4 py-2.5 rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-500 text-white text-sm font-medium shadow-md">
-                                Acessar Painel
-                            </a>
-                        @endguest
+                        <button type="button"
+                                disabled
+                                class="inline-flex w-full items-center justify-center px-4 py-2.5 rounded-2xl bg-slate-200 text-slate-400 text-sm font-medium shadow-md cursor-not-allowed">
+                            Em desenvolvimento
+                        </button>
                     </div>
                 </div>
 
-                {{-- Master --}}
+                {{-- Master (habilitado) --}}
                 <div class="w-full max-w-xs bg-white rounded-3xl shadow-lg border border-slate-100 p-6 flex flex-col justify-between">
                     <div>
                         <div class="inline-flex items-center justify-center h-12 w-12 rounded-2xl bg-indigo-100 text-indigo-600 mb-4 text-xl">
@@ -146,6 +134,7 @@
                 </div>
 
             </div>
+
 
         </div>
     </div>

@@ -17,35 +17,68 @@
         </div>
 
         <nav class="flex-1 px-3 py-4 text-sm space-y-1">
-            <a class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/10">
-                <span>🏠</span> Dashboard
-            </a>
-            <a class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/10">
-                <span>📈</span> Comercial
-            </a>
-            <a class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/10">
-                <span>👥</span> Cliente
-            </a>
+            {{-- Dashboard (desativado) --}}
+            <div
+                class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-400/70 cursor-not-allowed bg-white/0">
+                <span>🏠</span>
+                <span>Dashboard</span>
+                <span class="ml-auto text-[10px] uppercase tracking-wide text-amber-400">
+            Em desenvolvimento
+        </span>
+            </div>
+
+            {{-- Comercial (desativado) --}}
+            <div
+                class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-400/70 cursor-not-allowed bg-white/0">
+                <span>📈</span>
+                <span>Comercial</span>
+                <span class="ml-auto text-[10px] uppercase tracking-wide text-amber-400">
+            Em desenvolvimento
+        </span>
+            </div>
+
+            {{-- Cliente (desativado) --}}
+            <div
+                class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-400/70 cursor-not-allowed bg-white/0">
+                <span>👥</span>
+                <span>Cliente</span>
+                <span class="ml-auto text-[10px] uppercase tracking-wide text-amber-400">
+            Em desenvolvimento
+        </span>
+            </div>
+
+            {{-- Operacional (ativo) --}}
             <a href="{{ route('operacional.painel') }}"
-               class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/10">
+               class="flex items-center gap-2 px-3 py-2 rounded-lg
+       {{ request()->routeIs('operacional.*') ? 'bg-indigo-600 text-white' : 'hover:bg-white/10 text-gray-200' }}">
                 <span>🗂️</span> Operacional
             </a>
-            <a class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/10">
-                <span>💰</span> Financeiro
-            </a>
 
+            {{-- Financeiro (desativado) --}}
+            <div
+                class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-400/70 cursor-not-allowed bg-white/0">
+                <span>💰</span>
+                <span>Financeiro</span>
+                <span class="ml-auto text-[10px] uppercase tracking-wide text-amber-400">
+            Em desenvolvimento
+        </span>
+            </div>
+
+            {{-- Painel Master (ativo) --}}
             <a href="{{ route('master.dashboard') }}"
                class="flex items-center gap-2 px-3 py-2 rounded-lg
-               {{ request()->routeIs('master.dashboard') ? 'bg-indigo-600 text-white' : 'hover:bg-white/10 text-gray-200' }}">
+       {{ request()->routeIs('master.dashboard') ? 'bg-indigo-600 text-white' : 'hover:bg-white/10 text-gray-200' }}">
                 <span>🏢</span> Painel Master
             </a>
 
+            {{-- Acessos & Usuários (ativo) --}}
             <a href="{{ route('master.acessos', ['tab' => 'usuarios']) }}"
                class="flex items-center gap-2 px-3 py-2 rounded-lg
-               {{ request()->routeIs('master.acessos') ? 'bg-indigo-600 text-white' : 'hover:bg-white/10 text-gray-200' }}">
+       {{ request()->routeIs('master.acessos') ? 'bg-indigo-600 text-white' : 'hover:bg-white/10 text-gray-200' }}">
                 <span>⚙️</span> Acessos & Usuários
             </a>
         </nav>
+
 
         <div class="mt-auto border-t border-white/10 p-3 space-y-1">
             <a class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/10">
