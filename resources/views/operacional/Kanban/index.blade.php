@@ -149,21 +149,43 @@
                     <div class="js-kanban-column space-y-3 min-h-[80px] bg-slate-100/80 rounded-2xl p-2"
                          data-column-id="{{ $coluna->id }}">
                         @foreach($lista as $tarefa)
+                            @php
+                                $clienteNome  = optional($tarefa->cliente)->nome_fantasia ?? optional($tarefa->cliente)->razao_social ?? 'Cliente não informado';
+                                $servicoNome  = optional($tarefa->servico)->nome ?? $tarefa->titulo;
+                                $respNome     = optional($tarefa->responsavel)->name ?? 'Sem responsável';
+                                $dataHora     = $tarefa->inicio_previsto
+                                                ? \Carbon\Carbon::parse($tarefa->inicio_previsto)->format('d/m/Y H:i')
+                                                : 'Sem data';
+                                $slaData      = $tarefa->fim_previsto
+                                                ? \Carbon\Carbon::parse($tarefa->fim_previsto)->format('d/m/Y')
+                                                : '-';
+                                $obs          = $tarefa->descricao ?? '';
+                            @endphp
+
                             <article
                                 class="kanban-card bg-white rounded-2xl shadow-sm border border-slate-100 px-3 py-3 text-xs cursor-move"
                                 data-id="{{ $tarefa->id }}"
                                 data-move-url="{{ route('operacional.tarefas.mover', $tarefa) }}"
+                                {{-- dados para o modal de detalhes --}}
+                                data-cliente="{{ $clienteNome }}"
+                                data-servico="{{ $servicoNome }}"
+                                data-responsavel="{{ $respNome }}"
+                                data-datahora="{{ $dataHora }}"
+                                data-sla="{{ $slaData }}"
+                                data-prioridade="{{ ucfirst($tarefa->prioridade) }}"
+                                data-status="{{ $coluna->nome }}"
+                                data-observacoes="{{ e($obs) }}"
                             >
                                 <p class="text-[11px] font-semibold text-slate-900 mb-1">
-                                    {{ optional($tarefa->cliente)->nome_fantasia ?? 'Cliente não informado' }}
+                                    {{ $clienteNome }}
                                 </p>
                                 <p class="text-[11px] text-slate-500 mb-2">
-                                    {{ optional($tarefa->servico)->nome ?? $tarefa->titulo }}
+                                    {{ $servicoNome }}
                                 </p>
 
                                 <div class="flex items-center justify-between mb-2">
                                     <span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-600">
-                                        {{ optional($tarefa->responsavel)->name ?? 'Sem responsável' }}
+                                        {{ $respNome }}
                                     </span>
 
                                     @php
@@ -182,13 +204,10 @@
 
                                 <div class="flex items-center justify-between text-[10px] text-slate-400">
                                     @if($tarefa->inicio_previsto)
-                                        <span>
-                                            📅 {{ \Carbon\Carbon::parse($tarefa->inicio_previsto)->format('d/m/Y H:i') }}
-                                        </span>
+                                        <span>📅 {{ \Carbon\Carbon::parse($tarefa->inicio_previsto)->format('d/m/Y H:i') }}</span>
                                     @else
                                         <span>📅 Sem data</span>
                                     @endif
-
 
                                     <span>{{ $coluna->nome }}</span>
                                 </div>
@@ -488,7 +507,7 @@
                             <button type="button"
                                     class="px-4 py-2 rounded-xl text-sm font-medium bg-sky-500 text-white hover:bg-sky-600"
                                     data-btn-voltar>
-                                 Voltar
+                                Voltar
                             </button>
                         </div>
                         <div class="space-x-2">
@@ -514,8 +533,51 @@
         </div>
     </div>
 
+    {{-- MODAL DETALHE TAREFA --}}
+    <div id="modalDetalheTarefa" class="fixed inset-0 z-40 hidden">
+        <div class="absolute inset-0 bg-slate-900/60" data-modal-detalhe-close></div>
 
-    {{-- JS Kanban + Modal Nova Tarefa --}}
+        <div class="relative z-50 flex items-center justify-center min-h-screen px-4">
+            <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl">
+                <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+                    <div>
+                        <h2 class="text-lg font-semibold text-slate-900">
+                            Detalhes da Tarefa
+                        </h2>
+                    </div>
+                    <button type="button" class="text-slate-400 hover:text-slate-600" data-modal-detalhe-close>
+                        ✕
+                    </button>
+                </div>
+
+                <div class="px-6 py-5 text-sm space-y-3">
+                    <p><span class="font-semibold text-slate-600">Cliente:</span> <span id="detCliente"></span></p>
+                    <p><span class="font-semibold text-slate-600">Responsável:</span> <span id="detResponsavel"></span></p>
+                    <p><span class="font-semibold text-slate-600">Serviço:</span> <span id="detServico"></span></p>
+                    <p><span class="font-semibold text-slate-600">Data/Hora:</span> <span id="detDataHora"></span></p>
+                    <p><span class="font-semibold text-slate-600">SLA:</span> <span id="detSla"></span></p>
+                    <p><span class="font-semibold text-slate-600">Prioridade:</span> <span id="detPrioridade"></span></p>
+                    <p><span class="font-semibold text-slate-600">Status:</span> <span id="detStatus"></span></p>
+
+                    <div class="mt-4">
+                        <p class="font-semibold text-slate-600 mb-1">Observações:</p>
+                        <p id="detObservacoes" class="text-slate-700 whitespace-pre-line"></p>
+                    </div>
+                </div>
+
+                <div class="flex justify-end px-6 py-4 border-t border-slate-100">
+                    <button type="button"
+                            class="px-4 py-2 rounded-xl text-sm font-medium bg-sky-500 text-white hover:bg-sky-600"
+                            data-modal-detalhe-close>
+                        Fechar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    {{-- JS Kanban + Modal Nova Tarefa + Detalhes --}}
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             // =======================
@@ -583,69 +645,6 @@
             let step = 1;
             const maxStep = 4;
 
-            // --------- monta resumo ----------
-            function montarResumo() {
-                const resumoEl = document.getElementById('resumoTarefa');
-                if (!resumoEl) return;
-
-                const tipoCliente = tipoClienteHidden.value;
-
-                // CLIENTE
-                let clienteTexto = '';
-                if (tipoCliente === 'existente') {
-                    const selectCli = form.querySelector('select[name="cliente_id"]');
-                    if (selectCli && selectCli.value) {
-                        clienteTexto = selectCli.options[selectCli.selectedIndex].text;
-                    } else {
-                        clienteTexto = 'Cliente não selecionado';
-                    }
-                } else {
-                    const razao = form.querySelector('input[name="razao_social"]').value;
-                    const fantasia = form.querySelector('input[name="nome_fantasia"]').value;
-                    clienteTexto = fantasia || razao || 'Cliente não informado';
-                }
-
-                // FUNCIONÁRIO
-                const funcNome = form.querySelector('input[name="funcionario_nome"]').value || 'Não informado';
-
-                // SERVIÇO
-                const selectServ = form.querySelector('select[name="servico_id"]');
-                let servicoTexto = 'Não informado';
-                if (selectServ && selectServ.value) {
-                    servicoTexto = selectServ.options[selectServ.selectedIndex].text;
-                }
-
-                // DATA / HORA / SLA
-                const data = form.querySelector('input[name="data"]').value;
-                const hora = form.querySelector('input[name="hora"]').value;
-                const sla  = form.querySelector('input[name="prazo_sla"]').value;
-
-                // PRIORIDADE
-                const radioPrioridade = form.querySelector('input[name="prioridade"]:checked');
-                const prioridade = radioPrioridade
-                    ? (radioPrioridade.nextElementSibling?.textContent || radioPrioridade.value)
-                    : 'Média';
-
-                // STATUS
-                const selectStatus = document.getElementById('selectStatusInicial');
-                const statusTexto = selectStatus
-                    ? selectStatus.options[selectStatus.selectedIndex].text
-                    : '';
-
-                resumoEl.innerHTML = `
-                <div class="space-y-1">
-                    <p><span class="font-semibold">Cliente:</span> ${clienteTexto}</p>
-                    <p><span class="font-semibold">Funcionário:</span> ${funcNome}</p>
-                    <p><span class="font-semibold">Serviço:</span> ${servicoTexto}</p>
-                    <p><span class="font-semibold">Data/Hora:</span> ${data || '--/--/----'} ${hora || ''}</p>
-                    <p><span class="font-semibold">Prioridade:</span> ${prioridade}</p>
-                    <p><span class="font-semibold">SLA:</span> ${sla || 'Sem prazo definido'}</p>
-                    <p><span class="font-semibold">Status inicial:</span> ${statusTexto}</p>
-                </div>
-            `;
-            }
-
-            // --------- controle dos passos ----------
             function atualizarVisao() {
                 passos.forEach(p => {
                     const s = parseInt(p.dataset.step);
@@ -658,7 +657,6 @@
                 if (step === maxStep) {
                     btnProximo.classList.add('hidden');
                     btnFinalizar.classList.remove('hidden');
-                    montarResumo(); // ✅ monta o resumo no último passo
                 } else {
                     btnProximo.classList.remove('hidden');
                     btnFinalizar.classList.add('hidden');
@@ -695,7 +693,7 @@
                     : form.dataset.urlNovo;
             });
 
-            // fechar modal
+            // fechar modal (botões + clicando em Cancelar)
             btnFechar.forEach(b => b.addEventListener('click', () => {
                 modal.classList.add('hidden');
             }));
@@ -714,6 +712,47 @@
                     step++;
                     atualizarVisao();
                 }
+            });
+
+            // ===========================
+            // 3) MODAL DETALHE TAREFA
+            // ===========================
+            const modalDetalhe = document.getElementById('modalDetalheTarefa');
+            const closeDetalheEls = document.querySelectorAll('[data-modal-detalhe-close]');
+
+            const detCliente      = document.getElementById('detCliente');
+            const detResponsavel  = document.getElementById('detResponsavel');
+            const detServico      = document.getElementById('detServico');
+            const detDataHora     = document.getElementById('detDataHora');
+            const detSla          = document.getElementById('detSla');
+            const detPrioridade   = document.getElementById('detPrioridade');
+            const detStatus       = document.getElementById('detStatus');
+            const detObservacoes  = document.getElementById('detObservacoes');
+
+            function abrirModalDetalhe(card) {
+                detCliente.textContent     = card.dataset.cliente || '-';
+                detResponsavel.textContent = card.dataset.responsavel || '-';
+                detServico.textContent     = card.dataset.servico || '-';
+                detDataHora.textContent    = card.dataset.datahora || '-';
+                detSla.textContent         = card.dataset.sla || '-';
+                detPrioridade.textContent  = card.dataset.prioridade || '-';
+                detStatus.textContent      = card.dataset.status || '-';
+                detObservacoes.textContent = card.dataset.observacoes || '—';
+
+                modalDetalhe.classList.remove('hidden');
+            }
+
+            document.querySelectorAll('.kanban-card').forEach(card => {
+                card.addEventListener('click', (e) => {
+                    // se no futuro tiver botões dentro do card, podemos prevenir conflito aqui
+                    abrirModalDetalhe(card);
+                });
+            });
+
+            closeDetalheEls.forEach(el => {
+                el.addEventListener('click', () => {
+                    modalDetalhe.classList.add('hidden');
+                });
             });
         });
     </script>
