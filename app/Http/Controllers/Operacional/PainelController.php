@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Operacional;
 use App\Http\Controllers\Controller;
 use App\Models\KanbanColuna;
 use App\Models\Tarefa;
-use App\Models\TarefaLog;
 use App\Models\Servico;
 use App\Models\Cliente;
 use Illuminate\Http\Request;
@@ -35,6 +34,7 @@ class PainelController extends Controller
         $tarefasQuery = Tarefa::with(['responsavel', 'coluna', 'cliente', 'servico'])
             ->where('empresa_id', $empresa);
 
+        // se não for master, vê só as tarefas dele
         if (! $user->hasRole('master')) {
             $tarefasQuery->where('responsavel_id', $user->id);
         }
@@ -43,10 +43,9 @@ class PainelController extends Controller
             $tarefasQuery->where('responsavel_id', $filtroResponsavel);
         }
 
+        // filtro por status usando coluna_id
         if ($filtroStatus) {
-            $tarefasQuery->whereHas('coluna', function ($q) use ($filtroStatus) {
-                $q->where('slug', $filtroStatus);
-            });
+            $tarefasQuery->where('coluna_id', $filtroStatus);
         }
 
         $tarefas = $tarefasQuery->get();
@@ -54,10 +53,10 @@ class PainelController extends Controller
         // Agrupa por coluna
         $tarefasPorColuna = $tarefas->groupBy('coluna_id');
 
-        // Stats do topo
+        // Stats do topo (chaves pelo id da coluna)
         $stats = [];
         foreach ($colunas as $coluna) {
-            $stats[$coluna->slug] = $tarefasPorColuna->get($coluna->id, collect())->count();
+            $stats[$coluna->id] = $tarefasPorColuna->get($coluna->id, collect())->count();
         }
 
         // Responsáveis
@@ -106,6 +105,7 @@ class PainelController extends Controller
         $tarefa->coluna_id = $paraColuna;
 
         $coluna = KanbanColuna::findOrFail($paraColuna);
+        // se não tiver slug, cai no "Ativa"
         $tarefa->status = $coluna->slug ?: 'Ativa';
 
         if ($coluna->finaliza && ! $tarefa->finalizado_em) {
@@ -114,6 +114,8 @@ class PainelController extends Controller
 
         $tarefa->save();
 
+        // ⚠️ logs desativados por enquanto, pois não existe tabela tarefas_logs
+        /*
         TarefaLog::create([
             'tarefa_id'      => $tarefa->id,
             'user_id'        => $user->id ?? null,
@@ -122,6 +124,7 @@ class PainelController extends Controller
             'acao'           => 'movida',
             'observacao'     => null,
         ]);
+        */
 
         return response()->json([
             'ok'     => true,
@@ -146,11 +149,11 @@ class PainelController extends Controller
             'prioridade'     => ['required', 'in:baixa,media,alta,Normal'],
             'prazo_sla'      => ['nullable', 'date'],
             'observacoes'    => ['nullable', 'string'],
-            'status_inicial' => ['required', 'string'],
+            'status_inicial' => ['required', 'integer', 'exists:kanban_colunas,id'],
         ]);
 
         $coluna = KanbanColuna::where('empresa_id', $empresa)
-            ->where('slug', $dados['status_inicial'])
+            ->where('id', $dados['status_inicial'])
             ->firstOrFail();
 
         $inicioPrevisto = $dados['data'].' '.$dados['hora'].':00';
@@ -170,14 +173,17 @@ class PainelController extends Controller
             'empresa_id'      => $empresa,
             'coluna_id'       => $coluna->id,
             'responsavel_id'  => $user->id,
+            'cliente_id'      => $dados['cliente_id'],   // grava só o cliente
             'titulo'          => $tituloBase,
             'descricao'       => $dados['observacoes'] ?? '',
             'prioridade'      => $dados['prioridade'] ?: 'Normal',
-            'status'          => $coluna->slug,
+            'status'          => $coluna->nome,
             'inicio_previsto' => $inicioPrevisto,
             'fim_previsto'    => $fimPrevisto,
         ]);
 
+        // ⚠️ sem logs por enquanto (tabela tarefas_logs não existe)
+        /*
         TarefaLog::create([
             'tarefa_id'      => $tarefa->id,
             'user_id'        => $user->id,
@@ -186,6 +192,7 @@ class PainelController extends Controller
             'acao'           => 'criada',
             'observacao'     => 'Tarefa criada via painel operacional (cliente existente).',
         ]);
+        */
 
         return redirect()
             ->route('operacional.kanban')
@@ -207,14 +214,13 @@ class PainelController extends Controller
             'telefone'       => ['nullable', 'string', 'max:30'],
             'email'          => ['nullable', 'email', 'max:255'],
             'unidade_id'     => ['nullable'],
-
             'servico_id'     => ['nullable'],
             'data'           => ['required', 'date'],
             'hora'           => ['required'],
             'prioridade'     => ['required', 'in:baixa,media,alta,Normal'],
             'prazo_sla'      => ['nullable', 'date'],
             'observacoes'    => ['nullable', 'string'],
-            'status_inicial' => ['required', 'string'],
+            'status_inicial' => ['required', 'integer', 'exists:kanban_colunas,id'],
         ]);
 
         DB::beginTransaction();
@@ -231,7 +237,7 @@ class PainelController extends Controller
             ]);
 
             $coluna = KanbanColuna::where('empresa_id', $empresa)
-                ->where('slug', $dados['status_inicial'])
+                ->where('id', $dados['status_inicial'])
                 ->firstOrFail();
 
             $inicioPrevisto = $dados['data'].' '.$dados['hora'].':00';
@@ -251,14 +257,17 @@ class PainelController extends Controller
                 'empresa_id'      => $empresa,
                 'coluna_id'       => $coluna->id,
                 'responsavel_id'  => $user->id,
+                'cliente_id'      => $cliente->id,   // grava o novo cliente
                 'titulo'          => $tituloBase,
                 'descricao'       => $dados['observacoes'] ?? '',
                 'prioridade'      => $dados['prioridade'] ?: 'Normal',
-                'status'          => $coluna->slug,
+                'status'          => $coluna->nome,
                 'inicio_previsto' => $inicioPrevisto,
                 'fim_previsto'    => $fimPrevisto,
             ]);
 
+            // ⚠️ logs desativados
+            /*
             TarefaLog::create([
                 'tarefa_id'      => $tarefa->id,
                 'user_id'        => $user->id,
@@ -267,6 +276,7 @@ class PainelController extends Controller
                 'acao'           => 'criada',
                 'observacao'     => 'Tarefa criada via painel operacional (cliente novo).',
             ]);
+            */
 
             DB::commit();
 

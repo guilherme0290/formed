@@ -120,7 +120,7 @@
                         class="w-full rounded-xl border-slate-200 bg-white py-2 px-3 text-sm focus:ring-sky-400 focus:border-sky-400">
                     <option value="">Todos os status</option>
                     @foreach($colunas as $coluna)
-                        <option value="{{ $coluna->slug }}" @selected($filtroStatus == $coluna->slug)>
+                        <option value="{{ $coluna->id }}" @selected($filtroStatus == $coluna->id)>
                             {{ $coluna->nome }}
                         </option>
                     @endforeach
@@ -188,12 +188,12 @@
                                     @endif
 
                                     <span>
-                                        @if($coluna->slug === 'concluido')
+                                        @if($coluna->id === 'concluido')
                                             Concluído
-                                        @elseif($coluna->slug === 'atrasado')
+                                        @elseif($coluna->id === 'atrasado')
                                             Atrasado!
                                         @else
-                                            {{ ucfirst(str_replace('_',' ',$coluna->slug)) }}
+                                            {{ ucfirst(str_replace('_',' ',$coluna->id)) }}
                                         @endif
                                     </span>
                                 </div>
@@ -382,9 +382,6 @@
 
                         {{-- PASSO 3 --}}
                         <div class="passo hidden" data-step="3">
-                            {{-- hidden que vai para o controller --}}
-                            <input type="hidden" name="status_inicial" id="statusInicial">
-
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                 <div>
                                     <label class="block text-xs font-medium text-slate-500 mb-1">Responsável *</label>
@@ -395,9 +392,10 @@
                                 <div>
                                     <label class="block text-xs font-medium text-slate-500 mb-1">Status Inicial *</label>
                                     <select id="selectStatusInicial"
+                                            name="status_inicial"
                                             class="w-full rounded-xl border-slate-200 bg-white py-2 px-3 text-sm focus:ring-sky-400 focus:border-sky-400">
                                         @foreach($colunas as $col)
-                                            <option value="{{ $col->slug }}">{{ $col->nome }}</option>
+                                            <option value="{{ $col->id }}">{{ $col->nome }}</option>
                                         @endforeach
                                     </select>
                                 </div>
@@ -505,7 +503,6 @@
             const btnFinalizar = modal.querySelector('[data-btn-finalizar]');
             const tituloEtapa = document.getElementById('etapaTitulo');
             const selectStatusInicial = document.getElementById('selectStatusInicial');
-            const inputStatusInicial = document.getElementById('statusInicial');
             const tipoClienteHidden = document.getElementById('tipoCliente');
             const radiosTipoCliente = modal.querySelectorAll('input[name="tipo_cliente_radio"]');
             const blocoExistente = document.getElementById('blocoClienteExistente');
@@ -582,13 +579,7 @@
                 }
             });
 
-            // status inicial -> preenche hidden que vai pro controller
-            if (selectStatusInicial && inputStatusInicial) {
-                selectStatusInicial.addEventListener('change', () => {
-                    inputStatusInicial.value = selectStatusInicial.value;
-                });
-                inputStatusInicial.value = selectStatusInicial.value;
-            }
+            // (não precisa mais de hidden para status_inicial, o select já envia o valor)
         });
     </script>
 @endsection

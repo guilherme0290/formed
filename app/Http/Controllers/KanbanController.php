@@ -16,6 +16,6 @@ class KanbanController extends Controller
             ->orderBy('ordem')
             ->get();
 
-        return view('operacional.kanban', compact('colunas'));
+        return view('operacional.Kanban.index', compact('colunas'));
     }
 }
