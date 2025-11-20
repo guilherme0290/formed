@@ -39,7 +39,7 @@
             <button id="btnNovaTarefaLoja"
                     type="button"
                     class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-600 text-white text-sm font-medium shadow-sm">
-                <span>+ Nova Tarefa (Loja)</span>
+                <span>Nova Tarefa</span>
             </button>
         </div>
 
@@ -120,7 +120,7 @@
                         class="w-full rounded-xl border-slate-200 bg-white py-2 px-3 text-sm focus:ring-sky-400 focus:border-sky-400">
                     <option value="">Todos os status</option>
                     @foreach($colunas as $coluna)
-                        <option value="{{ $coluna->slug }}" @selected($filtroStatus == $coluna->slug)>
+                        <option value="{{ $coluna->id }}" @selected($filtroStatus == $coluna->id)>
                             {{ $coluna->nome }}
                         </option>
                     @endforeach
@@ -181,21 +181,16 @@
                                 </div>
 
                                 <div class="flex items-center justify-between text-[10px] text-slate-400">
-                                    @if($tarefa->data_prevista)
-                                        <span>📅 {{ $tarefa->data_prevista->format('d/m/Y') }}</span>
+                                    @if($tarefa->inicio_previsto)
+                                        <span>
+                                            📅 {{ \Carbon\Carbon::parse($tarefa->inicio_previsto)->format('d/m/Y H:i') }}
+                                        </span>
                                     @else
                                         <span>📅 Sem data</span>
                                     @endif
 
-                                    <span>
-                                        @if($coluna->slug === 'concluido')
-                                            Concluído
-                                        @elseif($coluna->slug === 'atrasado')
-                                            Atrasado!
-                                        @else
-                                            {{ ucfirst(str_replace('_',' ',$coluna->slug)) }}
-                                        @endif
-                                    </span>
+
+                                    <span>{{ $coluna->nome }}</span>
                                 </div>
                             </article>
                         @endforeach
@@ -228,7 +223,7 @@
                     <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
                         <div>
                             <h2 class="text-lg font-semibold text-slate-900">
-                                Nova Tarefa (Loja) - <span id="etapaTitulo">Passo 1 de 3</span>
+                                Nova Tarefa (Loja) - <span id="etapaTitulo">Passo 1 de 4</span>
                             </h2>
                         </div>
                         <button type="button" class="text-slate-400 hover:text-slate-600" data-modal-close>
@@ -239,7 +234,7 @@
                     {{-- Corpo: PASSOS --}}
                     <div class="px-6 py-5 space-y-6">
 
-                        {{-- PASSO 1 --}}
+                        {{-- PASSO 1 - CLIENTE --}}
                         <div class="passo" data-step="1">
                             <p class="text-sm font-medium text-slate-800 mb-3">Tipo de Cliente</p>
 
@@ -317,8 +312,86 @@
                             </div>
                         </div>
 
-                        {{-- PASSO 2 --}}
+                        {{-- PASSO 2 - FUNCIONÁRIO --}}
                         <div class="passo hidden" data-step="2">
+                            <p class="text-sm font-medium text-slate-800 mb-3">Dados do Funcionário</p>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-500 mb-1">Nome *</label>
+                                    <input type="text" name="funcionario_nome"
+                                           class="w-full rounded-xl border-slate-200 bg-white py-2 px-3 text-sm focus:ring-sky-400 focus:border-sky-400">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-500 mb-1">Função</label>
+                                    <input type="text" name="funcionario_funcao"
+                                           class="w-full rounded-xl border-slate-200 bg-white py-2 px-3 text-sm focus:ring-sky-400 focus:border-sky-400">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-500 mb-1">CPF</label>
+                                    <input type="text" name="funcionario_cpf"
+                                           class="w-full rounded-xl border-slate-200 bg-white py-2 px-3 text-sm focus:ring-sky-400 focus:border-sky-400">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-500 mb-1">RG</label>
+                                    <input type="text" name="funcionario_rg"
+                                           class="w-full rounded-xl border-slate-200 bg-white py-2 px-3 text-sm focus:ring-sky-400 focus:border-sky-400">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-500 mb-1">Data de Nascimento</label>
+                                    <input type="date" name="funcionario_data_nascimento"
+                                           class="w-full rounded-xl border-slate-200 bg-white py-2 px-3 text-sm focus:ring-sky-400 focus:border-sky-400">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-500 mb-1">Data de Admissão</label>
+                                    <input type="date" name="funcionario_data_admissao"
+                                           class="w-full rounded-xl border-slate-200 bg-white py-2 px-3 text-sm focus:ring-sky-400 focus:border-sky-400">
+                                </div>
+                            </div>
+
+                            <div class="mt-4">
+                                <label class="block text-xs font-medium text-slate-500 mb-1">Terá treinamento de NR?</label>
+                                <label class="inline-flex items-center gap-2 text-sm">
+                                    <input type="checkbox" name="funcionario_treinamento_nr" value="1"
+                                           class="text-sky-500 border-slate-300 focus:ring-sky-500">
+                                    <span>Sim</span>
+                                </label>
+                            </div>
+
+                            <div class="mt-4">
+                                <p class="block text-xs font-medium text-slate-500 mb-2">Motivo do Exame:</p>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                                    <label class="inline-flex items-center gap-2">
+                                        <input type="checkbox" name="exame_admissional" value="1"
+                                               class="text-sky-500 border-slate-300 focus:ring-sky-500">
+                                        <span>Admissional</span>
+                                    </label>
+                                    <label class="inline-flex items-center gap-2">
+                                        <input type="checkbox" name="exame_periodico" value="1"
+                                               class="text-sky-500 border-slate-300 focus:ring-sky-500">
+                                        <span>Periódico</span>
+                                    </label>
+                                    <label class="inline-flex items-center gap-2">
+                                        <input type="checkbox" name="exame_demissional" value="1"
+                                               class="text-sky-500 border-slate-300 focus:ring-sky-500">
+                                        <span>Demissional</span>
+                                    </label>
+                                    <label class="inline-flex items-center gap-2">
+                                        <input type="checkbox" name="exame_mudanca_funcao" value="1"
+                                               class="text-sky-500 border-slate-300 focus:ring-sky-500">
+                                        <span>Mudança de Função</span>
+                                    </label>
+                                    <label class="inline-flex items-center gap-2">
+                                        <input type="checkbox" name="exame_retorno_trabalho" value="1"
+                                               class="text-sky-500 border-slate-300 focus:ring-sky-500">
+                                        <span>Retorno ao Trabalho</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- PASSO 3 - SERVIÇO / DATA / PRIORIDADE --}}
+                        <div class="passo hidden" data-step="3">
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                 <div>
                                     <label class="block text-xs font-medium text-slate-500 mb-1">Tipo de Serviço *</label>
@@ -380,11 +453,8 @@
                             </div>
                         </div>
 
-                        {{-- PASSO 3 --}}
-                        <div class="passo hidden" data-step="3">
-                            {{-- hidden que vai para o controller --}}
-                            <input type="hidden" name="status_inicial" id="statusInicial">
-
+                        {{-- PASSO 4 - RESPONSÁVEL / STATUS --}}
+                        <div class="passo hidden" data-step="4">
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                 <div>
                                     <label class="block text-xs font-medium text-slate-500 mb-1">Responsável *</label>
@@ -395,9 +465,10 @@
                                 <div>
                                     <label class="block text-xs font-medium text-slate-500 mb-1">Status Inicial *</label>
                                     <select id="selectStatusInicial"
+                                            name="status_inicial"
                                             class="w-full rounded-xl border-slate-200 bg-white py-2 px-3 text-sm focus:ring-sky-400 focus:border-sky-400">
                                         @foreach($colunas as $col)
-                                            <option value="{{ $col->slug }}">{{ $col->nome }}</option>
+                                            <option value="{{ $col->id }}">{{ $col->nome }}</option>
                                         @endforeach
                                     </select>
                                 </div>
@@ -415,9 +486,9 @@
                     <div class="flex items-center justify-between px-6 py-4 border-t border-slate-100">
                         <div>
                             <button type="button"
-                                    class="text-sm text-slate-500 hover:text-slate-700"
+                                    class="px-4 py-2 rounded-xl text-sm font-medium bg-sky-500 text-white hover:bg-sky-600"
                                     data-btn-voltar>
-                                ◀ Voltar
+                                 Voltar
                             </button>
                         </div>
                         <div class="space-x-2">
@@ -429,7 +500,7 @@
                             <button type="button"
                                     class="px-4 py-2 rounded-xl text-sm font-medium bg-sky-500 text-white hover:bg-sky-600"
                                     data-btn-proximo>
-                                Próximo ▷
+                                Próximo
                             </button>
                             <button type="submit"
                                     class="px-4 py-2 rounded-xl text-sm font-medium bg-sky-500 text-white hover:bg-sky-600 hidden"
@@ -504,27 +575,90 @@
             const btnVoltar = modal.querySelector('[data-btn-voltar]');
             const btnFinalizar = modal.querySelector('[data-btn-finalizar]');
             const tituloEtapa = document.getElementById('etapaTitulo');
-            const selectStatusInicial = document.getElementById('selectStatusInicial');
-            const inputStatusInicial = document.getElementById('statusInicial');
-            const tipoClienteHidden = document.getElementById('tipoCliente');
             const radiosTipoCliente = modal.querySelectorAll('input[name="tipo_cliente_radio"]');
+            const tipoClienteHidden = document.getElementById('tipoCliente');
             const blocoExistente = document.getElementById('blocoClienteExistente');
             const blocoNovo = document.getElementById('blocoClienteNovo');
 
             let step = 1;
+            const maxStep = 4;
 
+            // --------- monta resumo ----------
+            function montarResumo() {
+                const resumoEl = document.getElementById('resumoTarefa');
+                if (!resumoEl) return;
+
+                const tipoCliente = tipoClienteHidden.value;
+
+                // CLIENTE
+                let clienteTexto = '';
+                if (tipoCliente === 'existente') {
+                    const selectCli = form.querySelector('select[name="cliente_id"]');
+                    if (selectCli && selectCli.value) {
+                        clienteTexto = selectCli.options[selectCli.selectedIndex].text;
+                    } else {
+                        clienteTexto = 'Cliente não selecionado';
+                    }
+                } else {
+                    const razao = form.querySelector('input[name="razao_social"]').value;
+                    const fantasia = form.querySelector('input[name="nome_fantasia"]').value;
+                    clienteTexto = fantasia || razao || 'Cliente não informado';
+                }
+
+                // FUNCIONÁRIO
+                const funcNome = form.querySelector('input[name="funcionario_nome"]').value || 'Não informado';
+
+                // SERVIÇO
+                const selectServ = form.querySelector('select[name="servico_id"]');
+                let servicoTexto = 'Não informado';
+                if (selectServ && selectServ.value) {
+                    servicoTexto = selectServ.options[selectServ.selectedIndex].text;
+                }
+
+                // DATA / HORA / SLA
+                const data = form.querySelector('input[name="data"]').value;
+                const hora = form.querySelector('input[name="hora"]').value;
+                const sla  = form.querySelector('input[name="prazo_sla"]').value;
+
+                // PRIORIDADE
+                const radioPrioridade = form.querySelector('input[name="prioridade"]:checked');
+                const prioridade = radioPrioridade
+                    ? (radioPrioridade.nextElementSibling?.textContent || radioPrioridade.value)
+                    : 'Média';
+
+                // STATUS
+                const selectStatus = document.getElementById('selectStatusInicial');
+                const statusTexto = selectStatus
+                    ? selectStatus.options[selectStatus.selectedIndex].text
+                    : '';
+
+                resumoEl.innerHTML = `
+                <div class="space-y-1">
+                    <p><span class="font-semibold">Cliente:</span> ${clienteTexto}</p>
+                    <p><span class="font-semibold">Funcionário:</span> ${funcNome}</p>
+                    <p><span class="font-semibold">Serviço:</span> ${servicoTexto}</p>
+                    <p><span class="font-semibold">Data/Hora:</span> ${data || '--/--/----'} ${hora || ''}</p>
+                    <p><span class="font-semibold">Prioridade:</span> ${prioridade}</p>
+                    <p><span class="font-semibold">SLA:</span> ${sla || 'Sem prazo definido'}</p>
+                    <p><span class="font-semibold">Status inicial:</span> ${statusTexto}</p>
+                </div>
+            `;
+            }
+
+            // --------- controle dos passos ----------
             function atualizarVisao() {
                 passos.forEach(p => {
                     const s = parseInt(p.dataset.step);
                     p.classList.toggle('hidden', s !== step);
                 });
-                tituloEtapa.textContent = `Passo ${step} de 3`;
+                tituloEtapa.textContent = `Passo ${step} de ${maxStep}`;
                 btnVoltar.disabled = (step === 1);
                 btnVoltar.classList.toggle('opacity-40', step === 1);
 
-                if (step === 3) {
+                if (step === maxStep) {
                     btnProximo.classList.add('hidden');
                     btnFinalizar.classList.remove('hidden');
+                    montarResumo(); // ✅ monta o resumo no último passo
                 } else {
                     btnProximo.classList.remove('hidden');
                     btnFinalizar.classList.add('hidden');
@@ -561,7 +695,7 @@
                     : form.dataset.urlNovo;
             });
 
-            // fechar modal (botões + clicando em Cancelar)
+            // fechar modal
             btnFechar.forEach(b => b.addEventListener('click', () => {
                 modal.classList.add('hidden');
             }));
@@ -576,19 +710,11 @@
 
             // botão próximo
             btnProximo.addEventListener('click', () => {
-                if (step < 3) {
+                if (step < maxStep) {
                     step++;
                     atualizarVisao();
                 }
             });
-
-            // status inicial -> preenche hidden que vai pro controller
-            if (selectStatusInicial && inputStatusInicial) {
-                selectStatusInicial.addEventListener('change', () => {
-                    inputStatusInicial.value = selectStatusInicial.value;
-                });
-                inputStatusInicial.value = selectStatusInicial.value;
-            }
         });
     </script>
 @endsection

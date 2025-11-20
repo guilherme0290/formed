@@ -4,8 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Tarefa extends Model
 {
@@ -15,51 +13,45 @@ class Tarefa extends Model
 
     protected $fillable = [
         'empresa_id',
-        'cliente_id',
-        'servico_id',
-        'responsavel_id',
         'coluna_id',
+        'responsavel_id',
+        'cliente_id',      // 👈 IMPORTANTE
+        'servico_id',      // (se já tiver essa coluna)
         'titulo',
         'descricao',
         'prioridade',
-        'data_prevista',
-        'hora_prevista',
-        'concluida_em',
         'status',
+        'inicio_previsto', // 👈 DATA + HORA DO EXAME
+        'fim_previsto',
+        'finalizado_em',
+        'data_prevista',   // (se existir a coluna)
     ];
 
     protected $casts = [
-        'data_prevista' => 'date',
-        'concluida_em'  => 'datetime',
+        'inicio_previsto' => 'datetime',
+        'fim_previsto'    => 'datetime',
+        'finalizado_em'   => 'datetime',
+        'data_prevista'   => 'date',
     ];
 
-    public function empresa(): BelongsTo
-    {
-        return $this->belongsTo(Empresa::class);
-    }
-
-    public function cliente(): BelongsTo
+    // ===== RELACIONAMENTOS =====
+    public function cliente()
     {
         return $this->belongsTo(Cliente::class);
     }
 
-    public function servico(): BelongsTo
+    public function servico()
     {
         return $this->belongsTo(Servico::class);
     }
 
-    public function responsavel(): BelongsTo
+    public function responsavel()
     {
         return $this->belongsTo(User::class, 'responsavel_id');
     }
 
-    public function coluna(): BelongsTo
+    public function coluna()
     {
         return $this->belongsTo(KanbanColuna::class, 'coluna_id');
-    }
-
-    public function logs(): HasMany
-    {
-        return $this->hasMany(TarefaLog::class);
     }
 }

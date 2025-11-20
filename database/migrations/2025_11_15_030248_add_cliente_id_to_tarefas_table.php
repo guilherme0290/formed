@@ -8,15 +8,11 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('tarefas', function (Blueprint $table) {
-            $table->foreignId('cliente_id')->nullable()->constrained('clientes')->nullOnDelete();
-        });
+
     }
 
     public function down(): void
     {
-        Schema::table('tarefas', function (Blueprint $table) {
-            $table->dropColumn('cliente_id');
-        });
+
     }
 };
