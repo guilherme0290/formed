@@ -14,9 +14,12 @@ class AuthenticatedSessionController extends Controller
     /**
      * Display the login view.
      */
-    public function create(): View
+    public function create(Request $request): View
     {
-        return view('auth.login');
+        // pega o redirect da URL, ex: /login?redirect=operacional
+        $redirect = $request->query('redirect', 'master'); // padrão master
+
+        return view('auth.login', compact('redirect'));
     }
 
     /**
@@ -27,19 +30,13 @@ class AuthenticatedSessionController extends Controller
         $request->authenticate();
         $request->session()->regenerate();
 
-        $destino = $request->input('redirect');
+        // se não vier nada, padrão = master
+        $destino = $request->input('redirect', 'master');
 
         return match ($destino) {
             'operacional' => redirect()->route('operacional.kanban'),
             'master'      => redirect()->route('master.dashboard'),
-
-
-            // por enquanto, apontando pro master até os outros módulos existirem:
-            //'comercial'   => redirect()->route('master.dashboard'),
-            //'cliente'     => redirect()->route('master.dashboard'),
-            //'financeiro'  => redirect()->route('master.dashboard'),
-
-           // default       => redirect()->route('master.dashboard'),
+            default       => redirect()->route('master.dashboard'),
         };
     }
 
@@ -51,7 +48,6 @@ class AuthenticatedSessionController extends Controller
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();
-
         $request->session()->regenerateToken();
 
         return redirect('/');

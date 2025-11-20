@@ -24,16 +24,22 @@
                             📊
                         </div>
                         <h2 class="text-lg font-semibold text-slate-900 mb-1">Comercial</h2>
-                        <p class="text-sm text-slate-500">
-                            Propostas, Contratos e Comissões
-                        </p>
+                        <p class="text-sm text-slate-500">Propostas, Contratos e Comissões</p>
                     </div>
 
                     <div class="mt-6">
-                        <a href="{{ route('login', ['redirect' => 'comercial']) }}"
-                           class="inline-flex w-full items-center justify-center px-4 py-2.5 rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-500 text-white text-sm font-medium shadow-md">
-                            Acessar Painel
-                        </a>
+                        @guest
+                            <a href="{{ route('login', ['redirect' => 'comercial']) }}"
+                               class="inline-flex w-full items-center justify-center px-4 py-2.5 rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-500 text-white text-sm font-medium shadow-md">
+                                Acessar Painel
+                            </a>
+                        @else
+                            {{-- por enquanto, manda pro master --}}
+                            <a href="{{ route('master.dashboard') }}"
+                               class="inline-flex w-full items-center justify-center px-4 py-2.5 rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-500 text-white text-sm font-medium shadow-md">
+                                Acessar Painel
+                            </a>
+                        @endguest
                     </div>
                 </div>
 
@@ -44,16 +50,22 @@
                             👥
                         </div>
                         <h2 class="text-lg font-semibold text-slate-900 mb-1">Cliente</h2>
-                        <p class="text-sm text-slate-500">
-                            Agendamentos e Solicitações
-                        </p>
+                        <p class="text-sm text-slate-500">Agendamentos e Solicitações</p>
                     </div>
 
                     <div class="mt-6">
-                        <a href="{{ route('login', ['redirect' => 'cliente']) }}"
-                           class="inline-flex w-full items-center justify-center px-4 py-2.5 rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-500 text-white text-sm font-medium shadow-md">
-                            Acessar Painel
-                        </a>
+                        @guest
+                            <a href="{{ route('login', ['redirect' => 'cliente']) }}"
+                               class="inline-flex w-full items-center justify-center px-4 py-2.5 rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-500 text-white text-sm font-medium shadow-md">
+                                Acessar Painel
+                            </a>
+                        @else
+                            {{-- por enquanto, manda pro master --}}
+                            <a href="{{ route('master.dashboard') }}"
+                               class="inline-flex w-full items-center justify-center px-4 py-2.5 rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-500 text-white text-sm font-medium shadow-md">
+                                Acessar Painel
+                            </a>
+                        @endguest
                     </div>
                 </div>
 
@@ -64,16 +76,21 @@
                             📋
                         </div>
                         <h2 class="text-lg font-semibold text-slate-900 mb-1">Operacional</h2>
-                        <p class="text-sm text-slate-500">
-                            Tarefas e Checklist
-                        </p>
+                        <p class="text-sm text-slate-500">Tarefas e Checklist</p>
                     </div>
 
                     <div class="mt-6">
-                        <a href="{{ route('login', ['redirect' => 'operacional']) }}"
-                           class="inline-flex w-full items-center justify-center px-4 py-2.5 rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-500 text-white text-sm font-medium shadow-md">
-                            Acessar Painel
-                        </a>
+                        @guest
+                            <a href="{{ route('login', ['redirect' => 'operacional']) }}"
+                               class="inline-flex w-full items-center justify-center px-4 py-2.5 rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-500 text-white text-sm font-medium shadow-md">
+                                Acessar Painel
+                            </a>
+                        @else
+                            <a href="{{ route('operacional.kanban') }}"
+                               class="inline-flex w-full items-center justify-center px-4 py-2.5 rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-500 text-white text-sm font-medium shadow-md">
+                                Acessar Painel
+                            </a>
+                        @endguest
                     </div>
                 </div>
 
@@ -84,16 +101,22 @@
                             💰
                         </div>
                         <h2 class="text-lg font-semibold text-slate-900 mb-1">Financeiro</h2>
-                        <p class="text-sm text-slate-500">
-                            Faturamento e Documentos
-                        </p>
+                        <p class="text-sm text-slate-500">Faturamento e Documentos</p>
                     </div>
 
                     <div class="mt-6">
-                        <a href="{{ route('login', ['redirect' => 'financeiro']) }}"
-                           class="inline-flex w-full items-center justify-center px-4 py-2.5 rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-500 text-white text-sm font-medium shadow-md">
-                            Acessar Painel
-                        </a>
+                        @guest
+                            <a href="{{ route('login', ['redirect' => 'financeiro']) }}"
+                               class="inline-flex w-full items-center justify-center px-4 py-2.5 rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-500 text-white text-sm font-medium shadow-md">
+                                Acessar Painel
+                            </a>
+                        @else
+                            {{-- por enquanto, manda pro master --}}
+                            <a href="{{ route('master.dashboard') }}"
+                               class="inline-flex w-full items-center justify-center px-4 py-2.5 rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-500 text-white text-sm font-medium shadow-md">
+                                Acessar Painel
+                            </a>
+                        @endguest
                     </div>
                 </div>
 
@@ -104,21 +127,25 @@
                             🧭
                         </div>
                         <h2 class="text-lg font-semibold text-slate-900 mb-1">Master</h2>
-                        <p class="text-sm text-slate-500">
-                            Dashboard Executivo
-                        </p>
+                        <p class="text-sm text-slate-500">Dashboard Executivo</p>
                     </div>
 
                     <div class="mt-6">
-                        <a href="{{ route('login', ['redirect' => 'master.dashboard']) }}"
-                           class="inline-flex w-full items-center justify-center px-4 py-2.5 rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-500 text-white text-sm font-medium shadow-md">
-                            Acessar Painel
-                        </a>
+                        @guest
+                            <a href="{{ route('login', ['redirect' => 'master']) }}"
+                               class="inline-flex w-full items-center justify-center px-4 py-2.5 rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-500 text-white text-sm font-medium shadow-md">
+                                Acessar Painel
+                            </a>
+                        @else
+                            <a href="{{ route('master.dashboard') }}"
+                               class="inline-flex w-full items-center justify-center px-4 py-2.5 rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-500 text-white text-sm font-medium shadow-md">
+                                Acessar Painel
+                            </a>
+                        @endguest
                     </div>
                 </div>
+
             </div>
-
-
 
         </div>
     </div>
