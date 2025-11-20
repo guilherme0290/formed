@@ -106,7 +106,7 @@ class PainelController extends Controller
             ->orderBy('nome_fantasia')
             ->get();
 
-        return view('operacional.kanban.index', [
+        return view('operacional.Kanban.index', [
             'usuario'           => $user,
             'colunas'           => $colunas,
             'tarefasPorColuna'  => $tarefasPorColuna,
