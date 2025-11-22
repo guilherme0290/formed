@@ -39,8 +39,8 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     // ======================================================
-    //                  OPERACIONAL
-    // ======================================================
+//                  OPERACIONAL
+// ======================================================
     Route::prefix('operacional')->name('operacional.')->group(function () {
 
         Route::get('/kanban', [PainelController::class, 'index'])->name('kanban');
@@ -61,13 +61,54 @@ Route::middleware('auth')->group(function () {
         Route::post('/tarefas/loja/novo-cliente', [PainelController::class, 'storeLojaNovo'])
             ->name('tarefas.loja.novo');
 
+        // Funcionários
         Route::get('clientes/{cliente}/funcionarios/novo', [FuncionarioController::class, 'create'])
             ->name('clientes.funcionarios.create');
 
         Route::post('clientes/{cliente}/funcionarios', [FuncionarioController::class, 'store'])
             ->name('clientes.funcionarios.store');
 
+        // --------------------------------------------------
+        // 🔹 Fluxo de criação de Tarefa ASO
+        // --------------------------------------------------
+        Route::get('/kanban/aso/clientes', [PainelController::class, 'asoSelecionarCliente'])
+            ->name('kanban.aso.clientes');
+
+        Route::get('/kanban/aso/clientes/{cliente}/servicos', [PainelController::class, 'asoSelecionarServico'])
+            ->name('kanban.aso.servicos');
+
+        Route::get('/kanban/aso/clientes/{cliente}/novo', [PainelController::class, 'asoCreate'])
+            ->name('kanban.aso.create');
+
+        Route::post('/kanban/aso/clientes/{cliente}', [PainelController::class, 'asoStore'])
+            ->name('kanban.aso.store');
+
+        // --------------------------------------------------
+        // 🔹 Fluxo PGR
+        // --------------------------------------------------
+
+        // PGR - selecionar tipo (Matriz / Específico)
+        Route::get('/kanban/pgr/clientes/{cliente}/tipo', [PainelController::class, 'pgrTipo'])
+            ->name('kanban.pgr.tipo');
+
+        // PGR - formulário (recebe ?tipo=matriz ou ?tipo=especifico)
+        Route::get('/kanban/pgr/clientes/{cliente}/create', [PainelController::class, 'pgrCreate'])
+            ->name('kanban.pgr.create');
+
+        // PGR - salvar formulário (cria a tarefa e o registro em pgr_solicitacoes)
+        Route::post('/kanban/pgr/clientes/{cliente}', [PainelController::class, 'pgrStore'])
+            ->name('kanban.pgr.store');
+
+        // PGR - pergunta "Precisa de PCMSO?"
+        Route::get('/kanban/pgr/{tarefa}/pcmso', [PainelController::class, 'pgrPcmso'])
+            ->name('kanban.pgr.pcmso');
+
+        // PGR - salvar resposta PCMSO
+        Route::post('/kanban/pgr/{tarefa}/pcmso', [PainelController::class, 'pgrPcmsoStore'])
+            ->name('kanban.pgr.pcmso.store');
     });
+
+
 
     // ======================================================
     //                  CLIENTES (CRUD)

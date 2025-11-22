@@ -4,152 +4,158 @@ namespace App\Http\Controllers\Operacional;
 
 use App\Http\Controllers\Controller;
 use App\Models\KanbanColuna;
+use App\Models\PgrSolicitacoes;
 use App\Models\Tarefa;
 use App\Models\Servico;
 use App\Models\Cliente;
 use App\Models\Funcionario;
+use App\Models\TarefaLog;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Psy\Util\Str;
 
 class PainelController extends Controller
 {
     // ==========================
     // PAINEL / KANBAN
     // ==========================
-    public function index(Request $r)
+    public function index(Request $request)
     {
-        $user    = Auth::user();
-        $empresa = $user->empresa_id;
+        $usuario   = $request->user();
+        $empresaId = $usuario->empresa_id;
 
-        $filtroServico     = $r->get('servico_id');
-        $filtroResponsavel = $r->get('responsavel_id');
-        $filtroStatus      = $r->get('status');
+        // Filtros
+        $filtroServico     = $request->input('servico_id');
+        $filtroResponsavel = $request->input('responsavel_id');
+        $filtroColuna      = $request->input('coluna_id');
+        $filtroDe          = $request->input('de');
+        $filtroAte         = $request->input('ate');
 
-        // Colunas do kanban
-        $colunas = KanbanColuna::where('empresa_id', $empresa)
+        // Colunas do Kanban
+        $colunas = KanbanColuna::where('empresa_id', $empresaId)
             ->orderBy('ordem')
             ->get();
 
         // Query base das tarefas
-        $tarefasQuery = Tarefa::with(['responsavel', 'coluna', 'cliente', 'servico'])
-            ->where('empresa_id', $empresa);
+        $tarefasQuery = Tarefa::with([
+            'cliente',
+            'servico',
+            'responsavel',
+            'coluna',
+            'funcionario',
+            'logs.deColuna',
+            'logs.paraColuna',
+            'logs.user',
+        ])
+            ->where('empresa_id', $empresaId);
 
-        // se não for master, vê só as tarefas dele
-        if (! $user->hasRole('master')) {
-            $tarefasQuery->where('responsavel_id', $user->id);
+        // Aplica filtros
+        if ($filtroServico) {
+            $tarefasQuery->where('servico_id', $filtroServico);
         }
 
         if ($filtroResponsavel) {
             $tarefasQuery->where('responsavel_id', $filtroResponsavel);
         }
 
-        // filtro por status usando coluna_id
-        if ($filtroStatus) {
-            $tarefasQuery->where('coluna_id', $filtroStatus);
+        if ($filtroColuna) {
+            $tarefasQuery->where('coluna_id', $filtroColuna);
+        }
+
+        if ($filtroDe) {
+            $tarefasQuery->whereDate('inicio_previsto', '>=', $filtroDe);
+        }
+
+        if ($filtroAte) {
+            $tarefasQuery->whereDate('inicio_previsto', '<=', $filtroAte);
         }
 
         $tarefas = $tarefasQuery->get();
 
-        // Agrupa por coluna
+        // Agrupa tarefas por coluna
         $tarefasPorColuna = $tarefas->groupBy('coluna_id');
 
-        // ===== STATS DO TOPO =====
-        // chaves fixas para bater com o Blade
-        $stats = [
-            'pendente'           => 0,
-            'em_execucao'        => 0,
-            'aguardando_cliente' => 0,
-            'concluido'          => 0,
-            'atrasado'           => 0,
-        ];
-
+        // Stats por slug de coluna (para os cards do topo)
+        $stats = [];
         foreach ($colunas as $coluna) {
-            $qtd  = $tarefasPorColuna->get($coluna->id, collect())->count();
-            $nome = mb_strtolower($coluna->nome, 'UTF-8');
-
-            // mapeia pelo nome da coluna
-            if (str_contains($nome, 'fazer') || str_contains($nome, 'pendente')) {
-                $stats['pendente'] += $qtd;
-            } elseif (str_contains($nome, 'andamento') || str_contains($nome, 'execução') || str_contains($nome, 'execucao')) {
-                $stats['em_execucao'] += $qtd;
-            } elseif (str_contains($nome, 'aprova') || str_contains($nome, 'aguardando')) {
-                $stats['aguardando_cliente'] += $qtd;
-            } elseif (str_contains($nome, 'conclu')) {
-                $stats['concluido'] += $qtd;
-            }
+            $colecaoColuna = $tarefasPorColuna->get($coluna->id); // pode ser null
+            $stats[$coluna->slug] = $colecaoColuna ? $colecaoColuna->count() : 0;
         }
 
-        // atrasado = data_prevista passada e não finalizado
-        // (se você não usar data_prevista, pode adaptar depois para inicio_previsto)
-        if (Schema::hasColumn('tarefas', 'data_prevista')) {
-            $stats['atrasado'] = Tarefa::where('empresa_id', $empresa)
-                ->whereNull('finalizado_em')
-                ->whereNotNull('data_prevista')
-                ->whereDate('data_prevista', '<', now()->toDateString())
-                ->count();
-        }
-
-        // Responsáveis
-        $responsaveis = Tarefa::where('empresa_id', $empresa)
-            ->whereNotNull('responsavel_id')
-            ->with('responsavel')
-            ->get()
-            ->pluck('responsavel')
-            ->unique('id')
-            ->filter();
-
-        // Serviços e clientes (para filtros e modal)
-        $servicos = Servico::orderBy('nome')->get();
-        $clientes = Cliente::where('empresa_id', $empresa)
-            ->orderBy('nome_fantasia')
+        // Listas para filtros
+        $servicos = Servico::where('empresa_id', $empresaId)
+            ->orderBy('nome')
             ->get();
 
-        return view('operacional.Kanban.index', [
-            'usuario'           => $user,
-            'colunas'           => $colunas,
-            'tarefasPorColuna'  => $tarefasPorColuna,
-            'stats'             => $stats,
-            'responsaveis'      => $responsaveis,
-            'servicos'          => $servicos,
-            'clientes'          => $clientes,
-            'filtroServico'     => $filtroServico,
-            'filtroResponsavel' => $filtroResponsavel,
-            'filtroStatus'      => $filtroStatus,
+        $responsaveis = User::where('empresa_id', $empresaId)
+            ->orderBy('name')
+            ->get();
+
+        return view('operacional.kanban.index', [
+            'usuario'          => $usuario,
+            'colunas'          => $colunas,
+            'tarefasPorColuna' => $tarefasPorColuna,
+            'stats'            => $stats,
+
+            // filtros atuais (pra dar @selected e preencher inputs)
+            'servicos'         => $servicos,
+            'responsaveis'     => $responsaveis,
+            'filtroServico'    => $filtroServico,
+            'filtroResponsavel'=> $filtroResponsavel,
+            'filtroColuna'     => $filtroColuna,
+            'filtroDe'         => $filtroDe,
+            'filtroAte'        => $filtroAte,
         ]);
     }
 
     // ==========================
     // MOVER CARD NO KANBAN
     // ==========================
-    public function mover(Request $r, Tarefa $tarefa)
+    public function mover(Request $request, Tarefa $tarefa)
     {
-        $user = Auth::user();
-
-        $data = $r->validate([
+        $data = $request->validate([
             'coluna_id' => ['required', 'exists:kanban_colunas,id'],
         ]);
 
-        $deColuna   = $tarefa->coluna_id;
-        $paraColuna = $data['coluna_id'];
+        $novaColunaId  = (int) $data['coluna_id'];
+        $colunaAtualId = (int) $tarefa->coluna_id;
 
-        $tarefa->coluna_id = $paraColuna;
-
-        $coluna = KanbanColuna::findOrFail($paraColuna);
-
-        // status = nome da coluna
-        $tarefa->status = $coluna->nome;
-
-        if ($coluna->finaliza && ! $tarefa->finalizado_em) {
-            $tarefa->finalizado_em = now();
+        if ($novaColunaId === $colunaAtualId) {
+            return response()->json(['ok' => true]);
         }
 
-        $tarefa->save();
+        // Atualiza coluna
+        $tarefa->update([
+            'coluna_id' => $novaColunaId,
+        ]);
+
+        // Recarrega coluna para pegar o nome
+        $tarefa->load('coluna');
+
+        // Cria log de movimentação
+        $log = TarefaLog::create([
+            'tarefa_id'      => $tarefa->id,
+            'user_id'        => Auth::id(),
+            'de_coluna_id'   => $colunaAtualId,
+            'para_coluna_id' => $novaColunaId,
+            'acao'           => 'movido',
+            'observacao'     => null,
+        ]);
+
+        $log->load(['deColuna', 'paraColuna', 'user']);
 
         return response()->json([
-            'ok'     => true,
-            'status' => $tarefa->status,
+            'ok'           => true,
+            'status_label' => $tarefa->coluna->nome ?? '',
+            'log'          => [
+                'de'   => optional($log->deColuna)->nome ?? 'Início',
+                'para' => optional($log->paraColuna)->nome ?? '-',
+                'user' => optional($log->user)->name ?? 'Sistema',
+                'data' => optional($log->created_at)->format('d/m H:i'),
+            ],
         ]);
     }
 
@@ -349,5 +355,411 @@ class PainelController extends Controller
                 ->withInput()
                 ->with('erro', 'Erro ao criar tarefa: '.$e->getMessage());
         }
+    }
+
+
+    public function asoSelecionarCliente(Request $request)
+    {
+        $usuario   = $request->user();
+        $empresaId = $usuario->empresa_id;
+        $q         = $request->query('q');
+
+        $clientes = Cliente::where('empresa_id', $empresaId)
+            ->when($q, fn($query) =>
+            $query->where('razao_social', 'like', "%{$q}%")
+                ->orWhere('nome_fantasia', 'like', "%{$q}%")
+            )
+            ->orderBy('razao_social')
+            ->paginate(12);
+
+        return view('operacional.kanban.aso.clientes', compact('clientes', 'q'));
+    }
+
+    public function asoSelecionarServico(Cliente $cliente, Request $request)
+    {
+        $usuario   = $request->user();
+        $empresaId = $usuario->empresa_id;
+
+        abort_if($cliente->empresa_id !== $empresaId, 403);
+
+        // Por enquanto só ASO estará clicável
+        return view('operacional.kanban.aso.servicos', compact('cliente'));
+    }
+
+    public function asoCreate(Cliente $cliente, Request $request)
+    {
+        $usuario   = $request->user();
+        $empresaId = $usuario->empresa_id;
+
+        abort_if($cliente->empresa_id !== $empresaId, 403);
+
+        $funcionarios = Funcionario::where('empresa_id', $empresaId)
+            ->where('cliente_id', $cliente->id)
+            ->orderBy('nome')
+            ->get();
+
+        // Se ainda não tiver tabela de unidades, você pode deixar um array fixo por enquanto
+        $unidades = \App\Models\UnidadeClinica::where('empresa_id', $empresaId)
+            ->orderBy('nome')
+            ->get();
+
+        $tiposAso = [
+            'admissional'      => 'Admissional',
+            'periodico'        => 'Periódico',
+            'demissional'      => 'Demissional',
+            'mudanca_funcao'   => 'Mudança de Função',
+            'retorno_trabalho' => 'Retorno ao Trabalho',
+        ];
+
+
+        $treinamentosDisponiveis = [
+            'nr_35' => 'NR-35 - Trabalho em Altura',
+            'nr_18' => 'NR-18 - Integração',
+            'nr_12' => 'NR-12 - Máquinas e Equipamentos',
+            'nr_06' => 'NR-06 - EPI',
+            'nr_05' => 'NR-05 - CIPA Designada',
+            'nr_01' => 'NR-01 - Ordem de Serviço',
+            'nr_33' => 'NR-33 - Espaço Confinado',
+            'nr_11' => 'NR-11 - Movimentação de Carga',
+            'nr_10' => 'NR-10 - Elétrica'
+        ];
+
+        return view('operacional.kanban.aso.create', [
+            'cliente'                => $cliente,
+            'funcionarios'           => $funcionarios,
+            'unidades'               => $unidades,
+            'tiposAso'               => $tiposAso,
+            'treinamentosDisponiveis'=> $treinamentosDisponiveis,
+        ]);
+    }
+
+    public function asoStore(Cliente $cliente, Request $request)
+    {
+        $usuario   = $request->user();
+        $empresaId = $usuario->empresa_id;
+
+        abort_if($cliente->empresa_id !== $empresaId, 403);
+
+        $data = $request->validate([
+            'funcionario_id'        => ['nullable', 'exists:funcionarios,id'],
+            'nome'                  => ['nullable', 'string', 'max:255'],
+            'cpf'                   => ['nullable', 'string', 'max:20'],
+            'data_nascimento'       => ['nullable', 'date'],
+            'rg'                    => ['nullable', 'string', 'max:255'],
+            'funcao'                 => ['nullable', 'string', 'max:255'],
+            'tipo_aso'              => ['required', 'in:admissional,periodico,demissional,mudanca_funcao,retorno_trabalho'],
+            'data_aso'              => ['required', 'date_format:Y-m-d'],
+            'unidade_id'            => ['required', 'exists:unidades_clinicas,id'],
+            'vai_fazer_treinamento' => ['nullable', 'boolean'],
+            'treinamentos'          => ['array'],
+            'treinamentos.*'        => ['string'],
+        ]);
+
+        $tarefa = DB::transaction(function () use ($data, $empresaId, $cliente, $usuario) {
+
+            // 1) Resolve funcionário (existente ou novo)
+            if (!empty($data['funcionario_id'])) {
+                $funcionario = Funcionario::where('empresa_id', $empresaId)
+                    ->where('cliente_id', $cliente->id)
+                    ->findOrFail($data['funcionario_id']);
+            } else {
+                $funcionario = Funcionario::create([
+                    'empresa_id'    => $empresaId,
+                    'cliente_id'    => $cliente->id,
+                    'nome'          => $data['nome'],
+                    'cpf'           => $data['cpf'] ?? null,
+                    'rg' => $data['rg'],
+                    'data_nascimento' =>$data['data_nascimento'],
+                    'funcao' => $data['funcao']
+                    ]);
+            }
+
+            // 2) Coluna inicial do Kanban (Pendente)
+            $colunaInicial = KanbanColuna::where('empresa_id', $empresaId)
+                ->where('slug', 'pendente') // se tiver slug
+                ->first()
+                ?? KanbanColuna::where('empresa_id', $empresaId)->orderBy('ordem')->first();
+
+            $servicoAsoId = Servico::where('nome', 'ASO')->value('id');
+
+            // 3) Monta título e descrição da tarefa
+            $tipoAsoLabel = match ($data['tipo_aso']) {
+                'admissional'      => 'Admissional',
+                'periodico'        => 'Periódico',
+                'demissional'      => 'Demissional',
+                'mudanca_funcao'   => 'Mudança de Função',
+                'retorno_trabalho' => 'Retorno ao Trabalho',
+            };
+
+            $titulo = "ASO - {$funcionario->nome}";
+            $descricao = "Tipo: {$tipoAsoLabel}";
+
+            if (!empty($data['vai_fazer_treinamento']) && !empty($data['treinamentos'])) {
+                $descricao .= ' | Treinamentos: ' . implode(', ', $data['treinamentos']);
+            }
+
+            // 4) Cria a tarefa
+            $tarefa = Tarefa::create([
+                'empresa_id'     => $empresaId,
+                'coluna_id'      => optional($colunaInicial)->id,
+                'cliente_id'     => $cliente->id,
+                'responsavel_id' => $usuario->id,
+                'funcionario_id' => $funcionario->id,
+                'servico_id'     => $servicoAsoId,
+                'titulo'         => $titulo,
+                'descricao'      => $descricao,
+                'inicio_previsto'=> $data['data_aso'], // usar campo já existente
+                // se você tiver campos específicos de ASO, pode setar aqui
+            ]);
+
+            // Opcional: primeiro log "Criada"
+            TarefaLog::create([
+                'tarefa_id'     => $tarefa->id,
+                'user_id'       => $usuario->id,
+                'de_coluna_id'  => null,
+                'acao' => 'criado',
+                'para_coluna_id'=> optional($colunaInicial)->id,
+                'observacao'     => 'Tarefa ASO criada pelo usuário.',
+            ]);
+
+            return $tarefa;
+        });
+
+        return redirect()
+            ->route('operacional.kanban')
+            ->with('ok', "Tarefa ASO criada para o colaborador {$tarefa->titulo}.");
+    }
+
+    public function pgrTipo(Cliente $cliente, Request $request)
+    {
+        $usuario   = $request->user();
+        $empresaId = $usuario->empresa_id;
+
+        abort_if($cliente->empresa_id !== $empresaId, 403);
+
+        return view('operacional.kanban.pgr.tipo', [
+            'cliente' => $cliente,
+        ]);
+    }
+
+    /**
+     * Passo 2 – formulário PGR (Matriz ou Específico)
+     * query param: ?tipo=matriz ou ?tipo=especifico
+     */
+    public function pgrCreate(Cliente $cliente, Request $request)
+    {
+        $usuario   = $request->user();
+        $empresaId = $usuario->empresa_id;
+
+        abort_if($cliente->empresa_id !== $empresaId, 403);
+
+        $tipo = $request->query('tipo','matriz');
+
+        if (!in_array($tipo, ['matriz', 'especifico'], true)) {
+            abort(404);
+        }
+
+        $tipoLabel = $tipo === 'matriz' ? 'Matriz' : 'Específico';
+
+        // valor fixo de ART (se quiser depois pode vir de config/tabela)
+        $valorArt = 500.00;
+
+        return view('operacional.kanban.pgr.form', [
+            'cliente'   => $cliente,
+            'tipo'      => $tipo,
+            'tipoLabel' => $tipoLabel,
+            'valorArt'  => $valorArt,
+        ]);
+    }
+
+    /**
+     * Passo 3 – salvar PGR e criar Tarefa + PgrSolicitacao
+     */
+    public function pgrStore(Cliente $cliente, Request $request)
+    {
+        $usuario   = $request->user();
+        $empresaId = $usuario->empresa_id;
+
+        abort_if($cliente->empresa_id !== $empresaId, 403);
+
+        $data = $request->validate([
+            'tipo'          => ['required', 'in:matriz,especifico'],
+            'com_art'       => ['required', 'boolean'],
+            'qtd_homens'    => ['required', 'integer', 'min:0'],
+            'qtd_mulheres'  => ['required', 'integer', 'min:0'],
+
+            'contratante_nome'=> ['string'],
+            'contratante_cnpj' => ['string'],
+            'obra_nome'=> ['string'],
+            'obra_endereco'=> ['string'],
+            'obra_cej_cno'=> ['string'],
+            'obra_turno_trabalho'=> ['string'],
+            // funcoes é um array de linhas
+            'funcoes'                   => ['required', 'array', 'min:1'],
+            'funcoes.*.nome'            => ['required', 'string', 'max:255'],
+            'funcoes.*.quantidade'      => ['required', 'integer', 'min:1'],
+            'funcoes.*.cbo'             => ['nullable', 'string', 'max:20'],
+            'funcoes.*.descricao'       => ['nullable', 'string'],
+        ]);
+
+
+        $totalTrabalhadores = (int)$data['qtd_homens'] + (int)$data['qtd_mulheres'];
+
+        $totalFuncoes = collect($data['funcoes'])
+            ->sum(function ($funcao) {
+                return (int)($funcao['quantidade'] ?? 0);
+            });
+
+        if ($totalFuncoes !== $totalTrabalhadores) {
+            return back()
+                ->withInput()
+                ->withErrors([
+                    'funcoes' => "A soma das quantidades das funções ({$totalFuncoes}) deve ser igual ao total de trabalhadores ({$totalTrabalhadores}).",
+                ]);
+        }
+
+        // coluna inicial (Pendente)
+        $colunaInicial = KanbanColuna::where('empresa_id', $empresaId)
+            ->where('slug', 'pendente')
+            ->first()
+            ?? KanbanColuna::where('empresa_id', $empresaId)->orderBy('ordem')->first();
+
+        // serviço PGR
+        $servicoPgr = Servico::where('empresa_id', $empresaId)
+            ->where('nome', 'PGR')
+            ->first();
+
+        $tipoLabel = $data['tipo'] === 'matriz' ? 'Matriz' : 'Específico';
+
+        $valorArt = $data['com_art'] ? 500.00 : null; // se quiser deixar fixo aqui
+
+        $tarefaId = null;
+
+        DB::transaction(function () use (
+            $data,
+            $empresaId,
+            $cliente,
+            $usuario,
+            $colunaInicial,
+            $servicoPgr,
+            $tipoLabel,
+            $totalTrabalhadores,
+            $valorArt,
+            &$tarefaId
+        ) {
+            // cria Tarefa base
+            $tarefa = Tarefa::create([
+                'empresa_id'     => $empresaId,
+                'cliente_id'     => $cliente->id,
+                'responsavel_id' => $usuario->id,
+                'coluna_id'      => optional($colunaInicial)->id,
+                'servico_id'     => optional($servicoPgr)->id,
+                'titulo'         => "PGR - {$tipoLabel}",
+                'descricao'      => "PGR - {$tipoLabel}" . ($data['com_art'] ? ' (COM ART)' : ''),
+                'inicio_previsto'=> now(), // se tiver outro campo/valor, pode ajustar
+            ]);
+
+            // guarda id para usar fora da transaction
+            $tarefaId = $tarefa->id;
+
+            // cria registro PGR
+            $solicitacao = PgrSolicitacoes::create([
+                'empresa_id'  => $empresaId,
+                'cliente_id'  => $cliente->id,
+                'responsavel_id' => $usuario->id,
+
+                'tipo'    => $data['tipo'],
+                'com_art'     => (bool) $data['com_art'],
+
+                'contratante_nome'   => $data['contratante_nome'] ?? null,
+                'contratante_cnpj'   => $data['contratante_cnpj'] ?? null,
+                'obra_nome'          => $data['obra_nome'] ?? null,
+                'obra_endereco'      => $data['obra_endereco'] ?? null,
+                'obra_cej_cno'       => $data['obra_cej_cno'] ?? null,
+                'obra_turno_trabalho'=> $data['obra_turno_trabalho'] ?? null,
+
+                'qtd_homens' => $data['trabalhadores_masculinos'],
+                'qtd_mulheres'  => $data['trabalhadores_femininos'],
+                'funcoes' => $data['funcoes'],
+                'com_pcms0'    => $data['com_pcms0'] ?? null,
+            ]);
+
+            // log inicial
+            TarefaLog::create([
+                'tarefa_id'     => $tarefa->id,
+                'user_id'       => $usuario->id,
+                'de_coluna_id'  => null,
+                'para_coluna_id'=> optional($colunaInicial)->id,
+                'acao'          => 'criado',
+                'observacao'    => 'Tarefa PGR criada pelo usuário.',
+            ]);
+        });
+
+        // redireciona para pergunta de PCMSO
+        return redirect()
+            ->route('operacional.kanban.pgr.pcmso', $tarefa->id);
+    }
+
+    /**
+     * Passo 4 – tela "Precisa de PCMSO?"
+     */
+    public function pgrPcmso(Tarefa $tarefa, Request $request)
+    {
+        $usuario   = $request->user();
+        $empresaId = $usuario->empresa_id;
+
+        abort_if($tarefa->empresa_id !== $empresaId, 403);
+
+        $pgr = $tarefa->pgrSolicitacao;
+        abort_if(!$pgr, 404);
+
+        $cliente = $tarefa->cliente ?? null;
+
+        return view('operacional.kanban.pgr.pcms0', [
+            'tarefa'  => $tarefa,
+            'pgr'     => $pgr,
+            'cliente' => $cliente,
+        ]);
+    }
+
+    /**
+     * Salvar resposta da pergunta de PCMSO (sim/não)
+     */
+    public function pgrPcmsoStore(Tarefa $tarefa, Request $request)
+    {
+        $usuario   = $request->user();
+        $empresaId = $usuario->empresa_id;
+
+        abort_if($tarefa->empresa_id !== $empresaId, 403);
+
+        $data = $request->validate([
+            'com_pcms0' => ['required', 'boolean'],
+        ]);
+
+        $pgr = $tarefa->pgrSolicitacao;
+        abort_if(!$pgr, 404);
+
+        $pgr->update([
+            'com_pcms0' => (bool)$data['com_pcms0'],
+        ]);
+
+        // monta uma descrição mais amigável pra aparecer no modal
+        $descricao = "PGR - " . ($pgr->tipo === 'matriz' ? 'Matriz' : 'Específico');
+
+        if ($pgr->com_pcms0) {
+            $descricao .= ' + PCMSO';
+        }
+
+        if ($pgr->com_art) {
+            $descricao .= ' (COM ART)';
+        }
+
+        $tarefa->update([
+            'descricao' => $descricao,
+        ]);
+
+        return redirect()
+            ->route('operacional.kanban')
+            ->with('ok', 'Tarefa PGR criada e enviada para a coluna Pendente.');
     }
 }

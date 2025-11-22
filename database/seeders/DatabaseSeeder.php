@@ -20,18 +20,15 @@ class DatabaseSeeder extends Seeder
             EstadoSeeder::class,
             CidadeSeeder::class,
             EmpresaSeeder::class,
-
             PapelSeeder::class,
             PermissaoSeeder::class,
-
             UserSeeder::class,
-
             ClienteSeeder::class,
             ServicoSeeder::class,
-
             KanbanColunaSeeder::class,
             TarefaSeeder::class,
-
+            UnidadesClinicasSeeder::class,
+            ServicoSeeder::class,
         ]);
     }
 }

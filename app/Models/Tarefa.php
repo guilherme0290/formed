@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Tarefa extends Model
 {
@@ -15,16 +16,17 @@ class Tarefa extends Model
         'empresa_id',
         'coluna_id',
         'responsavel_id',
-        'cliente_id',      // 👈 IMPORTANTE
-        'servico_id',      // (se já tiver essa coluna)
+        'cliente_id',
+        'funcionario_id',
+        'servico_id',
         'titulo',
         'descricao',
         'prioridade',
         'status',
-        'inicio_previsto', // 👈 DATA + HORA DO EXAME
+        'inicio_previsto',
         'fim_previsto',
         'finalizado_em',
-        'data_prevista',   // (se existir a coluna)
+        'data_prevista',
     ];
 
     protected $casts = [
@@ -45,6 +47,11 @@ class Tarefa extends Model
         return $this->belongsTo(Servico::class);
     }
 
+    public function funcionario()
+    {
+        return $this->belongsTo(Funcionario::class);
+    }
+
     public function responsavel()
     {
         return $this->belongsTo(User::class, 'responsavel_id');
@@ -53,5 +60,22 @@ class Tarefa extends Model
     public function coluna()
     {
         return $this->belongsTo(KanbanColuna::class, 'coluna_id');
+    }
+
+    public function logs(): HasMany
+    {
+        return $this->hasMany(TarefaLog::class);
+    }
+
+    public function ultimoLogMovimentacao(): ?TarefaLog
+    {
+        // helper opcional, se quiser usar no controller
+        return $this->logs()->latest('created_at')->first();
+    }
+
+
+    public function pgr()
+    {
+        return $this->hasOne(PgrSolicitacoes::class);
     }
 }

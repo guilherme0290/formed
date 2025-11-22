@@ -21,6 +21,7 @@ return new class extends Migration {
             $t->id();
             $t->foreignId('coluna_id')->constrained('kanban_colunas')->cascadeOnDelete();
             $t->foreignId('responsavel_id')->nullable()->constrained('users')->nullOnDelete();
+            $t->foreignId('funcionario_id')->nullable()->constrained('funcionarios')->nullOnDelete();
             $t->string('titulo');
             $t->text('descricao')->nullable();
             $t->dateTime('inicio_previsto')->nullable();
@@ -36,8 +37,12 @@ return new class extends Migration {
             $t->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
             $t->string('acao'); // criado, movido, editado, finalizado
             $t->json('dados')->nullable();
+            $t->foreignId('de_coluna_id')->nullable()->constrained('kanban_colunas')->cascadeOnDelete();
+            $t->foreignId('para_coluna_id')->nullable()->constrained('kanban_colunas')->cascadeOnDelete();
+            $t->string('observacao')->nullable();
             $t->timestamps();
         });
+
 
         Schema::create('tarefa_checklists', function (Blueprint $t) {
             $t->id();

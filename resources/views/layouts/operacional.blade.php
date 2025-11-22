@@ -12,7 +12,7 @@
 <body class="bg-slate-900">
 <div class="min-h-screen flex">
 
-    {{-- >>> AQUI VAI A BARRA LATERAL QUE ESTAVA NA VIEW <<< --}}
+    {{-- Sidebar esquerda --}}
     <aside class="hidden md:flex flex-col w-56 bg-slate-950 text-slate-100">
         <div class="h-16 flex items-center px-6 text-lg font-semibold">
             Operacional
@@ -41,18 +41,38 @@
         </div>
     </aside>
 
-    {{-- ÁREA DA DIREITA --}}
+    {{-- Área principal à direita --}}
     <div class="flex-1 flex flex-col bg-slate-50">
 
-        {{-- Se no layouts.app você tem um HEADER/TOPBAR,
-             pode copiar pra cá também, tipo:
-             @include('layouts.partials.topbar')
-        --}}
+        {{-- Top bar azul, alinhado com o conteúdo --}}
+        <header class="bg-[color:var(--color-brand-azul)] text-white shadow-sm">
+            <div class="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
+                <div class="flex items-baseline gap-3">
+                    <span class="font-semibold text-lg tracking-tight">FORMED</span>
+                    <span class="text-xs md:text-sm text-blue-100">
+                        Medicina e Segurança do Trabalho
+                    </span>
+                </div>
 
+                <div class="flex items-center gap-3 text-xs md:text-sm text-blue-50">
+                    <span class="hidden md:inline">
+                        {{ auth()->user()->name ?? '' }}
+                    </span>
+                </div>
+            </div>
+        </header>
+
+        {{-- Conteúdo da página (Kanban, filtros etc.) --}}
         <main class="flex-1">
-            @yield('content')
+                @yield('content')
         </main>
     </div>
 </div>
+
+{{-- SortableJS para drag & drop do Kanban --}}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+
+{{-- Scripts específicos das views --}}
+@stack('scripts')
 </body>
 </html>

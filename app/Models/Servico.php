@@ -7,6 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class Servico extends Model
 {
-    protected $fillable = ['nome','ativo'];
-    protected $casts = ['ativo' => 'bool'];
+    protected $fillable = ['nome', 'descricao', 'ativo','empresa_id'];
+
+    protected $casts = [
+        'ativo' => 'bool',
+    ];
 }
