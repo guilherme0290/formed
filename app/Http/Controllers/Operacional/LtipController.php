@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Operacional;
 
 use App\Http\Controllers\Controller;
 use App\Models\Cliente;
+use App\Models\Funcao;
 use App\Models\KanbanColuna;
 use App\Models\LtipSolicitacoes;
 use App\Models\Servico;
@@ -21,8 +22,13 @@ class LtipController extends Controller
 
         abort_if($cliente->empresa_id !== $empresaId, 403);
 
+        $funcoes = Funcao::where('empresa_id', $empresaId)
+            ->orderBy('nome')
+            ->get();
+
         return view('operacional.kanban.ltip.create', [
             'cliente' => $cliente,
+            'funcoes' => $funcoes,
         ]);
     }
 
@@ -36,9 +42,9 @@ class LtipController extends Controller
         $data = $request->validate([
             'endereco_avaliacoes' => ['required', 'string', 'max:1000'],
 
-            'funcoes' => ['required', 'array', 'min:1'],
-            'funcoes.*.nome' => ['required', 'string', 'max:255'],
-            'funcoes.*.quantidade' => ['required', 'integer', 'min:1'],
+            'funcoes'                 => ['required', 'array', 'min:1'],
+            'funcoes.*.funcao_id'     => ['required', 'integer', 'exists:funcoes,id'],
+            'funcoes.*.quantidade'    => ['required', 'integer', 'min:1'],
         ]);
 
         $totalFuncionarios = collect($data['funcoes'])->sum(function ($funcao) {

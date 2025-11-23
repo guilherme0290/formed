@@ -160,14 +160,14 @@
 
                             <div class="grid grid-cols-12 gap-3 items-end">
                                 <div class="col-span-8">
-                                    <label class="block text-xs font-medium text-slate-500 mb-1">
-                                        Nome da Função
-                                    </label>
-                                    <input type="text"
-                                           name="funcoes[0][nome]"
-                                           class="w-full rounded-lg border-slate-200 text-sm px-3 py-2"
-                                           placeholder="Ex: Soldador"
-                                           value="{{ old('funcoes.0.nome') }}">
+                                    <x-funcoes.select-with-create
+                                        name="funcoes[0][funcao_id]"
+                                        field-id="funcoes_0_funcao_id"
+                                        label="Função"
+                                        :funcoes="$funcoes"
+                                        :selected="old('funcoes.0.funcao_id')"
+                                        :show-create="false"
+                                    />
                                 </div>
 
                                 <div class="col-span-4">
@@ -243,18 +243,23 @@
                 const base = itens[0];
                 const clone = base.cloneNode(true);
 
-                // Limpa valores
-                clone.querySelectorAll('input').forEach(input => {
-                    if (input.name.includes('[nome]')) {
-                        input.value = '';
-                    } else if (input.name.includes('[quantidade]')) {
-                        input.value = '1';
+                clone.querySelectorAll('input, select').forEach(el => {
+                    if (el.name && el.name.includes('funcoes[')) {
+                        el.name = el.name.replace(/\[\d+]/, '[' + index + ']');
                     }
-                });
 
-                // Ajusta names pelo índice
-                clone.querySelectorAll('input').forEach(input => {
-                    input.name = input.name.replace(/\[\d+]/, '[' + index + ']');
+                    // reseta valores
+                    if (el.tagName === 'SELECT') {
+                        el.value = '';
+                        // atualiza o id para manter unicidade
+                        if (el.id && el.id.startsWith('funcoes_')) {
+                            el.id = el.id.replace(/_\d+_funcao_id$/, '_' + index + '_funcao_id');
+                        }
+                    } else if (el.name.includes('[quantidade]')) {
+                        el.value = '1';
+                    } else {
+                        el.value = '';
+                    }
                 });
 
                 // Atualiza badge "Função X"

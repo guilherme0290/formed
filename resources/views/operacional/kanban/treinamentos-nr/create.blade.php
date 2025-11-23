@@ -5,9 +5,9 @@
 @section('content')
     <div class="container mx-auto px-4 py-6">
         <div class="mb-4 flex items-center justify-between">
-            <a href="{{ route('operacional.painel') }}"
+            <a href="{{ route('operacional.kanban.servicos', $cliente) }}"
                class="inline-flex items-center gap-2 text-xs px-3 py-1.5 rounded-full border border-slate-200 bg-white hover:bg-slate-50">
-                ← Voltar ao Painel
+                ← Voltar
             </a>
         </div>
 
@@ -92,12 +92,13 @@
                             </div>
 
                             <div class="col-span-6">
-                                <label class="block text-xs font-medium text-slate-600 mb-1">
-                                    Função
-                                </label>
-                                <input type="text" id="nf-funcao"
-                                       class="w-full rounded-lg border-slate-200 text-sm px-3 py-2"
-                                       placeholder="Cargo/função">
+                                <x-funcoes.select-with-create
+                                    name="nf_funcao_id"
+                                    field-id="nf_funcao_id"
+                                    label="Função"
+                                    :funcoes="$funcoes"
+                                    :selected="null"
+                                />
                             </div>
 
                             <div class="col-span-12">
@@ -112,6 +113,7 @@
                         <p id="nf-erro"
                            class="mt-2 text-[11px] text-red-700 hidden">
                         </p>
+
                     </div>
 
                     {{-- Lista de funcionários --}}
@@ -129,7 +131,7 @@
                                             {{ $func->nome }}
                                         </p>
                                         <p class="text-[11px] text-slate-500">
-                                            {{ $func->funcao ?? 'Função não informada' }}
+                                            {{ optional($func->funcao)->nome ?? 'Função não informada' }}
                                         </p>
                                         <p class="text-[11px] text-slate-400 mt-0.5">
                                             CPF: {{ $func->cpf }}
@@ -223,91 +225,95 @@
         </div>
     </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const csrf = '{{ csrf_token() }}';
-            const ajaxUrl = '{{ route('operacional.treinamentos-nr.funcionarios.store', $cliente) }}';
+    @push('scripts')
 
-            // ----- Novo funcionário -----
-            const cardNovo  = document.getElementById('card-novo-funcionario');
-            const btnToggle = document.getElementById('btn-novo-funcionario-toggle');
-            const btnClose  = document.getElementById('btn-novo-funcionario-close');
-            const btnSalvar = document.getElementById('btn-novo-funcionario-salvar');
-            const erroEl    = document.getElementById('nf-erro');
 
-            const nfNome   = document.getElementById('nf-nome');
-            const nfCpf    = document.getElementById('nf-cpf');
-            const nfFuncao = document.getElementById('nf-funcao');
-            const nfNasc   = document.getElementById('nf-nascimento');
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const csrf   = '{{ csrf_token() }}';
+                const ajaxUrl = '{{ route('operacional.treinamentos-nr.funcionarios.store', $cliente) }}';
 
-            btnToggle.addEventListener('click', () => {
-                cardNovo.classList.remove('hidden');
-            });
+                // ----- Novo funcionário -----
+                const cardNovo  = document.getElementById('card-novo-funcionario');
+                const btnToggle = document.getElementById('btn-novo-funcionario-toggle');
+                const btnClose  = document.getElementById('btn-novo-funcionario-close');
+                const btnSalvar = document.getElementById('btn-novo-funcionario-salvar');
+                const erroEl    = document.getElementById('nf-erro');
 
-            btnClose.addEventListener('click', () => {
-                cardNovo.classList.add('hidden');
-            });
+                const nfNome      = document.getElementById('nf-nome');
+                const nfCpf       = document.getElementById('nf-cpf');
+                const nfNasc      = document.getElementById('nf-nascimento');
+                const nfFuncaoSel = document.getElementById('nf_funcao_id'); // <-- SELECT de função
 
-            btnSalvar.addEventListener('click', () => {
-                erroEl.classList.add('hidden');
-                erroEl.textContent = '';
+                btnToggle.addEventListener('click', () => {
+                    cardNovo.classList.remove('hidden');
+                });
 
-                const payload = {
-                    nome: nfNome.value.trim(),
-                    cpf: nfCpf.value.trim(),
-                    funcao: nfFuncao.value.trim(),
-                    nascimento: nfNasc.value || null,
-                };
+                btnClose.addEventListener('click', () => {
+                    cardNovo.classList.add('hidden');
+                });
 
-                if (!payload.nome || !payload.cpf || !payload.funcao) {
-                    erroEl.textContent = 'Preencha Nome, CPF e Função.';
-                    erroEl.classList.remove('hidden');
-                    return;
-                }
+                btnSalvar.addEventListener('click', () => {
+                    erroEl.classList.add('hidden');
+                    erroEl.textContent = '';
 
-                btnSalvar.disabled = true;
+                    const payload = {
+                        nome:       nfNome.value.trim(),
+                        cpf:        nfCpf.value.trim(),
+                        nascimento: nfNasc.value || null,
+                        funcao_id:  nfFuncaoSel.value || null,   // <-- agora enviamos funcao_id
+                    };
 
-                fetch(ajaxUrl, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': csrf,
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                    },
-                    body: JSON.stringify(payload),
-                })
-                    .then(r => r.json())
-                    .then(data => {
-                        if (!data.ok) {
-                            throw new Error('Erro ao salvar colaborador.');
-                        }
-
-                        adicionarFuncionarioNaLista(data.funcionario);
-
-                        nfNome.value = '';
-                        nfCpf.value = '';
-                        nfFuncao.value = '';
-                        nfNasc.value = '';
-                        cardNovo.classList.add('hidden');
-                        atualizarContador();
-                    })
-                    .catch(err => {
-                        erroEl.textContent = 'Não foi possível salvar. Tente novamente.';
+                    if (!payload.nome || !payload.cpf || !payload.funcao_id) {
+                        erroEl.textContent = 'Preencha Nome, CPF e Função.';
                         erroEl.classList.remove('hidden');
+                        return;
+                    }
+
+                    btnSalvar.disabled = true;
+
+                    fetch(ajaxUrl, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': csrf,
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                        },
+                        body: JSON.stringify(payload),
                     })
-                    .finally(() => {
-                        btnSalvar.disabled = false;
-                    });
-            });
+                        .then(r => r.json())
+                        .then(data => {
+                            if (!data.ok) {
+                                throw new Error('Erro ao salvar colaborador.');
+                            }
 
-            // ----- Lista de funcionários / contador -----
-            const lista = document.getElementById('lista-funcionarios');
-            const contadorEl = document.getElementById('contador-selecionados');
+                            adicionarFuncionarioNaLista(data.funcionario);
 
-            function adicionarFuncionarioNaLista(func) {
-                const label = document.createElement('label');
-                label.className = 'block border rounded-xl px-3 py-3 text-xs cursor-pointer bg-slate-50 hover:bg-slate-100';
-                label.innerHTML = `
+                            nfNome.value      = '';
+                            nfCpf.value       = '';
+                            nfNasc.value      = '';
+                            nfFuncaoSel.value = '';  // <-- limpa select de função
+
+                            cardNovo.classList.add('hidden');
+                            atualizarContador();
+                        })
+                        .catch(() => {
+                            erroEl.textContent = 'Não foi possível salvar. Tente novamente.';
+                            erroEl.classList.remove('hidden');
+                        })
+                        .finally(() => {
+                            btnSalvar.disabled = false;
+                        });
+                });
+
+                // ----- Lista de funcionários / contador -----
+                const lista       = document.getElementById('lista-funcionarios');
+                const contadorEl  = document.getElementById('contador-selecionados');
+
+                function adicionarFuncionarioNaLista(func) {
+                    const label = document.createElement('label');
+                    label.className = 'block border rounded-xl px-3 py-3 text-xs cursor-pointer bg-slate-50 hover:bg-slate-100';
+                    label.innerHTML = `
                     <div class="flex items-start gap-2">
                         <input type="checkbox"
                                name="funcionarios[]"
@@ -319,7 +325,7 @@
                                 ${func.nome}
                             </p>
                             <p class="text-[11px] text-slate-500">
-                                ${func.funcao || 'Função não informada'}
+                                ${func.funcao_nome || 'Função não informada'}
                             </p>
                             <p class="text-[11px] text-slate-400 mt-0.5">
                                 CPF: ${func.cpf}
@@ -327,66 +333,68 @@
                         </div>
                     </div>
                 `;
-                lista.prepend(label);
-            }
-
-            function atualizarContador() {
-                const selecionados = lista.querySelectorAll('input[type="checkbox"]:checked').length;
-                if (!selecionados) {
-                    contadorEl.textContent = 'Nenhum participante selecionado.';
-                } else if (selecionados === 1) {
-                    contadorEl.textContent = '1 participante selecionado.';
-                } else {
-                    contadorEl.textContent = selecionados + ' participantes selecionados.';
+                    lista.prepend(label);
                 }
-            }
 
-            lista.addEventListener('change', function (e) {
-                if (e.target.matches('input[type="checkbox"]')) {
-                    atualizarContador();
-                }
-            });
-
-            atualizarContador();
-
-            // ----- Local: Na clínica x In Company -----
-            const localCards = document.querySelectorAll('.local-radio-card');
-            const radios     = document.querySelectorAll('input[name="local_tipo"]');
-            const blocoClinica = document.getElementById('bloco-clinica');
-            const blocoEmpresa = document.getElementById('bloco-empresa');
-
-            function atualizarLocalUI() {
-                let valor = 'clinica';
-                radios.forEach(r => { if (r.checked) valor = r.value; });
-
-                localCards.forEach((card, idx) => {
-                    const r = radios[idx];
-                    if (r.checked) {
-                        card.classList.remove('border-slate-200', 'bg-slate-50');
-                        card.classList.add('border-indigo-300', 'bg-indigo-50');
+                function atualizarContador() {
+                    const selecionados = lista.querySelectorAll('input[type="checkbox"]:checked').length;
+                    if (!selecionados) {
+                        contadorEl.textContent = 'Nenhum participante selecionado.';
+                    } else if (selecionados === 1) {
+                        contadorEl.textContent = '1 participante selecionado.';
                     } else {
-                        card.classList.add('border-slate-200', 'bg-slate-50');
-                        card.classList.remove('border-indigo-300', 'bg-indigo-50');
+                        contadorEl.textContent = selecionados + ' participantes selecionados.';
+                    }
+                }
+
+                lista.addEventListener('change', function (e) {
+                    if (e.target.matches('input[type="checkbox"]')) {
+                        atualizarContador();
                     }
                 });
 
-                if (valor === 'clinica') {
-                    blocoClinica.classList.remove('hidden');
-                    blocoEmpresa.classList.add('hidden');
-                } else {
-                    blocoClinica.classList.add('hidden');
-                    blocoEmpresa.classList.remove('hidden');
+                atualizarContador();
+
+                // ----- Local: Na clínica x In Company -----
+                const localCards   = document.querySelectorAll('.local-radio-card');
+                const radios       = document.querySelectorAll('input[name="local_tipo"]');
+                const blocoClinica = document.getElementById('bloco-clinica');
+                const blocoEmpresa = document.getElementById('bloco-empresa');
+
+                function atualizarLocalUI() {
+                    let valor = 'clinica';
+                    radios.forEach(r => { if (r.checked) valor = r.value; });
+
+                    localCards.forEach((card, idx) => {
+                        const r = radios[idx];
+                        if (r.checked) {
+                            card.classList.remove('border-slate-200', 'bg-slate-50');
+                            card.classList.add('border-indigo-300', 'bg-indigo-50');
+                        } else {
+                            card.classList.add('border-slate-200', 'bg-slate-50');
+                            card.classList.remove('border-indigo-300', 'bg-indigo-50');
+                        }
+                    });
+
+                    if (valor === 'clinica') {
+                        blocoClinica.classList.remove('hidden');
+                        blocoEmpresa.classList.add('hidden');
+                    } else {
+                        blocoClinica.classList.add('hidden');
+                        blocoEmpresa.classList.remove('hidden');
+                    }
                 }
-            }
 
-            localCards.forEach((card, idx) => {
-                card.addEventListener('click', () => {
-                    radios[idx].checked = true;
-                    atualizarLocalUI();
+                localCards.forEach((card, idx) => {
+                    card.addEventListener('click', () => {
+                        radios[idx].checked = true;
+                        atualizarLocalUI();
+                    });
                 });
-            });
 
-            atualizarLocalUI();
-        });
-    </script>
+                atualizarLocalUI();
+            });
+        </script>
+    @endpush
+
 @endsection

@@ -51,7 +51,7 @@
                 {{-- Grid de empresas --}}
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                     @forelse($clientes as $cliente)
-                        <a href="{{ route('operacional.kanban.aso.servicos', $cliente) }}"
+                        <a href="{{ route('operacional.kanban.servicos', $cliente) }}"
                            class="group flex items-center justify-between px-4 py-3 rounded-xl border border-slate-200 bg-white hover:bg-sky-50 hover:border-sky-300 transition">
                             <div class="flex items-center gap-3">
                                 <div class="flex items-center justify-center w-9 h-9 rounded-xl bg-sky-50 text-sky-600 text-lg">

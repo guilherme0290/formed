@@ -7,7 +7,7 @@
 
         {{-- Voltar --}}
         <div class="mb-4">
-            <a href="{{ route('operacional.kanban.aso.servicos', $cliente) }}"
+            <a href="{{ route('operacional.kanban.servicos', $cliente) }}"
                class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 bg-white text-sm text-slate-700 hover:bg-slate-50">
                 <span>←</span>
                 <span>Voltar</span>
@@ -68,7 +68,7 @@
                             </label>
                             <select name="funcionario_id"
                                     class="w-full rounded-xl border border-slate-200 text-sm py-2.5 px-3 bg-white
-                       focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400"
+                                        focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400"
                                     x-on:change="temFuncionario = $el.value !== ''">
                                 <option value="">Selecione o colaborador</option>
                                 @foreach($funcionarios as $func)
@@ -94,23 +94,16 @@
                                        placeholder="Nome completo"
                                        :disabled="temFuncionario"
                                        class="w-full rounded-xl border border-slate-200 text-sm py-2.5 px-3
-                          focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400"
+                                            focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400"
                                        :class="temFuncionario ? 'bg-slate-100 cursor-not-allowed' : 'bg-white'">
                             </div>
 
-                            <div>
-                                <label class="block text-xs font-medium text-slate-600 mb-1">
-                                    Função *
-                                </label>
-                                <input type="text"
-                                       name="funcao"
-                                       value="{{ old('funcao') }}"
-                                       placeholder="Cargo/função"
-                                       :disabled="temFuncionario"
-                                       class="w-full rounded-xl border border-slate-200 text-sm py-2.5 px-3
-                          focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400"
-                                       :class="temFuncionario ? 'bg-slate-100 cursor-not-allowed' : 'bg-white'">
-                            </div>
+                            <x-funcoes.select-with-create
+                                name="funcao_id"
+                                label="Função"
+                                :funcoes="$funcoes"
+                                :selected="old('funcao_id')"
+                            />
                         </div>
 
                         {{-- CPF / RG / Data Nascimento --}}

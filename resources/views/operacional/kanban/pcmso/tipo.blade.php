@@ -4,9 +4,9 @@
 
 @section('content')
     <div class="container mx-auto px-4 py-8">
-        <a href="{{ route('operacional.painel') }}"
+        <a href="{{ route('operacional.kanban.servicos', $cliente) }}"
            class="inline-flex items-center gap-2 text-xs text-slate-600 mb-4">
-            ← Voltar ao Painel
+            ← Voltar
         </a>
 
         <div class="max-w-2xl mx-auto bg-white rounded-2xl shadow-lg overflow-hidden">

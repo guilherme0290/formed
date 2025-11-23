@@ -160,10 +160,15 @@
                                 </div>
 
                                 <div class="grid grid-cols-12 gap-3">
-                                    <div class="col-span-5">
-                                        <label class="block text-xs font-medium text-slate-500 mb-1">Cargo</label>
-                                        <input type="text" name="funcoes[0][nome]" class="w-full rounded-lg border-slate-200 text-sm px-3 py-2"
-                                               placeholder="Ex: Carpinteiro">
+                                    <div class="col-span-5 funcao-select-wrapper">
+                                        <x-funcoes.select-with-create
+                                            name="funcoes[0][funcao_id]"
+                                            field-id="funcoes_0_funcao_id"
+                                            label="Cargo"
+                                            :funcoes="$funcoes"
+                                            :selected="old('funcoes.0.funcao_id')"
+                                            :show-create="false"  {{-- no PGR é melhor não ter "+" por causa das linhas dinâmicas --}}
+                                        />
                                     </div>
 
                                     <div class="col-span-2">
@@ -277,14 +282,23 @@
                         clone.dataset.funcaoIndex = String(novoIndex);
 
                         // atualiza names e limpa valores
-                        clone.querySelectorAll('input').forEach(function (input) {
-                            // ajusta o índice do array: [0] -> [1] -> [2] ...
-                            input.name = input.name.replace(/\[\d+]/, '[' + novoIndex + ']');
+                        clone.querySelectorAll('input, select').forEach(function (el) {
+                            if (el.name && el.name.includes('funcoes[')) {
+                                el.name = el.name.replace(/\[\d+]/, '[' + novoIndex + ']');
+                            }
 
-                            if (input.name.includes('[quantidade]')) {
-                                input.value = '1';
+                            // limpa valores (mantém quantidade = 1)
+                            if (el.tagName === 'SELECT') {
+                                el.value = '';
+                            } else if (el.name.includes('[quantidade]')) {
+                                el.value = '1';
                             } else {
-                                input.value = '';
+                                el.value = '';
+                            }
+
+                            // se tiver id do tipo funcoes_0_funcao_id, ajusta também
+                            if (el.id && el.id.startsWith('funcoes_')) {
+                                el.id = el.id.replace(/_\d+_funcao_id$/, '_' + novoIndex + '_funcao_id');
                             }
                         });
 

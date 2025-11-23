@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Operacional;
 
 use App\Http\Controllers\Controller;
 use App\Models\Cliente;
+use App\Models\Funcao;
 use App\Models\Funcionario;
 use App\Models\KanbanColuna;
 use App\Models\Servico;
@@ -26,6 +27,10 @@ class TreinamentoNrController extends Controller
             ->orderBy('nome')
             ->get();
 
+        $funcoes = Funcao::where('empresa_id',$user->empresa_id)
+            ->orderBy('nome')
+            ->get();
+
         // Unidades da FORMED (ou o que fizer sentido aí)
         $unidades = UnidadeClinica::orderBy('nome')->get();
 
@@ -33,6 +38,7 @@ class TreinamentoNrController extends Controller
             'cliente' => $cliente,
             'funcionarios' => $funcionarios,
             'unidades' => $unidades,
+            'funcoes' => $funcoes,
             'user' => $user,
         ]);
     }
@@ -115,23 +121,29 @@ class TreinamentoNrController extends Controller
         $empresaId = $usuario->empresa_id;
 
         $data = $request->validate([
-            'nome' => ['required', 'string', 'max:255'],
-            'funcao' => ['required', 'string', 'max:255'],
-            'cpf' => ['required', 'string', 'max:20'],
-            'nascimento' => ['nullable', 'date'],
+            'nome'      => ['required', 'string', 'max:255'],
+            'cpf'       => ['required', 'string', 'max:20'],
+            'nascimento'=> ['nullable', 'date'],
+            'funcao_id' => ['required', 'integer', 'exists:funcoes,id'],
         ]);
-        $data['empresa_id'] = $empresaId;
-        $data['cliente_id'] = $cliente->id;
 
-        $funcionario = Funcionario::create($data);
+
+        $funcionario = Funcionario::create([
+            'empresa_id'  => $empresaId,
+            'cliente_id'  => $cliente->id,
+            'nome'        => $data['nome'],
+            'cpf'         => $data['cpf'],
+            'data_nascimento'  => $data['nascimento'] ?? null,
+            'funcao_id'   => $data['funcao_id'],
+        ]);
 
         return response()->json([
             'ok' => true,
             'funcionario' => [
                 'id' => $funcionario->id,
                 'nome' => $funcionario->nome,
-                'funcao' => $funcionario->funcao,
-                'cpf' => $funcionario->cpf,
+                'nascimento' => $funcionario->data_nascimento,
+                'funcao_nome' => optional($funcionario->funcao)->nome,
             ],
         ], 201);
     }

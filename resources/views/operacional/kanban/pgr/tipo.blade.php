@@ -6,10 +6,10 @@
     <div class="max-w-3xl mx-auto px-4 md:px-8 py-8">
 
         <div class="mb-4">
-            <a href="{{ route('operacional.kanban', $cliente) ?? '#' }}"
+            <a href="{{ route('operacional.kanban.servicos', $cliente) }}"
                class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 bg-white text-sm text-slate-700 hover:bg-slate-50">
                 <span>←</span>
-                <span>Voltar ao Painel</span>
+                <span>Voltar</span>
             </a>
         </div>
 

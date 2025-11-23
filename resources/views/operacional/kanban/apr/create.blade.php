@@ -5,9 +5,9 @@
 @section('content')
     <div class="container mx-auto px-4 py-6">
         <div class="mb-4 flex items-center justify-between">
-            <a href="{{ route('operacional.painel') }}"
+            <a href="{{ route('operacional.kanban.servicos', $cliente) }}"
                class="inline-flex items-center gap-2 text-xs text-slate-600 mb-4">
-                ← Voltar ao Painel
+                ← Voltar
             </a>
         </div>
 

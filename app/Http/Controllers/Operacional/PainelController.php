@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Operacional;
 
 use App\Http\Controllers\Controller;
+use App\Models\Funcao;
 use App\Models\KanbanColuna;
 use App\Models\PgrSolicitacoes;
 use App\Models\Tarefa;
@@ -95,11 +96,16 @@ class PainelController extends Controller
             ->orderBy('name')
             ->get();
 
+        $funcoes = Funcao::where('empresa_id', $empresaId)
+            ->orderBy('nome')
+            ->get();
+
         return view('operacional.kanban.index', [
             'usuario'          => $usuario,
             'colunas'          => $colunas,
             'tarefasPorColuna' => $tarefasPorColuna,
             'stats'            => $stats,
+            'funcoes'          => $funcoes,
 
             // filtros atuais (pra dar @selected e preencher inputs)
             'servicos'         => $servicos,
@@ -333,7 +339,7 @@ class PainelController extends Controller
                     'rg'                    => $r->input('funcionario_rg'),
                     'data_nascimento'       => $r->input('funcionario_nascimento'),
                     'data_admissao'         => $r->input('funcionario_admissao'),
-                    'funcao'                => $r->input('funcionario_funcao'),
+                    'funcao_id'                => $r->input('funcionario_funcao'),
                     'treinamento_nr'        => $r->boolean('funcionario_treinamento_nr'),
                     'exame_admissional'     => $r->boolean('exame_admissional'),
                     'exame_periodico'       => $r->boolean('exame_periodico'),
@@ -376,14 +382,13 @@ class PainelController extends Controller
         return view('operacional.kanban.clientes', compact('clientes', 'q'));
     }
 
-    public function asoSelecionarServico(Cliente $cliente, Request $request)
+    public function selecionarServico(Cliente $cliente, Request $request)
     {
         $usuario   = $request->user();
         $empresaId = $usuario->empresa_id;
 
         abort_if($cliente->empresa_id !== $empresaId, 403);
 
-        // Por enquanto só ASO estará clicável
         return view('operacional.kanban.servicos', compact('cliente'));
     }
 
@@ -401,6 +406,10 @@ class PainelController extends Controller
 
         // Se ainda não tiver tabela de unidades, você pode deixar um array fixo por enquanto
         $unidades = \App\Models\UnidadeClinica::where('empresa_id', $empresaId)
+            ->orderBy('nome')
+            ->get();
+
+        $funcoes = Funcao::where('empresa_id', $empresaId)
             ->orderBy('nome')
             ->get();
 
@@ -430,6 +439,7 @@ class PainelController extends Controller
             'funcionarios'           => $funcionarios,
             'unidades'               => $unidades,
             'tiposAso'               => $tiposAso,
+            'funcoes'                => $funcoes,
             'treinamentosDisponiveis'=> $treinamentosDisponiveis,
         ]);
     }
@@ -447,7 +457,7 @@ class PainelController extends Controller
             'cpf'                   => ['nullable', 'string', 'max:20'],
             'data_nascimento'       => ['nullable', 'date'],
             'rg'                    => ['nullable', 'string', 'max:255'],
-            'funcao'                 => ['nullable', 'string', 'max:255'],
+            'funcao_id'             => ['nullable', 'integer', 'exists:funcoes,id'],
             'tipo_aso'              => ['required', 'in:admissional,periodico,demissional,mudanca_funcao,retorno_trabalho'],
             'data_aso'              => ['required', 'date_format:Y-m-d'],
             'unidade_id'            => ['required', 'exists:unidades_clinicas,id'],
@@ -464,6 +474,7 @@ class PainelController extends Controller
                     ->where('cliente_id', $cliente->id)
                     ->findOrFail($data['funcionario_id']);
             } else {
+
                 $funcionario = Funcionario::create([
                     'empresa_id'    => $empresaId,
                     'cliente_id'    => $cliente->id,
@@ -471,7 +482,7 @@ class PainelController extends Controller
                     'cpf'           => $data['cpf'] ?? null,
                     'rg' => $data['rg'],
                     'data_nascimento' =>$data['data_nascimento'],
-                    'funcao' => $data['funcao']
+                    'funcao_id'       => $data['funcao_id'] ?? null,
                     ]);
             }
 

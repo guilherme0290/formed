@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Operacional;
 
 use App\Http\Controllers\Controller;
 use App\Models\Cliente;
+use App\Models\Funcao;
 use App\Models\KanbanColuna;
 use App\Models\PgrSolicitacoes;
 use App\Models\Servico;
@@ -39,6 +40,10 @@ class PgrController extends Controller
 
         $tipo = $request->query('tipo','matriz');
 
+        $funcoes = Funcao::where('empresa_id', $empresaId)
+            ->orderBy('nome')
+            ->get();
+
         if (!in_array($tipo, ['matriz', 'especifico'], true)) {
             abort(404);
         }
@@ -51,6 +56,7 @@ class PgrController extends Controller
         return view('operacional.kanban.pgr.form', [
             'cliente'   => $cliente,
             'tipo'      => $tipo,
+            'funcoes'   => $funcoes,
             'tipoLabel' => $tipoLabel,
             'valorArt'  => $valorArt,
         ]);
@@ -80,9 +86,8 @@ class PgrController extends Controller
             'obra_cej_cno'            => ['nullable', 'string', 'max:50'],
             'obra_turno_trabalho'     => ['nullable', 'string', 'max:255'],
 
-            // funcoes é um array de linhas
             'funcoes'                 => ['required', 'array', 'min:1'],
-            'funcoes.*.nome'          => ['required', 'string', 'max:255'],
+            'funcoes.*.funcao_id'     => ['required', 'integer', 'exists:funcoes,id'],
             'funcoes.*.quantidade'    => ['required', 'integer', 'min:1'],
             'funcoes.*.cbo'           => ['nullable', 'string', 'max:20'],
             'funcoes.*.descricao'     => ['nullable', 'string'],

@@ -17,7 +17,9 @@ return new class extends Migration {
             $table->string('rg', 20)->nullable();
             $table->date('data_nascimento')->nullable();
             $table->date('data_admissao')->nullable();
-            $table->string('funcao')->nullable();
+            $table->foreignId('funcao_id')
+                ->nullable()
+                ->constrained('funcoes');
 
             $table->boolean('treinamento_nr')->default(false);
 

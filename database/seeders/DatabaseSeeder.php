@@ -29,6 +29,7 @@ class DatabaseSeeder extends Seeder
             TarefaSeeder::class,
             UnidadesClinicasSeeder::class,
             ServicoSeeder::class,
+            FuncaoSeeder::class,
         ]);
     }
 }

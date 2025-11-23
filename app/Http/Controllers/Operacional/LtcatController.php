@@ -4,12 +4,14 @@ namespace App\Http\Controllers\Operacional;
 
 use App\Http\Controllers\Controller;
 use App\Models\Cliente;
+use App\Models\Funcao;
 use App\Models\KanbanColuna;
 use App\Models\LtcatSolicitacoes;
 use App\Models\Servico;
 use App\Models\Tarefa;
 use App\Models\TarefaLog;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class LtcatController extends Controller
@@ -29,7 +31,8 @@ class LtcatController extends Controller
     // Formulário LTCAT (Matriz / Específico)
     public function create(Cliente $cliente, Request $request)
     {
-        $user = $request->user();
+        $user   = Auth::user();
+        $empresaId = $user->empresa_id;
         abort_if($cliente->empresa_id !== $user->empresa_id, 403);
 
         $tipo = $request->query('tipo'); // matriz | especifico
@@ -38,9 +41,14 @@ class LtcatController extends Controller
 
         $tipoLabel = $tipo === 'matriz' ? 'Matriz' : 'Específico';
 
+        $funcoes = Funcao::where('empresa_id', $empresaId)
+            ->orderBy('nome')
+            ->get();
+
         return view('operacional.kanban.ltcat.create', [
             'cliente' => $cliente,
             'tipo' => $tipo,
+            'funcoes' => $funcoes,
             'tipoLabel' => $tipoLabel,
         ]);
     }
@@ -66,9 +74,9 @@ class LtcatController extends Controller
             'endereco_obra'       => ['required_if:tipo,especifico', 'nullable', 'string'],
 
             // Funções
-            'funcoes'             => ['required', 'array', 'min:1'],
-            'funcoes.*.nome'      => ['required', 'string', 'max:255'],
-            'funcoes.*.quantidade'=> ['required', 'integer', 'min:1'],
+            'funcoes'                 => ['required', 'array', 'min:1'],
+            'funcoes.*.funcao_id'     => ['required', 'integer', 'exists:funcoes,id'],
+            'funcoes.*.quantidade'    => ['required', 'integer', 'min:1'],
         ]);
 
         $totalFuncoes = count($data['funcoes']);
