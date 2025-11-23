@@ -71,65 +71,87 @@
                     </a>
 
                     {{-- PCMSO --}}
-                    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 opacity-70">
-                        <div class="space-y-2">
-                            <div class="w-9 h-9 rounded-xl bg-purple-500 flex items-center justify-center text-white text-xl mb-1">
-                                🩺
+
+                    <a href="{{ route('operacional.pcmso.tipo', $cliente) }}"
+                       class="rounded-2xl border border-slate-200 bg-slate-50 p-4
+                          hover:bg-purple-50 hover:border-purple-300 hover:shadow-md
+                          transition cursor-pointer flex flex-col justify-between">
+                            <div class="space-y-2">
+                                <div class="w-9 h-9 rounded-xl bg-purple-500 flex items-center justify-center text-white text-xl mb-1">
+                                    🩺
+                                </div>
+                                <h2 class="text-sm font-semibold text-slate-800">PCMSO</h2>
+                                <p class="text-xs text-slate-500">
+                                    Programa de Controle Médico Ocupacional.
+                                </p>
                             </div>
-                            <h2 class="text-sm font-semibold text-slate-800">PCMSO</h2>
-                            <p class="text-xs text-slate-500">
-                                Programa de Controle Médico Ocupacional.
-                            </p>
-                        </div>
-                        <p class="mt-3 text-[11px] text-slate-400">Em breve.</p>
-                    </div>
+
+                          <p class="mt-3 text-[11px] text-purple-600 font-medium">
+                            Clique para solicitar o PCMSO
+                          </p>
+                    </a>
+
 
                     {{-- LTCAT --}}
-                    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 opacity-70">
-                        <div class="space-y-2">
-                            <div class="w-9 h-9 rounded-xl bg-orange-500 flex items-center justify-center text-white text-xl mb-1">
-                                📑
+                    <a href="{{ route('operacional.ltcat.tipo', $cliente) }}" class="block">
+                        <div
+                            class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm
+               hover:shadow-md hover:-translate-y-0.5 transition">
+                            <div class="space-y-2">
+                                <div class="w-9 h-9 rounded-xl bg-orange-500 flex items-center justify-center text-white text-xl mb-1">
+                                    📑
+                                </div>
+                                <h2 class="text-sm font-semibold text-slate-800">LTCAT</h2>
+                                <p class="text-xs text-slate-500">
+                                    Laudo Técnico das Condições Ambientais.
+                                </p>
                             </div>
-                            <h2 class="text-sm font-semibold text-slate-800">LTCAT</h2>
-                            <p class="text-xs text-slate-500">
-                                Laudo Técnico das Condições Ambientais.
+
+                            <p class="mt-3 text-[11px] text-orange-600 font-semibold">
+                                Clique para solicitar o LTCAT.
                             </p>
                         </div>
-                        <p class="mt-3 text-[11px] text-slate-400">Em breve.</p>
-                    </div>
+                    </a>
+
+
 
                     {{-- LTIP --}}
-                    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 opacity-70">
+                    <a href="{{ route('operacional.ltip.create', $cliente) }}"
+                       class="block rounded-2xl border border-slate-200 bg-slate-50 p-4 hover:bg-white hover:shadow-md transition">
                         <div class="space-y-2">
-                            <div class="w-9 h-9 rounded-xl bg-red-500 flex items-center justify-center text-white text-xl mb-1">
-                                🧾
+                            <div class="w-9 h-9 rounded-xl bg-red-600 flex items-center justify-center text-white text-xl mb-1">
+                                ⚠️
                             </div>
                             <h2 class="text-sm font-semibold text-slate-800">LTIP</h2>
                             <p class="text-xs text-slate-500">
                                 Laudo de Insalubridade e Periculosidade.
                             </p>
                         </div>
-                        <p class="mt-3 text-[11px] text-slate-400">Em breve.</p>
-                    </div>
+                        <p class="mt-3 text-[11px] text-red-500 font-semibold">
+                            Clique para solicitar o LTIP.
+                        </p>
+                    </a>
+
 
                     {{-- APR --}}
-                    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 opacity-70">
+                    <a href="{{ route('operacional.apr.create', $cliente) }}"
+                       class="rounded-2xl border border-slate-200 bg-slate-50 p-4 hover:bg-amber-50 hover:border-amber-300 transition">
                         <div class="space-y-2">
-                            <div class="w-9 h-9 rounded-xl bg-yellow-500 flex items-center justify-center text-white text-xl mb-1">
+                            <div class="w-9 h-9 rounded-xl bg-amber-600 flex items-center justify-center text-white text-xl mb-1">
                                 ⚠️
                             </div>
                             <h2 class="text-sm font-semibold text-slate-800">APR</h2>
                             <p class="text-xs text-slate-500">
-                                Análise Preliminar de Riscos.
+                                Análise Preliminar de Riscos da atividade.
                             </p>
                         </div>
-                        <p class="mt-3 text-[11px] text-slate-400">Em breve.</p>
-                    </div>
+                    </a>
 
                     {{-- PAE --}}
-                    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 opacity-70">
+                    <a href="{{ route('operacional.pae.create', $cliente) }}"
+                       class="rounded-2xl border border-slate-200 bg-white p-4 hover:shadow-md hover:-translate-y-0.5 transition">
                         <div class="space-y-2">
-                            <div class="w-9 h-9 rounded-xl bg-pink-500 flex items-center justify-center text-white text-xl mb-1">
+                            <div class="w-9 h-9 rounded-xl bg-rose-600 flex items-center justify-center text-white text-xl mb-1">
                                 🚨
                             </div>
                             <h2 class="text-sm font-semibold text-slate-800">PAE</h2>
@@ -137,11 +159,14 @@
                                 Plano de Atendimento a Emergências.
                             </p>
                         </div>
-                        <p class="mt-3 text-[11px] text-slate-400">Em breve.</p>
-                    </div>
+                        <p class="mt-3 text-[11px] text-slate-400">
+                            Clique para criar uma nova solicitação de PAE para este cliente.
+                        </p>
+                    </a>
 
                     {{-- Treinamentos NRs --}}
-                    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 opacity-70">
+                    <a href="{{ route('operacional.treinamentos-nr.create', $cliente) }}"
+                       class="rounded-2xl border border-slate-200 bg-white p-4 hover:shadow-md hover:-translate-y-0.5 transition">
                         <div class="space-y-2">
                             <div class="w-9 h-9 rounded-xl bg-indigo-500 flex items-center justify-center text-white text-xl mb-1">
                                 🎓
@@ -151,8 +176,10 @@
                                 Normas regulamentadoras e capacitações.
                             </p>
                         </div>
-                        <p class="mt-3 text-[11px] text-slate-400">Em breve.</p>
-                    </div>
+                        <p class="mt-3 text-[11px] text-slate-400">
+                            Clique para criar uma nova solicitação de Treinamento de NRs para este cliente.
+                        </p>
+                    </a>
 
                 </div>
             </div>

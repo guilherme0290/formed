@@ -1,25 +1,27 @@
 <?php
 
+use App\Http\Controllers\Api\ClientesApiController;
+use App\Http\Controllers\Api\ServicosApiController;
+use App\Http\Controllers\ClienteController;
+use App\Http\Controllers\Master\AcessosController;
+use App\Http\Controllers\Master\DashboardController;
+use App\Http\Controllers\Operacional\FuncionarioController;
+use App\Http\Controllers\Operacional\LtipController;
+use App\Http\Controllers\Operacional\PainelController;
+use App\Http\Controllers\Operacional\PcmsoController;
+use App\Http\Controllers\Operacional\PgrController;
+use App\Http\Controllers\PapelController;
+use App\Http\Controllers\PermissaoController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\TabelaPrecoController;
+use App\Http\Controllers\TabelaPrecoItemController;
+use App\Http\Controllers\Operacional\LtcatController;
+use App\Http\Controllers\Operacional\AprController;
+use App\Http\Controllers\Operacional\PaeController;
+use App\Http\Controllers\Operacional\TreinamentoNrController;
 use Illuminate\Support\Facades\Route;
 
 // ==================== Controllers ====================
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\Master\DashboardController;
-use App\Http\Controllers\Master\AcessosController;
-use App\Http\Controllers\PapelController;
-use App\Http\Controllers\PermissaoController;
-use App\Http\Controllers\UsuarioController;
-use App\Http\Controllers\TabelaPrecoController;
-use App\Http\Controllers\TabelaPrecoItemController;
-use App\Http\Controllers\Api\ServicosApiController;
-use App\Http\Controllers\Operacional\FuncionarioController;
-
-
-
-use App\Http\Controllers\Operacional\PainelController;
-use App\Http\Controllers\ClienteController;
-use App\Http\Controllers\Api\ClientesApiController;
-
 
 
 // Tela pública de seleção de módulos
@@ -88,25 +90,102 @@ Route::middleware('auth')->group(function () {
         // --------------------------------------------------
 
         // PGR - selecionar tipo (Matriz / Específico)
-        Route::get('/kanban/pgr/clientes/{cliente}/tipo', [PainelController::class, 'pgrTipo'])
+        Route::get('/kanban/pgr/clientes/{cliente}/tipo', [PgrController::class, 'pgrTipo'])
             ->name('kanban.pgr.tipo');
 
         // PGR - formulário (recebe ?tipo=matriz ou ?tipo=especifico)
-        Route::get('/kanban/pgr/clientes/{cliente}/create', [PainelController::class, 'pgrCreate'])
+        Route::get('/kanban/pgr/clientes/{cliente}/create', [PgrController::class, 'pgrCreate'])
             ->name('kanban.pgr.create');
 
         // PGR - salvar formulário (cria a tarefa e o registro em pgr_solicitacoes)
-        Route::post('/kanban/pgr/clientes/{cliente}', [PainelController::class, 'pgrStore'])
+        Route::post('/kanban/pgr/clientes/{cliente}', [PgrController::class, 'pgrStore'])
             ->name('kanban.pgr.store');
 
         // PGR - pergunta "Precisa de PCMSO?"
-        Route::get('/kanban/pgr/{tarefa}/pcmso', [PainelController::class, 'pgrPcmso'])
+        Route::get('/kanban/pgr/{tarefa}/pcmso', [PgrController::class, 'pgrPcmso'])
             ->name('kanban.pgr.pcmso');
 
         // PGR - salvar resposta PCMSO
-        Route::post('/kanban/pgr/{tarefa}/pcmso', [PainelController::class, 'pgrPcmsoStore'])
+        Route::post('/kanban/pgr/{tarefa}/pcmso', [PgrController::class, 'pgrPcmsoStore'])
             ->name('kanban.pgr.pcmso.store');
+
+
+        // ================= PCMSO =================
+
+        // Selecionar tipo (Matriz / Específico)
+        Route::get('clientes/{cliente}/pcmso/tipo', [PcmsoController::class, 'selecionarTipo'])
+            ->name('pcmso.tipo');
+
+        // Pergunta se possui PGR (para matriz/específico)
+        Route::get('clientes/{cliente}/pcmso/{tipo}/possui-pgr', [PcmsoController::class, 'perguntaPgr'])
+            ->name('pcmso.possui-pgr');
+
+        // Formulário para anexar PGR (matriz/específico)
+        Route::get('clientes/{cliente}/pcmso/{tipo}/inserir-pgr', [PcmsoController::class, 'createComPgr'])
+            ->name('pcmso.create-com-pgr');
+
+        // Salvar PCMSO com PGR anexado
+        Route::post('clientes/{cliente}/pcmso/{tipo}/inserir-pgr', [PcmsoController::class, 'storeComPgr'])
+            ->name('pcmso.store-com-pgr');
+
+        // ==============================
+        //          LTCAT
+        // ==============================
+
+        // Selecionar tipo (Matriz | Específico)
+        Route::get('clientes/{cliente}/ltcat/tipo', [LtcatController::class, 'tipo'])
+            ->name('ltcat.tipo');
+
+        // Formulário (recebe ?tipo=matriz ou ?tipo=especifico)
+        Route::get('clientes/{cliente}/ltcat/create', [LtcatController::class, 'create'])
+            ->name('ltcat.create');
+
+        // Salvar LTCAT + criar tarefa
+        Route::post('clientes/{cliente}/ltcat', [LtcatController::class, 'store'])
+            ->name('ltcat.store');
+
+        // ==============================
+        //          LTIP
+        // ==============================
+
+        Route::get('clientes/{cliente}/ltip', [LtipController::class, 'create'])
+            ->name('ltip.create');
+
+        Route::post('clientes/{cliente}/ltip', [LtipController::class, 'store'])
+            ->name('ltip.store');
+
+        // ==============================
+        //          APR
+        // ==============================
+
+        Route::get('clientes/{cliente}/apr', [AprController::class, 'create'])->name('apr.create');
+        Route::post('clientes/{cliente}/apr', [AprController::class, 'store'])->name('apr.store');
+
+        // ==============================
+        //          PAE
+        // ==============================
+
+        Route::get('clientes/{cliente}/pae',        [PaeController::class, 'create'])->name('pae.create');
+        Route::post('clientes/{cliente}/pae',       [PaeController::class, 'store'])->name('pae.store');
+
+        // ==============================
+        //          Treinamentos
+        // ==============================
+
+
+        Route::get('clientes/{cliente}/treinamentos-nr', [TreinamentoNrController::class, 'create'])
+            ->name('treinamentos-nr.create');
+
+        // Salvar solicitação de treinamento NR
+        Route::post('clientes/{cliente}/treinamentos-nr', [TreinamentoNrController::class, 'store'])
+            ->name('treinamentos-nr.store');
+
+        // AJAX: cadastrar novo funcionário e devolver JSON
+        Route::post('clientes/{cliente}/treinamentos-nr/funcionarios', [TreinamentoNrController::class, 'storeFuncionario'])
+            ->name('treinamentos-nr.funcionarios.store');
     });
+
+
 
 
 

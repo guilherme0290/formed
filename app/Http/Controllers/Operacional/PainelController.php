@@ -46,6 +46,7 @@ class PainelController extends Controller
             'responsavel',
             'coluna',
             'funcionario',
+            'pgr',
             'logs.deColuna',
             'logs.paraColuna',
             'logs.user',
@@ -372,7 +373,7 @@ class PainelController extends Controller
             ->orderBy('razao_social')
             ->paginate(12);
 
-        return view('operacional.kanban.aso.clientes', compact('clientes', 'q'));
+        return view('operacional.kanban.clientes', compact('clientes', 'q'));
     }
 
     public function asoSelecionarServico(Cliente $cliente, Request $request)
@@ -383,7 +384,7 @@ class PainelController extends Controller
         abort_if($cliente->empresa_id !== $empresaId, 403);
 
         // Por enquanto só ASO estará clicável
-        return view('operacional.kanban.aso.servicos', compact('cliente'));
+        return view('operacional.kanban.servicos', compact('cliente'));
     }
 
     public function asoCreate(Cliente $cliente, Request $request)
@@ -530,236 +531,5 @@ class PainelController extends Controller
             ->with('ok', "Tarefa ASO criada para o colaborador {$tarefa->titulo}.");
     }
 
-    public function pgrTipo(Cliente $cliente, Request $request)
-    {
-        $usuario   = $request->user();
-        $empresaId = $usuario->empresa_id;
 
-        abort_if($cliente->empresa_id !== $empresaId, 403);
-
-        return view('operacional.kanban.pgr.tipo', [
-            'cliente' => $cliente,
-        ]);
-    }
-
-    /**
-     * Passo 2 – formulário PGR (Matriz ou Específico)
-     * query param: ?tipo=matriz ou ?tipo=especifico
-     */
-    public function pgrCreate(Cliente $cliente, Request $request)
-    {
-        $usuario   = $request->user();
-        $empresaId = $usuario->empresa_id;
-
-        abort_if($cliente->empresa_id !== $empresaId, 403);
-
-        $tipo = $request->query('tipo','matriz');
-
-        if (!in_array($tipo, ['matriz', 'especifico'], true)) {
-            abort(404);
-        }
-
-        $tipoLabel = $tipo === 'matriz' ? 'Matriz' : 'Específico';
-
-        // valor fixo de ART (se quiser depois pode vir de config/tabela)
-        $valorArt = 500.00;
-
-        return view('operacional.kanban.pgr.form', [
-            'cliente'   => $cliente,
-            'tipo'      => $tipo,
-            'tipoLabel' => $tipoLabel,
-            'valorArt'  => $valorArt,
-        ]);
-    }
-
-    /**
-     * Passo 3 – salvar PGR e criar Tarefa + PgrSolicitacao
-     */
-    public function pgrStore(Cliente $cliente, Request $request)
-    {
-        $usuario   = $request->user();
-        $empresaId = $usuario->empresa_id;
-
-        abort_if($cliente->empresa_id !== $empresaId, 403);
-
-        $data = $request->validate([
-            'tipo'          => ['required', 'in:matriz,especifico'],
-            'com_art'       => ['required', 'boolean'],
-            'qtd_homens'    => ['required', 'integer', 'min:0'],
-            'qtd_mulheres'  => ['required', 'integer', 'min:0'],
-
-            'contratante_nome'=> ['string'],
-            'contratante_cnpj' => ['string'],
-            'obra_nome'=> ['string'],
-            'obra_endereco'=> ['string'],
-            'obra_cej_cno'=> ['string'],
-            'obra_turno_trabalho'=> ['string'],
-            // funcoes é um array de linhas
-            'funcoes'                   => ['required', 'array', 'min:1'],
-            'funcoes.*.nome'            => ['required', 'string', 'max:255'],
-            'funcoes.*.quantidade'      => ['required', 'integer', 'min:1'],
-            'funcoes.*.cbo'             => ['nullable', 'string', 'max:20'],
-            'funcoes.*.descricao'       => ['nullable', 'string'],
-        ]);
-
-
-        $totalTrabalhadores = (int)$data['qtd_homens'] + (int)$data['qtd_mulheres'];
-
-        $totalFuncoes = collect($data['funcoes'])
-            ->sum(function ($funcao) {
-                return (int)($funcao['quantidade'] ?? 0);
-            });
-
-        if ($totalFuncoes !== $totalTrabalhadores) {
-            return back()
-                ->withInput()
-                ->withErrors([
-                    'funcoes' => "A soma das quantidades das funções ({$totalFuncoes}) deve ser igual ao total de trabalhadores ({$totalTrabalhadores}).",
-                ]);
-        }
-
-        // coluna inicial (Pendente)
-        $colunaInicial = KanbanColuna::where('empresa_id', $empresaId)
-            ->where('slug', 'pendente')
-            ->first()
-            ?? KanbanColuna::where('empresa_id', $empresaId)->orderBy('ordem')->first();
-
-        // serviço PGR
-        $servicoPgr = Servico::where('empresa_id', $empresaId)
-            ->where('nome', 'PGR')
-            ->first();
-
-        $tipoLabel = $data['tipo'] === 'matriz' ? 'Matriz' : 'Específico';
-
-        $valorArt = $data['com_art'] ? 500.00 : null; // se quiser deixar fixo aqui
-
-        $tarefaId = null;
-
-        DB::transaction(function () use (
-            $data,
-            $empresaId,
-            $cliente,
-            $usuario,
-            $colunaInicial,
-            $servicoPgr,
-            $tipoLabel,
-            $totalTrabalhadores,
-            $valorArt,
-            &$tarefaId
-        ) {
-            // cria Tarefa base
-            $tarefa = Tarefa::create([
-                'empresa_id'     => $empresaId,
-                'cliente_id'     => $cliente->id,
-                'responsavel_id' => $usuario->id,
-                'coluna_id'      => optional($colunaInicial)->id,
-                'servico_id'     => optional($servicoPgr)->id,
-                'titulo'         => "PGR - {$tipoLabel}",
-                'descricao'      => "PGR - {$tipoLabel}" . ($data['com_art'] ? ' (COM ART)' : ''),
-                'inicio_previsto'=> now(), // se tiver outro campo/valor, pode ajustar
-            ]);
-
-            // guarda id para usar fora da transaction
-            $tarefaId = $tarefa->id;
-
-            // cria registro PGR
-            $solicitacao = PgrSolicitacoes::create([
-                'empresa_id'  => $empresaId,
-                'cliente_id'  => $cliente->id,
-                'responsavel_id' => $usuario->id,
-
-                'tipo'    => $data['tipo'],
-                'com_art'     => (bool) $data['com_art'],
-
-                'contratante_nome'   => $data['contratante_nome'] ?? null,
-                'contratante_cnpj'   => $data['contratante_cnpj'] ?? null,
-                'obra_nome'          => $data['obra_nome'] ?? null,
-                'obra_endereco'      => $data['obra_endereco'] ?? null,
-                'obra_cej_cno'       => $data['obra_cej_cno'] ?? null,
-                'obra_turno_trabalho'=> $data['obra_turno_trabalho'] ?? null,
-
-                'qtd_homens' => $data['trabalhadores_masculinos'],
-                'qtd_mulheres'  => $data['trabalhadores_femininos'],
-                'funcoes' => $data['funcoes'],
-                'com_pcms0'    => $data['com_pcms0'] ?? null,
-            ]);
-
-            // log inicial
-            TarefaLog::create([
-                'tarefa_id'     => $tarefa->id,
-                'user_id'       => $usuario->id,
-                'de_coluna_id'  => null,
-                'para_coluna_id'=> optional($colunaInicial)->id,
-                'acao'          => 'criado',
-                'observacao'    => 'Tarefa PGR criada pelo usuário.',
-            ]);
-        });
-
-        // redireciona para pergunta de PCMSO
-        return redirect()
-            ->route('operacional.kanban.pgr.pcmso', $tarefa->id);
-    }
-
-    /**
-     * Passo 4 – tela "Precisa de PCMSO?"
-     */
-    public function pgrPcmso(Tarefa $tarefa, Request $request)
-    {
-        $usuario   = $request->user();
-        $empresaId = $usuario->empresa_id;
-
-        abort_if($tarefa->empresa_id !== $empresaId, 403);
-
-        $pgr = $tarefa->pgrSolicitacao;
-        abort_if(!$pgr, 404);
-
-        $cliente = $tarefa->cliente ?? null;
-
-        return view('operacional.kanban.pgr.pcms0', [
-            'tarefa'  => $tarefa,
-            'pgr'     => $pgr,
-            'cliente' => $cliente,
-        ]);
-    }
-
-    /**
-     * Salvar resposta da pergunta de PCMSO (sim/não)
-     */
-    public function pgrPcmsoStore(Tarefa $tarefa, Request $request)
-    {
-        $usuario   = $request->user();
-        $empresaId = $usuario->empresa_id;
-
-        abort_if($tarefa->empresa_id !== $empresaId, 403);
-
-        $data = $request->validate([
-            'com_pcms0' => ['required', 'boolean'],
-        ]);
-
-        $pgr = $tarefa->pgrSolicitacao;
-        abort_if(!$pgr, 404);
-
-        $pgr->update([
-            'com_pcms0' => (bool)$data['com_pcms0'],
-        ]);
-
-        // monta uma descrição mais amigável pra aparecer no modal
-        $descricao = "PGR - " . ($pgr->tipo === 'matriz' ? 'Matriz' : 'Específico');
-
-        if ($pgr->com_pcms0) {
-            $descricao .= ' + PCMSO';
-        }
-
-        if ($pgr->com_art) {
-            $descricao .= ' (COM ART)';
-        }
-
-        $tarefa->update([
-            'descricao' => $descricao,
-        ]);
-
-        return redirect()
-            ->route('operacional.kanban')
-            ->with('ok', 'Tarefa PGR criada e enviada para a coluna Pendente.');
-    }
 }

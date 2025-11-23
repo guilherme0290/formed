@@ -78,4 +78,19 @@ class Tarefa extends Model
     {
         return $this->hasOne(PgrSolicitacoes::class);
     }
+
+    public function pgrSolicitacao()
+    {
+        return $this->hasOne(PgrSolicitacoes::class, 'tarefa_id');
+    }
+
+    public function treinamentoNrs()
+    {
+        return $this->hasMany(TreinamentoNR::class);
+    }
+
+    public function treinamentoNrDetalhe()
+    {
+        return $this->hasOne(TreinamentoNrDetalhes::class);
+    }
 }

@@ -167,29 +167,52 @@
 
                                     $clienteCnpj  = optional($tarefa->cliente)->cnpj ?? '';
                                     $clienteTel   = optional($tarefa->cliente)->telefone ?? '';
+                                      $pgr = $tarefa->pgrSolicitacao ?? null;
                                 @endphp
 
-                                <article
-                                    class="kanban-card bg-white rounded-2xl shadow-md border border-slate-200 border-l-4
-                                       px-3 py-3 text-xs cursor-pointer hover:shadow-lg transition
-                                       hover:-translate-y-0.5"
-                                    style="border-left-color: {{ $coluna->cor ?? '#38bdf8' }};"
-                                    data-id="{{ $tarefa->id }}"
-                                    data-move-url="{{ route('operacional.tarefas.mover', $tarefa) }}"
-                                    {{-- dados para o modal de detalhes --}}
-                                    data-cliente="{{ $clienteNome }}"
-                                    data-cnpj="{{ $clienteCnpj }}"
-                                    data-telefone="{{ $clienteTel }}"
-                                    data-servico="{{ $servicoNome }}"
-                                    data-responsavel="{{ $respNome }}"
-                                    data-datahora="{{ $dataHora }}"
-                                    data-funcionario="{{ $funcionarioNome }}"
-                                    data-funcionario-funcao="{{ $funcionarioFuncao }}"
-                                    data-sla="{{ $slaData }}"
-                                    data-prioridade="{{ ucfirst($tarefa->prioridade) }}"
-                                    data-status="{{ $coluna->nome }}"
-                                    data-observacoes="{{ e($obs) }}"
-                                >
+                                    <article
+                                        class="kanban-card bg-white rounded-2xl shadow-md border border-slate-200 border-l-4
+           px-3 py-3 text-xs cursor-pointer hover:shadow-lg transition hover:-translate-y-0.5"
+                                        style="border-left-color: {{ $coluna->cor ?? '#38bdf8' }};"
+
+                                        {{-- usado no drag & drop --}}
+                                        data-move-url="{{ route('operacional.tarefas.mover', $tarefa) }}"
+
+                                        {{-- dados básicos para o modal de detalhes (já existiam) --}}
+                                        data-id="{{ $tarefa->id }}"
+                                        data-cliente="{{ $clienteNome }}"
+                                        data-cnpj="{{ $clienteCnpj }}"
+                                        data-telefone="{{ $clienteTel }}"
+                                        data-servico="{{ $servicoNome }}"
+                                        data-responsavel="{{ $respNome }}"
+                                        data-datahora="{{ $dataHora }}"
+                                        data-sla="{{ $slaData }}"
+                                        data-prioridade="{{ ucfirst($tarefa->prioridade) }}"
+                                        data-status="{{ $coluna->nome }}"
+                                        data-observacoes="{{ e($obs) }}"
+
+                                        {{-- dados de funcionário (usados só quando for ASO – o JS já trata isso) --}}
+                                        data-funcionario="{{ $funcionarioNome }}"
+                                        data-funcionario-funcao="{{ $funcionarioFuncao }}"
+
+                                        {{-- 🔹 dados específicos de PGR (usados quando o serviço for PGR) --}}
+                                        @if($pgr)
+                                            data-pgr-tipo="{{ $pgr->tipo }}"
+                                        data-pgr-com-art="{{ $pgr->com_art ? '1' : '0' }}"
+                                        data-pgr-qtd-homens="{{ $pgr->qtd_homens }}"
+                                        data-pgr-qtd-mulheres="{{ $pgr->qtd_mulheres }}"
+                                        data-pgr-total-trabalhadores="{{ $pgr->total_trabalhadores }}"
+                                        data-pgr-com-pcmso="{{ $pgr->com_pcms0 ? '1' : '0' }}"
+                                        data-pgr-contratante="{{ $pgr->contratante_nome }}"
+                                        data-pgr-contratante-cnpj="{{ $pgr->contratante_cnpj }}"
+                                        data-pgr-obra-nome="{{ $pgr->obra_nome }}"
+                                        data-pgr-obra-endereco="{{ $pgr->obra_endereco }}"
+                                        data-pgr-obra-cej-cno="{{ $pgr->obra_cej_cno }}"
+                                        data-pgr-obra-turno="{{ $pgr->obra_turno_trabalho }}"
+                                        {{-- aqui você pode depois criar um accessor funcoes_resumo no model --}}
+                                        data-pgr-funcoes="{{ $pgr->funcoes_resumo ?? '' }}"
+                                        @endif
+                                    >
                                     <p class="text-[11px] font-semibold text-slate-900 mb-1">
                                         {{ $clienteNome }}
                                     </p>
@@ -213,8 +236,8 @@
                                         @endphp
 
                                         <span class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium {{ $classePrioridade }}">
-                        {{ ucfirst($tarefa->prioridade) }}
-                    </span>
+                                            {{ ucfirst($tarefa->prioridade) }}
+                                        </span>
                                     </div>
 
 {{--                                    @php--}}
@@ -314,13 +337,17 @@
                                 <dd class="font-medium" id="modal-responsavel"></dd>
                             </div>
 
-                            <div class="mt-2">
-                                <dt class="text-[11px] text-slate-500">Funcionário</dt>
-                                <dd class="font-medium" id="modal-funcionario">—</dd>
-                            </div>
-                            <div class="mt-1">
-                                <dt class="text-[11px] text-slate-500">Função</dt>
-                                <dd class="font-medium" id="modal-funcionario-funcao">—</dd>
+                            {{-- BLOCO ESPECÍFICO: ASO --}}
+
+                            <div id="modal-bloco-aso" class="mt-2 space-y-1">
+                                <div>
+                                    <dt class="text-[11px] text-slate-500">Funcionário</dt>
+                                    <dd class="font-medium" id="modal-funcionario">—</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-[11px] text-slate-500">Função</dt>
+                                    <dd class="font-medium" id="modal-funcionario-funcao">—</dd>
+                                </div>
                             </div>
                         </dl>
                     </section>
@@ -344,6 +371,65 @@
                         <p class="font-semibold text-slate-800 mb-1" id="modal-servico"></p>
                         <p class="text-sm text-slate-700" id="modal-observacoes"></p>
                     </section>
+                    {{-- BLOCO PGR (aparece só em serviços PGR) --}}
+                    <section id="modal-bloco-pgr"
+                             class="bg-emerald-50 border border-emerald-100 rounded-xl p-4 hidden">
+                        <h3 class="text-xs font-semibold text-emerald-700 mb-2">
+                            4. DETALHES DO PGR
+                        </h3>
+
+                        <dl class="space-y-1 text-sm">
+                            <div>
+                                <dt class="text-[11px] text-slate-600">Tipo PGR</dt>
+                                <dd class="font-medium" id="modal-pgr-tipo">—</dd>
+                            </div>
+
+                            <div class="mt-1">
+                                <dt class="text-[11px] text-slate-600">ART</dt>
+                                <dd class="font-medium" id="modal-pgr-art">—</dd>
+                            </div>
+
+                            <div class="grid grid-cols-3 gap-3 mt-2">
+                                <div>
+                                    <dt class="text-[11px] text-slate-600">Homens</dt>
+                                    <dd class="font-medium" id="modal-pgr-qtd-homens">—</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-[11px] text-slate-600">Mulheres</dt>
+                                    <dd class="font-medium" id="modal-pgr-qtd-mulheres">—</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-[11px] text-slate-600">Total</dt>
+                                    <dd class="font-medium" id="modal-pgr-total-trabalhadores">—</dd>
+                                </div>
+                            </div>
+
+                            <div class="mt-2">
+                                <dt class="text-[11px] text-slate-600">Com PCMSO?</dt>
+                                <dd class="font-medium" id="modal-pgr-com-pcmso">—</dd>
+                            </div>
+
+                            <div class="mt-3">
+                                <dt class="text-[11px] text-slate-600">Contratante</dt>
+                                <dd class="font-medium" id="modal-pgr-contratante">—</dd>
+                                <dd class="text-xs text-slate-500" id="modal-pgr-contratante-cnpj">—</dd>
+                            </div>
+
+                            <div class="mt-3">
+                                <dt class="text-[11px] text-slate-600">Obra</dt>
+                                <dd class="font-medium" id="modal-pgr-obra-nome">—</dd>
+                                <dd class="text-xs text-slate-500" id="modal-pgr-obra-endereco">—</dd>
+                                <dd class="text-xs text-slate-500" id="modal-pgr-obra-cej-cno">—</dd>
+                                <dd class="text-xs text-slate-500" id="modal-pgr-obra-turno">—</dd>
+                            </div>
+
+                            <div class="mt-3">
+                                <dt class="text-[11px] text-slate-600">Funções / Cargos</dt>
+                                <dd id="modal-pgr-funcoes" class="text-sm">—</dd>
+                            </div>
+                        </dl>
+                    </section>
+
 
                     {{-- 6. Tipo de serviço --}}
                     <section class="bg-emerald-50 border border-emerald-100 rounded-xl p-4">
@@ -374,6 +460,82 @@
                         </dl>
                     </section>
                 </div>
+                {{-- BLOCO ESPECÍFICO: PGR --}}
+                <section id="modal-bloco-pgr"
+                         class="bg-sky-50 border border-sky-100 rounded-xl p-4 hidden">
+                    <h3 class="text-xs font-semibold text-sky-700 mb-3">
+                        8. DADOS DO PGR
+                    </h3>
+
+                    <dl class="space-y-1 text-sm">
+                        <div>
+                            <dt class="text-[11px] text-slate-600">Tipo PGR</dt>
+                            <dd class="font-medium" id="modal-pgr-tipo">—</dd>
+                        </div>
+
+                        <div class="mt-1">
+                            <dt class="text-[11px] text-slate-600">ART</dt>
+                            <dd class="font-medium" id="modal-pgr-art">—</dd>
+                        </div>
+
+                        <div class="mt-2 grid grid-cols-3 gap-3">
+                            <div>
+                                <dt class="text-[11px] text-slate-600">Homens</dt>
+                                <dd class="font-medium" id="modal-pgr-qtd-homens">—</dd>
+                            </div>
+                            <div>
+                                <dt class="text-[11px] text-slate-600">Mulheres</dt>
+                                <dd class="font-medium" id="modal-pgr-qtd-mulheres">—</dd>
+                            </div>
+                            <div>
+                                <dt class="text-[11px] text-slate-600">Total</dt>
+                                <dd class="font-medium" id="modal-pgr-total-trabalhadores">—</dd>
+                            </div>
+                        </div>
+
+                        <div class="mt-2">
+                            <dt class="text-[11px] text-slate-600">Com PCMSO?</dt>
+                            <dd class="font-medium" id="modal-pgr-com-pcmso">—</dd>
+                        </div>
+
+                        <hr class="my-3 border-sky-100">
+
+                        <div class="mt-1">
+                            <dt class="text-[11px] text-slate-600">Contratante</dt>
+                            <dd class="font-medium" id="modal-pgr-contratante">—</dd>
+                        </div>
+                        <div class="mt-1">
+                            <dt class="text-[11px] text-slate-600">CNPJ Contratante</dt>
+                            <dd class="font-medium" id="modal-pgr-contratante-cnpj">—</dd>
+                        </div>
+
+                        <div class="mt-3">
+                            <dt class="text-[11px] text-slate-600">Nome da Obra</dt>
+                            <dd class="font-medium" id="modal-pgr-obra-nome">—</dd>
+                        </div>
+                        <div class="mt-1">
+                            <dt class="text-[11px] text-slate-600">Endereço da Obra</dt>
+                            <dd class="font-medium" id="modal-pgr-obra-endereco">—</dd>
+                        </div>
+                        <div class="mt-1">
+                            <dt class="text-[11px] text-slate-600">CEJ/CNO</dt>
+                            <dd class="font-medium" id="modal-pgr-obra-cej-cno">—</dd>
+                        </div>
+                        <div class="mt-1">
+                            <dt class="text-[11px] text-slate-600">Turno(s) de Trabalho</dt>
+                            <dd class="font-medium" id="modal-pgr-obra-turno">—</dd>
+                        </div>
+
+                        <div class="mt-3">
+                            <dt class="text-[11px] text-slate-600">Funções e Cargos</dt>
+                            <dd class="font-medium">
+                                <ul id="modal-pgr-funcoes" class="list-disc list-inside text-xs space-y-0.5">
+                                    {{-- preenchido via JS --}}
+                                </ul>
+                            </dd>
+                        </div>
+                    </dl>
+                </section>
 
                 {{-- Coluna direita --}}
                 <div class="space-y-4">
@@ -432,8 +594,8 @@
 @push('scripts')
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            const modal      = document.getElementById('tarefa-modal');
-            const closeBtn   = document.getElementById('tarefa-modal-close');
+            const modal    = document.getElementById('tarefa-modal');
+            const closeBtn = document.getElementById('tarefa-modal-close');
 
             const spanId         = document.getElementById('modal-tarefa-id');
             const spanCliente    = document.getElementById('modal-cliente');
@@ -451,12 +613,31 @@
             const badgeStatus    = document.getElementById('modal-status-badge');
             const spanObs        = document.getElementById('modal-observacoes');
 
+            // 🔹 bloco de informações específicas de ASO (funcionário)
+            const blocoAso = document.getElementById('modal-bloco-aso');
+
+            // 🔹 bloco de informações específicas de PGR
+            const blocoPgr        = document.getElementById('modal-bloco-pgr');
+            const spanPgrTipo     = document.getElementById('modal-pgr-tipo');
+            const spanPgrArt      = document.getElementById('modal-pgr-art');
+            const spanPgrHomens   = document.getElementById('modal-pgr-qtd-homens');
+            const spanPgrMulheres = document.getElementById('modal-pgr-qtd-mulheres');
+            const spanPgrTotal    = document.getElementById('modal-pgr-total-trabalhadores');
+            const spanPgrComPcmso = document.getElementById('modal-pgr-com-pcmso');
+            const spanPgrContr    = document.getElementById('modal-pgr-contratante');
+            const spanPgrContrCnpj= document.getElementById('modal-pgr-contratante-cnpj');
+            const spanPgrObraNome = document.getElementById('modal-pgr-obra-nome');
+            const spanPgrObraEnd  = document.getElementById('modal-pgr-obra-endereco');
+            const spanPgrObraCej  = document.getElementById('modal-pgr-obra-cej-cno');
+            const spanPgrObraTurno= document.getElementById('modal-pgr-obra-turno');
+            const ulPgrFuncoes    = document.getElementById('modal-pgr-funcoes');
+
             // abre modal ao clicar em qualquer card
             document.addEventListener('click', function (e) {
                 const card = e.target.closest('.kanban-card');
                 if (!card) return;
 
-                // Preenche os campos
+                // Campos básicos
                 spanId.textContent         = card.dataset.id ?? '';
                 spanCliente.textContent    = card.dataset.cliente ?? '';
                 spanCnpj.textContent       = card.dataset.cnpj || '—';
@@ -469,8 +650,66 @@
                 spanPrioridade.textContent = card.dataset.prioridade ?? '';
                 spanStatusText.textContent = card.dataset.status ?? '';
                 spanObs.textContent        = card.dataset.observacoes ?? '';
+
+                // funcionário (valor bruto – depois a gente mostra/oculta por tipo)
                 spanFuncionario.textContent       = card.dataset.funcionario || '—';
                 spanFuncionarioFuncao.textContent = card.dataset.funcionarioFuncao || '—';
+
+                // === REGRA POR TIPO DE SERVIÇO (sem quebrar o que já existia) ===
+                const tipoServico = (card.dataset.servico || '').toLowerCase();
+                const isAso = tipoServico.includes('aso');
+                const isPgr = tipoServico.includes('pgr');
+
+                // --- ASO: mostra bloco de funcionário ---
+                if (blocoAso) {
+                    if (isAso) {
+                        blocoAso.classList.remove('hidden');
+                        spanFuncionario.textContent       = card.dataset.funcionario || '—';
+                        spanFuncionarioFuncao.textContent = card.dataset.funcionarioFuncao || '—';
+                    } else {
+                        // esconde quando não for ASO
+                        blocoAso.classList.add('hidden');
+                        spanFuncionario.textContent       = '—';
+                        spanFuncionarioFuncao.textContent = '—';
+                    }
+                }
+
+                // --- PGR: mostra bloco PGR e preenche ---
+                if (blocoPgr) {
+                    if (isPgr) {
+                        blocoPgr.classList.remove('hidden');
+
+                        spanPgrTipo.textContent = card.dataset.pgrTipo || '—';
+
+                        spanPgrArt.textContent  = card.dataset.pgrComArt === '1'
+                            ? 'Com ART'
+                            : (card.dataset.pgrComArt === '0' ? 'Sem ART' : '—');
+
+                        spanPgrHomens.textContent   = card.dataset.pgrQtdHomens || '0';
+                        spanPgrMulheres.textContent = card.dataset.pgrQtdMulheres || '0';
+                        spanPgrTotal.textContent    = card.dataset.pgrTotalTrabalhadores || '0';
+
+                        spanPgrComPcmso.textContent = card.dataset.pgrComPcmso === '1'
+                            ? 'Sim, PGR + PCMSO'
+                            : (card.dataset.pgrComPcmso === '0' ? 'Não, apenas PGR' : '—');
+
+                        spanPgrContr.textContent     = card.dataset.pgrContratante || '—';
+                        spanPgrContrCnpj.textContent = card.dataset.pgrContratanteCnpj || '—';
+
+                        spanPgrObraNome.textContent  = card.dataset.pgrObraNome || '—';
+                        spanPgrObraEnd.textContent   = card.dataset.pgrObraEndereco || '—';
+                        spanPgrObraCej.textContent   = card.dataset.pgrObraCejCno || '—';
+                        spanPgrObraTurno.textContent = card.dataset.pgrObraTurno || '—';
+
+                        // resumo das funções (ex.: "Carpinteiro (3), Servente (2)")
+                        if (ulPgrFuncoes) {
+                            ulPgrFuncoes.textContent = card.dataset.pgrFuncoes || '—';
+                        }
+                    } else {
+                        // se não for PGR, esconde bloco PGR
+                        blocoPgr.classList.add('hidden');
+                    }
+                }
 
                 // ajusta cor do badge de status conforme o texto
                 const status = (card.dataset.status || '').toLowerCase();
@@ -512,6 +751,7 @@
                 }
             });
 
+            // Sortable (drag & drop) – mantém exatamente a mesma lógica
             if (window.Sortable) {
                 document.querySelectorAll('.kanban-column').forEach(function (colunaEl) {
                     new Sortable(colunaEl, {
@@ -546,7 +786,6 @@
                                 .then(data => {
                                     if (!data || !data.ok) return;
 
-                                    // nome da coluna (status)
                                     const colunaSection = card.closest('section');
                                     const headerTitleEl = colunaSection
                                         ? colunaSection.querySelector('header h2')
@@ -555,13 +794,11 @@
                                     const statusName = data.status_label
                                         || (headerTitleEl ? headerTitleEl.textContent.trim() : '');
 
-                                    // Atualiza texto do status no card
                                     const statusSpan = card.querySelector('[data-role="card-status-label"]');
                                     if (statusSpan && statusName) {
                                         statusSpan.textContent = statusName;
                                     }
 
-                                    // Atualiza atributo data-status (usado no modal)
                                     if (statusName) {
                                         card.dataset.status = statusName;
                                     }
@@ -572,31 +809,30 @@
                                         respBadge.style.color = colunaCor;
                                     }
 
-                                    // Atualiza bloco de log, se veio no retorno
                                     if (data.log) {
                                         const logContainer = card.querySelector('[data-role="card-last-log"]');
                                         if (logContainer) {
                                             logContainer.innerHTML = `
-                                    <div class="flex items-center justify-between gap-2">
-                                        <span class="inline-flex items-center gap-1">
-                                            <span>🔁</span>
-                                            <span>
-                                                ${(data.log.de || 'Início')}
-                                                &rarr;
-                                                ${(data.log.para || '-')}
-                                            </span>
-                                        </span>
-                                        <span class="text-[10px] text-slate-400">
-                                            ${(data.log.user || 'Sistema')}
-                                            · ${(data.log.data || '')}
-                                        </span>
-                                    </div>
-                                `;
+                                            <div class="flex items-center justify-between gap-2">
+                                                <span class="inline-flex items-center gap-1">
+                                                    <span>🔁</span>
+                                                    <span>
+                                                        ${(data.log.de || 'Início')}
+                                                        &rarr;
+                                                        ${(data.log.para || '-')}
+                                                    </span>
+                                                </span>
+                                                <span class="text-[10px] text-slate-400">
+                                                    ${(data.log.user || 'Sistema')}
+                                                    · ${(data.log.data || '')}
+                                                </span>
+                                            </div>
+                                        `;
                                         }
                                     }
                                 })
                                 .catch(() => {
-                                    // aqui dá pra fazer um toast de erro se quiser
+                                    // pode colocar um toast de erro aqui se quiser
                                 });
                         }
                     });
@@ -605,5 +841,6 @@
 
         });
     </script>
+
 
 @endpush
