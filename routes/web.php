@@ -1,25 +1,28 @@
 <?php
 
+use App\Http\Controllers\Api\ClientesApiController;
+use App\Http\Controllers\Api\ServicosApiController;
+use App\Http\Controllers\ClienteController;
+use App\Http\Controllers\Master\AcessosController;
+use App\Http\Controllers\Master\DashboardController;
+use App\Http\Controllers\Operacional\FuncionarioController;
+use App\Http\Controllers\Operacional\LtipController;
+use App\Http\Controllers\Operacional\PainelController;
+use App\Http\Controllers\Operacional\PcmsoController;
+use App\Http\Controllers\Operacional\PgrController;
+use App\Http\Controllers\PapelController;
+use App\Http\Controllers\PermissaoController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\TabelaPrecoController;
+use App\Http\Controllers\TabelaPrecoItemController;
+use App\Http\Controllers\Operacional\LtcatController;
+use App\Http\Controllers\Operacional\AprController;
+use App\Http\Controllers\Operacional\PaeController;
+use App\Http\Controllers\Operacional\TreinamentoNrController;
+use App\Http\Controllers\FuncaoController;
 use Illuminate\Support\Facades\Route;
 
 // ==================== Controllers ====================
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\Master\DashboardController;
-use App\Http\Controllers\Master\AcessosController;
-use App\Http\Controllers\PapelController;
-use App\Http\Controllers\PermissaoController;
-use App\Http\Controllers\UsuarioController;
-use App\Http\Controllers\TabelaPrecoController;
-use App\Http\Controllers\TabelaPrecoItemController;
-use App\Http\Controllers\Api\ServicosApiController;
-use App\Http\Controllers\Operacional\FuncionarioController;
-
-
-
-use App\Http\Controllers\Operacional\PainelController;
-use App\Http\Controllers\ClienteController;
-use App\Http\Controllers\Api\ClientesApiController;
-
 
 
 // Tela pública de seleção de módulos
@@ -39,35 +42,173 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     // ======================================================
-    //                  OPERACIONAL
-    // ======================================================
+//                  OPERACIONAL
+// ======================================================
     Route::prefix('operacional')->name('operacional.')->group(function () {
 
+        // ======================================================
+        //  DASHBOARD / KANBAN
+        // ======================================================
         Route::get('/kanban', [PainelController::class, 'index'])->name('kanban');
 
         Route::get('/painel', function () {
             return redirect()->route('operacional.kanban');
         })->name('painel');
 
-        // Drag & Drop
+        // Drag & Drop Kanban
         Route::post('/tarefas/{tarefa}/mover', [PainelController::class, 'mover'])
             ->name('tarefas.mover');
 
-        // ✅ Criar tarefa (cliente existente)
+        // ======================================================
+        //  CRIAÇÃO DE TAREFAS (LOJA / GERAL)
+        // ======================================================
+
+        // Criar tarefa (cliente existente)
         Route::post('/tarefas/loja/existente', [PainelController::class, 'storeLojaExistente'])
             ->name('tarefas.loja.existente');
 
-        // ✅ Criar tarefa (cliente novo)
+        // Criar tarefa (cliente novo)
         Route::post('/tarefas/loja/novo-cliente', [PainelController::class, 'storeLojaNovo'])
             ->name('tarefas.loja.novo');
 
+        // ======================================================
+        //  FUNCIONÁRIOS DO CLIENTE
+        // ======================================================
         Route::get('clientes/{cliente}/funcionarios/novo', [FuncionarioController::class, 'create'])
             ->name('clientes.funcionarios.create');
 
         Route::post('clientes/{cliente}/funcionarios', [FuncionarioController::class, 'store'])
             ->name('clientes.funcionarios.store');
 
+        // ======================================================
+        //  ASO
+        // ======================================================
+        Route::get('/kanban/aso/clientes', [PainelController::class, 'asoSelecionarCliente'])
+            ->name('kanban.aso.clientes');
+
+        Route::get('/kanban/clientes/{cliente}/servicos', [PainelController::class, 'selecionarServico'])
+            ->name('kanban.servicos');
+
+        Route::get('/kanban/aso/clientes/{cliente}/novo', [PainelController::class, 'asoCreate'])
+            ->name('kanban.aso.create');
+
+        Route::post('/kanban/aso/clientes/{cliente}', [PainelController::class, 'asoStore'])
+            ->name('kanban.aso.store');
+
+        // ======================================================
+        //  PGR
+        // ======================================================
+
+        // Selecionar tipo (Matriz / Específico)
+        Route::get('/kanban/pgr/clientes/{cliente}/tipo', [PgrController::class, 'pgrTipo'])
+            ->name('kanban.pgr.tipo');
+
+        // Formulário (recebe ?tipo=matriz ou ?tipo=especifico)
+        Route::get('/kanban/pgr/clientes/{cliente}/create', [PgrController::class, 'pgrCreate'])
+            ->name('kanban.pgr.create');
+
+        // Salvar formulário (cria a tarefa e o registro em pgr_solicitacoes)
+        Route::post('/kanban/pgr/clientes/{cliente}', [PgrController::class, 'pgrStore'])
+            ->name('kanban.pgr.store');
+
+        // Pergunta "Precisa de PCMSO?"
+        Route::get('/kanban/pgr/{tarefa}/pcmso', [PgrController::class, 'pgrPcmso'])
+            ->name('kanban.pgr.pcmso');
+
+        // Salvar resposta PCMSO
+        Route::post('/kanban/pgr/{tarefa}/pcmso', [PgrController::class, 'pgrPcmsoStore'])
+            ->name('kanban.pgr.pcmso.store');
+
+        // ======================================================
+        //  PCMSO
+        // ======================================================
+
+        // Selecionar tipo (Matriz / Específico)
+        Route::get('clientes/{cliente}/pcmso/tipo', [PcmsoController::class, 'selecionarTipo'])
+            ->name('pcmso.tipo');
+
+        // Pergunta se possui PGR (para matriz/específico)
+        Route::get('clientes/{cliente}/pcmso/{tipo}/possui-pgr', [PcmsoController::class, 'perguntaPgr'])
+            ->name('pcmso.possui-pgr');
+
+        // Formulário para anexar PGR (matriz/específico)
+        Route::get('clientes/{cliente}/pcmso/{tipo}/inserir-pgr', [PcmsoController::class, 'createComPgr'])
+            ->name('pcmso.create-com-pgr');
+
+        // Salvar PCMSO com PGR anexado
+        Route::post('clientes/{cliente}/pcmso/{tipo}/inserir-pgr', [PcmsoController::class, 'storeComPgr'])
+            ->name('pcmso.store-com-pgr');
+
+        // ======================================================
+        //  LTCAT
+        // ======================================================
+
+        // Selecionar tipo (Matriz | Específico)
+        Route::get('clientes/{cliente}/ltcat/tipo', [LtcatController::class, 'tipo'])
+            ->name('ltcat.tipo');
+
+        // Formulário (?tipo=matriz ou ?tipo=especifico)
+        Route::get('clientes/{cliente}/ltcat/create', [LtcatController::class, 'create'])
+            ->name('ltcat.create');
+
+        // Salvar LTCAT + criar tarefa
+        Route::post('clientes/{cliente}/ltcat', [LtcatController::class, 'store'])
+            ->name('ltcat.store');
+
+        // ======================================================
+        //  LTIP
+        // ======================================================
+        Route::get('clientes/{cliente}/ltip', [LtipController::class, 'create'])
+            ->name('ltip.create');
+
+        Route::post('clientes/{cliente}/ltip', [LtipController::class, 'store'])
+            ->name('ltip.store');
+
+        // ======================================================
+        //  APR
+        // ======================================================
+        Route::get('clientes/{cliente}/apr', [AprController::class, 'create'])
+            ->name('apr.create');
+
+        Route::post('clientes/{cliente}/apr', [AprController::class, 'store'])
+            ->name('apr.store');
+
+        // ======================================================
+        //  PAE
+        // ======================================================
+        Route::get('clientes/{cliente}/pae', [PaeController::class, 'create'])
+            ->name('pae.create');
+
+        Route::post('clientes/{cliente}/pae', [PaeController::class, 'store'])
+            ->name('pae.store');
+
+        // ======================================================
+        //  TREINAMENTOS NRs
+        // ======================================================
+
+        // Tela de seleção / criação de solicitação
+        Route::get('clientes/{cliente}/treinamentos-nr', [TreinamentoNrController::class, 'create'])
+            ->name('treinamentos-nr.create');
+
+        // Salvar solicitação de treinamento NR
+        Route::post('clientes/{cliente}/treinamentos-nr', [TreinamentoNrController::class, 'store'])
+            ->name('treinamentos-nr.store');
+
+        // AJAX: cadastrar novo funcionário e devolver JSON
+        Route::post(
+            'clientes/{cliente}/treinamentos-nr/funcionarios',
+            [TreinamentoNrController::class, 'storeFuncionario']
+        )->name('treinamentos-nr.funcionarios.store');
+
+        Route::post('funcoes', [FuncaoController::class, 'storefast'])
+            ->name('funcoes.store-ajax');
     });
+
+
+    Route::get('operacional/tarefas/detalhes/ajax',
+        [PainelController::class, 'detalhesAjax']
+    )->name('operacional.tarefas.detalhes.ajax');
+
 
     // ======================================================
     //                  CLIENTES (CRUD)
@@ -117,6 +258,14 @@ Route::middleware('auth')->group(function () {
         Route::post('usuarios/{user}/toggle',  [AcessosController::class, 'usuariosToggle'])->name('usuarios.toggle');
         Route::post('usuarios/{user}/reset',   [AcessosController::class, 'usuariosReset'])->name('usuarios.reset');
         Route::post('usuarios/{user}/password',[AcessosController::class, 'usuariosSetPassword'])->name('usuarios.password');
+
+        //
+
+        // CRUD de Funções
+        Route::get('funcoes',        [FuncaoController::class, 'index'])->name('funcoes.index');
+        Route::post('funcoes',       [FuncaoController::class, 'store'])->name('funcoes.store');
+        Route::put('funcoes/{funcao}',   [FuncaoController::class, 'update'])->name('funcoes.update');
+        Route::delete('funcoes/{funcao}',[FuncaoController::class, 'destroy'])->name('funcoes.destroy');
     });
 
     // ======================================================

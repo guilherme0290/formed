@@ -10,14 +10,16 @@ class TarefaLog extends Model
 {
     use HasFactory;
 
-    protected $table = 'tarefas_logs';
+    protected $table = 'tarefa_logs';
+
+
 
     protected $fillable = [
         'tarefa_id',
         'user_id',
         'de_coluna_id',
         'para_coluna_id',
-        'acao',
+        'acao',  // criado, movido, editado, finalizado
         'observacao',
     ];
 

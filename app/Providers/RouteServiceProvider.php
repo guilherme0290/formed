@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Route;
 
 class RouteServiceProvider extends ServiceProvider
 {
-    // Depois do login, ir pro Operacional (Kanban)
+    // Depois do login, ir pro Operacional (kanban)
     public const HOME = '/operacional/kanban';
 
     public function boot(): void

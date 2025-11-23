@@ -19,7 +19,7 @@ class Funcionario extends Model
         'rg',
         'data_nascimento',
         'data_admissao',
-        'funcao',
+        'funcao_id',
         'treinamento_nr',
         'exame_admissional',
         'exame_periodico',
@@ -42,5 +42,15 @@ class Funcionario extends Model
     public function cliente()
     {
         return $this->belongsTo(Cliente::class);
+    }
+
+    public function funcao()
+    {
+        return $this->belongsTo(Funcao::class);
+    }
+
+    public function getFuncaoNomeAttribute()
+    {
+        return $this->funcao ? $this->funcao->nome : '—';
     }
 }
