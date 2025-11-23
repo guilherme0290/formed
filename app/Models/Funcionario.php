@@ -48,4 +48,9 @@ class Funcionario extends Model
     {
         return $this->belongsTo(Funcao::class);
     }
+
+    public function getFuncaoNomeAttribute()
+    {
+        return $this->funcao ? $this->funcao->nome : '—';
+    }
 }

@@ -33,7 +33,7 @@ class PaeSolicitacoes extends Model
         return $this->belongsTo(Tarefa::class);
     }
 
-    public function responsavel()
+    public function responsavel(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(User::class, 'responsavel_id');
     }

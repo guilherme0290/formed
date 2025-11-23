@@ -118,6 +118,25 @@ class PainelController extends Controller
         ]);
     }
 
+    public function detalhesAjax(Request $r)
+    {
+        $tarefa = Tarefa::with([
+            'cliente',
+            'servico',
+            'responsavel',
+            'pgrSolicitacao',
+            'treinamentoNrs.funcionario',
+            'treinamentoNrDetalhe',
+        ])->findOrFail($r->id);
+
+        return view('operacional.kanban.modals.tarefa-detalhes', [
+            't' => $tarefa
+        ]);
+    }
+
+
+
+
     // ==========================
     // MOVER CARD NO KANBAN
     // ==========================

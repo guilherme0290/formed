@@ -276,4 +276,115 @@
             atualizarResumo();
         });
     </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // pega o primeiro input com name="cnpj" da página
+            var cnpjInput = document.querySelector('input[name="cnpj_contratante"]');
+            if (!cnpjInput) return;
+
+            // máscara enquanto digita
+            cnpjInput.addEventListener('input', function () {
+                var v = cnpjInput.value.replace(/\D/g, '');   // só números
+                v = v.slice(0, 14);                           // máximo 14 dígitos
+
+                if (v.length > 12) {
+                    // 00.000.000/0000-00
+                    cnpjInput.value = v.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{1,2})/, "$1.$2.$3/$4-$5");
+                } else if (v.length > 8) {
+                    // 00.000.000/0000
+                    cnpjInput.value = v.replace(/(\d{2})(\d{3})(\d{3})(\d{1,4})/, "$1.$2.$3/$4");
+                } else if (v.length > 5) {
+                    // 00.000.000
+                    cnpjInput.value = v.replace(/(\d{2})(\d{3})(\d{1,3})/, "$1.$2.$3");
+                } else if (v.length > 2) {
+                    // 00.000
+                    cnpjInput.value = v.replace(/(\d{2})(\d{1,3})/, "$1.$2");
+                } else {
+                    cnpjInput.value = v;
+                }
+            });
+
+            // validação ao sair do campo
+            cnpjInput.addEventListener('blur', function () {
+                var cnpjLimpo = cnpjInput.value.replace(/\D/g, '');
+
+                if (cnpjLimpo === '') {
+                    limparErroCNPJ(cnpjInput);
+                    return;
+                }
+
+                if (!cnpjValido(cnpjLimpo)) {
+                    mostrarErroCNPJ(cnpjInput, 'CNPJ inválido');
+                } else {
+                    limparErroCNPJ(cnpjInput);
+                }
+            });
+        });
+
+        // valida CNPJ (algoritmo padrão)
+        function cnpjValido(cnpj) {
+            if (!cnpj || cnpj.length !== 14) return false;
+
+            // elimina sequências como 00.000.000/0000-00, 11..., etc.
+            if (/^(\d)\1{13}$/.test(cnpj)) return false;
+
+            var tamanho = 12;
+            var numeros = cnpj.substring(0, tamanho);
+            var digitos = cnpj.substring(tamanho);
+            var soma = 0;
+            var pos = tamanho - 7;
+
+            for (var i = tamanho; i >= 1; i--) {
+                soma += parseInt(numeros.charAt(tamanho - i)) * pos--;
+                if (pos < 2) pos = 9;
+            }
+
+            var resultado = soma % 11 < 2 ? 0 : 11 - (soma % 11);
+            if (resultado !== parseInt(digitos.charAt(0))) return false;
+
+            tamanho = 13;
+            numeros = cnpj.substring(0, tamanho);
+            soma = 0;
+            pos = tamanho - 7;
+
+            for (var j = tamanho; j >= 1; j--) {
+                soma += parseInt(numeros.charAt(tamanho - j)) * pos--;
+                if (pos < 2) pos = 9;
+            }
+
+            resultado = soma % 11 < 2 ? 0 : 11 - (soma % 11);
+            if (resultado !== parseInt(digitos.charAt(1))) return false;
+
+            return true;
+        }
+
+        // mostra mensagem de erro logo abaixo do input
+        function mostrarErroCNPJ(input, mensagem) {
+            limparErroCNPJ(input);
+
+            input.style.borderColor = '#dc2626'; // vermelho
+            var p = document.createElement('p');
+            p.className = 'cnpj-error';
+            p.style.color = '#dc2626';
+            p.style.fontSize = '12px';
+            p.style.marginTop = '4px';
+            p.textContent = mensagem;
+
+            if (input.parentNode) {
+                input.parentNode.appendChild(p);
+            }
+        }
+
+        // remove mensagem de erro e estilo
+        function limparErroCNPJ(input) {
+            input.style.borderColor = '';
+
+            if (!input.parentNode) return;
+            var erro = input.parentNode.querySelector('.cnpj-error');
+            if (erro) {
+                erro.remove();
+            }
+        }
+    </script>
+
 @endsection

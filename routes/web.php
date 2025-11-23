@@ -205,7 +205,9 @@ Route::middleware('auth')->group(function () {
     });
 
 
-
+    Route::get('operacional/tarefas/detalhes/ajax',
+        [PainelController::class, 'detalhesAjax']
+    )->name('operacional.tarefas.detalhes.ajax');
 
 
     // ======================================================

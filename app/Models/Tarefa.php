@@ -84,13 +84,47 @@ class Tarefa extends Model
         return $this->hasOne(PgrSolicitacoes::class, 'tarefa_id');
     }
 
-    public function treinamentoNrs()
+    public function treinamentoNr()
     {
         return $this->hasMany(TreinamentoNR::class);
     }
 
-    public function treinamentoNrDetalhe()
+    public function treinamentoNrDetalhes()
     {
         return $this->hasOne(TreinamentoNrDetalhes::class);
     }
+
+    public function ltipSolicitacao()
+    {
+        return $this->hasOne(LtipSolicitacoes::class, 'tarefa_id');
+    }
+
+    public function aprSolicitacao()
+    {
+        return $this->hasOne(AprSolicitacoes::class, 'tarefa_id');
+    }
+
+    public function ltcatSolicitacao()
+    {
+        return $this->hasOne(LtcatSolicitacoes::class, 'tarefa_id');
+    }
+
+    public function pcmsoSolicitacao()
+    {
+        return $this->hasOne(PcmsoSolicitacoes::class, 'tarefa_id');
+    }
+
+    public function paeSolicitacao()
+    {
+        return $this->hasOne(PaeSolicitacoes::class, 'tarefa_id');
+    }
+
+
+
+
+
+
+
+
+
 }

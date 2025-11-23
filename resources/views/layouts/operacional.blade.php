@@ -44,27 +44,25 @@
     {{-- Área principal à direita --}}
     <div class="flex-1 flex flex-col bg-slate-50">
 
-        {{-- Top bar azul, alinhado com o conteúdo --}}
-        <header class="bg-[color:var(--color-brand-azul)] text-white shadow-sm">
+        <header class="bg-blue-900 text-white shadow-sm">
             <div class="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
                 <div class="flex items-baseline gap-3">
                     <span class="font-semibold text-lg tracking-tight">FORMED</span>
                     <span class="text-xs md:text-sm text-blue-100">
-                        Medicina e Segurança do Trabalho
-                    </span>
+                    Medicina e Segurança do Trabalho
+                </span>
                 </div>
 
                 <div class="flex items-center gap-3 text-xs md:text-sm text-blue-50">
-                    <span class="hidden md:inline">
-                        {{ auth()->user()->name ?? '' }}
-                    </span>
+                <span class="hidden md:inline">
+                    {{ auth()->user()->name ?? '' }}
+                </span>
                 </div>
             </div>
         </header>
 
-        {{-- Conteúdo da página (Kanban, filtros etc.) --}}
         <main class="flex-1">
-                @yield('content')
+            @yield('content')
         </main>
     </div>
 </div>

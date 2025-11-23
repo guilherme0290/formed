@@ -9,7 +9,7 @@
 </head>
 <body class="font-sans antialiased bg-slate-50">
 <div x-data="{ open:false }" class="min-h-screen flex">
-
+    <script src="{{ asset('js/cpf.js') }}"></script>
     {{-- Sidebar --}}
     <aside class="hidden md:flex w-64 flex-col bg-[#0F172A] text-slate-200">
         <div class="h-16 border-b border-white/10 flex items-center px-5">

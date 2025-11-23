@@ -22,6 +22,6 @@ class TreinamentoNrDetalhes extends Model
 
     public function unidade(): BelongsTo
     {
-        return $this->belongsTo(Unidade::class);
+        return $this->belongsTo(UnidadeClinica::class);
     }
 }

@@ -54,4 +54,20 @@ class PgrSolicitacoes extends Model
     {
         return $this->belongsTo(Tarefa::class);
     }
+
+    public function getFuncoesResumoAttribute()
+    {
+        if (!$this->funcoes) return '';
+
+        $lista = [];
+
+        foreach ($this->funcoes as $item) {
+            $funcao = \App\Models\Funcao::find($item['funcao_id']);
+            if ($funcao) {
+                $lista[] = "{$funcao->nome} ({$item['quantidade']})";
+            }
+        }
+
+        return implode(', ', $lista);
+    }
 }

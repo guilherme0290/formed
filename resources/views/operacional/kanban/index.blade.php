@@ -159,7 +159,7 @@
                                                     ? \Carbon\Carbon::parse($tarefa->inicio_previsto)->format('d/m/Y H:i')
                                                     : 'Sem data';
                                     $funcionarioNome  = optional($tarefa->funcionario)->nome ?? null;
-                                    $funcionarioFuncao= optional($tarefa->funcionario)->funcao ?? null;
+                                    $funcionarioFuncao= optional($tarefa->funcionario)->funcao_nome ?? null;
                                     $slaData      = $tarefa->fim_previsto
                                                     ? \Carbon\Carbon::parse($tarefa->fim_previsto)->format('d/m/Y')
                                                     : '-';
@@ -167,18 +167,19 @@
 
                                     $clienteCnpj  = optional($tarefa->cliente)->cnpj ?? '';
                                     $clienteTel   = optional($tarefa->cliente)->telefone ?? '';
-                                      $pgr = $tarefa->pgrSolicitacao ?? null;
+                                    $pgr = $tarefa->pgrSolicitacao ?? null;
+                                     $ltip = $tarefa->ltipSolicitacao;
                                 @endphp
+
+
 
                                     <article
                                         class="kanban-card bg-white rounded-2xl shadow-md border border-slate-200 border-l-4
-           px-3 py-3 text-xs cursor-pointer hover:shadow-lg transition hover:-translate-y-0.5"
+                                        px-3 py-3 text-xs cursor-pointer hover:shadow-lg transition hover:-translate-y-0.5"
                                         style="border-left-color: {{ $coluna->cor ?? '#38bdf8' }};"
 
-                                        {{-- usado no drag & drop --}}
                                         data-move-url="{{ route('operacional.tarefas.mover', $tarefa) }}"
 
-                                        {{-- dados básicos para o modal de detalhes (já existiam) --}}
                                         data-id="{{ $tarefa->id }}"
                                         data-cliente="{{ $clienteNome }}"
                                         data-cnpj="{{ $clienteCnpj }}"
@@ -190,93 +191,261 @@
                                         data-prioridade="{{ ucfirst($tarefa->prioridade) }}"
                                         data-status="{{ $coluna->nome }}"
                                         data-observacoes="{{ e($obs) }}"
-
-                                        {{-- dados de funcionário (usados só quando for ASO – o JS já trata isso) --}}
                                         data-funcionario="{{ $funcionarioNome }}"
                                         data-funcionario-funcao="{{ $funcionarioFuncao }}"
 
-                                        {{-- 🔹 dados específicos de PGR (usados quando o serviço for PGR) --}}
+                                        {{-- PGR --}}
                                         @if($pgr)
                                             data-pgr-tipo="{{ $pgr->tipo }}"
-                                        data-pgr-com-art="{{ $pgr->com_art ? '1' : '0' }}"
-                                        data-pgr-qtd-homens="{{ $pgr->qtd_homens }}"
-                                        data-pgr-qtd-mulheres="{{ $pgr->qtd_mulheres }}"
-                                        data-pgr-total-trabalhadores="{{ $pgr->total_trabalhadores }}"
-                                        data-pgr-com-pcmso="{{ $pgr->com_pcms0 ? '1' : '0' }}"
-                                        data-pgr-contratante="{{ $pgr->contratante_nome }}"
-                                        data-pgr-contratante-cnpj="{{ $pgr->contratante_cnpj }}"
-                                        data-pgr-obra-nome="{{ $pgr->obra_nome }}"
-                                        data-pgr-obra-endereco="{{ $pgr->obra_endereco }}"
-                                        data-pgr-obra-cej-cno="{{ $pgr->obra_cej_cno }}"
-                                        data-pgr-obra-turno="{{ $pgr->obra_turno_trabalho }}"
-                                        {{-- aqui você pode depois criar um accessor funcoes_resumo no model --}}
-                                        data-pgr-funcoes="{{ $pgr->funcoes_resumo ?? '' }}"
+                                            data-pgr-com-art="{{ $pgr->com_art ? '1' : '0' }}"
+                                            data-pgr-qtd-homens="{{ $pgr->qtd_homens }}"
+                                            data-pgr-qtd-mulheres="{{ $pgr->qtd_mulheres }}"
+                                            data-pgr-total-trabalhadores="{{ $pgr->total_trabalhadores }}"
+                                            data-pgr-com-pcmso="{{ $pgr->com_pcms0 ? '1' : '0' }}"
+                                            data-pgr-contratante="{{ $pgr->contratante_nome }}"
+                                            data-pgr-contratante-cnpj="{{ $pgr->contratante_cnpj }}"
+                                            data-pgr-obra-nome="{{ $pgr->obra_nome }}"
+                                            data-pgr-obra-endereco="{{ $pgr->obra_endereco }}"
+                                            data-pgr-obra-cej-cno="{{ $pgr->obra_cej_cno }}"
+                                            data-pgr-obra-turno="{{ $pgr->obra_turno_trabalho }}"
+                                            data-pgr-funcoes="{{ $pgr->funcoes_resumo }}"
+                                        @endif
+
+                                        {{-- APR --}}
+                                        @if($tarefa->aprSolicitacao)
+                                            data-apr-endereco="{{ $tarefa->aprSolicitacao->endereco_atividade }}"
+                                            data-apr-funcoes="{{ e($tarefa->aprSolicitacao->funcoes_envolvidas) }}"
+                                            data-apr-etapas="{{ e($tarefa->aprSolicitacao->etapas_atividade) }}"
+                                        @endif
+
+                                        {{-- LTCAT --}}
+                                        @if($tarefa->ltcatSolicitacao)
+                                            data-ltcat-tipo="{{ $tarefa->ltcatSolicitacao->tipo }}"
+                                        data-ltcat-endereco="{{ $tarefa->ltcatSolicitacao->endereco_avaliacoes }}"
+                                        data-ltcat-total-funcoes="{{ $tarefa->ltcatSolicitacao->total_funcoes }}"
+                                        data-ltcat-total-funcionarios="{{ $tarefa->ltcatSolicitacao->total_funcionarios }}"
+                                        data-ltcat-funcoes="{{ $tarefa->ltcatSolicitacao->funcoes_resumo }}"
+                                        @endif
+
+                                        {{-- LTIP --}}
+                                        @if($servicoNome === 'LTIP' && $ltip)
+                                            {{-- data-* usados no modal --}}
+
+                                            data-ltip-endereco="{{ $ltip->endereco_avaliacoes }}"
+                                        data-ltip-total-funcionarios="{{ $ltip->total_funcionarios }}"
+                                        data-ltip-funcoes="{{ collect($ltip->funcoes ?? [])->map(function($f){
+                                            $fn = \App\Models\Funcao::find($f['funcao_id'] ?? null);
+                                            return ($fn?->nome ?? 'Função') . ' (' . ($f['quantidade'] ?? 0) . ')';
+                                        })->implode(' | ') }}"
+                                        @endif
+
+                                        {{-- PAE --}}
+                                        @if($tarefa->paeSolicitacao)
+                                            @php $pae = $tarefa->paeSolicitacao; @endphp
+                                            data-pae-endereco="{{ $pae->endereco_local }}"
+                                        data-pae-total-funcionarios="{{ $pae->total_funcionarios }}"
+                                        data-pae-descricao="{{ $pae->descricao_instalacoes }}"
+                                        @endif
+
+                                        {{-- PCMSO --}}
+                                        @if($tarefa->pcmsoSolicitacao)
+                                            @php $pcmso = $tarefa->pcmsoSolicitacao; @endphp
+                                            data-pcmso-tipo="{{ $pcmso->tipo }}"
+                                            data-pcmso-prazo="{{ $pcmso->prazo_dias }}"
+                                            data-pcmso-obra-nome="{{ $pcmso->obra_nome }}"
+                                            data-pcmso-obra-cnpj="{{ $pcmso->obra_cnpj_contratante }}"
+                                            data-pcmso-obra-cei="{{ $pcmso->obra_cei_cno }}"
+                                            data-pcmso-obra-endereco="{{ $pcmso->obra_endereco }}"
+                                            @if($pcmso->pgr_arquivo_path)
+                                                data-pcmso-pgr-url="{{ asset('storage/'.$pcmso->pgr_arquivo_path) }}"
+                                            @endif
+                                        @endif
+                                        @if($tarefa->treinamentoNr && $tarefa->treinamentoNrDetalhes)
+                                            @php
+                                                $treiFuncs = $tarefa->treinamentoNr()->with('funcionario')->get();
+                                                $treiDet   = $tarefa->treinamentoNrDetalhes;
+                                                $listaNomes = $treiFuncs->pluck('funcionario.nome')->join(', ');
+                                                $listaFuncoes = $treiFuncs->pluck('funcionario.funcao')->join(', ');
+                                            @endphp
+
+                                            data-treinamento-participantes="{{ $listaNomes }}"
+                                        data-treinamento-funcoes="{{ $listaFuncoes }}"
+                                        data-treinamento-local="{{ $treiDet->local_tipo }}"
+                                        data-treinamento-unidade="{{ optional($treiDet->unidade)->nome ?? '' }}"
                                         @endif
                                     >
-                                    <p class="text-[11px] font-semibold text-slate-900 mb-1">
-                                        {{ $clienteNome }}
-                                    </p>
-                                    <p class="text-[11px] text-slate-500 mb-2">
-                                        {{ $servicoNome }}
-                                    </p>
-
-                                    <div class="flex items-center justify-between mb-2">
-                                        <span class="inline-flex items-center rounded-full bg-[color:var(--color-brand-azul)]/5
-                                                     px-2 py-0.5 text-[10px] text-[color:var(--color-brand-azul)]">
-                                            {{ $respNome }}
+                                        {{-- ================== CABEÇALHO ================== --}}
+                                        <div class="flex items-center justify-between mb-2">
+                                            <h4 class="text-[13px] font-semibold text-slate-800">
+                                                {{ $servicoNome }}
+                                            </h4>
+                                            <span class="text-[10px] px-2 py-0.5 rounded bg-slate-100 border text-slate-500">
+                                            #{{ $tarefa->id }}
                                         </span>
+                                        </div>
 
-                                        @php
-                                            $coresPrioridade = [
-                                                'baixa' => 'bg-emerald-100 text-emerald-700 border-emerald-200',
-                                                'media' => 'bg-amber-100 text-amber-700 border-amber-200',
-                                                'alta'  => 'bg-rose-100 text-rose-700 border-rose-200',
-                                            ];
-                                            $classePrioridade = $coresPrioridade[$tarefa->prioridade] ?? 'bg-slate-100 text-slate-700 border-slate-200';
-                                        @endphp
+                                        {{-- ================== CLIENTE ================== --}}
+                                        <p class="text-[11px] text-slate-700 font-medium">
+                                            {{ $clienteNome }}
+                                        </p>
 
-                                        <span class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium {{ $classePrioridade }}">
-                                            {{ ucfirst($tarefa->prioridade) }}
-                                        </span>
-                                    </div>
+                                        {{-- ================== BLOCO DINÂMICO POR SERVIÇO ================== --}}
 
-{{--                                    @php--}}
-{{--                                        $ultimoLog = optional($tarefa->logs)->sortByDesc('created_at')->first();--}}
-{{--                                    @endphp--}}
-
-{{--                                    @if($ultimoLog)--}}
-{{--                                        <div class="mt-2 pt-2 border-t border-dashed border-slate-200 text-[10px] text-slate-400">--}}
-{{--                                            <div class="flex items-center justify-between gap-2">--}}
-{{--                            <span class="inline-flex items-center gap-1">--}}
-{{--                                <span>🔁</span>--}}
-{{--                                <span>--}}
-{{--                                    {{ optional($ultimoLog->deColuna)->nome ?? 'Início' }}--}}
-{{--                                    →--}}
-{{--                                    {{ optional($ultimoLog->paraColuna)->nome ?? '-' }}--}}
-{{--                                </span>--}}
-{{--                            </span>--}}
-{{--                                                <span class="text-[10px] text-slate-400">--}}
-{{--                                {{ optional($ultimoLog->user)->name ?? 'Sistema' }}--}}
-{{--                                · {{ optional($ultimoLog->created_at)->format('d/m H:i') }}--}}
-{{--                            </span>--}}
-{{--                                            </div>--}}
-{{--                                        </div>--}}
-{{--                                    @endif--}}
-
-                                    <div class="flex items-center justify-between text-[10px] text-slate-400 mt-1">
-                                        @if($tarefa->inicio_previsto)
-                                            <span>📅 {{ \Carbon\Carbon::parse($tarefa->inicio_previsto)->format('d/m/Y H:i') }}</span>
-                                        @else
-                                            <span>📅 Sem data</span>
+                                        @if($servicoNome === 'ASO')
+                                            @php
+                                                $func = optional($tarefa->funcionario);
+                                            @endphp
+                                            <div class="mt-2 text-[11px] space-y-0.5">
+                                                <p><span class="font-medium">Funcionário:</span> {{ $func->nome ?? '—' }}</p>
+                                                <p><span class="font-medium">Função:</span> {{  $funcionarioFuncao ?? '—' }}</p>
+                                            </div>
                                         @endif
 
-                                            <span class="font-medium text-[color:var(--color-brand-azul)]"
-                                                  data-role="card-status-label">
-                                                {{ $coluna->nome }}
-                                            </span>
+                                        {{-- PGR --}}
+                                        @if($servicoNome === 'PGR' && $pgr)
+                                            <div class="mt-2 bg-emerald-50 border border-emerald-100 rounded p-2 text-[11px]">
+                                                <p><b>Tipo:</b> {{ $pgr->tipo }}</p>
+                                                <p><b>Total trabalhadores:</b> {{ $pgr->total_trabalhadores }}</p>
 
-                                    </div>
-                                </article>
+                                                <p class="mt-1"><b>Funções:</b></p>
+                                                <ul class="list-disc list-inside text-[10px]">
+                                                    @foreach($pgr->funcoes ?? [] as $f)
+                                                        @php $fn = \App\Models\Funcao::find($f['funcao_id']); @endphp
+                                                        <li>{{ $fn?->nome }} ({{ $f['quantidade'] }})</li>
+                                                    @endforeach
+                                                </ul>
+                                            </div>
+                                        @endif
+
+                                        {{-- APR --}}
+                                        @if($servicoNome === 'APR' && $tarefa->aprSolicitacao)
+                                            <div class="mt-2 bg-purple-50 border border-purple-100 rounded p-2 text-[11px]">
+                                                <p><b>Endereço:</b> {{ $tarefa->aprSolicitacao->endereco_atividade }}</p>
+
+                                                @if($tarefa->aprSolicitacao->funcoes_envolvidas)
+                                                    <p class="mt-1">
+                                                        <b>Funções envolvidas:</b>
+                                                        {{ $tarefa->aprSolicitacao->funcoes_envolvidas }}
+                                                    </p>
+                                                @endif
+
+                                                @if($tarefa->aprSolicitacao->etapas_atividade)
+                                                    <p class="mt-1">
+                                                        <b>Etapas da atividade:</b>
+                                                        {{ $tarefa->aprSolicitacao->etapas_atividade }}
+                                                    </p>
+                                                @endif
+                                            </div>
+                                        @endif
+
+                                        {{-- LTCAT --}}
+                                        @if($servicoNome === 'LTCAT' && $tarefa->ltcatSolicitacao)
+                                            @php
+                                                $lt = $tarefa->ltcatSolicitacao;
+                                                $tipoLabel = $lt->tipo === 'matriz'
+                                                    ? 'Matriz'
+                                                    : ($lt->tipo === 'especifico' ? 'Específico' : ucfirst($lt->tipo));
+                                            @endphp
+
+                                            <div class="mt-2 bg-orange-50 border border-orange-100 rounded p-2 text-[11px] space-y-0.5">
+                                                <p><b>Tipo:</b> {{ $tipoLabel ?: '—' }}</p>
+
+                                                @if($lt->endereco_avaliacoes)
+                                                    <p><b>Endereço:</b> {{ $lt->endereco_avaliacoes }}</p>
+                                                @endif
+
+                                                <p>
+                                                    <b>Total Funções:</b> {{ $lt->total_funcoes ?? '—' }}
+                                                    &nbsp;|&nbsp;
+                                                    <b>Total Funcionários:</b> {{ $lt->total_funcionarios ?? '—' }}
+                                                </p>
+
+                                                @if($lt->funcoes_resumo)
+                                                    <p><b>Funções:</b> {{ $lt->funcoes_resumo }}</p>
+                                                @endif
+                                            </div>
+                                        @endif
+
+                                        {{-- LTIP --}}
+                                        @if($servicoNome === 'LTIP' && $ltip)
+                                            <div class="mt-2 bg-blue-50 border border-blue-100 rounded p-2 text-[11px]">
+                                                <p><b>Endereço:</b> {{ $ltip->endereco_avaliacoes }}</p>
+                                                <p><b>Total Funcionários:</b> {{ $ltip->total_funcionarios }}</p>
+
+                                                @if(is_array($ltip->funcoes))
+                                                    <p class="mt-1"><b>Funções:</b></p>
+                                                    <ul class="list-disc list-inside text-[10px]">
+                                                        @foreach($ltip->funcoes as $f)
+                                                            @php
+                                                                $fn = \App\Models\Funcao::find($f['funcao_id'] ?? null);
+                                                            @endphp
+                                                            <li>{{ $fn?->nome ?? 'Função' }} ({{ $f['quantidade'] ?? 0 }})</li>
+                                                        @endforeach
+                                                    </ul>
+                                                @endif
+                                            </div>
+                                        @endif
+
+                                        {{-- PAE --}}
+                                        @if($servicoNome === 'PAE' && $tarefa->paeSolicitacao)
+                                            @php $pae = $tarefa->paeSolicitacao; @endphp
+                                            <div class="mt-2 bg-red-50 border border-red-100 rounded p-2 text-[11px] space-y-0.5">
+                                                <p><b>Endereço Local:</b> {{ $pae->endereco_local }}</p>
+                                                <p><b>Total de funcionários:</b> {{ $pae->total_funcionarios }}</p>
+                                                @if($pae->descricao_instalacoes)
+                                                    <p><b>Instalações:</b> {{ $pae->descricao_instalacoes }}</p>
+                                                @endif
+                                            </div>
+                                        @endif
+
+                                        {{-- PCMSO --}}
+                                        @if($servicoNome === 'PCMSO' && $tarefa->pcmsoSolicitacao)
+                                            <div class="mt-2 bg-cyan-50 border border-cyan-100 rounded p-2 text-[11px]">
+                                                <p><b>Tipo:</b> {{ $tarefa->pcmsoSolicitacao->tipo }}</p>
+                                                <p><b>Prazo:</b> {{ $tarefa->pcmsoSolicitacao->prazo_dias }} dias</p>
+                                            </div>
+                                        @endif
+                                        @if($servicoNome === 'Treinamentos NRs' && $tarefa->treinamentoNr && $tarefa->treinamentoNrDetalhes)
+                                            @php
+                                                $treiFuncs = $tarefa->treinamentoNr()->with('funcionario.funcao')->get();
+                                                $treiDet   = $tarefa->treinamentoNrDetalhes;
+
+                                                $listaParticipantes = $treiFuncs->pluck('funcionario.nome')->join(', ');
+
+                                                $listaFuncoes = $treiFuncs->map(function($t){
+                                                    return $t->funcionario->funcao_nome; // accessor
+                                                })->join(', ');
+                                            @endphp
+
+                                            {{-- Datasets usados no modal --}}
+                                            <span
+                                                data-trei-local="{{ $treiDet->local_tipo }}"
+                                                data-trei-unidade="{{ optional($treiDet->unidade)->nome }}"
+                                                data-trei-participantes="{{ $listaParticipantes }}"
+                                                data-trei-funcoes="{{ $listaFuncoes }}"
+                                            ></span>
+
+                                            <div class="mt-2 bg-indigo-50 border border-indigo-100 rounded p-2 text-[11px] space-y-1">
+                                                <p><b>Local:</b>
+                                                    {{ $treiDet->local_tipo === 'clinica' ? 'Clínica' : 'In Company' }}
+                                                    @if($treiDet->local_tipo === 'clinica')
+                                                        · {{ optional($treiDet->unidade)->nome }}
+                                                    @endif
+                                                </p>
+
+                                                <p><b>Participantes:</b> {{ $listaParticipantes }}</p>
+                                                <p><b>Funções:</b> {{ $listaFuncoes }}</p>
+                                            </div>
+                                        @endif
+
+                                        {{-- ================== RODAPÉ ================== --}}
+                                        <div class="mt-3 border-t pt-2 text-[10px] text-slate-500 flex justify-between">
+                                            <span>{{ $dataHora }}</span>
+                                            <span>{{ ucfirst($tarefa->prioridade) }}</span>
+                                        </div>
+                                    </article>
+
+
                             @empty
                                 <p class="text-[11px] text-slate-400 italic">Nenhuma tarefa nesta coluna.</p>
                             @endforelse
@@ -429,6 +598,101 @@
                             </div>
                         </dl>
                     </section>
+                    {{-- ====================== APR ====================== --}}
+                    <section id="modal-bloco-apr"
+                             class="bg-purple-50 border border-purple-100 rounded-xl p-4 hidden">
+                        <h3 class="text-xs font-semibold text-purple-700 mb-2">DETALHES DO APR</h3>
+
+                        <p><b>Endereço da atividade:</b> <span id="modal-apr-endereco"></span></p>
+                        <p class="mt-1"><b>Funções envolvidas:</b> <span id="modal-apr-funcoes"></span></p>
+                        <p class="mt-1"><b>Etapas da atividade:</b> <span id="modal-apr-etapas"></span></p>
+                    </section>
+
+                    {{-- ====================== LTCAT ====================== --}}
+                    <section id="modal-bloco-ltcat"
+                             class="bg-orange-50 border border-orange-100 rounded-xl p-4 hidden">
+                        <h3 class="text-xs font-semibold text-orange-700 mb-2">DETALHES DO LTCAT</h3>
+
+                        <p><b>Tipo:</b> <span id="modal-ltcat-tipo"></span></p>
+                        <p><b>Endereço das Avaliações:</b> <span id="modal-ltcat-endereco"></span></p>
+
+                        <p class="mt-1">
+                            <b>Total Funções:</b> <span id="modal-ltcat-total-funcoes"></span>
+                            &nbsp;|&nbsp;
+                            <b>Total Funcionários:</b> <span id="modal-ltcat-total-func"></span>
+                        </p>
+
+                        <p class="mt-1">
+                            <b>Funções:</b>
+                            <span id="modal-ltcat-funcoes"></span>
+                        </p>
+                    </section>
+
+                    {{-- ====================== LTIP ====================== --}}
+                    <section id="modal-bloco-ltip"
+                             class="bg-blue-50 border border-blue-100 rounded-xl p-4 hidden">
+                        <h3 class="text-xs font-semibold text-blue-700 mb-2">DETALHES DO LTIP</h3>
+                        <p><b>Endereço das avaliações:</b> <span id="modal-ltip-endereco"></span></p>
+                        <p><b>Funções:</b> <span id="modal-ltip-funcoes"></span></p>
+                        <p><b>Total Funcionários:</b> <span id="modal-ltip-total-func"></span></p>
+                    </section>
+                    {{-- ====================== PAE ====================== --}}
+                    <section id="modal-bloco-pae"
+                             class="bg-red-50 border border-red-100 rounded-xl p-4 hidden">
+                        <h3 class="text-xs font-semibold text-red-700 mb-2">DETALHES DO PAE</h3>
+
+                        <p><b>Endereço Local:</b> <span id="modal-pae-endereco"></span></p>
+                        <p><b>Total de funcionários:</b> <span id="modal-pae-total-func"></span></p>
+
+                        <div class="mt-1">
+                            <p class="text-[11px] text-red-700 font-semibold mb-0.5">Descrição das instalações</p>
+                            <p class="text-sm" id="modal-pae-descricao">—</p>
+                        </div>
+                    </section>
+                    {{-- ==================== TREINAMENTO NR ==================== --}}
+                    <section id="modal-bloco-treinamento"
+                             class="bg-indigo-50 border border-indigo-100 rounded-xl p-4 hidden">
+                        <h3 class="text-xs font-semibold text-indigo-700 mb-2">DETALHES DO TREINAMENTO NR</h3>
+
+                        <p><b>Local:</b> <span id="modal-treinamento-local"></span></p>
+
+                        <p><b>Unidade / Clínica:</b> <span id="modal-treinamento-unidade"></span></p>
+
+                        <div class="mt-2">
+                            <p class="text-[11px] font-semibold text-indigo-700">Participantes</p>
+                            <p id="modal-treinamento-participantes" class="text-sm">—</p>
+                        </div>
+
+                        <div class="mt-2">
+                            <p class="text-[11px] font-semibold text-indigo-700">Funções</p>
+                            <p id="modal-treinamento-funcoes" class="text-sm">—</p>
+                        </div>
+                    </section>
+
+                    {{-- ====================== PCMSO ====================== --}}
+                    <section id="modal-bloco-pcmso"
+                             class="bg-cyan-50 border border-cyan-100 rounded-xl p-4 hidden">
+                        <h3 class="text-xs font-semibold text-cyan-700 mb-2">DETALHES DO PCMSO</h3>
+
+                        <p><b>Tipo:</b> <span id="modal-pcmso-tipo"></span></p>
+                        <p><b>Prazo:</b> <span id="modal-pcmso-prazo"></span> dias</p>
+
+                        <div class="mt-2 space-y-0.5">
+                            <p><b>Obra / Unidade:</b> <span id="modal-pcmso-obra-nome"></span></p>
+                            <p><b>CNPJ Contratante:</b> <span id="modal-pcmso-obra-cnpj"></span></p>
+                            <p><b>CEI / CNO:</b> <span id="modal-pcmso-obra-cei"></span></p>
+                            <p><b>Endereço da Obra:</b> <span id="modal-pcmso-obra-endereco"></span></p>
+                        </div>
+
+                        <div id="modal-pcmso-pgr-wrapper" class="mt-3">
+                            <a id="modal-pcmso-pgr-link"
+                               href="#"
+                               target="_blank"
+                               class="inline-flex items-center gap-1 text-xs font-semibold text-cyan-700 hover:text-cyan-900 underline">
+                                📎 Abrir PGR anexado (PDF)
+                            </a>
+                        </div>
+                    </section>
 
 
                     {{-- 6. Tipo de serviço --}}
@@ -537,6 +801,8 @@
                     </dl>
                 </section>
 
+
+
                 {{-- Coluna direita --}}
                 <div class="space-y-4">
                     {{-- 4. Ações rápidas --}}
@@ -632,9 +898,16 @@
             const spanPgrObraTurno= document.getElementById('modal-pgr-obra-turno');
             const ulPgrFuncoes    = document.getElementById('modal-pgr-funcoes');
 
+            const blocoTreinamento = document.getElementById('modal-bloco-treinamento');
+            const spanTreinLocal   = document.getElementById('modal-treinamento-local');
+            const spanTreinUnidade = document.getElementById('modal-treinamento-unidade');
+            const spanTreinPart    = document.getElementById('modal-treinamento-participantes');
+            const spanTreinFuncs   = document.getElementById('modal-treinamento-funcoes');
+
             // abre modal ao clicar em qualquer card
             document.addEventListener('click', function (e) {
                 const card = e.target.closest('.kanban-card');
+                console.log(card)
                 if (!card) return;
 
                 // Campos básicos
@@ -710,6 +983,134 @@
                         blocoPgr.classList.add('hidden');
                     }
                 }
+
+                // limpa blocos
+                ['apr','ltcat','ltip','pae','pcmso'].forEach(s => {
+                    document.getElementById(`modal-bloco-${s}`).classList.add('hidden');
+                });
+
+// APR
+                if (card.dataset.servico === 'APR') {
+                    document.getElementById('modal-apr-endereco').textContent =
+                        card.dataset.aprEndereco || '—';
+
+                    document.getElementById('modal-apr-funcoes').textContent =
+                        card.dataset.aprFuncoes || '—';
+
+                    document.getElementById('modal-apr-etapas').textContent =
+                        card.dataset.aprEtapas || '—';
+
+                    document.getElementById('modal-bloco-apr').classList.remove('hidden');
+                }
+
+                // TREINAMENTO NR
+                if (card.dataset.servico === 'Treinamentos NRs') {
+
+                    blocoTreinamento.classList.remove('hidden');
+
+                    const localTipo = card.querySelector('[data-trei-local]')?.dataset.treiLocal || '—';
+                    const unidade   = card.querySelector('[data-trei-unidade]')?.dataset.treiUnidade || '—';
+                    const participantes = card.querySelector('[data-trei-participantes]')?.dataset.treiParticipantes || '—';
+                    const funcoes       = card.querySelector('[data-trei-funcoes]')?.dataset.treiFuncoes || '—';
+
+                    spanTreinLocal.textContent   = localTipo === 'clinica' ? 'Clínica' : 'In Company';
+                    spanTreinUnidade.textContent = unidade;
+                    spanTreinPart.textContent    = participantes;
+                    spanTreinFuncs.textContent   = funcoes;
+
+                } else {
+                    blocoTreinamento.classList.add('hidden');
+                }
+
+// LTCAT
+                if (card.dataset.servico === 'LTCAT') {
+                    const tipoBruto = card.dataset.ltcatTipo || '';
+                    let tipoLabel = '—';
+
+                    if (tipoBruto === 'matriz') {
+                        tipoLabel = 'Matriz';
+                    } else if (tipoBruto === 'especifico') {
+                        tipoLabel = 'Específico';
+                    } else if (tipoBruto) {
+                        tipoLabel = tipoBruto.charAt(0).toUpperCase() + tipoBruto.slice(1);
+                    }
+
+                    document.getElementById('modal-ltcat-tipo').textContent      = tipoLabel;
+                    document.getElementById('modal-ltcat-endereco').textContent  = card.dataset.ltcatEndereco || '—';
+                    document.getElementById('modal-ltcat-total-funcoes').textContent =
+                        card.dataset.ltcatTotalFuncoes || '—';
+                    document.getElementById('modal-ltcat-total-func').textContent =
+                        card.dataset.ltcatTotalFuncionarios || '—';
+                    document.getElementById('modal-ltcat-funcoes').textContent   =
+                        card.dataset.ltcatFuncoes || '—';
+
+                    document.getElementById('modal-bloco-ltcat').classList.remove('hidden');
+                }
+
+// LTIP
+                if (card.dataset.servico === 'LTIP') {
+                    document.getElementById('modal-ltip-endereco').textContent =
+                        card.dataset.ltipEndereco || '—';
+
+                    document.getElementById('modal-ltip-funcoes').textContent =
+                        card.dataset.ltipFuncoes || '—';
+
+                    document.getElementById('modal-ltip-total-func').textContent =
+                        card.dataset.ltipTotalFuncionarios || '—';
+
+                    document.getElementById('modal-bloco-ltip').classList.remove('hidden');
+                }
+
+// PAE
+                if (card.dataset.servico === 'PAE') {
+                    document.getElementById('modal-pae-endereco').textContent =
+                        card.dataset.paeEndereco || '—';
+
+                    document.getElementById('modal-pae-total-func').textContent =
+                        card.dataset.paeTotalFuncionarios || '—';
+
+                    document.getElementById('modal-pae-descricao').textContent =
+                        card.dataset.paeDescricao || '—';
+
+                    document.getElementById('modal-bloco-pae').classList.remove('hidden');
+                }
+
+// PCMSO
+                if (card.dataset.servico === 'PCMSO') {
+                    const tipoBruto = card.dataset.pcmsoTipo || '';
+                    let tipoLabel = '—';
+
+                    if (tipoBruto === 'matriz') {
+                        tipoLabel = 'Matriz';
+                    } else if (tipoBruto === 'especifico') {
+                        tipoLabel = 'Específico';
+                    } else if (tipoBruto) {
+                        tipoLabel = tipoBruto.charAt(0).toUpperCase() + tipoBruto.slice(1);
+                    }
+
+                    document.getElementById('modal-pcmso-tipo').textContent       = tipoLabel;
+                    document.getElementById('modal-pcmso-prazo').textContent      = card.dataset.pcmsoPrazo || '—';
+                    document.getElementById('modal-pcmso-obra-nome').textContent  = card.dataset.pcmsoObraNome || '—';
+                    document.getElementById('modal-pcmso-obra-cnpj').textContent  = card.dataset.pcmsoObraCnpj || '—';
+                    document.getElementById('modal-pcmso-obra-cei').textContent   = card.dataset.pcmsoObraCei || '—';
+                    document.getElementById('modal-pcmso-obra-endereco').textContent =
+                        card.dataset.pcmsoObraEndereco || '—';
+
+                    const linkWrapper = document.getElementById('modal-pcmso-pgr-wrapper');
+                    const linkEl      = document.getElementById('modal-pcmso-pgr-link');
+                    const url         = card.dataset.pcmsoPgrUrl || '';
+
+                    if (url) {
+                        linkEl.href = url;
+                        linkWrapper.classList.remove('hidden');
+                    } else {
+                        linkEl.href = '#';
+                        linkWrapper.classList.add('hidden');
+                    }
+
+                    document.getElementById('modal-bloco-pcmso').classList.remove('hidden');
+                }
+
 
                 // ajusta cor do badge de status conforme o texto
                 const status = (card.dataset.status || '').toLowerCase();

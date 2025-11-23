@@ -78,7 +78,7 @@
                                 <label class="block text-xs font-medium text-slate-600 mb-1">
                                     CPF
                                 </label>
-                                <input type="text" id="nf-cpf"
+                                <input type="text" id="nf-cpf" name="cpf"
                                        class="w-full rounded-lg border-slate-200 text-sm px-3 py-2"
                                        placeholder="000.000.000-00">
                             </div>
@@ -393,7 +393,104 @@
                 });
 
                 atualizarLocalUI();
+
+
+                //
+
+
             });
+
+            document.addEventListener('DOMContentLoaded', function () {
+                // pega o primeiro input com name="cpf" da página
+                var cpfInput = document.querySelector('input[name="cpf"]');
+                if (!cpfInput) return;
+
+                // máscara enquanto digita
+                cpfInput.addEventListener('input', function () {
+                    var v = cpfInput.value.replace(/\D/g, '');   // só números
+                    v = v.slice(0, 11);                          // máximo 11 dígitos
+
+                    if (v.length > 9) {
+                        cpfInput.value = v.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, "$1.$2.$3-$4");
+                    } else if (v.length > 6) {
+                        cpfInput.value = v.replace(/(\d{3})(\d{3})(\d{1,3})/, "$1.$2.$3");
+                    } else if (v.length > 3) {
+                        cpfInput.value = v.replace(/(\d{3})(\d{1,3})/, "$1.$2");
+                    } else {
+                        cpfInput.value = v;
+                    }
+                });
+
+                // validação ao sair do campo
+                cpfInput.addEventListener('blur', function () {
+                    var cpfLimpo = cpfInput.value.replace(/\D/g, '');
+
+                    if (cpfLimpo === '') {
+                        limparErroCPF(cpfInput);
+                        return;
+                    }
+
+                    if (!cpfValido(cpfLimpo)) {
+                        mostrarErroCPF(cpfInput, 'CPF inválido');
+                    } else {
+                        limparErroCPF(cpfInput);
+                    }
+                });
+            });
+
+            // valida CPF (algoritmo padrão)
+            function cpfValido(cpf) {
+                if (!cpf || cpf.length !== 11) return false;
+                if (/^(\d)\1{10}$/.test(cpf)) return false; // todos os dígitos iguais
+
+                var soma = 0;
+                for (var i = 0; i < 9; i++) {
+                    soma += parseInt(cpf.charAt(i)) * (10 - i);
+                }
+                var resto = (soma * 10) % 11;
+                if (resto === 10 || resto === 11) resto = 0;
+                if (resto !== parseInt(cpf.charAt(9))) return false;
+
+                soma = 0;
+                for (var j = 0; j < 10; j++) {
+                    soma += parseInt(cpf.charAt(j)) * (11 - j);
+                }
+                resto = (soma * 10) % 11;
+                if (resto === 10 || resto === 11) resto = 0;
+                if (resto !== parseInt(cpf.charAt(10))) return false;
+
+                return true;
+            }
+
+            // mostra mensagem de erro logo abaixo do input
+            function mostrarErroCPF(input, mensagem) {
+                limparErroCPF(input);
+
+                input.style.borderColor = '#dc2626'; // vermelho
+                var p = document.createElement('p');
+                p.className = 'cpf-error';
+                p.style.color = '#dc2626';
+                p.style.fontSize = '12px';
+                p.style.marginTop = '4px';
+                p.textContent = mensagem;
+
+                if (input.parentNode) {
+                    input.parentNode.appendChild(p);
+                }
+            }
+
+            // remove mensagem de erro e estilo
+            function limparErroCPF(input) {
+                input.style.borderColor = '';
+
+                if (!input.parentNode) return;
+                var erro = input.parentNode.querySelector('.cpf-error');
+                if (erro) {
+                    erro.remove();
+                }
+            }
+            //
+
         </script>
     @endpush
 

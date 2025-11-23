@@ -43,4 +43,29 @@ class LtcatSolicitacoes extends Model
     {
         return $this->belongsTo(User::class, 'responsavel_id');
     }
+
+    public function getFuncoesResumoAttribute(): string
+    {
+        if (empty($this->funcoes) || !is_array($this->funcoes)) {
+            return '';
+        }
+
+        $partes = [];
+
+        foreach ($this->funcoes as $f) {
+            $funcaoId = $f['funcao_id'] ?? null;
+            $qtd      = $f['quantidade'] ?? null;
+
+            if (!$funcaoId || !$qtd) {
+                continue;
+            }
+
+            $fn = \App\Models\Funcao::find($funcaoId);
+            if ($fn) {
+                $partes[] = "{$fn->nome} ({$qtd})";
+            }
+        }
+
+        return implode(', ', $partes);
+    }
 }
