@@ -59,6 +59,11 @@ Route::middleware('auth')->group(function () {
         Route::post('/tarefas/{tarefa}/mover', [PainelController::class, 'mover'])
             ->name('tarefas.mover');
 
+        Route::post('/tarefas/{tarefa}/observacao', [
+            PainelController::class,
+            'salvarObservacao'
+        ])->name('tarefas.observacao');
+
         // ======================================================
         //  CRIAÇÃO DE TAREFAS (LOJA / GERAL)
         // ======================================================

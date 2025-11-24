@@ -159,6 +159,7 @@
                                                     ? \Carbon\Carbon::parse($tarefa->inicio_previsto)->format('d/m/Y H:i')
                                                     : 'Sem data';
                                     $funcionarioNome  = optional($tarefa->funcionario)->nome ?? null;
+                                    $funcionarioCpf  = optional($tarefa->funcionario)->cpf ?? null;
                                     $funcionarioFuncao= optional($tarefa->funcionario)->funcao_nome ?? null;
                                     $slaData      = $tarefa->fim_previsto
                                                     ? \Carbon\Carbon::parse($tarefa->fim_previsto)->format('d/m/Y')
@@ -191,8 +192,10 @@
                                         data-prioridade="{{ ucfirst($tarefa->prioridade) }}"
                                         data-status="{{ $coluna->nome }}"
                                         data-observacoes="{{ e($obs) }}"
-                                        data-funcionario="{{ $funcionarioNome }}"
+                                        data-funcionario="{{ $funcionarioNome . ' | CPF '. $funcionarioCpf }}"
                                         data-funcionario-funcao="{{ $funcionarioFuncao }}"
+                                        data-observacao-interna="{{ e($tarefa->observacao_interna) }}"
+                                        data-observacao-url="{{ route('operacional.tarefas.observacao', $tarefa) }}"
 
                                         {{-- PGR --}}
                                         @if($pgr)
@@ -813,16 +816,18 @@
 
                         <div class="space-y-3">
                             <button type="button"
-                                    class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg
-               bg-[var(--color-brand-azul)] text-white text-sm font-semibold shadow-sm
-               hover:bg-blue-700 transition">
+                                    data-coluna-id="2"
+                                    class="js-mover-coluna w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg
+                       bg-[color:var(--color-brand-azul,#2563eb)] text-white text-sm font-semibold shadow-sm
+                       hover:bg-blue-700 transition">
                                 Mover para: Em Execução
                             </button>
 
                             <button type="button"
-                                    class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg
-                                       bg-rose-500 text-white text-sm font-semibold shadow-sm
-                                       hover:bg-rose-600 transition">
+                                    data-coluna-id="6"
+                                    class="js-mover-coluna w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg
+                       bg-rose-500 text-white text-sm font-semibold shadow-sm
+                       hover:bg-rose-600 transition">
                                 Mover para: Atrasado
                             </button>
                         </div>
@@ -844,6 +849,7 @@
 
                         <button
                             type="button"
+                            id="btn-salvar-observacao"
                             class="mt-3 w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg
                                bg-indigo-400 text-white text-sm font-semibold shadow-sm
                                hover:bg-indigo-500 transition">
@@ -863,6 +869,8 @@
             const modal    = document.getElementById('tarefa-modal');
             const closeBtn = document.getElementById('tarefa-modal-close');
 
+
+
             const spanId         = document.getElementById('modal-tarefa-id');
             const spanCliente    = document.getElementById('modal-cliente');
             const spanCnpj       = document.getElementById('modal-cnpj');
@@ -878,6 +886,7 @@
             const spanStatusText = document.getElementById('modal-status-text');
             const badgeStatus    = document.getElementById('modal-status-badge');
             const spanObs        = document.getElementById('modal-observacoes');
+            const textareaObsInterna = document.getElementById('modal-observacao-interna');
 
             // 🔹 bloco de informações específicas de ASO (funcionário)
             const blocoAso = document.getElementById('modal-bloco-aso');
@@ -927,6 +936,13 @@
                 // funcionário (valor bruto – depois a gente mostra/oculta por tipo)
                 spanFuncionario.textContent       = card.dataset.funcionario || '—';
                 spanFuncionarioFuncao.textContent = card.dataset.funcionarioFuncao || '—';
+
+
+                spanObs.textContent = card.dataset.observacoes ?? '';
+                if (textareaObsInterna) {
+                    textareaObsInterna.value = card.dataset.observacaoInterna || '';
+                }
+                modal.dataset.observacaoUrl = card.dataset.observacaoUrl || '';
 
                 // === REGRA POR TIPO DE SERVIÇO (sem quebrar o que já existia) ===
                 const tipoServico = (card.dataset.servico || '').toLowerCase();
@@ -1127,6 +1143,9 @@
                     badgeStatus.className += 'bg-slate-100 text-slate-700 border-slate-200';
                 }
 
+                modal.dataset.moveUrl  = card.dataset.moveUrl || '';
+                modal.dataset.tarefaId = card.dataset.id || '';
+
                 // mostra modal
                 modal.classList.remove('hidden');
                 modal.classList.add('flex');
@@ -1242,6 +1261,126 @@
 
         });
     </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const alerts = document.querySelectorAll('.auto-dismiss');
+
+            alerts.forEach(function (alert) {
+                // tempo em ms (ex: 5000 = 5s)
+                const timeout = 5000;
+
+                setTimeout(function () {
+                    // animação simples se estiver usando Tailwind
+                    alert.classList.add('transition', 'opacity-0', 'translate-y-2');
+
+                    // remove do DOM depois da animação
+                    setTimeout(function () {
+                        alert.remove();
+                    }, 300); // 300ms pra bater com a transition
+                }, timeout);
+            });
+        });
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const buttons = document.querySelectorAll('.js-mover-coluna');
+
+            const modal   = document.getElementById('tarefa-modal');
+            const statusText = document.getElementById('modal-status-text');
+
+
+            buttons.forEach(button => {
+                button.addEventListener('click', function () {
+                    const colunaId = this.dataset.colunaId;
+
+                    // Rota do método mover
+                    const url      = modal.dataset.moveUrl;
+
+                    fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        },
+                        body: JSON.stringify({
+                            coluna_id: colunaId
+                        })
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.ok) {
+                                // Se tiver um badge de status, atualiza:
+                                const statusBadge = document.querySelector('#tarefa-status-label');
+                                if (statusBadge && data.status_label) {
+                                    statusBadge.textContent = data.status_label;
+                                }
+
+                                // Opcional: recarregar página/fechar modal
+                                 location.reload();
+
+                                console.log('Movido com sucesso:', data);
+                            } else {
+                                alert('Não foi possível mover a tarefa.');
+                            }
+                        })
+                        .catch(err => {
+                            console.error(err);
+                            alert('Erro ao mover a tarefa.');
+                        });
+                });
+            });
+        });
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const modal             = document.getElementById('tarefa-modal');
+            const textareaObsInterna = document.getElementById('modal-observacao-interna');
+            const btnSalvarObs      = document.getElementById('btn-salvar-observacao');
+
+            if (btnSalvarObs && textareaObsInterna) {
+                btnSalvarObs.addEventListener('click', function () {
+                    const url = modal.dataset.observacaoUrl;
+
+                    if (!url) {
+                        alert('Nenhuma tarefa selecionada para salvar observação.');
+                        return;
+                    }
+
+                    const valor = textareaObsInterna.value;
+
+                    fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        },
+                        body: JSON.stringify({
+                            observacao_interna: valor
+                        })
+                    })
+                        .then(r => r.json())
+                        .then(data => {
+                            if (data.ok) {
+                                // feedback simples
+                                btnSalvarObs.textContent = 'Observação salva!';
+                                setTimeout(() => {
+                                    btnSalvarObs.textContent = 'Salvar Observação';
+                                }, 1500);
+                            } else {
+                                alert('Não foi possível salvar a observação.');
+                            }
+                        })
+                        .catch(err => {
+                            console.error(err);
+                            alert('Erro ao salvar a observação.');
+                        });
+                });
+            }
+        });
+
+    </script>
+
 
 
 @endpush

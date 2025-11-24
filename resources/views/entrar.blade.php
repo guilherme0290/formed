@@ -125,10 +125,23 @@
                                 Acessar Painel
                             </a>
                         @else
-                            <a href="{{ route('master.dashboard') }}"
-                               class="inline-flex w-full items-center justify-center px-4 py-2.5 rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-500 text-white text-sm font-medium shadow-md">
-                                Acessar Painel
-                            </a>
+                            @php
+                                $user = auth()->user();
+                                $papelNome = optional($user->papel)->nome;   // "Master", "Operacional", etc.
+                            @endphp
+
+                            @if ($papelNome === 'Operacional')
+                                <button type="button"
+                                        class="inline-flex w-full items-center justify-center px-4 py-2.5 rounded-2xl bg-slate-200 text-slate-400 text-sm font-medium cursor-not-allowed"
+                                        disabled>
+                                    Acesso restrito ao Master
+                                </button>
+                            @else
+                                <a href="{{ route('master.dashboard') }}"
+                                   class="inline-flex w-full items-center justify-center px-4 py-2.5 rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-500 text-white text-sm font-medium shadow-md">
+                                    Acessar Painel
+                                </a>
+                            @endif
                         @endguest
                     </div>
                 </div>

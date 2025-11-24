@@ -32,10 +32,16 @@ class AuthenticatedSessionController extends Controller
 
         // se não vier nada, padrão = master
         $destino = $request->input('redirect', 'master');
+        $user = $request->user();
+        $papelNome = optional($user->papel)->nome;
+
+        // Se for operacional, SEMPRE vai pro operacional
+        if (strtoupper($papelNome) === 'OPERACIONAL') {
+            return redirect()->route('operacional.kanban');
+        }
 
         return match ($destino) {
             'operacional' => redirect()->route('operacional.kanban'),
-            'master'      => redirect()->route('master.dashboard'),
             default       => redirect()->route('master.dashboard'),
         };
     }

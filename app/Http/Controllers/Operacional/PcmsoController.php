@@ -87,9 +87,9 @@ class PcmsoController extends Controller
         if ($tipo === 'especifico') {
             $rules = array_merge($rules, [
                 'obra_nome'              => ['required', 'string', 'max:255'],
-                'obra_cnpj_contratante'  => ['required', 'string', 'max:20'],
-                'obra_cei_cno'           => ['required', 'string', 'max:50'],
-                'obra_endereco'          => ['required', 'string', 'max:255'],
+                'obra_cnpj_contratante'  => [ 'string', 'max:20'],
+                'obra_cei_cno'           => [ 'string', 'max:50'],
+                'obra_endereco'          => [ 'string', 'max:255'],
             ]);
         }
 

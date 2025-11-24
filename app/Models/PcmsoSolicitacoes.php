@@ -48,4 +48,11 @@ class PcmsoSolicitacoes extends Model
     {
         return $this->belongsTo(PgrSolicitacoes::class, 'pgr_solicitacao_id');
     }
+
+    public function setCnpjAttribute($value)
+    {
+        $this->attributes['obra_cnpj_contratante'] = $value
+            ? preg_replace('/\D+/', '', $value)
+            : null;
+    }
 }

@@ -18,6 +18,8 @@ class Tarefa extends Model
         'responsavel_id',
         'cliente_id',
         'funcionario_id',
+        'observacao_interna',
+        'ordem',
         'servico_id',
         'titulo',
         'descricao',

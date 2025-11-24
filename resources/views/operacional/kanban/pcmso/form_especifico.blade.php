@@ -45,7 +45,7 @@
 
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">
-                            CNPJ do Contratante *
+                            CNPJ do Contratante
                         </label>
                         <input type="text" name="obra_cnpj_contratante" value="{{ old('obra_cnpj_contratante') }}"
                                class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
@@ -54,7 +54,7 @@
 
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">
-                            CEI/CNO *
+                            CEI/CNO
                         </label>
                         <input type="text" name="obra_cei_cno" value="{{ old('obra_cei_cno') }}"
                                class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
@@ -63,7 +63,7 @@
 
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">
-                            Endereço da Obra *
+                            Endereço da Obra
                         </label>
                         <input type="text" name="obra_endereco" value="{{ old('obra_endereco') }}"
                                class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"

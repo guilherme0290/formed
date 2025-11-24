@@ -75,7 +75,10 @@ class PainelController extends Controller
             $tarefasQuery->whereDate('inicio_previsto', '<=', $filtroAte);
         }
 
-        $tarefas = $tarefasQuery->get();
+        $tarefas = $tarefasQuery->orderBy('coluna_id')
+            ->orderBy('ordem')
+            ->orderBy('id')
+            ->get();
 
         // Agrupa tarefas por coluna
         $tarefasPorColuna = $tarefas->groupBy('coluna_id');
@@ -560,6 +563,25 @@ class PainelController extends Controller
             ->route('operacional.kanban')
             ->with('ok', "Tarefa ASO criada para o colaborador {$tarefa->titulo}.");
     }
+
+    public function salvarObservacao(Request $request, Tarefa $tarefa)
+    {
+        $data = $request->validate([
+            'observacao_interna' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $tarefa->update([
+            'observacao_interna' => $data['observacao_interna'] ?? null,
+        ]);
+
+        return response()->json([
+            'ok'                 => true,
+            'observacao_interna' => $tarefa->observacao_interna,
+        ]);
+    }
+
+
+
 
 
 }

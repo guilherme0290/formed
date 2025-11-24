@@ -204,7 +204,7 @@
                              x-show="treina == 1"
                              x-cloak>
                             @foreach($treinamentosDisponiveis as $key => $label)
-                                <label class="inline-flex items-center gap-2 text-xs text-slate-700">
+                                <label class="inline-flex items-center gap-2 text-sm text-slate-700">
                                     <input type="checkbox"
                                            name="treinamentos[]"
                                            value="{{ $key }}"
@@ -218,6 +218,7 @@
                                 Você pode selecionar mais de um treinamento.
                             </p>
                         </div>
+
                     </div>
 
                     {{-- Data e Local de Realização (bloco final do protótipo) --}}

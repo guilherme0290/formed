@@ -44,6 +44,13 @@ class Funcionario extends Model
         return $this->belongsTo(Cliente::class);
     }
 
+    public function setCpfAttribute($value)
+    {
+        $this->attributes['cpf'] = $value
+            ? preg_replace('/\D+/', '', $value)
+            : null;
+    }
+
     public function funcao()
     {
         return $this->belongsTo(Funcao::class);

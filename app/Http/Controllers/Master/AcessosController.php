@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Master;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use App\Models\User;
 use App\Models\Papel;
@@ -49,16 +50,19 @@ class AcessosController extends Controller
         $data = $r->validate([
             'name'      => ['required','string','max:255'],
             'email'     => ['required','email','max:255','unique:users,email'],
+            'password'   => ['required','string','min:6'],
             'telefone'  => ['nullable','string','max:30'],
             'papel_id'  => ['nullable','exists:papeis,id'],
         ]);
 
-        $data['password'] = bcrypt(str()->random(12)); // senha temporária
+        $data['password'] = Hash::make($r->password);
+        $data['empresa_id'] = 1;
+
 
         User::create($data);
 
         return redirect()->route('master.acessos', ['tab' => 'usuarios'])
-            ->with('ok', 'Usuário criado.');
+            ->with('ok', 'Usuário criado com sucesso');
     }
 
     public function usuariosUpdate(Request $r, User $user)
