@@ -18,7 +18,6 @@ class ClienteController extends Controller
         $q      = trim((string) $r->query('q', ''));
         $status = $r->query('status', 'todos'); // todos|ativo|inativo
 
-        // Por enquanto: empresa fixa = 1 se usuário não tiver empresa
         $empresaId = $r->user()->empresa_id ?? 1;
 
         $clientes = Cliente::query()
@@ -30,8 +29,12 @@ class ClienteController extends Controller
                     $x->where('razao_social', 'like', "%{$q}%")
                         ->orWhere('nome_fantasia', 'like', "%{$q}%")
                         ->orWhere('email', 'like', "%{$q}%")
-                        ->orWhere('telefone', 'like', "%{$q}%")
-                        ->orWhere('cnpj', 'like', "%{$doc}%");
+                        ->orWhere('telefone', 'like', "%{$q}%");
+
+                    // Só filtra por CNPJ se tiver número na busca
+                    if ($doc !== '') {
+                        $x->orWhere('cnpj', 'like', "%{$doc}%");
+                    }
                 });
             })
             ->when($status !== 'todos', fn($w) => $w->where('ativo', $status === 'ativo'))
@@ -103,9 +106,7 @@ class ClienteController extends Controller
         $empresaId = $r->user()->empresa_id ?? 1;
 
         $data['empresa_id'] = $empresaId;
-        $data['ativo']      = $r->boolean('ativo');
-
-
+        $data['ativo']      = true;
 
 
         try {
@@ -241,15 +242,11 @@ class ClienteController extends Controller
                 'cnpj.max'              => 'O CNPJ está muito longo. Confira o número digitado.',
 
                 'email.email'           => 'Informe um e-mail válido (ex: nome@empresa.com).',
-
-
             ]
         );
     }
 
-    /**
-     * GARANTE QUE O CLIENTE É DA MESMA EMPRESA
-     */
+
     protected function authorizeCliente(Cliente $cliente): void
     {
         $empresaId = auth()->user()->empresa_id ?? 1;

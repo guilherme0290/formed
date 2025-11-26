@@ -74,15 +74,18 @@
 
             {{-- LINHA 2 --}}
             <div class="grid md:grid-cols-3 gap-4 items-center">
-                <div>
-                    <label class="text-sm">Ativo</label>
-                    <div class="flex items-center gap-2 mt-1">
-                        <input type="hidden" name="ativo" value="0">
-                        <input type="checkbox" name="ativo" value="1"
-                               {{ old('ativo', $cliente->ativo) ? 'checked' : '' }}
-                               class="h-5 w-5 text-blue-600">
+                @if($cliente->exists)
+                    <div>
+                        <label class="text-sm">Ativo</label>
+                        <div class="flex items-center gap-2 mt-1">
+                            <input type="hidden" name="ativo" value="0">
+                            <input type="checkbox" name="ativo" value="1"
+                                   {{ old('ativo', $cliente->ativo) ? 'checked' : '' }}
+                                   class="h-5 w-5 text-blue-600">
+                        </div>
                     </div>
-                </div>
+                @endif
+
 
                 <div>
                     <label class="text-sm">E-mail</label>
@@ -208,7 +211,7 @@
     <script>
         $(function () {
             // CNPJ
-            $('input[name="cnpj"]').mask('00.000.000/0000-00');
+            // $('input[name="cnpj"]').mask('00.000.000/0000-00');
 
             // CEP
             $('#cep').mask('00000-000');
@@ -218,62 +221,86 @@
         });
     </script>
 
-    {{-- SCRIPT UF → CIDADES (IBGE via sua API) --}}
     <script>
-        document.querySelector('#estado').addEventListener('change', async (e) => {
-            let uf = e.target.value;
-            let cidadeSelect = document.querySelector('#cidade_id');
 
-            cidadeSelect.innerHTML = '<option>Carregando...</option>';
+        function normalizarTexto(str) {
+            if (!str) return '';
+            return str
+                .toString()
+                .normalize('NFD')                     // quebra acentos
+                .replace(/[\u0300-\u036f]/g, '')     // remove marcas de acento
+                .replace(/\s+/g, ' ')                // colapsa espaços
+                .trim()
+                .toUpperCase();
+        }
+
+        async function carregarCidadesPorUf(uf, cidadeNomeSelecionar = null) {
+            const cidadeSelect = document.querySelector('#cidade_id');
+
+            if (!cidadeSelect) return;
 
             if (!uf) {
                 cidadeSelect.innerHTML = '<option value="">Selecione...</option>';
                 return;
             }
 
-            let urlBase = "{{ url('master/estados') }}";
-            let resp = await fetch(`${urlBase}/${uf}/cidades`);
-            let json = await resp.json();
+            cidadeSelect.innerHTML = '<option value="">Carregando...</option>';
+
+            const urlBase = "{{ url('master/estados') }}";
+            const resp = await fetch(`${urlBase}/${uf}/cidades`);
+            const json = await resp.json();
 
             cidadeSelect.innerHTML = '<option value="">Selecione...</option>';
 
-            json.forEach(c => {
-                cidadeSelect.innerHTML += `<option value="${c.id}">${c.nome}</option>`;
-            });
-        });
-    </script>
+            const alvoNorm = cidadeNomeSelecionar
+                ? normalizarTexto(cidadeNomeSelecionar)
+                : null;
 
-    {{-- SCRIPT CEP → ViaCEP + IBGE --}}
-    <script>
+            json.forEach(c => {
+                const nomeOriginal = (c.nome || '').toString().trim();
+                const nomeNorm     = normalizarTexto(nomeOriginal);
+
+                const isSelected = alvoNorm && nomeNorm === alvoNorm;
+
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.textContent = nomeOriginal;
+                if (isSelected) {
+                    opt.selected = true;
+                }
+                cidadeSelect.appendChild(opt);
+            });
+        }
+        document.querySelector('#estado').addEventListener('change', async (e) => {
+            const uf = e.target.value;
+            await carregarCidadesPorUf(uf);
+        });
         document.querySelector('#cep').addEventListener('blur', async function () {
             let cep = this.value.replace(/\D/g, '');
 
             if (cep.length !== 8) return;
 
             try {
-                let resp = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-                let json = await resp.json();
+                const resp = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+                const json = await resp.json();
 
                 if (json.erro) return;
 
-                document.querySelector('#endereco').value = json.logradouro || '';
-                document.querySelector('#bairro').value   = json.bairro || '';
+                document.querySelector('#endereco').value     = json.logradouro || '';
+                document.querySelector('#bairro').value       = json.bairro || '';
+                const complementoInput = document.querySelector('input[name="complemento"]');
+                if (complementoInput) {
+                    complementoInput.value = json.complemento || '';
+                }
 
-                let ufApi     = json.uf;
-                let cidadeApi = (json.localidade || '').trim().toLowerCase();
+                const ufApi     = json.uf;
+                const cidadeApi = (json.localidade || '').trim();
 
-                let estadoSelect = document.querySelector('#estado');
-                let cidadeSelect = document.querySelector('#cidade_id');
+                const estadoSelect = document.querySelector('#estado');
 
-                // Seleciona/cria UF
-                if (ufApi) {
-                    let found = false;
-                    Array.from(estadoSelect.options).forEach(opt => {
-                        if (opt.value === ufApi) {
-                            found = true;
-                        }
-                    });
-
+                if (ufApi && estadoSelect) {
+                    // garante que a UF exista no select
+                    let found = Array.from(estadoSelect.options).some(opt => opt.value === ufApi);
                     if (!found) {
                         let opt = document.createElement('option');
                         opt.value = ufApi;
@@ -282,28 +309,217 @@
                     }
 
                     estadoSelect.value = ufApi;
+                    await carregarCidadesPorUf(ufApi, cidadeApi);
                 }
-
-                // Carrega cidades e tenta marcar a correta
-                if (ufApi) {
-                    let urlBase = "{{ url('master/estados') }}";
-                    let respCidades = await fetch(`${urlBase}/${ufApi}/cidades`);
-                    let cidadesJson = await respCidades.json();
-
-                    cidadeSelect.innerHTML = '<option value="">Selecione...</option>';
-
-                    cidadesJson.forEach(c => {
-                        let selected =
-                            (c.nome || '').trim().toLowerCase() === cidadeApi ? 'selected' : '';
-                        cidadeSelect.innerHTML +=
-                            `<option value="${c.id}" ${selected}>${c.nome}</option>`;
-                    });
-                }
-
             } catch (e) {
                 console.error('Erro ao buscar CEP', e);
             }
         });
+        document.querySelector('input[name="cnpj"]').addEventListener('blur', async function () {
+            let cnpjLimpo = this.value.replace(/\D/g, '');
+
+            // CNPJ vazio ou incompleto: não faz nada
+            if (cnpjLimpo.length !== 14) {
+                return;
+            }
+
+            // Monta URL da rota (substitui o placeholder pelo CNPJ limpo)
+            let url = "{{ route('clientes.consulta-cnpj', ['cnpj' => 'CNPJ_PLACEHOLDER']) }}";
+            url = url.replace('CNPJ_PLACEHOLDER', cnpjLimpo);
+
+            const razaoInput      = document.querySelector('input[name="razao_social"]');
+            const fantasiaInput   = document.querySelector('input[name="nome_fantasia"]');
+            const cepInput        = document.querySelector('#cep');
+            const enderecoInput   = document.querySelector('#endereco');
+            const bairroInput     = document.querySelector('#bairro');
+            const complInput      = document.querySelector('input[name="complemento"]');
+            const estadoSelect    = document.querySelector('#estado');
+
+            try {
+                // opcional: poderia colocar um "carregando..." em algum lugar aqui
+
+                const resp = await fetch(url);
+                const json = await resp.json();
+
+                if (json.error) {
+                    console.warn('Erro na consulta CNPJ:', json.error);
+                    return;
+                }
+
+                // Preenche campos básicos
+                if (razaoInput && json.razao_social) {
+                    razaoInput.value = json.razao_social;
+                }
+                if (fantasiaInput && json.nome_fantasia) {
+                    fantasiaInput.value = json.nome_fantasia;
+                }
+                if (cepInput && json.cep) {
+                    // normaliza CEP para 00000-000
+                    let cepLimpo = json.cep.replace(/\D/g, '');
+                    if (cepLimpo.length === 8) {
+                        cepInput.value = cepLimpo.replace(/^(\d{5})(\d{3})$/, '$1-$2');
+                    } else {
+                        cepInput.value = json.cep;
+                    }
+                }
+                if (enderecoInput && json.endereco) {
+                    enderecoInput.value = json.endereco;
+                }
+                if (bairroInput && json.bairro) {
+                    bairroInput.value = json.bairro;
+                }
+                if (complInput && json.complemento) {
+                    complInput.value = json.complemento;
+                }
+
+                // UF + Cidade
+                const ufApi     = json.uf || null;
+                const cidadeApi = json.municipio || null;
+
+                if (ufApi && estadoSelect) {
+                    // garante option da UF
+                    let found = Array.from(estadoSelect.options).some(opt => opt.value === ufApi);
+                    if (!found) {
+                        let opt = document.createElement('option');
+                        opt.value = ufApi;
+                        opt.textContent = ufApi;
+                        estadoSelect.appendChild(opt);
+                    }
+
+                    estadoSelect.value = ufApi;
+
+                    // Carrega cidades da UF e tenta selecionar pelo nome retornado
+                    if (cidadeApi) {
+                        await carregarCidadesPorUf(ufApi, cidadeApi);
+                    } else {
+                        await carregarCidadesPorUf(ufApi);
+                    }
+                }
+
+                // OBS: se você quiser, aqui ainda pode disparar manualmente o blur do CEP
+                // para “refinar” o endereço via ViaCEP:
+                // if (cepInput && cepInput.value) {
+                //     cepInput.dispatchEvent(new Event('blur'));
+                // }
+
+            } catch (e) {
+                console.error('Erro ao consultar CNPJ', e);
+            }
+        });
+
+
+    </script>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // pega o primeiro input com name="cnpj" da página
+            var cnpjInput = document.querySelector('input[name="cnpj"]');
+            if (!cnpjInput) return;
+
+            // máscara enquanto digita
+            cnpjInput.addEventListener('input', function () {
+                var v = cnpjInput.value.replace(/\D/g, '');   // só números
+                v = v.slice(0, 14);                           // máximo 14 dígitos
+
+                if (v.length > 12) {
+                    // 00.000.000/0000-00
+                    cnpjInput.value = v.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{1,2})/, "$1.$2.$3/$4-$5");
+                } else if (v.length > 8) {
+                    // 00.000.000/0000
+                    cnpjInput.value = v.replace(/(\d{2})(\d{3})(\d{3})(\d{1,4})/, "$1.$2.$3/$4");
+                } else if (v.length > 5) {
+                    // 00.000.000
+                    cnpjInput.value = v.replace(/(\d{2})(\d{3})(\d{1,3})/, "$1.$2.$3");
+                } else if (v.length > 2) {
+                    // 00.000
+                    cnpjInput.value = v.replace(/(\d{2})(\d{1,3})/, "$1.$2");
+                } else {
+                    cnpjInput.value = v;
+                }
+            });
+
+            // validação ao sair do campo
+            cnpjInput.addEventListener('blur', function () {
+                var cnpjLimpo = cnpjInput.value.replace(/\D/g, '');
+
+                if (cnpjLimpo === '') {
+                    limparErroCNPJ(cnpjInput);
+                    return;
+                }
+
+                if (!cnpjValido(cnpjLimpo)) {
+                    mostrarErroCNPJ(cnpjInput, 'CNPJ inválido');
+                } else {
+                    limparErroCNPJ(cnpjInput);
+                }
+            });
+        });
+
+        // valida CNPJ (algoritmo padrão)
+        function cnpjValido(cnpj) {
+            if (!cnpj || cnpj.length !== 14) return false;
+
+            // elimina sequências como 00.000.000/0000-00, 11..., etc.
+            if (/^(\d)\1{13}$/.test(cnpj)) return false;
+
+            var tamanho = 12;
+            var numeros = cnpj.substring(0, tamanho);
+            var digitos = cnpj.substring(tamanho);
+            var soma = 0;
+            var pos = tamanho - 7;
+
+            for (var i = tamanho; i >= 1; i--) {
+                soma += parseInt(numeros.charAt(tamanho - i)) * pos--;
+                if (pos < 2) pos = 9;
+            }
+
+            var resultado = soma % 11 < 2 ? 0 : 11 - (soma % 11);
+            if (resultado !== parseInt(digitos.charAt(0))) return false;
+
+            tamanho = 13;
+            numeros = cnpj.substring(0, tamanho);
+            soma = 0;
+            pos = tamanho - 7;
+
+            for (var j = tamanho; j >= 1; j--) {
+                soma += parseInt(numeros.charAt(tamanho - j)) * pos--;
+                if (pos < 2) pos = 9;
+            }
+
+            resultado = soma % 11 < 2 ? 0 : 11 - (soma % 11);
+            if (resultado !== parseInt(digitos.charAt(1))) return false;
+
+            return true;
+        }
+
+        // mostra mensagem de erro logo abaixo do input
+        function mostrarErroCNPJ(input, mensagem) {
+            limparErroCNPJ(input);
+
+            input.style.borderColor = '#dc2626'; // vermelho
+            var p = document.createElement('p');
+            p.className = 'cnpj-error';
+            p.style.color = '#dc2626';
+            p.style.fontSize = '12px';
+            p.style.marginTop = '4px';
+            p.textContent = mensagem;
+
+            if (input.parentNode) {
+                input.parentNode.appendChild(p);
+            }
+        }
+
+        // remove mensagem de erro e estilo
+        function limparErroCNPJ(input) {
+            input.style.borderColor = '';
+
+            if (!input.parentNode) return;
+            var erro = input.parentNode.querySelector('.cnpj-error');
+            if (erro) {
+                erro.remove();
+            }
+        }
     </script>
 
 @endsection
