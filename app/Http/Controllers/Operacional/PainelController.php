@@ -40,6 +40,9 @@ class PainelController extends Controller
             ->orderBy('ordem')
             ->get();
 
+        // Descobre a coluna "finalizada" (slug = finalizada)
+        $colunaFinalizada = $colunas->firstWhere('slug', 'finalizada');
+
         // Query base das tarefas
         $tarefasQuery = Tarefa::with([
             'cliente',
@@ -75,6 +78,25 @@ class PainelController extends Controller
             $tarefasQuery->whereDate('inicio_previsto', '<=', $filtroAte);
         }
 
+        /**
+         * Regra: por padrão, NÃO listar tarefas finalizadas de dias anteriores.
+         * - Outras colunas continuam normais.
+         * - Na coluna "finalizada", só entram tarefas com finalizado_em HOJE.
+         * - Se o usuário filtrou por data (de/ate), não aplicamos essa restrição.
+         */
+        if (!$filtroDe && !$filtroAte && $colunaFinalizada) {
+            $hoje = now()->toDateString();
+
+            $tarefasQuery->where(function ($q) use ($colunaFinalizada, $hoje) {
+                $q->where('coluna_id', '<>', $colunaFinalizada->id)
+                    ->orWhere(function ($q2) use ($colunaFinalizada, $hoje) {
+                        $q2->where('coluna_id', $colunaFinalizada->id)
+                            ->whereNotNull('finalizado_em')
+                            ->whereDate('finalizado_em', $hoje);
+                    });
+            });
+        }
+
         $tarefas = $tarefasQuery->orderBy('coluna_id')
             ->orderBy('ordem')
             ->orderBy('id')
@@ -104,22 +126,24 @@ class PainelController extends Controller
             ->get();
 
         return view('operacional.kanban.index', [
-            'usuario'          => $usuario,
-            'colunas'          => $colunas,
-            'tarefasPorColuna' => $tarefasPorColuna,
-            'stats'            => $stats,
-            'funcoes'          => $funcoes,
+            'usuario'           => $usuario,
+            'colunas'           => $colunas,
+            'tarefasPorColuna'  => $tarefasPorColuna,
+            'stats'             => $stats,
+            'funcoes'           => $funcoes,
 
             // filtros atuais (pra dar @selected e preencher inputs)
-            'servicos'         => $servicos,
-            'responsaveis'     => $responsaveis,
-            'filtroServico'    => $filtroServico,
-            'filtroResponsavel'=> $filtroResponsavel,
-            'filtroColuna'     => $filtroColuna,
-            'filtroDe'         => $filtroDe,
-            'filtroAte'        => $filtroAte,
+            'servicos'          => $servicos,
+            'responsaveis'      => $responsaveis,
+            'filtroServico'     => $filtroServico,
+            'filtroResponsavel' => $filtroResponsavel,
+            'filtroColuna'      => $filtroColuna,
+            'filtroDe'          => $filtroDe,
+            'filtroAte'         => $filtroAte,
         ]);
     }
+
+
 
     public function detalhesAjax(Request $r)
     {
@@ -163,6 +187,13 @@ class PainelController extends Controller
 
         // Recarrega coluna para pegar o nome
         $tarefa->load('coluna');
+
+        if($tarefa->coluna->slug == 'finalizada'){
+            $tarefa->update([
+                'finalizado_em' => now(),
+            ]);
+        }
+
 
         // Cria log de movimentação
         $log = TarefaLog::create([
@@ -494,23 +525,23 @@ class PainelController extends Controller
             if (!empty($data['funcionario_id'])) {
                 $funcionario = Funcionario::where('empresa_id', $empresaId)
                     ->where('cliente_id', $cliente->id)
+                    ->with('funcao') // para pegar o nome da função atual
                     ->findOrFail($data['funcionario_id']);
             } else {
-
                 $funcionario = Funcionario::create([
-                    'empresa_id'    => $empresaId,
-                    'cliente_id'    => $cliente->id,
-                    'nome'          => $data['nome'],
-                    'cpf'           => $data['cpf'] ?? null,
-                    'rg' => $data['rg'],
-                    'data_nascimento' =>$data['data_nascimento'],
+                    'empresa_id'      => $empresaId,
+                    'cliente_id'      => $cliente->id,
+                    'nome'            => $data['nome'],
+                    'cpf'             => $data['cpf'] ?? null,
+                    'rg'              => $data['rg'],
+                    'data_nascimento' => $data['data_nascimento'],
                     'funcao_id'       => $data['funcao_id'] ?? null,
-                    ]);
+                ]);
             }
 
             // 2) Coluna inicial do Kanban (Pendente)
             $colunaInicial = KanbanColuna::where('empresa_id', $empresaId)
-                ->where('slug', 'pendente') // se tiver slug
+                ->where('slug', 'pendente')
                 ->first()
                 ?? KanbanColuna::where('empresa_id', $empresaId)->orderBy('ordem')->first();
 
@@ -525,8 +556,25 @@ class PainelController extends Controller
                 'retorno_trabalho' => 'Retorno ao Trabalho',
             };
 
-            $titulo = "ASO - {$funcionario->nome}";
-            $descricao = "Tipo: {$tipoAsoLabel}";
+            $titulo     = "ASO - {$funcionario->nome}";
+            $descricao  = "Tipo: {$tipoAsoLabel}";
+
+            // Se for mudança de função para funcionário existente e veio uma nova função:
+            if (
+                $data['tipo_aso'] === 'mudanca_funcao'
+                && !empty($data['funcionario_id'])
+                && !empty($data['funcao_id'])
+            ) {
+                $funcaoAnteriorNome = optional($funcionario->funcao)->nome ?? 'Não informada';
+
+                // Atualiza o funcionário para a nova função
+                $funcionario->funcao_id = $data['funcao_id'];
+                $funcionario->save();
+
+                $funcaoNovaNome = Funcao::find($data['funcao_id'])->nome ?? 'Não informada';
+
+                $descricao .= " | Mudança de função: {$funcaoAnteriorNome} → {$funcaoNovaNome}";
+            }
 
             if (!empty($data['vai_fazer_treinamento']) && !empty($data['treinamentos'])) {
                 $descricao .= ' | Treinamentos: ' . implode(', ', $data['treinamentos']);
@@ -534,26 +582,25 @@ class PainelController extends Controller
 
             // 4) Cria a tarefa
             $tarefa = Tarefa::create([
-                'empresa_id'     => $empresaId,
-                'coluna_id'      => optional($colunaInicial)->id,
-                'cliente_id'     => $cliente->id,
-                'responsavel_id' => $usuario->id,
-                'funcionario_id' => $funcionario->id,
-                'servico_id'     => $servicoAsoId,
-                'titulo'         => $titulo,
-                'descricao'      => $descricao,
-                'inicio_previsto'=> $data['data_aso'], // usar campo já existente
-                // se você tiver campos específicos de ASO, pode setar aqui
+                'empresa_id'      => $empresaId,
+                'coluna_id'       => optional($colunaInicial)->id,
+                'cliente_id'      => $cliente->id,
+                'responsavel_id'  => $usuario->id,
+                'funcionario_id'  => $funcionario->id,
+                'servico_id'      => $servicoAsoId,
+                'titulo'          => $titulo,
+                'descricao'       => $descricao,
+                'inicio_previsto' => $data['data_aso'],
             ]);
 
-            // Opcional: primeiro log "Criada"
+            // Log inicial
             TarefaLog::create([
                 'tarefa_id'     => $tarefa->id,
                 'user_id'       => $usuario->id,
                 'de_coluna_id'  => null,
-                'acao' => 'criado',
+                'acao'          => 'criado',
                 'para_coluna_id'=> optional($colunaInicial)->id,
-                'observacao'     => 'Tarefa ASO criada pelo usuário.',
+                'observacao'    => $descricao, // aqui você já guarda essa mesma info se quiser
             ]);
 
             return $tarefa;
