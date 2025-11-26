@@ -628,7 +628,23 @@ class PainelController extends Controller
     }
 
 
+    public function destroy(Tarefa $tarefa, Request $request)
+    {
+        $usuario = $request->user();
 
+        // só master pode excluir
+        abort_unless($usuario && $usuario->isMaster(), 403);
+
+        // se quiser, garante que é da mesma empresa:
+        abort_unless($tarefa->empresa_id === $usuario->empresa_id, 403);
+
+        $tarefa->delete(); // Soft delete
+
+        return response()->json([
+            'ok'      => true,
+            'message' => 'Tarefa excluída com sucesso.',
+        ]);
+    }
 
 
 }

@@ -15,6 +15,9 @@
         </div>
     @endif
 
+
+
+
     @if ($errors->any())
         <div class="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
             <p class="font-medium mb-1">Ocorreram alguns erros ao salvar:</p>
@@ -464,21 +467,39 @@
     {{-- Modal de Detalhes da Tarefa --}}
     <div id="tarefa-modal"
          class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden">
             {{-- Cabeçalho --}}
-            <header class="flex items-center justify-between px-6 py-4 bg-[color:var(--color-brand-azul)] text-white rounded-t-2xl">
+            {{-- Cabeçalho (VERSÃO DEBUG) --}}
+            <div
+                class="flex items-center justify-between px-6 py-4
+           rounded-t-2xl shadow-sm
+           bg-gradient-to-r from-sky-800 via-sky-700 to-sky-500
+           text-white border-b border-sky-900/40"
+            >
                 <div>
-                    <h2 class="text-lg font-semibold">Detalhes da Tarefa</h2>
-                    <p class="text-xs text-white/80">
-                        ID: <span id="modal-tarefa-id">-</span>
+                    <h2 class="text-lg font-semibold tracking-tight">
+                        Detalhes da Tarefa
+                    </h2>
+                    <p class="text-xs text-white/80 mt-0.5">
+                        ID:
+                        <span id="modal-tarefa-id"
+                              class="font-mono bg-white/10 px-2 py-0.5 rounded">
+                -
+            </span>
                     </p>
                 </div>
+
                 <button type="button"
                         id="tarefa-modal-close"
-                        class="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20">
+                        class="w-8 h-8 flex items-center justify-center rounded-full
+                   bg-white/15 hover:bg-white/25
+                   text-white text-sm font-bold
+                   transition-colors duration-150"
+                        aria-label="Fechar">
                     ✕
                 </button>
-            </header>
+            </div>
+
 
             {{-- Conteúdo --}}
             <div class="flex-1 overflow-y-auto p-6 grid grid-cols-1 lg:grid-cols-[2fr,1.5fr] gap-5 text-sm text-slate-700">
@@ -855,6 +876,18 @@
                                hover:bg-indigo-500 transition">
                             Salvar Observação
                         </button>
+                        @isset($usuario)
+                            @if($usuario->isMaster())
+                                <button
+                                    type="button"
+                                    id="btn-excluir-tarefa"
+                                    class="mt-2 w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg
+                   border border-red-200 bg-red-50 text-red-700 text-sm font-semibold shadow-sm
+                   hover:bg-red-100 transition">
+                                    Excluir Tarefa
+                                </button>
+                            @endif
+                        @endisset
                     </section>
                 </div>
             </div>
@@ -1379,6 +1412,52 @@
             }
         });
 
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const btnExcluir = document.getElementById('btn-excluir-tarefa');
+
+            if (btnExcluir) {
+                btnExcluir.addEventListener('click', () => {
+                    if (!confirm('Tem certeza que deseja excluir esta tarefa?')) {
+                        return;
+                    }
+
+                    const idSpan   = document.getElementById('modal-tarefa-id');
+                    const tarefaId = idSpan ? idSpan.textContent.trim() : null;
+
+                    if (!tarefaId) {
+                        alert('ID da tarefa não encontrado.');
+                        return;
+                    }
+
+                    fetch(`{{ url('operacional/tarefas') }}/${tarefaId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'Accept': 'application/json',
+                        },
+                    })
+                        .then(r => r.json())
+                        .then(json => {
+                            if (!json.ok) {
+                                alert(json.message || 'Não foi possível excluir a tarefa.');
+                                return;
+                            }
+
+                            // Fecha modal e faz refresh ou remove a card do Kanban via JS
+                            const modal = document.getElementById('tarefa-modal');
+                            if (modal) modal.classList.add('hidden');
+
+                            // Se quiser ser simples:
+                            window.location.reload();
+                        })
+                        .catch(() => {
+                            alert('Erro na comunicação com o servidor.');
+                        });
+                });
+            }
+        });
     </script>
 
 

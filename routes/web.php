@@ -64,6 +64,9 @@ Route::middleware('auth')->group(function () {
             'salvarObservacao'
         ])->name('tarefas.observacao');
 
+        Route::delete('/tarefas/{tarefa}', [PainelController::class, 'destroy'])
+            ->name('operacional.tarefas.destroy');
+
         // ======================================================
         //  CRIAÇÃO DE TAREFAS (LOJA / GERAL)
         // ======================================================

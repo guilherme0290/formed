@@ -52,5 +52,44 @@ class User extends Authenticatable
         return $this->belongsTo(Papel::class);
     }
 
+    /**
+     * Verifica se o usuário possui um determinado papel pelo NOME.
+     *
+     * Ex:
+     *  $user->hasPapel('Master')
+     *  $user->hasPapel(['Master', 'Operacional'])
+     */
+    public function hasPapel(string|array $nome): bool
+    {
+        $papel = $this->papel; // já usa o relacionamento carregado, se tiver
+
+        if (!$papel) {
+            return false;
+        }
+
+        $atual = mb_strtolower($papel->nome);
+
+        $nomes = is_array($nome) ? $nome : [$nome];
+        $nomesNormalizados = array_map(fn ($n) => mb_strtolower($n), $nomes);
+
+        return in_array($atual, $nomesNormalizados, true);
+    }
+
+    /** Atalhos semânticos */
+    public function isMaster(): bool
+    {
+        return $this->hasPapel('Master');
+    }
+
+    public function isOperacional(): bool
+    {
+        return $this->hasPapel('Operacional');
+    }
+
+    public function isFinanceiro(): bool
+    {
+        return $this->hasPapel('Financeiro');
+    }
+
 
 }
