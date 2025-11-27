@@ -20,6 +20,7 @@ use App\Http\Controllers\Operacional\AprController;
 use App\Http\Controllers\Operacional\PaeController;
 use App\Http\Controllers\Operacional\TreinamentoNrController;
 use App\Http\Controllers\FuncaoController;
+use App\Http\Controllers\TarefaController;
 use Illuminate\Support\Facades\Route;
 
 // ==================== Controllers ====================
@@ -67,17 +68,11 @@ Route::middleware('auth')->group(function () {
         Route::delete('/tarefas/{tarefa}', [PainelController::class, 'destroy'])
             ->name('operacional.tarefas.destroy');
 
-        // ======================================================
-        //  CRIAÇÃO DE TAREFAS (LOJA / GERAL)
-        // ======================================================
 
-        // Criar tarefa (cliente existente)
-        Route::post('/tarefas/loja/existente', [PainelController::class, 'storeLojaExistente'])
-            ->name('tarefas.loja.existente');
+        Route::post('/tarefas/{tarefa}/finalizar-com-arquivo',
+            [TarefaController::class, 'finalizarComArquivo']
+        )->name('tarefas.finalizar-com-arquivo');
 
-        // Criar tarefa (cliente novo)
-        Route::post('/tarefas/loja/novo-cliente', [PainelController::class, 'storeLojaNovo'])
-            ->name('tarefas.loja.novo');
 
         // ======================================================
         //  FUNCIONÁRIOS DO CLIENTE

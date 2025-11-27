@@ -2,9 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\TarefaLog;
 use Illuminate\Http\Request;
 use App\Models\Tarefa;
 use App\Models\KanbanColuna;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class TarefaController extends Controller
 {
@@ -64,12 +68,67 @@ class TarefaController extends Controller
         return redirect()->route('tarefas.index')->with('ok', 'Tarefa removida.');
     }
 
-    public function mover(Request $r, Tarefa $tarefa)
+
+    public function finalizarComArquivo(Request $request, Tarefa $tarefa)
     {
-        $data = $r->validate([
-            'coluna_id' => 'required|exists:kanban_colunas,id',
+        $data = $request->validate([
+            'arquivo_cliente' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'],
+            'notificar'       => ['nullable', 'boolean'],
         ]);
-        $tarefa->update(['coluna_id' => $data['coluna_id']]);
-        return back()->with('ok', 'Tarefa movida.');
+
+        // coluna "finalizada" (se usar slug)
+        $colunaFinalizada = KanbanColuna::where('empresa_id', $tarefa->empresa_id)
+            ->where('slug', 'finalizada')
+            ->firstOrFail();
+
+        $colunaAtualId = (int) $tarefa->coluna_id;
+
+        DB::beginTransaction();
+
+        try {
+            // salva arquivo
+            $path = $request->file('arquivo_cliente')
+                ->store("tarefas/{$tarefa->empresa_id}", 'public');
+
+            $tarefa->update([
+                'coluna_id'           => $colunaFinalizada->id,
+                'finalizado_em'       => now(),
+                'path_documento_cliente'=> $path,
+            ]);
+
+            $log = TarefaLog::create([
+                'tarefa_id'      => $tarefa->id,
+                'user_id'        => Auth::id(),
+                'de_coluna_id'   => $colunaAtualId,
+                'para_coluna_id' => $colunaFinalizada->id,
+                'acao'           => 'movido',
+                'observacao'     => 'Finalizada com arquivo anexado',
+            ]);
+
+            $log->load(['deColuna','paraColuna','user']);
+
+            DB::commit();
+
+            return response()->json([
+                'ok'           => true,
+                'status_label' => $colunaFinalizada->nome,
+                'arquivo_url'  => $tarefa->path_documento_cliente
+                    ? asset('storage/' . $tarefa->path_documento_cliente)
+                    : null,
+                'log'          => [
+                    'de'   => optional($log->deColuna)->nome ?? 'Início',
+                    'para' => optional($log->paraColuna)->nome ?? '-',
+                    'user' => optional($log->user)->name ?? 'Sistema',
+                    'data' => optional($log->created_at)->format('d/m H:i'),
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'ok'    => false,
+                'error' => 'Erro ao finalizar a tarefa.',
+            ], 500);
+        }
     }
 }

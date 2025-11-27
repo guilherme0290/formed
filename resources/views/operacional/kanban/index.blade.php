@@ -1,5 +1,8 @@
 @extends('layouts.operacional')
 @section('title', 'Painel Operacional')
+@php
+    use Illuminate\Support\Str;
+@endphp
 
 @section('content')
 
@@ -152,9 +155,11 @@
 
                             <div class="flex-1 overflow-y-auto px-3 py-3 space-y-3 kanban-column"
                                  data-coluna-id="{{ $coluna->id }}"
-                                 data-coluna-cor="{{ $coluna->cor ?? '#38bdf8' }}">
+                                 data-coluna-cor="{{ $coluna->cor ?? '#38bdf8' }}"
+                                 data-coluna-slug="{{ Str::slug($coluna->nome) }}">
                             @forelse($tarefasColuna as $tarefa)
                                 @php
+
                                     $clienteNome  = optional($tarefa->cliente)->razao_social ?? 'Sem cliente';
                                     $servicoNome  = optional($tarefa->servico)->nome ?? 'Sem serviço';
                                     $respNome     = optional($tarefa->responsavel)->name ?? 'Sem responsável';
@@ -192,6 +197,8 @@
                                         data-responsavel="{{ $respNome }}"
                                         data-datahora="{{ $dataHora }}"
                                         data-sla="{{ $slaData }}"
+                                        data-move-url="{{ route('operacional.tarefas.mover', $tarefa) }}"
+                                        data-finalizar-url="{{ route('operacional.tarefas.finalizar-com-arquivo', $tarefa) }}"
                                         data-prioridade="{{ ucfirst($tarefa->prioridade) }}"
                                         data-status="{{ $coluna->nome }}"
                                         data-observacoes="{{ e($obs) }}"
@@ -215,6 +222,9 @@
                                             data-pgr-obra-cej-cno="{{ $pgr->obra_cej_cno }}"
                                             data-pgr-obra-turno="{{ $pgr->obra_turno_trabalho }}"
                                             data-pgr-funcoes="{{ $pgr->funcoes_resumo }}"
+                                        @endif
+                                        @if($tarefa->path_documento_cliente)
+                                            data-arquivo-cliente-url="{{ asset('storage/'.$tarefa->path_documento_cliente) }}"
                                         @endif
 
                                         {{-- APR --}}
@@ -463,6 +473,7 @@
             </div>
         </div>
     </div>
+    @include('operacional.kanban.modals.anexo-documento-cliente')
 
     {{-- Modal de Detalhes da Tarefa --}}
     <div id="tarefa-modal"
@@ -853,6 +864,25 @@
                             </button>
                         </div>
                     </section>
+                    {{-- 5. Documento enviado ao cliente --}}
+                    <section id="modal-arquivo-wrapper"
+                             class="bg-emerald-50 border border-emerald-100 rounded-xl p-4 mt-3 hidden">
+                        <h3 class="text-xs font-semibold text-emerald-700 mb-2">
+                            5. DOCUMENTO ENVIADO AO CLIENTE
+                        </h3>
+
+                        <p class="text-[12px] text-emerald-800 mb-2">
+                            Este é o arquivo anexado e enviado ao cliente na finalização da tarefa.
+                        </p>
+
+                        <a id="modal-arquivo-link"
+                           href="#"
+                           target="_blank"
+                           class="inline-flex items-center gap-2 text-xs font-semibold text-emerald-700
+              hover:text-emerald-900 underline">
+                            📎 Abrir arquivo anexado
+                        </a>
+                    </section>
 
                     {{-- 6. Adicionar observação interna --}}
                     <section class="bg-slate-50 border border-slate-200 rounded-xl p-4 h-full">
@@ -889,6 +919,12 @@
                             @endif
                         @endisset
                     </section>
+
+
+
+
+
+
                 </div>
             </div>
         </div>
@@ -899,10 +935,12 @@
 @push('scripts')
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+
+            // =========================================================
+            //  MODAL DE DETALHES DA TAREFA
+            // =========================================================
             const modal    = document.getElementById('tarefa-modal');
             const closeBtn = document.getElementById('tarefa-modal-close');
-
-
 
             const spanId         = document.getElementById('modal-tarefa-id');
             const spanCliente    = document.getElementById('modal-cliente');
@@ -921,10 +959,9 @@
             const spanObs        = document.getElementById('modal-observacoes');
             const textareaObsInterna = document.getElementById('modal-observacao-interna');
 
-            // 🔹 bloco de informações específicas de ASO (funcionário)
             const blocoAso = document.getElementById('modal-bloco-aso');
 
-            // 🔹 bloco de informações específicas de PGR
+            // PGR
             const blocoPgr        = document.getElementById('modal-bloco-pgr');
             const spanPgrTipo     = document.getElementById('modal-pgr-tipo');
             const spanPgrArt      = document.getElementById('modal-pgr-art');
@@ -940,16 +977,18 @@
             const spanPgrObraTurno= document.getElementById('modal-pgr-obra-turno');
             const ulPgrFuncoes    = document.getElementById('modal-pgr-funcoes');
 
+            // Treinamento NR
             const blocoTreinamento = document.getElementById('modal-bloco-treinamento');
             const spanTreinLocal   = document.getElementById('modal-treinamento-local');
             const spanTreinUnidade = document.getElementById('modal-treinamento-unidade');
             const spanTreinPart    = document.getElementById('modal-treinamento-participantes');
             const spanTreinFuncs   = document.getElementById('modal-treinamento-funcoes');
 
-            // abre modal ao clicar em qualquer card
-            document.addEventListener('click', function (e) {
-                const card = e.target.closest('.kanban-card');
-                console.log(card)
+            // Link do documento da tarefa (arquivo_cliente_path)
+            const arquivoWrapper = document.getElementById('modal-arquivo-wrapper');
+            const arquivoLink    = document.getElementById('modal-arquivo-link');
+
+            function openDetalhesModal(card) {
                 if (!card) return;
 
                 // Campos básicos
@@ -966,37 +1005,45 @@
                 spanStatusText.textContent = card.dataset.status ?? '';
                 spanObs.textContent        = card.dataset.observacoes ?? '';
 
-                // funcionário (valor bruto – depois a gente mostra/oculta por tipo)
                 spanFuncionario.textContent       = card.dataset.funcionario || '—';
                 spanFuncionarioFuncao.textContent = card.dataset.funcionarioFuncao || '—';
 
-
-                spanObs.textContent = card.dataset.observacoes ?? '';
                 if (textareaObsInterna) {
                     textareaObsInterna.value = card.dataset.observacaoInterna || '';
                 }
                 modal.dataset.observacaoUrl = card.dataset.observacaoUrl || '';
 
-                // === REGRA POR TIPO DE SERVIÇO (sem quebrar o que já existia) ===
+                // Link do arquivo do cliente
+                if (arquivoWrapper && arquivoLink) {
+                    const urlArquivo = card.dataset.arquivoClienteUrl || '';
+                    if (urlArquivo) {
+                        arquivoLink.href = urlArquivo;
+                        arquivoWrapper.classList.remove('hidden');
+                    } else {
+                        arquivoLink.href = '#';
+                        arquivoWrapper.classList.add('hidden');
+                    }
+                }
+
+                // === REGRAS POR TIPO DE SERVIÇO ===
                 const tipoServico = (card.dataset.servico || '').toLowerCase();
                 const isAso = tipoServico.includes('aso');
                 const isPgr = tipoServico.includes('pgr');
 
-                // --- ASO: mostra bloco de funcionário ---
+                // ASO
                 if (blocoAso) {
                     if (isAso) {
                         blocoAso.classList.remove('hidden');
                         spanFuncionario.textContent       = card.dataset.funcionario || '—';
                         spanFuncionarioFuncao.textContent = card.dataset.funcionarioFuncao || '—';
                     } else {
-                        // esconde quando não for ASO
                         blocoAso.classList.add('hidden');
                         spanFuncionario.textContent       = '—';
                         spanFuncionarioFuncao.textContent = '—';
                     }
                 }
 
-                // --- PGR: mostra bloco PGR e preenche ---
+                // PGR
                 if (blocoPgr) {
                     if (isPgr) {
                         blocoPgr.classList.remove('hidden');
@@ -1023,22 +1070,21 @@
                         spanPgrObraCej.textContent   = card.dataset.pgrObraCejCno || '—';
                         spanPgrObraTurno.textContent = card.dataset.pgrObraTurno || '—';
 
-                        // resumo das funções (ex.: "Carpinteiro (3), Servente (2)")
                         if (ulPgrFuncoes) {
                             ulPgrFuncoes.textContent = card.dataset.pgrFuncoes || '—';
                         }
                     } else {
-                        // se não for PGR, esconde bloco PGR
                         blocoPgr.classList.add('hidden');
                     }
                 }
 
-                // limpa blocos
-                ['apr','ltcat','ltip','pae','pcmso'].forEach(s => {
-                    document.getElementById(`modal-bloco-${s}`).classList.add('hidden');
+                // limpa blocos especiais
+                ['apr','ltcat','ltip','pae','pcmso'].forEach(slug => {
+                    const el = document.getElementById(`modal-bloco-${slug}`);
+                    if (el) el.classList.add('hidden');
                 });
 
-// APR
+                // APR
                 if (card.dataset.servico === 'APR') {
                     document.getElementById('modal-apr-endereco').textContent =
                         card.dataset.aprEndereco || '—';
@@ -1071,7 +1117,7 @@
                     blocoTreinamento.classList.add('hidden');
                 }
 
-// LTCAT
+                // LTCAT
                 if (card.dataset.servico === 'LTCAT') {
                     const tipoBruto = card.dataset.ltcatTipo || '';
                     let tipoLabel = '—';
@@ -1096,7 +1142,7 @@
                     document.getElementById('modal-bloco-ltcat').classList.remove('hidden');
                 }
 
-// LTIP
+                // LTIP
                 if (card.dataset.servico === 'LTIP') {
                     document.getElementById('modal-ltip-endereco').textContent =
                         card.dataset.ltipEndereco || '—';
@@ -1110,7 +1156,7 @@
                     document.getElementById('modal-bloco-ltip').classList.remove('hidden');
                 }
 
-// PAE
+                // PAE
                 if (card.dataset.servico === 'PAE') {
                     document.getElementById('modal-pae-endereco').textContent =
                         card.dataset.paeEndereco || '—';
@@ -1124,7 +1170,7 @@
                     document.getElementById('modal-bloco-pae').classList.remove('hidden');
                 }
 
-// PCMSO
+                // PCMSO
                 if (card.dataset.servico === 'PCMSO') {
                     const tipoBruto = card.dataset.pcmsoTipo || '';
                     let tipoLabel = '—';
@@ -1160,8 +1206,7 @@
                     document.getElementById('modal-bloco-pcmso').classList.remove('hidden');
                 }
 
-
-                // ajusta cor do badge de status conforme o texto
+                // badge de status
                 const status = (card.dataset.status || '').toLowerCase();
                 badgeStatus.className =
                     'inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border ';
@@ -1179,24 +1224,27 @@
                 modal.dataset.moveUrl  = card.dataset.moveUrl || '';
                 modal.dataset.tarefaId = card.dataset.id || '';
 
-                // mostra modal
                 modal.classList.remove('hidden');
                 modal.classList.add('flex');
-            });
+            }
 
-            // fechar modal
             function closeModal() {
+                if (!modal) return;
                 modal.classList.add('hidden');
                 modal.classList.remove('flex');
             }
 
-            closeBtn.addEventListener('click', closeModal);
+            if (closeBtn) {
+                closeBtn.addEventListener('click', closeModal);
+            }
 
-            modal.addEventListener('click', function (e) {
-                if (e.target === modal) {
-                    closeModal();
-                }
-            });
+            if (modal) {
+                modal.addEventListener('click', function (e) {
+                    if (e.target === modal) {
+                        closeModal();
+                    }
+                });
+            }
 
             document.addEventListener('keydown', function (e) {
                 if (e.key === 'Escape') {
@@ -1204,24 +1252,177 @@
                 }
             });
 
-            // Sortable (drag & drop) – mantém exatamente a mesma lógica
+            // Clique no card -> abre APENAS o modal de detalhes
+            document.addEventListener('click', function (e) {
+                const card = e.target.closest('.kanban-card');
+                if (!card) return;
+                openDetalhesModal(card);
+            });
+
+            // =========================================================
+            //  MODAL DE FINALIZAR COM ARQUIVO
+            // =========================================================
+            const finalizarModal       = document.getElementById('tarefa-finalizar-modal');
+            const finalizarCloseBtn    = document.getElementById('tarefa-finalizar-close');
+            const finalizarCloseXBtn   = document.getElementById('tarefa-finalizar-x');
+            const finalizarForm        = document.getElementById('tarefa-finalizar-form');
+            const finalizarArquivo     = document.getElementById('tarefa-finalizar-arquivo');
+            const finalizarNotificar   = document.getElementById('tarefa-finalizar-notificar');
+            const finalizarTituloSpan  = document.getElementById('tarefa-finalizar-titulo');
+            const finalizarClienteSpan = document.getElementById('tarefa-finalizar-cliente');
+
+            let finalizarCurrentCard   = null;
+            let finalizarUrl           = null;
+
+            function openFinalizarModal(card, url) {
+                console.log(finalizarModal)
+                if (!finalizarModal) return;
+
+                finalizarCurrentCard = card;
+                finalizarUrl         = url;
+
+                if (finalizarTituloSpan) {
+                    finalizarTituloSpan.textContent =
+                        (card.dataset.servico || '') + ' - #' + (card.dataset.id || '');
+                }
+                if (finalizarClienteSpan) {
+                    finalizarClienteSpan.textContent = card.dataset.cliente || '';
+                }
+
+                if (finalizarArquivo) {
+                    finalizarArquivo.value = '';
+                }
+                if (finalizarNotificar) {
+                    finalizarNotificar.checked = true;
+                }
+
+                finalizarModal.classList.remove('hidden');
+                finalizarModal.classList.add('flex');
+            }
+
+            function closeFinalizarModal() {
+                console.log('chamando metodo para fechar modal')
+                if (!finalizarModal) return;
+                finalizarModal.classList.add('hidden');
+                finalizarModal.classList.remove('flex');
+                finalizarCurrentCard = null;
+                finalizarUrl         = null;
+            }
+
+            [finalizarCloseBtn, finalizarCloseXBtn].forEach((btn) => {
+                if (!btn) return;
+
+                btn.addEventListener('click', function () {
+                    console.log('fechar');
+                    closeFinalizarModal();
+                    // se quiser voltar o card pra coluna original:
+                    window.location.reload();
+                });
+            });
+
+            if (finalizarModal) {
+                finalizarModal.addEventListener('click', function (e) {
+                    if (e.target === finalizarModal) {
+                        closeFinalizarModal();
+                        window.location.reload();
+                    }
+                });
+            }
+
+            if (finalizarForm) {
+                finalizarForm.addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    if (!finalizarUrl || !finalizarCurrentCard || !finalizarArquivo.files.length) {
+                        return;
+                    }
+
+                    const formData = new FormData();
+                    formData.append('arquivo_cliente', finalizarArquivo.files[0]);
+                    if (finalizarNotificar && finalizarNotificar.checked) {
+                        formData.append('notificar', '1');
+                    }
+
+                    fetch(finalizarUrl, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'Accept': 'application/json',
+                        },
+                        body: formData,
+                    })
+                        .then(r => r.json())
+                        .then(data => {
+                            if (!data || !data.ok) {
+                                alert(data.error || 'Erro ao finalizar tarefa.');
+                                return;
+                            }
+
+                            // Atualiza dataset do card com a URL do arquivo, se voltou do backend
+                            if (data.arquivo_url) {
+                                finalizarCurrentCard.dataset.arquivoClienteUrl = data.arquivo_url;
+                            }
+
+                            // atualiza status do card
+                            const statusName = data.status_label || 'Finalizada';
+                            finalizarCurrentCard.dataset.status = statusName;
+
+                            const statusSpan = finalizarCurrentCard.querySelector('[data-role="card-status-label"]');
+                            if (statusSpan) {
+                                statusSpan.textContent = statusName;
+                            }
+
+                            closeFinalizarModal();
+                            // Para evitar descompasso de contadores/ordem, recarrega a página
+                            window.location.reload();
+                        })
+                        .catch(() => {
+                            alert('Erro ao finalizar tarefa.');
+                        });
+                });
+            }
+
+            // Função global usada pelo Sortable
+            window.abreModalFinalizarTarefa = openFinalizarModal;
+
+            // =========================================================
+            //  DRAG & DROP (Sortable)
+            // =========================================================
             if (window.Sortable) {
                 document.querySelectorAll('.kanban-column').forEach(function (colunaEl) {
+
                     new Sortable(colunaEl, {
                         group: 'kanban',
                         animation: 150,
                         handle: '.kanban-card',
                         draggable: '.kanban-card',
-                        onEnd: function (evt) {
-                            const card = evt.item;
-                            const colunaId = card.closest('.kanban-column').dataset.colunaId;
-                            const moveUrl  = card.dataset.moveUrl;
 
+                        onEnd: function (evt) {
+                            const card      = evt.item;
+                            const colunaId  = card.closest('.kanban-column').dataset.colunaId;
+                            const colunaEl  = card.closest('.kanban-column');
                             const colunaCor = colunaEl?.dataset.colunaCor || '#38bdf8';
+                            const colunaSlug= colunaEl?.dataset.colunaSlug || '';
+                            const moveUrl   = card.dataset.moveUrl;
+
+                            // ajusta cor da borda com a cor da coluna
                             if (colunaCor) {
                                 card.style.borderLeftColor = colunaCor;
                             }
 
+                            // Se soltou na coluna "finalizada": NÃO chama mover(),
+                            // abre o modal de finalizar com arquivo.
+
+                            if (colunaSlug === 'finalizada') {
+                                const finalizarUrl = card.dataset.finalizarUrl;
+                                if (finalizarUrl) {
+                                    openFinalizarModal(card, finalizarUrl);
+                                } else {
+                                    window.location.reload();
+                                }
+                                return;
+                            }
+
+                            // demais colunas -> fluxo normal de mover
                             if (!moveUrl || !colunaId) return;
 
                             fetch(moveUrl, {
@@ -1231,9 +1432,7 @@
                                     'Content-Type': 'application/json',
                                     'Accept': 'application/json',
                                 },
-                                body: JSON.stringify({
-                                    coluna_id: colunaId,
-                                }),
+                                body: JSON.stringify({ coluna_id: colunaId }),
                             })
                                 .then(response => response.json())
                                 .then(data => {
@@ -1251,7 +1450,6 @@
                                     if (statusSpan && statusName) {
                                         statusSpan.textContent = statusName;
                                     }
-
                                     if (statusName) {
                                         card.dataset.status = statusName;
                                     }
@@ -1266,34 +1464,36 @@
                                         const logContainer = card.querySelector('[data-role="card-last-log"]');
                                         if (logContainer) {
                                             logContainer.innerHTML = `
-                                            <div class="flex items-center justify-between gap-2">
-                                                <span class="inline-flex items-center gap-1">
-                                                    <span>🔁</span>
-                                                    <span>
-                                                        ${(data.log.de || 'Início')}
-                                                        &rarr;
-                                                        ${(data.log.para || '-')}
-                                                    </span>
+                                        <div class="flex items-center justify-between gap-2">
+                                            <span class="inline-flex items-center gap-1">
+                                                <span>🔁</span>
+                                                <span>
+                                                    ${(data.log.de || 'Início')}
+                                                    &rarr;
+                                                    ${(data.log.para || '-')}
                                                 </span>
-                                                <span class="text-[10px] text-slate-400">
-                                                    ${(data.log.user || 'Sistema')}
-                                                    · ${(data.log.data || '')}
-                                                </span>
-                                            </div>
-                                        `;
+                                            </span>
+                                            <span class="text-[10px] text-slate-400">
+                                                ${(data.log.user || 'Sistema')}
+                                                · ${(data.log.data || '')}
+                                            </span>
+                                        </div>
+                                    `;
                                         }
                                     }
                                 })
                                 .catch(() => {
-                                    // pode colocar um toast de erro aqui se quiser
+                                    // aqui dá pra colocar um toast se quiser
                                 });
                         }
                     });
+
                 });
             }
 
         });
     </script>
+
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const alerts = document.querySelectorAll('.auto-dismiss');
@@ -1458,7 +1658,11 @@
                 });
             }
         });
+
+
     </script>
+
+
 
 
 

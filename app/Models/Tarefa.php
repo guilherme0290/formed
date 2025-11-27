@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
 
 class Tarefa extends Model
 {
@@ -31,6 +32,7 @@ class Tarefa extends Model
         'fim_previsto',
         'finalizado_em',
         'data_prevista',
+        'path_documento_cliente'
     ];
 
     protected $casts = [
@@ -69,6 +71,15 @@ class Tarefa extends Model
     public function logs(): HasMany
     {
         return $this->hasMany(TarefaLog::class);
+    }
+
+    public function getArquivoClienteUrlAttribute(): ?string
+    {
+        if (!$this->path_documento_cliente) {
+            return null;
+        }
+        // supondo disco "public"
+        return Storage::disk('public')->url($this->path_documento_cliente);
     }
 
     public function ultimoLogMovimentacao(): ?TarefaLog
