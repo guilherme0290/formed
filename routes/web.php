@@ -57,6 +57,9 @@ Route::middleware('auth')->group(function () {
             return redirect()->route('operacional.kanban');
         })->name('painel');
 
+        Route::post('/funcoes/store-ajax', [FuncaoController::class, 'storeAjax'])
+            ->name('funcoes.store-ajax');
+
         // Drag & Drop Kanban
         Route::post('/tarefas/{tarefa}/mover', [PainelController::class, 'mover'])
             ->name('tarefas.mover');

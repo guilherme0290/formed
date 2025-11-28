@@ -141,29 +141,33 @@
 
                 {{-- 3. Funções e Quantidades --}}
                 <section>
-                    <div class="flex items-center justify-between mb-3">
-                        <h2 class="text-sm font-semibold text-slate-800">3. Funções e Quantidades</h2>
+                    {{-- Cabeçalho: título + botão de CADASTRO (modal) --}}
+                    <div class="flex items-center justify-between gap-3 mb-3">
+                        <h2 class="text-sm font-semibold text-slate-800">
+                            3. Funções e Quantidades
+                        </h2>
 
-                        <button type="button" id="ltcat-btn-add-funcao"
-                                class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-orange-500 text-white text-xs font-semibold hover:bg-orange-600">
-                            <span>+</span>
-                            <span>Adicionar Função</span>
-                        </button>
+                        {{-- Botão padrão: abre modal para cadastrar uma nova função na base geral --}}
+                        <x-funcoes.create-button
+                            label="Cadastrar nova função"
+                            variant="orange"
+                        />
                     </div>
 
+                    {{-- Lista de funções do formulário --}}
                     <div id="ltcat-funcoes-wrapper" class="space-y-3">
                         @foreach($funcoesForm as $idx => $f)
                             <div class="ltcat-funcao-item rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
                                 <div class="flex items-center justify-between mb-2">
-                                <span data-role="ltcat-funcao-badge"
-                                      class="text-[11px] px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 font-semibold">
-                                    Função {{ $idx + 1 }}
-                                </span>
+                                    <span data-role="ltcat-funcao-badge"
+                                          class="text-[11px] px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 font-semibold">
+                                        Função {{ $idx + 1 }}
+                                    </span>
 
                                     <button type="button"
                                             class="ltcat-btn-remove-funcao inline-flex items-center gap-1 px-2 py-0.5
-                                               rounded-full text-[11px] border border-red-200 text-red-600
-                                               hover:bg-red-50">
+                                   rounded-full text-[11px] border border-red-200 text-red-600
+                                   hover:bg-red-50">
                                         ✕ Remover
                                     </button>
                                 </div>
@@ -193,6 +197,15 @@
                                 </div>
                             </div>
                         @endforeach
+                    </div>
+
+                    {{-- Botão para adicionar NOVO BLOCO de função no formulário --}}
+                    <div class="flex justify-end mt-3">
+                        <button type="button" id="ltcat-btn-add-funcao"
+                                class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-orange-500 text-white text-xs font-semibold hover:bg-orange-600">
+                            <span>+</span>
+                            <span>Adicionar função</span>
+                        </button>
                     </div>
 
                     @error('funcoes')

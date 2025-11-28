@@ -68,6 +68,43 @@ class FuncaoController extends Controller
         ], 201);
     }
 
+    public function storeAjax(Request $request)
+    {
+        $data = $request->validate([
+            'nome' => ['required', 'string', 'max:255'],
+        ]);
+
+        $nome = trim($data['nome']);
+
+        // Ajuste aqui a regra de unicidade conforme seu modelo (empresa_id, etc.)
+        $query = Funcao::query()
+            ->whereRaw('LOWER(nome) = ?', [mb_strtolower($nome, 'UTF-8')]);
+
+        if (auth()->user()?->empresa_id) {
+            $query->where('empresa_id', auth()->user()->empresa_id);
+        }
+
+        $jaExiste = $query->first();
+
+        if ($jaExiste) {
+            return response()->json([
+                'ok'      => false,
+                'message' => 'Já existe uma função cadastrada com este nome.',
+            ], 422);
+        }
+
+        $funcao = Funcao::create([
+            'nome'       => $nome,
+            'empresa_id' => auth()->user()->empresa_id ?? null, // ajuste se não tiver esse campo
+        ]);
+
+        return response()->json([
+            'ok'   => true,
+            'id'   => $funcao->id,
+            'nome' => $funcao->nome,
+        ]);
+    }
+
     public function storefast(Request $request)
     {
         $usuario   = Auth::user();

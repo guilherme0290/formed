@@ -59,20 +59,39 @@
                     <div class="flex items-center justify-between mb-3">
                         <h2 class="text-sm font-semibold text-slate-800">Funções e Quantidades</h2>
 
-                        <button type="button" id="ltip-btn-add-funcao"
-                                class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-sky-600 text-white text-xs font-semibold hover:bg-sky-700">
-                            <span>+</span> <span>Adicionar Função</span>
-                        </button>
+                        <div class="flex items-center gap-3">
+                            {{-- Botão cadastrar nova função (modal) --}}
+                            <x-funcoes.create-button
+                                label="Cadastrar nova função"
+                                variant="red"
+                            />
+
+                            {{-- Botão adicionar linha de função --}}
+                            <button type="button" id="ltip-btn-add-funcao"
+                                    class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-600
+                           text-white text-xs font-semibold hover:bg-red-700">
+                                <span>+</span>
+                                <span>Adicionar função</span>
+                            </button>
+                        </div>
                     </div>
 
                     <div id="ltip-funcoes-wrapper" class="space-y-3">
                         @foreach($funcoesForm as $idx => $f)
                             <div class="ltip-funcao-item rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
                                 <div class="flex items-center justify-between mb-2">
-                                    <span data-role="ltip-funcao-badge"
-                                          class="text-[11px] px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 font-semibold">
-                                        Função {{ $idx + 1 }}
-                                    </span>
+                    <span data-role="ltip-funcao-badge"
+                          class="text-[11px] px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 font-semibold">
+                        Função {{ $idx + 1 }}
+                    </span>
+
+                                    {{-- Botão remover função --}}
+                                    <button type="button"
+                                            class="ltip-btn-remove-funcao inline-flex items-center gap-1 px-2 py-0.5
+                                   rounded-full text-[11px] border border-red-200 text-red-600
+                                   hover:bg-red-50">
+                                        ✕ Remover
+                                    </button>
                                 </div>
 
                                 <div class="grid grid-cols-12 gap-3 items-end">
@@ -107,6 +126,7 @@
                     @enderror
                 </section>
 
+
                 {{-- Footer --}}
                 <div class="pt-4 border-t border-slate-100 mt-4">
                     <button type="submit"
@@ -124,14 +144,48 @@
                 const wrapper = document.getElementById('ltip-funcoes-wrapper');
                 const btnAdd  = document.getElementById('ltip-btn-add-funcao');
 
+                if (!wrapper || !btnAdd) return;
+
+                function renumerarFuncoes() {
+                    const itens      = wrapper.querySelectorAll('.ltip-funcao-item');
+                    const podeRemover = itens.length > 1;
+
+                    itens.forEach((item, index) => {
+                        // Badge "Função X"
+                        const badge = item.querySelector('[data-role="ltip-funcao-badge"]');
+                        if (badge) {
+                            badge.textContent = 'Função ' + (index + 1);
+                        }
+
+                        // Mostra/oculta botão remover conforme quantidade
+                        const btnRemove = item.querySelector('.ltip-btn-remove-funcao');
+                        if (btnRemove) {
+                            btnRemove.style.display = podeRemover ? 'inline-flex' : 'none';
+                        }
+
+                        // Reindexa names e ids
+                        item.querySelectorAll('select, input').forEach(el => {
+                            if (el.name && el.name.includes('funcoes[')) {
+                                el.name = el.name.replace(/funcoes\[\d+]/, 'funcoes[' + index + ']');
+                            }
+
+                            if (el.id && /^funcoes_\d+_funcao_id$/.test(el.id)) {
+                                el.id = 'funcoes_' + index + '_funcao_id';
+                            }
+                        });
+                    });
+                }
+
+                // Clique em "Adicionar Função"
                 btnAdd.addEventListener('click', function () {
-                    const itens  = wrapper.querySelectorAll('.ltip-funcao-item');
-                    const index  = itens.length;
+                    const itens = wrapper.querySelectorAll('.ltip-funcao-item');
+                    if (itens.length === 0) return;
 
-                    const base   = itens[0];
-                    const clone  = base.cloneNode(true);
+                    const index = itens.length;
+                    const base  = itens[0];
+                    const clone = base.cloneNode(true);
 
-                    // SELECTS
+                    // Limpa e reindexa selects
                     clone.querySelectorAll('select').forEach(select => {
                         if (select.name && select.name.includes('funcoes[')) {
                             select.name = select.name.replace(/\[\d+]/, '[' + index + ']');
@@ -142,27 +196,38 @@
                         select.value = '';
                     });
 
-                    // INPUTS
+                    // Limpa e reindexa inputs
                     clone.querySelectorAll('input').forEach(input => {
                         if (input.name && input.name.includes('funcoes[')) {
                             input.name = input.name.replace(/\[\d+]/, '[' + index + ']');
                         }
 
-                        if (input.name.includes('[quantidade]')) {
+                        if (input.classList.contains('ltip-qtd-input') || input.name.includes('[quantidade]')) {
                             input.value = 1;
                         } else {
                             input.value = '';
                         }
                     });
 
-                    // Badge
-                    const badge = clone.querySelector('[data-role="ltip-funcao-badge"]');
-                    if (badge) {
-                        badge.textContent = 'Função ' + (index + 1);
-                    }
-
                     wrapper.appendChild(clone);
+                    renumerarFuncoes();
                 });
+
+                // Clique em "Remover" (delegação)
+                wrapper.addEventListener('click', function (e) {
+                    const btn = e.target.closest('.ltip-btn-remove-funcao');
+                    if (!btn) return;
+
+                    const item  = btn.closest('.ltip-funcao-item');
+                    const itens = wrapper.querySelectorAll('.ltip-funcao-item');
+                    if (!item || itens.length <= 1) return; // nunca deixa zerar
+
+                    item.remove();
+                    renumerarFuncoes();
+                });
+
+                // Inicializa estado (badge + visibilidade do remover)
+                renumerarFuncoes();
             });
         </script>
     @endpush

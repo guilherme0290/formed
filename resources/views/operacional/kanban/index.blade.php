@@ -177,14 +177,14 @@
                                 class="inline-flex items-center justify-center min-w-[2rem] h-7 rounded-full
                                bg-white text-[11px] font-semibold text-slate-600 border border-slate-200
                                shadow-sm">
-                        {{ $tarefasColuna->count() }}
-                    </span>
+                                    {{ $tarefasColuna->count() }}
+                            </span>
                         </header>
 
                         {{-- cards --}}
                         <div class="flex-1 overflow-y-auto px-3 py-3 space-y-3 kanban-column"
                              data-coluna-id="{{ $coluna->id }}"
-                             data-coluna-cor="{{ $coluna->cor ?? '#38bdf8' }}"
+                             data-coluna-cor="{{ $coluna->cor  }}"
                              data-coluna-slug="{{ Str::slug($coluna->nome) }}">
                             @forelse($tarefasColuna as $tarefa)
                                     @php
@@ -293,7 +293,7 @@
                                     <article
                                         class="kanban-card bg-white rounded-2xl shadow-md border border-slate-200 border-l-4
                                         px-3 py-3 text-xs cursor-pointer hover:shadow-lg transition hover:-translate-y-0.5"
-                                        style="border-left-color: {{ $coluna->cor ?? '#38bdf8' }};"
+                                        style="border-left-color: {{ $coluna->cor  }};"
 
                                         data-move-url="{{ route('operacional.tarefas.mover', $tarefa) }}"
 

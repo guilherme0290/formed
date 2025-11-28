@@ -65,7 +65,8 @@
                         <input type="hidden" name="com_art" id="input-com-art"
                                value="{{ old('com_art', isset($pgr) ? (int)$pgr->com_art : 1) }}">
 
-                        <div id="alert-art" class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                        <div id="alert-art"
+                             class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
                             ⚠ Custo adicional de R$ {{ number_format($valorArt, 2, ',', '.') }}
                         </div>
                     </section>
@@ -76,7 +77,8 @@
 
                             <div class="grid md:grid-cols-2 gap-4 mb-4">
                                 <div>
-                                    <label class="block text-xs font-medium text-slate-500 mb-1">Nome/Razão Social</label>
+                                    <label class="block text-xs font-medium text-slate-500 mb-1">Nome/Razão
+                                        Social</label>
                                     <input type="text" name="contratante_nome"
                                            value="{{ old('contratante_nome', $pgr->contratante_nome ?? '') }}"
                                            class="w-full rounded-lg border-slate-200 text-sm px-3 py-2">
@@ -99,7 +101,8 @@
                                            class="w-full rounded-lg border-slate-200 text-sm px-3 py-2">
                                 </div>
                                 <div>
-                                    <label class="block text-xs font-medium text-slate-500 mb-1">Endereço da Obra</label>
+                                    <label class="block text-xs font-medium text-slate-500 mb-1">Endereço da
+                                        Obra</label>
                                     <input type="text" name="obra_endereco"
                                            value="{{ old('obra_endereco', $pgr->obra_endereco ?? '') }}"
                                            class="w-full rounded-lg border-slate-200 text-sm px-3 py-2">
@@ -114,7 +117,8 @@
                                            class="w-full rounded-lg border-slate-200 text-sm px-3 py-2">
                                 </div>
                                 <div>
-                                    <label class="block text-xs font-medium text-slate-500 mb-1">Turno(s) de Trabalho</label>
+                                    <label class="block text-xs font-medium text-slate-500 mb-1">Turno(s) de
+                                        Trabalho</label>
                                     <input type="text" name="obra_turno_trabalho"
                                            value="{{ old('obra_turno_trabalho', $pgr->obra_turno_trabalho ?? '') }}"
                                            placeholder="Ex: Diurno (7h às 17h)"
@@ -133,7 +137,8 @@
                                 <label class="block text-xs font-medium text-slate-500 mb-1">
                                     Funcionários Homens
                                 </label>
-                                <input type="number" name="qtd_homens"   value="{{ old('qtd_homens', $pgr->qtd_homens ?? 0) }}"
+                                <input type="number" name="qtd_homens"
+                                       value="{{ old('qtd_homens', $pgr->qtd_homens ?? 0) }}"
                                        class="w-full rounded-lg border-slate-200 text-sm px-3 py-2">
                             </div>
 
@@ -141,7 +146,8 @@
                                 <label class="block text-xs font-medium text-slate-500 mb-1">
                                     Funcionárias Mulheres
                                 </label>
-                                <input type="number" name="qtd_mulheres"   value="{{ old('qtd_mulheres', $pgr->qtd_mulheres ?? 0) }}"
+                                <input type="number" name="qtd_mulheres"
+                                       value="{{ old('qtd_mulheres', $pgr->qtd_mulheres ?? 0) }}"
                                        class="w-full rounded-lg border-slate-200 text-sm px-3 py-2">
                             </div>
 
@@ -156,11 +162,15 @@
                     </section>
 
                     {{-- 3. Funções e Cargos --}}
+                    {{-- 3. Funções e Cargos --}}
                     <section>
-                        <div class="flex items-center justify-between mb-3">
-                            <h2 class="text-sm font-semibold text-slate-800">3. Funções e Cargos</h2>
+                        {{-- Cabeçalho da seção: título + botão alinhados --}}
+                        <div class="flex items-center justify-between gap-3 mb-3">
+                            <h2 class="text-sm font-semibold text-slate-800">
+                                3. Funções e Cargos
+                            </h2>
 
-
+                            <x-funcoes.create-button label="Cadastrar nova função" variant="emerald" />
                         </div>
 
                         @php
@@ -176,14 +186,16 @@
                                 }
                             }
                         @endphp
+
                         <div id="funcoes-wrapper" class="space-y-3">
                             @foreach($funcoesForm as $idx => $f)
                                 <div class="funcao-item rounded-xl border border-slate-200 bg-slate-50 px-4 py-3"
                                      data-funcao-index="{{ $idx }}">
                                     <div class="flex items-center justify-between mb-2">
-                <span class="badge-funcao text-[11px] px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 font-semibold">
-                    Função {{ $idx + 1 }}
-                </span>
+                                        <span
+                                            class="badge-funcao text-[11px] px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 font-semibold">
+                                            Função {{ $idx + 1 }}
+                                        </span>
 
                                         {{-- Botão remover --}}
                                         <button type="button"
@@ -223,7 +235,9 @@
                                         </div>
 
                                         <div class="col-span-3">
-                                            <label class="block text-xs font-medium text-slate-500 mb-1">Descrição (opcional)</label>
+                                            <label class="block text-xs font-medium text-slate-500 mb-1">
+                                                Descrição (opcional)
+                                            </label>
                                             <input type="text"
                                                    name="funcoes[{{ $idx }}][descricao]"
                                                    class="w-full rounded-lg border-slate-200 text-sm px-3 py-2"
@@ -235,19 +249,19 @@
                             @endforeach
                         </div>
 
-
-                        <div class="flex items-center justify-between mb-3">
-                        <button type="button" id="btn-add-funcao"
-                                class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-500 text-white text-xs font-semibold hover:bg-emerald-600">
-                            <span>+</span>
-                            <span>Adicionar</span>
-                        </button>
+                        <div class="flex justify-end mt-3">
+                            <button type="button" id="btn-add-funcao"
+                                    class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-500 text-white text-xs font-semibold hover:bg-emerald-600">
+                                <span>+</span>
+                                <span>Adicionar</span>
+                            </button>
                         </div>
 
                         @error('funcoes')
                         <p class="mt-2 text-xs text-red-600">{{ $message }}</p>
                         @enderror
                     </section>
+
 
 
                     {{-- Rodapé --}}
@@ -271,9 +285,9 @@
         <script>
             document.addEventListener('DOMContentLoaded', function () {
                 // ========= ART =========
-                const btnsArt   = document.querySelectorAll('.btn-art');
+                const btnsArt = document.querySelectorAll('.btn-art');
                 const inputComArt = document.getElementById('input-com-art');
-                const alertArt  = document.getElementById('alert-art');
+                const alertArt = document.getElementById('alert-art');
 
                 function aplicarEstadoArt(valor) {
                     if (!inputComArt) return;
@@ -302,16 +316,16 @@
                     });
                 });
 
-                    // ao carregar, aplica o valor que veio do backend (create ou edit)
+                // ao carregar, aplica o valor que veio do backend (create ou edit)
                 if (inputComArt) {
                     aplicarEstadoArt(inputComArt.value || '1');
                 }
 
 
                 // ========= TOTAL TRABALHADORES =========
-                const inputHomens   = document.querySelector('input[name="qtd_homens"]');
+                const inputHomens = document.querySelector('input[name="qtd_homens"]');
                 const inputMulheres = document.querySelector('input[name="qtd_mulheres"]');
-                const totalEl       = document.getElementById('total-trabalhadores');
+                const totalEl = document.getElementById('total-trabalhadores');
 
                 function atualizarTotal() {
                     const h = parseInt(inputHomens?.value || '0', 10);
@@ -328,7 +342,7 @@
                 // ========= FUNÇÕES E CARGOS (dinâmico) =========
                 // ========= FUNÇÕES E CARGOS (dinâmico) =========
                 const wrapper = document.getElementById('funcoes-wrapper');
-                const btnAdd  = document.getElementById('btn-add-funcao');
+                const btnAdd = document.getElementById('btn-add-funcao');
 
                 if (wrapper && btnAdd) {
                     btnAdd.addEventListener('click', function () {
@@ -385,7 +399,7 @@
                     });
                 }
 
-                    // função auxiliar para reindexar os índices/names/labels
+                // função auxiliar para reindexar os índices/names/labels
                 function reindexFuncoes(wrapper) {
                     const itens = wrapper.querySelectorAll('.funcao-item');
 
@@ -521,8 +535,6 @@
                 }
             }
         </script>
-
-
 
     @endpush
 @endsection
