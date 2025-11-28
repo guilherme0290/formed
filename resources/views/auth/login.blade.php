@@ -6,6 +6,8 @@
     <title>Entrar - Formed</title>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
+    <link rel="shortcut icon" type="image/png" href="{{ asset('favicon.png') }}">
 </head>
 <body class="min-h-screen bg-slate-950 text-slate-100">
 
@@ -21,6 +23,34 @@
             {{-- Lado esquerdo: branding / texto --}}
             <div class="hidden lg:flex flex-col justify-between rounded-3xl bg-gradient-to-b from-slate-900/80 via-slate-900/90 to-slate-950/90 border border-slate-800/80 px-9 py-9 shadow-2xl shadow-slate-950/60">
                 <div>
+                    {{-- Logo Formed --}}
+                    <div class="mb-8">
+                        <div
+                            class="inline-flex items-center gap-3
+               rounded-3xl bg-white/95 px-4 py-2
+               shadow-xl shadow-slate-900/50
+               border border-slate-200/80"
+                        >
+                            <div class="flex items-center justify-center h-14 w-14 rounded-3xl bg-white">
+                                <img
+                                    src="{{ asset('storage/logo.svg') }}"
+                                    alt="Formed"
+                                    class="h-12 w-auto max-h-full"
+                                >
+                            </div>
+
+                            <div class="flex flex-col">
+            <span class="text-xs font-semibold tracking-wide text-slate-900">
+                Formed
+            </span>
+                                <span class="text-[11px] uppercase tracking-[0.18em] text-slate-500">
+                Saúde &amp; Segurança Ocupacional
+            </span>
+                            </div>
+                        </div>
+                    </div>
+
+
                     <div class="inline-flex items-center gap-2 rounded-full bg-slate-800/80 border border-slate-700/80 px-3 py-1 text-[11px] text-slate-300 mb-4">
                         <span class="inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
                         Plataforma de Saúde e Segurança Ocupacional
@@ -70,12 +100,18 @@
             <div class="bg-slate-950/80 border border-slate-800/80 rounded-3xl shadow-2xl shadow-slate-950/70 px-7 py-8 sm:px-9 sm:py-10 backdrop-blur">
                 {{-- Logo / título (mobile + desktop) --}}
                 <div class="flex items-center gap-3 mb-6">
-                    <div class="w-12 h-12 rounded-2xl bg-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-500/40">
-                        <span class="text-white text-2xl font-semibold">F</span>
+                    {{-- Logo compacta pra mobile / card --}}
+                    <div class="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-700 flex items-center justify-center shadow-lg shadow-slate-900/60 overflow-hidden">
+                        <img
+                            src="{{ asset('favicon.png') }}"
+                            alt="Formed"
+                            class="w-10 h-auto"
+                        >
                     </div>
+
                     <div>
                         <h2 class="text-xl font-semibold text-slate-50 tracking-tight">
-                            Entrar no Formed
+                            Entrar
                         </h2>
                         <p class="text-[13px] text-slate-400">
                             Acesse o painel com seu e-mail corporativo.
@@ -132,7 +168,6 @@
                             <label class="block text-xs font-medium text-slate-300">
                                 Senha
                             </label>
-                            {{-- opcional: link de esqueci a senha futuramente --}}
                             <a href="#"
                                class="text-[11px] text-indigo-300 hover:text-indigo-200 hover:underline">
                                 Esqueceu a senha?
