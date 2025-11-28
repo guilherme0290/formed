@@ -8,6 +8,8 @@
     <title>@yield('title', 'Painel Operacional') - Formed</title>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
+    <link rel="shortcut icon" type="image/png" href="{{ asset('favicon.png') }}">
 </head>
 <body class="bg-slate-900">
 <div class="min-h-screen flex">
@@ -61,8 +63,19 @@
             </div>
         </header>
 
-        <main class="flex-1">
-            @yield('content')
+        <main class="flex-1 relative overflow-hidden">
+
+            {{-- Marca d’água com a logo da FORMED --}}
+            <div class="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.06]">
+                <img src="{{ asset('storage/logo.svg') }}"
+                     alt="FORMED"
+                     class="max-w-[512px] w-full">
+            </div>
+
+            {{-- Conteúdo das telas operacionais fica por cima --}}
+            <div class="relative z-10">
+                @yield('content')
+            </div>
         </main>
     </div>
 </div>

@@ -33,130 +33,159 @@
     @endif
     <div class="w-full max-w-7xl mx-auto px-3 md:px-4 py-4 md:py-5">
 
-        {{-- Barra de busca --}}
-        <div class="flex items-center gap-4 mb-6">
+        {{-- Barra de busca + Nova Tarefa --}}
+        <div class="flex flex-col md:flex-row md:items-center gap-3 md:gap-4 mb-6">
             <div class="flex-1">
                 <div class="relative">
                     <span class="absolute inset-y-0 left-3 flex items-center text-slate-400 text-sm">🔍</span>
                     <input type="text" placeholder="Buscar..."
-                           class="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400">
+                           class="w-full pl-9 pr-3 py-2.5 rounded-2xl border border-slate-200 bg-white/95
+                              text-sm text-slate-700 shadow-sm
+                              focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400">
                 </div>
             </div>
 
             <a href="{{ route('operacional.kanban.aso.clientes') }}"
-               class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-600 text-white text-sm font-medium shadow-sm">
+               class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl
+                  bg-gradient-to-r from-sky-500 to-cyan-400
+                  text-white text-sm font-semibold shadow-md shadow-sky-500/30
+                  hover:from-sky-600 hover:to-cyan-500 transition">
                 <span>Nova Tarefa</span>
             </a>
         </div>
 
         {{-- Título --}}
-        <div class="mb-4">
-            <h1 class="text-2xl font-semibold text-slate-900">Painel Operacional</h1>
-            <p class="text-sm text-slate-500">
-                Suas tarefas atribuídas - {{ $usuario->name }}
+        <div class="mb-3">
+            <h1 class="text-lg md:text-xl font-semibold text-slate-700">
+                Painel operacional
+            </h1>
+            <p class="mt-0.5 text-xs md:text-sm text-slate-500">
+                Suas tarefas atribuídas ·
+                <span class="font-medium text-sky-700">{{ $usuario->name }}</span>
             </p>
         </div>
 
+        {{-- Filtros em card --}}
+        <section class="mb-4 rounded-2xl bg-white/95 border border-slate-100 shadow-sm">
+            <form method="GET" class="grid md:grid-cols-3 gap-3 md:gap-4 p-3 md:p-4 text-sm">
 
-        {{-- Filtros --}}
-        <form method="GET" class="grid md:grid-cols-3 gap-3 mb-4 text-sm">
-            <div>
-                <label class="block text-[11px] font-medium text-slate-500 mb-0.5">Tipo de Serviço</label>
-                <select name="servico_id"
-                        class="w-full rounded-xl border-slate-200 bg-white py-1.5 px-3 text-sm focus:ring-sky-400 focus:border-sky-400">
-                    <option value="">Todos os serviços</option>
-                    @foreach($servicos as $servico)
-                        <option value="{{ $servico->id }}" @selected($filtroServico == $servico->id)>
-                            {{ $servico->nome }}
-                        </option>
-                    @endforeach
-                </select>
-            </div>
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-500 tracking-wide mb-1">
+                        Tipo de Serviço
+                    </label>
+                    <select name="servico_id"
+                            class="w-full rounded-xl border border-slate-200 bg-slate-50/60 py-2 px-3 text-sm
+                               text-slate-700
+                               focus:bg-white focus:ring-2 focus:ring-sky-400 focus:border-sky-400">
+                        <option value="">Todos os serviços</option>
+                        @foreach($servicos as $servico)
+                            <option value="{{ $servico->id }}" @selected($filtroServico == $servico->id)>
+                                {{ $servico->nome }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
 
-            <div>
-                <label class="block text-[11px] font-medium text-slate-500 mb-0.5">Responsável</label>
-                <select name="responsavel_id"
-                        class="w-full rounded-xl border-slate-200 bg-white py-1.5 px-3 text-sm focus:ring-sky-400 focus:border-sky-400">
-                    <option value="">Todos os responsáveis</option>
-                    @foreach($responsaveis as $resp)
-                        <option value="{{ $resp->id }}" @selected($filtroResponsavel == $resp->id)>
-                            {{ $resp->name }}
-                        </option>
-                    @endforeach
-                </select>
-            </div>
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-500 tracking-wide mb-1">
+                        Responsável
+                    </label>
+                    <select name="responsavel_id"
+                            class="w-full rounded-xl border border-slate-200 bg-slate-50/60 py-2 px-3 text-sm
+                               text-slate-700
+                               focus:bg-white focus:ring-2 focus:ring-sky-400 focus:border-sky-400">
+                        <option value="">Todos os responsáveis</option>
+                        @foreach($responsaveis as $resp)
+                            <option value="{{ $resp->id }}" @selected($filtroResponsavel == $resp->id)>
+                                {{ $resp->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
 
-            <div>
-                <label class="block text-[11px] font-medium text-slate-500 mb-0.5">Status (Coluna)</label>
-                <select name="coluna_id"
-                        class="w-full rounded-xl border-slate-200 bg-white py-1.5 px-3 text-sm focus:ring-sky-400 focus:border-sky-400">
-                    <option value="">Todos os status</option>
-                    @foreach($colunas as $col)
-                        <option value="{{ $col->id }}" @selected($filtroColuna == $col->id)>
-                            {{ $col->nome }}
-                        </option>
-                    @endforeach
-                </select>
-            </div>
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-500 tracking-wide mb-1">
+                        Status (Coluna)
+                    </label>
+                    <select name="coluna_id"
+                            class="w-full rounded-xl border border-slate-200 bg-slate-50/60 py-2 px-3 text-sm
+                               text-slate-700
+                               focus:bg-white focus:ring-2 focus:ring-sky-400 focus:border-sky-400">
+                        <option value="">Todos os status</option>
+                        @foreach($colunas as $col)
+                            <option value="{{ $col->id }}" @selected($filtroColuna == $col->id)>
+                                {{ $col->nome }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
 
-            <div>
-                <label class="block text-[11px] font-medium text-slate-500 mb-0.5">Data inicial</label>
-                <input type="date" name="de" value="{{ $filtroDe }}"
-                       class="w-full rounded-xl border-slate-200 bg-white py-1.5 px-3 text-sm focus:ring-sky-400 focus:border-sky-400">
-            </div>
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-500 tracking-wide mb-1">
+                        Data inicial
+                    </label>
+                    <input type="date" name="de" value="{{ $filtroDe }}"
+                           class="w-full rounded-xl border border-slate-200 bg-slate-50/60 py-2 px-3 text-sm
+                              text-slate-700
+                              focus:bg-white focus:ring-2 focus:ring-sky-400 focus:border-sky-400">
+                </div>
 
-            <div>
-                <label class="block text-[11px] font-medium text-slate-500 mb-0.5">Data final</label>
-                <input type="date" name="ate" value="{{ $filtroAte }}"
-                       class="w-full rounded-xl border-slate-200 bg-white py-1.5 px-3 text-sm focus:ring-sky-400 focus:border-sky-400">
-            </div>
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-500 tracking-wide mb-1">
+                        Data final
+                    </label>
+                    <input type="date" name="ate" value="{{ $filtroAte }}"
+                           class="w-full rounded-xl border border-slate-200 bg-slate-50/60 py-2 px-3 text-sm
+                              text-slate-700
+                              focus:bg-white focus:ring-2 focus:ring-sky-400 focus:border-sky-400">
+                </div>
 
-            <div class="flex items-end">
-                <button type="submit"
-                        class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 text-white text-sm font-medium shadow-sm hover:bg-slate-800">
-                    Filtrar
-                </button>
-            </div>
-        </form>
+                <div class="flex items-end">
+                    <button type="submit"
+                            class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl
+                               bg-slate-900 text-white text-sm font-semibold shadow-sm
+                               hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400">
+                        Filtrar
+                    </button>
+                </div>
+            </form>
+        </section>
 
         {{-- Kanban --}}
-        <div class="w-full px-2 md:px-4 py-6">
-            <div class="flex gap-2 md:gap-3 pb-4 justify-center">
-
-
-            @foreach($colunas as $coluna)
+        <div class="mt-4 pb-6 overflow-x-auto xl:overflow-x-visible">
+            <div class="flex gap-2 md:gap-3">
+                @foreach($colunas as $coluna)
                     @php
                         $tarefasColuna = $tarefasPorColuna[$coluna->id] ?? collect();
                     @endphp
 
                     <section
                         class="bg-white border border-slate-200 rounded-2xl flex flex-col h-[68vh]
-           w-52 md:w-56 lg:w-60 flex-shrink-0 shadow-md"
-                    >
-                                <header
-                                    class="flex items-center justify-between px-3 py-2 border-b border-slate-100
-                                    bg-slate-50/90 rounded-t-2xl"
-                                >
-                                <div class="flex items-center gap-2 text-slate-700">
-                                    <div class="w-2.5 h-2.5 rounded-full bg-[color:var(--color-brand-azul)] shadow-sm"></div>
-                                    <h2 class="text-[13px] font-semibold tracking-tight">
-                                        {{ $coluna->nome }}
-                                    </h2>
-                                </div>
+                       w-52 md:w-56 lg:w-60 flex-shrink-0 shadow-md">
+                        {{-- header da coluna --}}
+                        <header
+                            class="flex items-center justify-between px-3 py-2 border-b border-slate-100
+                           bg-slate-50/90 rounded-t-2xl">
+                            <div class="flex items-center gap-2 text-slate-700">
+                                <div class="w-2.5 h-2.5 rounded-full bg-[color:var(--color-brand-azul)] shadow-sm"></div>
+                                <h2 class="text-[13px] font-semibold tracking-tight">
+                                    {{ $coluna->nome }}
+                                </h2>
+                            </div>
 
-                                <span
-                                    class="inline-flex items-center justify-center min-w-[2rem] h-7 rounded-full
-                                           bg-white text-[11px] font-semibold text-slate-600 border border-slate-200
-                                           shadow-sm"
-                                                        >
-                                    {{ $tarefasColuna->count() }}
-                                </span>
+                            <span
+                                class="inline-flex items-center justify-center min-w-[2rem] h-7 rounded-full
+                               bg-white text-[11px] font-semibold text-slate-600 border border-slate-200
+                               shadow-sm">
+                        {{ $tarefasColuna->count() }}
+                    </span>
                         </header>
 
-                            <div class="flex-1 overflow-y-auto px-3 py-3 space-y-3 kanban-column"
-                                 data-coluna-id="{{ $coluna->id }}"
-                                 data-coluna-cor="{{ $coluna->cor ?? '#38bdf8' }}"
-                                 data-coluna-slug="{{ Str::slug($coluna->nome) }}">
+                        {{-- cards --}}
+                        <div class="flex-1 overflow-y-auto px-3 py-3 space-y-3 kanban-column"
+                             data-coluna-id="{{ $coluna->id }}"
+                             data-coluna-cor="{{ $coluna->cor ?? '#38bdf8' }}"
+                             data-coluna-slug="{{ Str::slug($coluna->nome) }}">
                             @forelse($tarefasColuna as $tarefa)
                                     @php
                                         $clienteNome  = optional($tarefa->cliente)->razao_social ?? 'Sem cliente';

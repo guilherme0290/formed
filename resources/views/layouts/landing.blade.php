@@ -7,6 +7,8 @@
     <title>{{ config('app.name', 'Formed') }}</title>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
+    <link rel="shortcut icon" type="image/png" href="{{ asset('favicon.png') }}">
 </head>
 <body class="min-h-screen bg-slate-50 antialiased">
 @yield('content')
