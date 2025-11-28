@@ -168,6 +168,7 @@
                             <x-funcoes.select-with-create
                                 name="funcao_id"
                                 label="Função"
+                                field-id="campo_funcao"
                                 :funcoes="$funcoes"
                                 :selected="old('funcao_id', $funcionario->funcao_id ?? null)"
                             />
@@ -428,6 +429,9 @@
         <script>
             document.addEventListener('DOMContentLoaded', function () {
                 const selectFuncionario = document.getElementById('funcionario_id');
+                const selectTipoAso     = document.querySelector('select[name="tipo_aso"]');
+                const selectFuncao      = document.getElementById('campo_funcao');
+
                 if (!selectFuncionario) return;
 
                 const campos = [
@@ -439,7 +443,9 @@
 
                 function toggleCamposFuncionario() {
                     const temFuncionario = selectFuncionario.value !== '';
+                    const tipoAso        = selectTipoAso ? selectTipoAso.value : '';
 
+                    // Campos de cadastro do funcionário (sempre travam quando tem funcionário)
                     campos.forEach(function (campo) {
                         if (!campo) return;
 
@@ -449,10 +455,29 @@
                         campo.classList.toggle('cursor-not-allowed', temFuncionario);
                         campo.classList.toggle('bg-white', !temFuncionario);
                     });
+
+                    // Regra específica para FUNÇÃO:
+                    // - Se tem funcionário selecionado E NÃO for mudança de função => trava o select
+                    // - Se for mudança de função (mudanca_funcao) => libera o select mesmo com funcionário
+                    if (selectFuncao) {
+                        const deveDesabilitarFuncao = temFuncionario && tipoAso !== 'mudanca_funcao';
+
+                        selectFuncao.disabled = deveDesabilitarFuncao;
+
+                        selectFuncao.classList.toggle('bg-slate-100', deveDesabilitarFuncao);
+                        selectFuncao.classList.toggle('cursor-not-allowed', deveDesabilitarFuncao);
+                        selectFuncao.classList.toggle('bg-white', !deveDesabilitarFuncao);
+                    }
                 }
 
+                // Inicializa estado na carga
                 toggleCamposFuncionario();
+
+                // Reavalia quando mudar colaborador ou tipo de ASO
                 selectFuncionario.addEventListener('change', toggleCamposFuncionario);
+                if (selectTipoAso) {
+                    selectTipoAso.addEventListener('change', toggleCamposFuncionario);
+                }
             });
         </script>
 
