@@ -16,6 +16,7 @@
             <div class="px-6 py-4 bg-gradient-to-r from-amber-700 to-amber-600 text-white">
                 <h1 class="text-lg font-semibold">
                     APR - Análise Preliminar de Riscos
+                    {{ !empty($isEdit) ? '(Editar)' : '' }}
                 </h1>
                 <p class="text-xs text-white/80 mt-1">
                     {{ $cliente->razao_social }}
@@ -23,9 +24,14 @@
             </div>
 
             <form method="POST"
-                  action="{{ route('operacional.apr.store', $cliente) }}"
+                  action="{{ !empty($isEdit) && $apr
+                        ? route('operacional.apr.update', $apr)
+                        : route('operacional.apr.store', $cliente) }}"
                   class="p-6 space-y-6">
                 @csrf
+                @if(!empty($isEdit) && $apr)
+                    @method('PUT')
+                @endif
 
                 @if ($errors->any())
                     <div class="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-700 mb-2">
@@ -44,7 +50,7 @@
                     </label>
                     <input type="text"
                            name="endereco_atividade"
-                           value="{{ old('endereco_atividade') }}"
+                           value="{{ old('endereco_atividade', $apr->endereco_atividade ?? '') }}"
                            class="w-full rounded-lg border-slate-200 text-sm px-3 py-2
                                   focus:outline-none focus:ring-2 focus:ring-amber-400/70 focus:border-amber-500"
                            placeholder="Local onde será realizada a atividade">
@@ -61,7 +67,7 @@
                         class="w-full rounded-lg border-slate-200 text-sm px-3 py-2
                                focus:outline-none focus:ring-2 focus:ring-amber-400/70 focus:border-amber-500"
                         placeholder="Liste as funções que participarão da atividade (ex: Carpinteiro, Ajudante, Eletricista)"
-                    >{{ old('funcoes_envolvidas') }}</textarea>
+                    >{{ old('funcoes_envolvidas', $apr->funcoes_envolvidas ?? '') }}</textarea>
                 </div>
 
                 {{-- Etapas da Atividade --}}
@@ -75,7 +81,7 @@
                         class="w-full rounded-lg border-slate-200 text-sm px-3 py-2
                                focus:outline-none focus:ring-2 focus:ring-amber-400/70 focus:border-amber-500"
                         placeholder="Descreva passo a passo como a atividade será executada"
-                    >{{ old('etapas_atividade') }}</textarea>
+                    >{{ old('etapas_atividade', $apr->etapas_atividade ?? '') }}</textarea>
                 </div>
 
                 {{-- Footer --}}
@@ -83,7 +89,7 @@
                     <button type="submit"
                             class="inline-flex items-center justify-center px-5 py-2.5 rounded-xl
                                    bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 shadow-sm">
-                        Criar Tarefa APR
+                        {{ !empty($isEdit) ? 'Salvar alterações' : 'Criar Tarefa APR' }}
                     </button>
                 </div>
             </form>

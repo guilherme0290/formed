@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\ServicosApiController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\Master\AcessosController;
 use App\Http\Controllers\Master\DashboardController;
+use App\Http\Controllers\Operacional\AsoController;
 use App\Http\Controllers\Operacional\FuncionarioController;
 use App\Http\Controllers\Operacional\LtipController;
 use App\Http\Controllers\Operacional\PainelController;
@@ -92,11 +93,16 @@ Route::middleware('auth')->group(function () {
         Route::get('/kanban/clientes/{cliente}/servicos', [PainelController::class, 'selecionarServico'])
             ->name('kanban.servicos');
 
-        Route::get('/kanban/aso/clientes/{cliente}/novo', [PainelController::class, 'asoCreate'])
+        Route::get('/kanban/aso/clientes/{cliente}/novo', [AsoController::class, 'asoCreate'])
             ->name('kanban.aso.create');
 
-        Route::post('/kanban/aso/clientes/{cliente}', [PainelController::class, 'asoStore'])
+        Route::post('/kanban/aso/clientes/{cliente}', [AsoController::class, 'asoStore'])
             ->name('kanban.aso.store');
+
+        Route::get('/tarefas/{tarefa}/editar', [AsoController::class, 'edit'])
+            ->name('kanban.aso.editar');
+
+        Route::put('/kanban/aso/{tarefa}', [AsoController::class, 'update'])->name('kanban.aso.update');
 
         // ======================================================
         //  PGR
@@ -122,6 +128,14 @@ Route::middleware('auth')->group(function () {
         Route::post('/kanban/pgr/{tarefa}/pcmso', [PgrController::class, 'pgrPcmsoStore'])
             ->name('kanban.pgr.pcmso.store');
 
+        Route::get('/kanban/pgr/{tarefa}/editar', [PgrController::class, 'pgrEdit'])
+            ->name('kanban.pgr.editar');
+
+        Route::put('/kanban/pgr/{tarefa}', [PgrController::class, 'pgrUpdate'])
+            ->name('kanban.pgr.update');
+
+
+
         // ======================================================
         //  PCMSO
         // ======================================================
@@ -142,6 +156,12 @@ Route::middleware('auth')->group(function () {
         Route::post('clientes/{cliente}/pcmso/{tipo}/inserir-pgr', [PcmsoController::class, 'storeComPgr'])
             ->name('pcmso.store-com-pgr');
 
+        Route::get('kanban/pcmso/{tarefa}/editar', [PcmsoController::class, 'edit'])
+            ->name('kanban.pcmso.edit');
+
+        Route::put('kanban/pcmso/{tarefa}', [PcmsoController::class, 'update'])
+            ->name('kanban.pcmso.update');
+
         // ======================================================
         //  LTCAT
         // ======================================================
@@ -158,6 +178,13 @@ Route::middleware('auth')->group(function () {
         Route::post('clientes/{cliente}/ltcat', [LtcatController::class, 'store'])
             ->name('ltcat.store');
 
+        Route::get('ltcat/editar/{tarefa}', [LtcatController::class, 'edit'])
+            ->name('ltcat.edit');
+
+        // NOVO: atualizar LTCAT
+        Route::put('ltcat/{ltcat}', [LtcatController::class, 'update'])
+            ->name('ltcat.update');
+
         // ======================================================
         //  LTIP
         // ======================================================
@@ -166,6 +193,13 @@ Route::middleware('auth')->group(function () {
 
         Route::post('clientes/{cliente}/ltip', [LtipController::class, 'store'])
             ->name('ltip.store');
+
+        Route::get('ltip/{tarefa}/edit', [LtipController::class, 'edit'])
+            ->name('ltip.edit');
+
+        // LTIP - Atualizar (recebe o PUT do form)
+        Route::put('ltip/{ltip}', [LtipController::class, 'update'])
+            ->name('ltip.update');
 
         // ======================================================
         //  APR
@@ -176,6 +210,14 @@ Route::middleware('auth')->group(function () {
         Route::post('clientes/{cliente}/apr', [AprController::class, 'store'])
             ->name('apr.store');
 
+        // APR - Editar (abre o form a partir da tarefa)
+        Route::get('apr/{tarefa}/edit', [AprController::class, 'edit'])
+            ->name('apr.edit');
+
+        // APR - Atualizar (PUT)
+        Route::put('apr/{apr}', [AprController::class, 'update'])
+            ->name('apr.update');
+
         // ======================================================
         //  PAE
         // ======================================================
@@ -184,6 +226,14 @@ Route::middleware('auth')->group(function () {
 
         Route::post('clientes/{cliente}/pae', [PaeController::class, 'store'])
             ->name('pae.store');
+
+        // PAE - editar (a partir da tarefa)
+        Route::get('pae/{tarefa}/edit', [PaeController::class, 'edit'])
+            ->name('pae.edit');
+
+        // PAE - update
+        Route::put('pae/{pae}', [PaeController::class, 'update'])
+            ->name('pae.update');
 
         // ======================================================
         //  TREINAMENTOS NRs
@@ -196,6 +246,13 @@ Route::middleware('auth')->group(function () {
         // Salvar solicitação de treinamento NR
         Route::post('clientes/{cliente}/treinamentos-nr', [TreinamentoNrController::class, 'store'])
             ->name('treinamentos-nr.store');
+
+        Route::get('treinamentos-nr/tarefa/{tarefa}/edit', [TreinamentoNrController::class, 'edit'])
+            ->name('treinamentos-nr.edit');
+
+        // Atualizar treinamento
+        Route::put('treinamentos-nr/tarefa/{tarefa}', [TreinamentoNrController::class, 'update'])
+            ->name('treinamentos-nr.update');
 
         // AJAX: cadastrar novo funcionário e devolver JSON
         Route::post(

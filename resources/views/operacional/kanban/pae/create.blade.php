@@ -16,6 +16,7 @@
             <div class="px-6 py-4 bg-gradient-to-r from-rose-700 to-rose-600 text-white">
                 <h1 class="text-lg font-semibold">
                     PAE - Plano de Atendimento a Emergências
+                    {{ !empty($isEdit) ? '(Editar)' : '' }}
                 </h1>
                 <p class="text-xs text-white/80 mt-1">
                     {{ $cliente->razao_social }}
@@ -23,9 +24,14 @@
             </div>
 
             <form method="POST"
-                  action="{{ route('operacional.pae.store', $cliente) }}"
+                  action="{{ !empty($isEdit) && $pae
+                        ? route('operacional.pae.update', $pae)
+                        : route('operacional.pae.store', $cliente) }}"
                   class="p-6 space-y-6">
                 @csrf
+                @if(!empty($isEdit) && $pae)
+                    @method('PUT')
+                @endif
 
                 @if ($errors->any())
                     <div class="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-700">
@@ -43,7 +49,7 @@
 
                     <input type="text"
                            name="endereco_local"
-                           value="{{ old('endereco_local') }}"
+                           value="{{ old('endereco_local', $pae->endereco_local ?? '') }}"
                            class="w-full rounded-lg border-slate-200 text-sm px-3 py-2"
                            placeholder="Endereço completo da instalação">
                 </section>
@@ -54,7 +60,7 @@
 
                     <input type="number"
                            name="total_funcionarios"
-                           value="{{ old('total_funcionarios', 1) }}"
+                           value="{{ old('total_funcionarios', $pae->total_funcionarios ?? 1) }}"
                            min="1"
                            class="w-full max-w-xs rounded-lg border-slate-200 text-sm px-3 py-2"
                            placeholder="Quantidade de pessoas no local">
@@ -69,7 +75,7 @@
                         rows="4"
                         class="w-full rounded-lg border-slate-200 text-sm px-3 py-2"
                         placeholder="Descreva o tipo de instalação, atividades realizadas, áreas de risco, equipamentos, etc."
-                    >{{ old('descricao_instalacoes') }}</textarea>
+                    >{{ old('descricao_instalacoes', $pae->descricao_instalacoes ?? '') }}</textarea>
 
                     <div class="mt-2 rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-[11px] text-rose-800">
                         O PAE incluirá procedimentos para incêndio, acidentes, evacuação e primeiros socorros,
@@ -82,7 +88,7 @@
                     <button type="submit"
                             class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-xl
                                    bg-rose-600 text-white text-sm font-semibold hover:bg-rose-700">
-                        Criar Tarefa PAE
+                        {{ !empty($isEdit) ? 'Salvar alterações' : 'Criar Tarefa PAE' }}
                     </button>
                 </div>
             </form>

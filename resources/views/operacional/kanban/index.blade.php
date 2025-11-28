@@ -158,27 +158,106 @@
                                  data-coluna-cor="{{ $coluna->cor ?? '#38bdf8' }}"
                                  data-coluna-slug="{{ Str::slug($coluna->nome) }}">
                             @forelse($tarefasColuna as $tarefa)
-                                @php
+                                    @php
+                                        $clienteNome  = optional($tarefa->cliente)->razao_social ?? 'Sem cliente';
+                                        $servicoNome  = optional($tarefa->servico)->nome ?? 'Sem serviço';
 
-                                    $clienteNome  = optional($tarefa->cliente)->razao_social ?? 'Sem cliente';
-                                    $servicoNome  = optional($tarefa->servico)->nome ?? 'Sem serviço';
-                                    $respNome     = optional($tarefa->responsavel)->name ?? 'Sem responsável';
-                                    $dataHora     = $tarefa->inicio_previsto
-                                                    ? \Carbon\Carbon::parse($tarefa->inicio_previsto)->format('d/m/Y H:i')
-                                                    : 'Sem data';
-                                    $funcionarioNome  = optional($tarefa->funcionario)->nome ?? null;
-                                    $funcionarioCpf  = optional($tarefa->funcionario)->cpf ?? null;
-                                    $funcionarioFuncao= optional($tarefa->funcionario)->funcao_nome ?? null;
-                                    $slaData      = $tarefa->fim_previsto
-                                                    ? \Carbon\Carbon::parse($tarefa->fim_previsto)->format('d/m/Y')
-                                                    : '-';
-                                    $obs          = $tarefa->descricao ?? '';
+                                        $respNome     = optional($tarefa->responsavel)->name ?? 'Sem responsável';
+                                        $dataHora     = $tarefa->inicio_previsto
+                                                        ? \Carbon\Carbon::parse($tarefa->inicio_previsto)->format('d/m/Y H:i')
+                                                        : 'Sem data';
 
-                                    $clienteCnpj  = optional($tarefa->cliente)->cnpj ?? '';
-                                    $clienteTel   = optional($tarefa->cliente)->telefone ?? '';
-                                    $pgr = $tarefa->pgrSolicitacao ?? null;
-                                     $ltip = $tarefa->ltipSolicitacao;
-                                @endphp
+                                        $funcionario   = optional($tarefa->funcionario);
+                                        $funcionarioNome   = $funcionario->nome ?? null;
+                                        $funcionarioCpf    = $funcionario->cpf ?? null;
+                                        $funcionarioFuncao = $funcionario->funcao_nome ?? null;
+
+                                        $slaData      = $tarefa->fim_previsto
+                                                        ? \Carbon\Carbon::parse($tarefa->fim_previsto)->format('d/m/Y')
+                                                        : '-';
+                                        $obs          = $tarefa->descricao ?? '';
+
+                                        $clienteCnpj  = optional($tarefa->cliente)->cnpj ?? '';
+                                        $clienteTel   = optional($tarefa->cliente)->telefone ?? '';
+
+                                        $pgr  = $tarefa->pgrSolicitacao ?? null;
+                                        $ltip = $tarefa->ltipSolicitacao;
+
+                                        // ====== NOVO: dados específicos do ASO via aso_solicitacoes ======
+                                        $aso                  = $tarefa->asoSolicitacao;
+                                        $asoTipoLabel         = '';
+                                        $asoDataFormatada     = '';
+                                        $asoUnidadeNome       = '';
+                                        $asoTreinamentoFlag   = '';
+                                        $asoTreinamentosLista = '';
+                                        $asoEmail             = '';
+
+                                        if ($aso) {
+                                            $mapTiposAso = [
+                                                'admissional'      => 'Admissional',
+                                                'periodico'        => 'Periódico',
+                                                'demissional'      => 'Demissional',
+                                                'mudanca_funcao'   => 'Mudança de Função',
+                                                'retorno_trabalho' => 'Retorno ao Trabalho',
+                                            ];
+
+                                            $asoTipoLabel     = $mapTiposAso[$aso->tipo_aso] ?? ucfirst($aso->tipo_aso);
+                                            $asoDataFormatada = $aso->data_aso
+                                                ? \Carbon\Carbon::parse($aso->data_aso)->format('d/m/Y')
+                                                : '';
+
+                                            $asoUnidadeNome   = optional($aso->unidade)->nome ?? '';
+                                            $asoEmail         = $aso->email_aso ?? '';
+                                            $asoTreinamentoFlag = $aso->vai_fazer_treinamento ? 'Sim' : 'Não';
+
+                                            // labels dos treinamentos
+                                            $mapTrein = [
+                                                'nr_35' => 'NR-35 - Trabalho em Altura',
+                                                'nr_18' => 'NR-18 - Integração',
+                                                'nr_12' => 'NR-12 - Máquinas e Equipamentos',
+                                                'nr_06' => 'NR-06 - EPI',
+                                                'nr_05' => 'NR-05 - CIPA Designada',
+                                                'nr_01' => 'NR-01 - Ordem de Serviço',
+                                                'nr_33' => 'NR-33 - Espaço Confinado',
+                                                'nr_11' => 'NR-11 - Movimentação de Carga',
+                                                'nr_10' => 'NR-10 - Elétrica',
+                                            ];
+
+                                            $labelsTrein = [];
+                                            foreach ((array) $aso->treinamentos as $code) {
+                                                $labelsTrein[] = $mapTrein[$code] ?? strtoupper($code);
+                                            }
+                                            $asoTreinamentosLista = implode(', ', $labelsTrein);
+                                        }
+
+                                        $editUrl = null;
+                                        if ($servicoNome === 'ASO') {
+                                            $editUrl = route('operacional.kanban.aso.editar', $tarefa);
+                                        }
+                                        if ($servicoNome === 'PGR') {
+                                            $editUrl = route('operacional.kanban.pgr.editar', $tarefa);
+                                        }
+                                        if ($servicoNome === 'PCMSO') {
+                                            $editUrl = route('operacional.kanban.pcmso.edit', $tarefa);
+                                        }
+                                        if ($servicoNome === 'LTCAT') {
+                                            $editUrl = route('operacional.ltcat.edit', $tarefa);
+                                        }
+                                        if ($servicoNome === 'LTIP') {
+                                            $editUrl = route('operacional.ltip.edit', $tarefa);
+                                        }
+                                        if ($servicoNome === 'APR') {
+                                            $editUrl = route('operacional.apr.edit', $tarefa);
+                                        }
+                                        if ($servicoNome === 'PAE') {
+                                            $editUrl = route('operacional.pae.edit', $tarefa);
+                                        }
+                                        if ($servicoNome === 'Treinamentos NRs') {
+                                            $editUrl = route('operacional.treinamentos-nr.edit', $tarefa);
+                                        }
+
+                                    @endphp
+
 
 
 
@@ -202,10 +281,22 @@
                                         data-prioridade="{{ ucfirst($tarefa->prioridade) }}"
                                         data-status="{{ $coluna->nome }}"
                                         data-observacoes="{{ e($obs) }}"
-                                        data-funcionario="{{ $funcionarioNome . ' | CPF '. $funcionarioCpf }}"
+
+                                        data-funcionario="{{ $funcionarioNome . ($funcionarioCpf ? ' | CPF '.$funcionarioCpf : '') }}"
                                         data-funcionario-funcao="{{ $funcionarioFuncao }}"
+                                        data-funcionario-cpf="{{ $funcionarioCpf }}"
+
+                                        data-aso-tipo="{{ $asoTipoLabel }}"
+                                        data-aso-data="{{ $asoDataFormatada }}"
+                                        data-aso-unidade="{{ $asoUnidadeNome }}"
+                                        data-aso-treinamento="{{ $asoTreinamentoFlag }}"
+                                        data-aso-treinamentos="{{ $asoTreinamentosLista }}"
+                                        data-aso-email="{{ $asoEmail }}"
+
                                         data-observacao-interna="{{ e($tarefa->observacao_interna) }}"
                                         data-observacao-url="{{ route('operacional.tarefas.observacao', $tarefa) }}"
+                                        data-edit-url="{{ $editUrl }}"
+
 
                                         {{-- PGR --}}
                                         @if($pgr)
@@ -312,10 +403,22 @@
                                                 $func = optional($tarefa->funcionario);
                                             @endphp
                                             <div class="mt-2 text-[11px] space-y-0.5">
-                                                <p><span class="font-medium">Funcionário:</span> {{ $func->nome ?? '—' }}</p>
-                                                <p><span class="font-medium">Função:</span> {{  $funcionarioFuncao ?? '—' }}</p>
+                                                <p>
+                                                    <span class="font-medium">Funcionário:</span>
+                                                    {{ $func->nome ?? '—' }}
+                                                </p>
+                                                <p>
+                                                    <span class="font-medium">CPF:</span>
+                                                    {{ $func->cpf ?? '—' }}
+                                                </p>
+                                                <p>
+                                                    <span class="font-medium">Função:</span>
+                                                    {{ $funcionarioFuncao ?? '—' }}
+                                                </p>
+
                                             </div>
                                         @endif
+
 
                                         {{-- PGR --}}
                                         @if($servicoNome === 'PGR' && $pgr)
@@ -543,16 +646,55 @@
 
                             {{-- BLOCO ESPECÍFICO: ASO --}}
 
-                            <div id="modal-bloco-aso" class="mt-2 space-y-1">
-                                <div>
-                                    <dt class="text-[11px] text-slate-500">Funcionário</dt>
-                                    <dd class="font-medium" id="modal-funcionario">—</dd>
+                            <div id="modal-bloco-aso" class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+
+                                <div class="space-y-1">
+                                    <div>
+                                        <dt class="text-[11px] text-slate-500">Funcionário</dt>
+                                        <dd class="font-medium" id="modal-funcionario">—</dd>
+                                    </div>
+                                    <div>
+                                        <dt class="text-[11px] text-slate-500">CPF</dt>
+                                        <dd class="font-medium" id="modal-funcionario-cpf">—</dd>
+                                    </div>
+                                    <div>
+                                        <dt class="text-[11px] text-slate-500">Função</dt>
+                                        <dd class="font-medium" id="modal-funcionario-funcao">—</dd>
+                                    </div>
                                 </div>
-                                <div>
-                                    <dt class="text-[11px] text-slate-500">Função</dt>
-                                    <dd class="font-medium" id="modal-funcionario-funcao">—</dd>
+
+                                <div class="space-y-1">
+                                    <div>
+                                        <dt class="text-[11px] text-slate-500">Tipo de ASO</dt>
+                                        <dd class="font-medium" id="modal-aso-tipo">—</dd>
+                                    </div>
+                                    <div>
+                                        <dt class="text-[11px] text-slate-500">Data de Realização</dt>
+                                        <dd class="font-medium" id="modal-aso-data">—</dd>
+                                    </div>
+                                    <div>
+                                        <dt class="text-[11px] text-slate-500">Unidade</dt>
+                                        <dd class="font-medium" id="modal-aso-unidade">—</dd>
+                                    </div>
+                                </div>
+
+                                <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-3 mt-1">
+                                    <div>
+                                        <dt class="text-[11px] text-slate-500">Vai fazer treinamento?</dt>
+                                        <dd class="font-medium" id="modal-aso-treinamento">—</dd>
+                                    </div>
+                                    <div>
+                                        <dt class="text-[11px] text-slate-500">E-mail para envio do ASO</dt>
+                                        <dd class="font-medium" id="modal-aso-email">—</dd>
+                                    </div>
+                                </div>
+
+                                <div class="md:col-span-2 mt-1">
+                                    <dt class="text-[11px] text-slate-500">Treinamentos selecionados</dt>
+                                    <dd class="font-medium text-sm" id="modal-aso-treinamentos">—</dd>
                                 </div>
                             </div>
+
                         </dl>
                     </section>
 
@@ -847,6 +989,19 @@
                         </h3>
 
                         <div class="space-y-3">
+
+                            {{-- NOVO: botão Editar Tarefa --}}
+                            <button type="button"
+                                    id="btn-editar-tarefa"
+                                    class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg
+                       bg-emerald-500 text-white text-sm font-semibold shadow-sm
+                       hover:bg-emerald-600 transition">
+                                Editar Tarefa
+                            </button>
+
+                            <hr class="border-slate-200">
+
+
                             <button type="button"
                                     data-coluna-id="2"
                                     class="js-mover-coluna w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg
@@ -945,8 +1100,18 @@
             const spanId         = document.getElementById('modal-tarefa-id');
             const spanCliente    = document.getElementById('modal-cliente');
             const spanCnpj       = document.getElementById('modal-cnpj');
+
             const spanFuncionario       = document.getElementById('modal-funcionario');
             const spanFuncionarioFuncao = document.getElementById('modal-funcionario-funcao');
+            const spanFuncionarioCpf    = document.getElementById('modal-funcionario-cpf');
+            const spanAsoTipo           = document.getElementById('modal-aso-tipo');
+            const spanAsoData           = document.getElementById('modal-aso-data');
+            const spanAsoUnidade        = document.getElementById('modal-aso-unidade');
+            const spanAsoTreinamento    = document.getElementById('modal-aso-treinamento');
+            const spanAsoTreinamentos   = document.getElementById('modal-aso-treinamentos');
+            const spanAsoEmail          = document.getElementById('modal-aso-email');
+            const blocoAso = document.getElementById('modal-bloco-aso');
+
             const spanTelefone   = document.getElementById('modal-telefone');
             const spanResp       = document.getElementById('modal-responsavel');
             const spanServico    = document.getElementById('modal-servico');
@@ -959,7 +1124,7 @@
             const spanObs        = document.getElementById('modal-observacoes');
             const textareaObsInterna = document.getElementById('modal-observacao-interna');
 
-            const blocoAso = document.getElementById('modal-bloco-aso');
+
 
             // PGR
             const blocoPgr        = document.getElementById('modal-bloco-pgr');
@@ -1031,17 +1196,49 @@
                 const isPgr = tipoServico.includes('pgr');
 
                 // ASO
+                // ASO
                 if (blocoAso) {
                     if (isAso) {
                         blocoAso.classList.remove('hidden');
+
                         spanFuncionario.textContent       = card.dataset.funcionario || '—';
                         spanFuncionarioFuncao.textContent = card.dataset.funcionarioFuncao || '—';
+
+                        if (spanFuncionarioCpf) {
+                            spanFuncionarioCpf.textContent = card.dataset.funcionarioCpf || '—';
+                        }
+                        if (spanAsoTipo) {
+                            spanAsoTipo.textContent = card.dataset.asoTipo || '—';
+                        }
+                        if (spanAsoData) {
+                            spanAsoData.textContent = card.dataset.asoData || '—';
+                        }
+                        if (spanAsoUnidade) {
+                            spanAsoUnidade.textContent = card.dataset.asoUnidade || '—';
+                        }
+                        if (spanAsoTreinamento) {
+                            spanAsoTreinamento.textContent = card.dataset.asoTreinamento || '—';
+                        }
+                        if (spanAsoTreinamentos) {
+                            spanAsoTreinamentos.textContent = card.dataset.asoTreinamentos || '—';
+                        }
+                        if (spanAsoEmail) {
+                            spanAsoEmail.textContent = card.dataset.asoEmail || '—';
+                        }
                     } else {
                         blocoAso.classList.add('hidden');
                         spanFuncionario.textContent       = '—';
                         spanFuncionarioFuncao.textContent = '—';
+                        if (spanFuncionarioCpf) spanFuncionarioCpf.textContent = '—';
+                        if (spanAsoTipo) spanAsoTipo.textContent = '—';
+                        if (spanAsoData) spanAsoData.textContent = '—';
+                        if (spanAsoUnidade) spanAsoUnidade.textContent = '—';
+                        if (spanAsoTreinamento) spanAsoTreinamento.textContent = '—';
+                        if (spanAsoTreinamentos) spanAsoTreinamentos.textContent = '—';
+                        if (spanAsoEmail) spanAsoEmail.textContent = '—';
                     }
                 }
+
 
                 // PGR
                 if (blocoPgr) {
@@ -1223,6 +1420,7 @@
 
                 modal.dataset.moveUrl  = card.dataset.moveUrl || '';
                 modal.dataset.tarefaId = card.dataset.id || '';
+                modal.dataset.editUrl = card.dataset.editUrl || '';
 
                 modal.classList.remove('hidden');
                 modal.classList.add('flex');
@@ -1660,6 +1858,26 @@
         });
 
 
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const modal     = document.getElementById('tarefa-modal');
+            const btnEditar = document.getElementById('btn-editar-tarefa');
+
+            if (modal && btnEditar) {
+                btnEditar.addEventListener('click', function () {
+                    const url = modal.dataset.editUrl;
+
+                    if (!url) {
+                        alert('Edição ainda não está disponível para este tipo de tarefa.');
+                        return;
+                    }
+
+                    // Redireciona para a tela de edição
+                    window.location.href = url;
+                });
+            }
+        });
     </script>
 
 

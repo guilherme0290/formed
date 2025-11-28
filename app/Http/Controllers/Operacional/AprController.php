@@ -21,20 +21,22 @@ class AprController extends Controller
 
         return view('operacional.kanban.apr.create', [
             'cliente' => $cliente,
+            'apr'     => null,
+            'isEdit'  => false,
         ]);
     }
 
     public function store(Cliente $cliente, Request $request)
     {
-        $user = $request->user();
+        $user      = $request->user();
         $empresaId = $user->empresa_id;
 
         abort_if($cliente->empresa_id !== $empresaId, 403);
 
         $data = $request->validate([
-            'endereco_atividade' => ['required', 'string', 'max:255'],
-            'funcoes_envolvidas' => ['required', 'string'],
-            'etapas_atividade' => ['required', 'string'],
+            'endereco_atividade'  => ['required', 'string', 'max:255'],
+            'funcoes_envolvidas'  => ['required', 'string'],
+            'etapas_atividade'    => ['required', 'string'],
         ]);
 
         // coluna inicial (Pendente)
@@ -48,56 +50,112 @@ class AprController extends Controller
             ->where('nome', 'APR')
             ->first();
 
-        $tarefaId = null;
-
         DB::transaction(function () use (
             $data,
             $empresaId,
             $cliente,
             $user,
             $colunaInicial,
-            $servicoApr,
-            &$tarefaId
+            $servicoApr
         ) {
             // cria Tarefa no Kanban
             $tarefa = Tarefa::create([
-                'empresa_id' => $empresaId,
-                'cliente_id' => $cliente->id,
-                'responsavel_id' => $user->id,
-                'coluna_id' => optional($colunaInicial)->id,
-                'servico_id' => optional($servicoApr)->id,
-                'titulo' => 'APR - Análise Preliminar de Riscos',
-                'descricao' => 'APR solicitada pelo cliente.',
+                'empresa_id'      => $empresaId,
+                'cliente_id'      => $cliente->id,
+                'responsavel_id'  => $user->id,
+                'coluna_id'       => optional($colunaInicial)->id,
+                'servico_id'      => optional($servicoApr)->id,
+                'titulo'          => 'APR - Análise Preliminar de Riscos',
+                'descricao'       => 'APR solicitada pelo cliente.',
                 'inicio_previsto' => now(),
             ]);
 
-            $tarefaId = $tarefa->id;
-
             // cria registro APR
             AprSolicitacoes::create([
-                'empresa_id' => $empresaId,
-                'cliente_id' => $cliente->id,
-                'tarefa_id' => $tarefa->id,
-                'responsavel_id' => $user->id,
+                'empresa_id'         => $empresaId,
+                'cliente_id'         => $cliente->id,
+                'tarefa_id'          => $tarefa->id,
+                'responsavel_id'     => $user->id,
                 'endereco_atividade' => $data['endereco_atividade'],
                 'funcoes_envolvidas' => $data['funcoes_envolvidas'],
-                'etapas_atividade' => $data['etapas_atividade'],
+                'etapas_atividade'   => $data['etapas_atividade'],
             ]);
 
             // log inicial
             TarefaLog::create([
-                'tarefa_id' => $tarefa->id,
-                'user_id' => $user->id,
-                'de_coluna_id' => null,
+                'tarefa_id'      => $tarefa->id,
+                'user_id'        => $user->id,
+                'de_coluna_id'   => null,
                 'para_coluna_id' => optional($colunaInicial)->id,
-                'acao' => 'criado',
-                'observacao' => 'Tarefa APR criada pelo usuário.',
+                'acao'           => 'criado',
+                'observacao'     => 'Tarefa APR criada pelo usuário.',
             ]);
         });
 
-        // redireciona para o kanban ou detalhe da tarefa
         return redirect()
-            ->route('operacional.kanban', $tarefaId)
+            ->route('operacional.kanban')
             ->with('ok', 'Tarefa APR criada com sucesso!');
+    }
+
+    /**
+     * Editar APR a partir da tarefa do Kanban
+     */
+    public function edit(Tarefa $tarefa, Request $request)
+    {
+        $user      = $request->user();
+        $empresaId = $user->empresa_id;
+
+        abort_if($tarefa->empresa_id !== $empresaId, 403);
+
+        // Busca a APR vinculada à tarefa
+        $apr = AprSolicitacoes::where('tarefa_id', $tarefa->id)->firstOrFail();
+
+        $cliente = $apr->cliente;
+
+        return view('operacional.kanban.apr.create', [
+            'cliente' => $cliente,
+            'apr'     => $apr,
+            'isEdit'  => true,
+        ]);
+    }
+
+    /**
+     * Update APR
+     */
+    public function update(AprSolicitacoes $apr, Request $request)
+    {
+        $user      = $request->user();
+        $empresaId = $user->empresa_id;
+
+        abort_if($apr->empresa_id !== $empresaId, 403);
+
+        $data = $request->validate([
+            'endereco_atividade'  => ['required', 'string', 'max:255'],
+            'funcoes_envolvidas'  => ['required', 'string'],
+            'etapas_atividade'    => ['required', 'string'],
+        ]);
+
+        DB::transaction(function () use ($apr, $data, $user) {
+            $apr->update([
+                'endereco_atividade' => $data['endereco_atividade'],
+                'funcoes_envolvidas' => $data['funcoes_envolvidas'],
+                'etapas_atividade'   => $data['etapas_atividade'],
+            ]);
+
+            if ($apr->tarefa) {
+                TarefaLog::create([
+                    'tarefa_id'      => $apr->tarefa_id,
+                    'user_id'        => $user->id,
+                    'de_coluna_id'   => $apr->tarefa->coluna_id,
+                    'para_coluna_id' => $apr->tarefa->coluna_id,
+                    'acao'           => 'atualizado',
+                    'observacao'     => 'APR atualizada pelo usuário.',
+                ]);
+            }
+        });
+
+        return redirect()
+            ->route('operacional.kanban')
+            ->with('ok', 'APR atualizada com sucesso!');
     }
 }

@@ -13,10 +13,22 @@
             </a>
         </div>
 
-        <form method="POST" action="{{ route('operacional.kanban.pgr.store', $cliente) }}">
-            @csrf
 
-            <input type="hidden" name="tipo" value="{{ $tipo }}">
+        @php
+            /** @var string $modo */        // 'create' ou 'edit'
+            $modo = $modo ?? 'create';
+        @endphp
+        <form method="POST"
+              action="{{ $modo === 'edit'
+                ? route('operacional.kanban.pgr.update', $tarefa)
+                : route('operacional.kanban.pgr.store', $cliente) }}">
+            @csrf
+            @if($modo === 'edit')
+                @method('PUT')
+            @endif
+
+            <input type="hidden" name="tipo" value="{{ old('tipo', $tipo ?? ($pgr->tipo ?? 'matriz')) }}">
+
 
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                 {{-- Cabeçalho --}}
@@ -50,7 +62,8 @@
                             </button>
                         </div>
 
-                        <input type="hidden" name="com_art" id="input-com-art" value="1">
+                        <input type="hidden" name="com_art" id="input-com-art"
+                               value="{{ old('com_art', isset($pgr) ? (int)$pgr->com_art : 1) }}">
 
                         <div id="alert-art" class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
                             ⚠ Custo adicional de R$ {{ number_format($valorArt, 2, ',', '.') }}
@@ -65,13 +78,13 @@
                                 <div>
                                     <label class="block text-xs font-medium text-slate-500 mb-1">Nome/Razão Social</label>
                                     <input type="text" name="contratante_nome"
-                                           value="{{ old('contratante_nome') }}"
+                                           value="{{ old('contratante_nome', $pgr->contratante_nome ?? '') }}"
                                            class="w-full rounded-lg border-slate-200 text-sm px-3 py-2">
                                 </div>
                                 <div>
                                     <label class="block text-xs font-medium text-slate-500 mb-1">CNPJ</label>
                                     <input type="text" name="contratante_cnpj"
-                                           value="{{ old('contratante_cnpj') }}"
+                                           value="{{ old('contratante_cnpj', $pgr->contratante_cnpj ?? '') }}"
                                            class="w-full rounded-lg border-slate-200 text-sm px-3 py-2">
                                 </div>
                             </div>
@@ -82,13 +95,13 @@
                                 <div>
                                     <label class="block text-xs font-medium text-slate-500 mb-1">Nome da Obra</label>
                                     <input type="text" name="obra_nome"
-                                           value="{{ old('obra_nome') }}"
+                                           value="{{ old('obra_nome', $pgr->obra_nome ?? '') }}"
                                            class="w-full rounded-lg border-slate-200 text-sm px-3 py-2">
                                 </div>
                                 <div>
                                     <label class="block text-xs font-medium text-slate-500 mb-1">Endereço da Obra</label>
                                     <input type="text" name="obra_endereco"
-                                           value="{{ old('obra_endereco') }}"
+                                           value="{{ old('obra_endereco', $pgr->obra_endereco ?? '') }}"
                                            class="w-full rounded-lg border-slate-200 text-sm px-3 py-2">
                                 </div>
                             </div>
@@ -97,13 +110,13 @@
                                 <div>
                                     <label class="block text-xs font-medium text-slate-500 mb-1">CEJ/CNO</label>
                                     <input type="text" name="obra_cej_cno"
-                                           value="{{ old('obra_cej_cno') }}"
+                                           value="{{ old('obra_cej_cno', $pgr->obra_cej_cno ?? '') }}"
                                            class="w-full rounded-lg border-slate-200 text-sm px-3 py-2">
                                 </div>
                                 <div>
                                     <label class="block text-xs font-medium text-slate-500 mb-1">Turno(s) de Trabalho</label>
                                     <input type="text" name="obra_turno_trabalho"
-                                           value="{{ old('obra_turno_trabalho') }}"
+                                           value="{{ old('obra_turno_trabalho', $pgr->obra_turno_trabalho ?? '') }}"
                                            placeholder="Ex: Diurno (7h às 17h)"
                                            class="w-full rounded-lg border-slate-200 text-sm px-3 py-2">
                                 </div>
@@ -120,7 +133,7 @@
                                 <label class="block text-xs font-medium text-slate-500 mb-1">
                                     Funcionários Homens
                                 </label>
-                                <input type="number" name="qtd_homens" value="{{ old('qtd_homens', 0) }}"
+                                <input type="number" name="qtd_homens"   value="{{ old('qtd_homens', $pgr->qtd_homens ?? 0) }}"
                                        class="w-full rounded-lg border-slate-200 text-sm px-3 py-2">
                             </div>
 
@@ -128,7 +141,7 @@
                                 <label class="block text-xs font-medium text-slate-500 mb-1">
                                     Funcionárias Mulheres
                                 </label>
-                                <input type="number" name="qtd_mulheres" value="{{ old('qtd_mulheres', 0) }}"
+                                <input type="number" name="qtd_mulheres"   value="{{ old('qtd_mulheres', $pgr->qtd_mulheres ?? 0) }}"
                                        class="w-full rounded-lg border-slate-200 text-sm px-3 py-2">
                             </div>
 
@@ -150,47 +163,79 @@
 
                         </div>
 
+                        @php
+                            $funcoesForm = old('funcoes');
+
+                            if ($funcoesForm === null) {
+                                if (isset($pgr) && is_array($pgr->funcoes)) {
+                                    $funcoesForm = $pgr->funcoes;
+                                } else {
+                                    $funcoesForm = [
+                                        ['funcao_id' => null, 'quantidade' => 1, 'cbo' => null, 'descricao' => null],
+                                    ];
+                                }
+                            }
+                        @endphp
                         <div id="funcoes-wrapper" class="space-y-3">
-                            {{-- linha base (Função 1) --}}
-                            <div class="funcao-item rounded-xl border border-slate-200 bg-slate-50 px-4 py-3" data-funcao-index="0">
-                                <div class="flex items-center justify-between mb-2">
-                                    <span class="badge-funcao text-[11px] px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 font-semibold">
-                                        Função 1
-                                    </span>
+                            @foreach($funcoesForm as $idx => $f)
+                                <div class="funcao-item rounded-xl border border-slate-200 bg-slate-50 px-4 py-3"
+                                     data-funcao-index="{{ $idx }}">
+                                    <div class="flex items-center justify-between mb-2">
+                <span class="badge-funcao text-[11px] px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 font-semibold">
+                    Função {{ $idx + 1 }}
+                </span>
+
+                                        {{-- Botão remover --}}
+                                        <button type="button"
+                                                class="btn-remove-funcao inline-flex items-center gap-1 text-[11px] text-red-600 hover:text-red-800">
+                                            ✕ Remover
+                                        </button>
+                                    </div>
+
+                                    <div class="grid grid-cols-12 gap-3">
+                                        <div class="col-span-5 funcao-select-wrapper">
+                                            <x-funcoes.select-with-create
+                                                name="funcoes[{{ $idx }}][funcao_id]"
+                                                field-id="funcoes_{{ $idx }}_funcao_id"
+                                                label="Cargo"
+                                                :funcoes="$funcoes"
+                                                :selected="old('funcoes.'.$idx.'.funcao_id', $f['funcao_id'] ?? null)"
+                                                :show-create="false"
+                                            />
+                                        </div>
+
+                                        <div class="col-span-2">
+                                            <label class="block text-xs font-medium text-slate-500 mb-1">Qtd</label>
+                                            <input type="number"
+                                                   name="funcoes[{{ $idx }}][quantidade]"
+                                                   class="w-full rounded-lg border-slate-200 text-sm px-3 py-2"
+                                                   value="{{ old('funcoes.'.$idx.'.quantidade', $f['quantidade'] ?? 1) }}"
+                                                   min="1">
+                                        </div>
+
+                                        <div class="col-span-2">
+                                            <label class="block text-xs font-medium text-slate-500 mb-1">CBO</label>
+                                            <input type="text"
+                                                   name="funcoes[{{ $idx }}][cbo]"
+                                                   class="w-full rounded-lg border-slate-200 text-sm px-3 py-2"
+                                                   value="{{ old('funcoes.'.$idx.'.cbo', $f['cbo'] ?? '') }}"
+                                                   placeholder="0000-00">
+                                        </div>
+
+                                        <div class="col-span-3">
+                                            <label class="block text-xs font-medium text-slate-500 mb-1">Descrição (opcional)</label>
+                                            <input type="text"
+                                                   name="funcoes[{{ $idx }}][descricao]"
+                                                   class="w-full rounded-lg border-slate-200 text-sm px-3 py-2"
+                                                   value="{{ old('funcoes.'.$idx.'.descricao', $f['descricao'] ?? '') }}"
+                                                   placeholder="Atividades...">
+                                        </div>
+                                    </div>
                                 </div>
-
-                                <div class="grid grid-cols-12 gap-3">
-                                    <div class="col-span-5 funcao-select-wrapper">
-                                        <x-funcoes.select-with-create
-                                            name="funcoes[0][funcao_id]"
-                                            field-id="funcoes_0_funcao_id"
-                                            label="Cargo"
-                                            :funcoes="$funcoes"
-                                            :selected="old('funcoes.0.funcao_id')"
-                                            :show-create="false"  {{-- no PGR é melhor não ter "+" por causa das linhas dinâmicas --}}
-                                        />
-                                    </div>
-
-                                    <div class="col-span-2">
-                                        <label class="block text-xs font-medium text-slate-500 mb-1">Qtd</label>
-                                        <input type="number" name="funcoes[0][quantidade]" class="w-full rounded-lg border-slate-200 text-sm px-3 py-2"
-                                               value="1" min="1">
-                                    </div>
-
-                                    <div class="col-span-2">
-                                        <label class="block text-xs font-medium text-slate-500 mb-1">CBO</label>
-                                        <input type="text" name="funcoes[0][cbo]" class="w-full rounded-lg border-slate-200 text-sm px-3 py-2"
-                                               placeholder="0000-00">
-                                    </div>
-
-                                    <div class="col-span-3">
-                                        <label class="block text-xs font-medium text-slate-500 mb-1">Descrição (opcional)</label>
-                                        <input type="text" name="funcoes[0][descricao]" class="w-full rounded-lg border-slate-200 text-sm px-3 py-2"
-                                               placeholder="Atividades...">
-                                    </div>
-                                </div>
-                            </div>
+                            @endforeach
                         </div>
+
+
                         <div class="flex items-center justify-between mb-3">
                         <button type="button" id="btn-add-funcao"
                                 class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-500 text-white text-xs font-semibold hover:bg-emerald-600">
@@ -230,23 +275,38 @@
                 const inputComArt = document.getElementById('input-com-art');
                 const alertArt  = document.getElementById('alert-art');
 
+                function aplicarEstadoArt(valor) {
+                    if (!inputComArt) return;
+                    inputComArt.value = valor;
+
+                    btnsArt.forEach(b => {
+                        b.classList.remove('bg-slate-900', 'text-white');
+                        b.classList.add('bg-white', 'text-slate-700', 'border-slate-200');
+                    });
+
+                    btnsArt.forEach(b => {
+                        if (b.dataset.artValue === String(valor)) {
+                            b.classList.remove('bg-white', 'text-slate-700', 'border-slate-200');
+                            b.classList.add('bg-slate-900', 'text-white');
+                        }
+                    });
+
+                    if (alertArt) {
+                        alertArt.style.display = (String(valor) === '1') ? 'block' : 'none';
+                    }
+                }
+
                 btnsArt.forEach(btn => {
                     btn.addEventListener('click', () => {
-                        const value = btn.dataset.artValue;
-
-                        inputComArt.value = value;
-
-                        btnsArt.forEach(b => {
-                            b.classList.remove('bg-slate-900', 'text-white');
-                            b.classList.add('bg-white', 'text-slate-700', 'border-slate-200');
-                        });
-
-                        btn.classList.remove('bg-white', 'text-slate-700', 'border-slate-200');
-                        btn.classList.add('bg-slate-900', 'text-white');
-
-                        alertArt.style.display = (value === '1') ? 'block' : 'none';
+                        aplicarEstadoArt(btn.dataset.artValue);
                     });
                 });
+
+                    // ao carregar, aplica o valor que veio do backend (create ou edit)
+                if (inputComArt) {
+                    aplicarEstadoArt(inputComArt.value || '1');
+                }
+
 
                 // ========= TOTAL TRABALHADORES =========
                 const inputHomens   = document.querySelector('input[name="qtd_homens"]');
@@ -266,6 +326,7 @@
                 }
 
                 // ========= FUNÇÕES E CARGOS (dinâmico) =========
+                // ========= FUNÇÕES E CARGOS (dinâmico) =========
                 const wrapper = document.getElementById('funcoes-wrapper');
                 const btnAdd  = document.getElementById('btn-add-funcao');
 
@@ -274,20 +335,16 @@
                         const itens = wrapper.querySelectorAll('.funcao-item');
                         const novoIndex = itens.length;
 
-                        // clona o último item (para manter qualquer ajuste de layout que vc faça depois)
                         const base = itens[itens.length - 1];
                         const clone = base.cloneNode(true);
 
-                        // atualiza índice no data-attribute
                         clone.dataset.funcaoIndex = String(novoIndex);
 
-                        // atualiza names e limpa valores
                         clone.querySelectorAll('input, select').forEach(function (el) {
                             if (el.name && el.name.includes('funcoes[')) {
                                 el.name = el.name.replace(/\[\d+]/, '[' + novoIndex + ']');
                             }
 
-                            // limpa valores (mantém quantidade = 1)
                             if (el.tagName === 'SELECT') {
                                 el.value = '';
                             } else if (el.name.includes('[quantidade]')) {
@@ -296,13 +353,11 @@
                                 el.value = '';
                             }
 
-                            // se tiver id do tipo funcoes_0_funcao_id, ajusta também
                             if (el.id && el.id.startsWith('funcoes_')) {
                                 el.id = el.id.replace(/_\d+_funcao_id$/, '_' + novoIndex + '_funcao_id');
                             }
                         });
 
-                        // atualiza o label "Função X"
                         const badge = clone.querySelector('.badge-funcao');
                         if (badge) {
                             badge.textContent = 'Função ' + (novoIndex + 1);
@@ -310,7 +365,50 @@
 
                         wrapper.appendChild(clone);
                     });
+
+                    // 🔹 NOVO: remover função com delegação de evento
+                    wrapper.addEventListener('click', function (e) {
+                        const btn = e.target.closest('.btn-remove-funcao');
+                        if (!btn) return;
+
+                        const itens = wrapper.querySelectorAll('.funcao-item');
+                        if (itens.length <= 1) {
+                            alert('É necessário pelo menos uma função.');
+                            return;
+                        }
+
+                        const item = btn.closest('.funcao-item');
+                        if (item) {
+                            item.remove();
+                            reindexFuncoes(wrapper);
+                        }
+                    });
                 }
+
+                    // função auxiliar para reindexar os índices/names/labels
+                function reindexFuncoes(wrapper) {
+                    const itens = wrapper.querySelectorAll('.funcao-item');
+
+                    itens.forEach((item, idx) => {
+                        item.dataset.funcaoIndex = String(idx);
+
+                        const badge = item.querySelector('.badge-funcao');
+                        if (badge) {
+                            badge.textContent = 'Função ' + (idx + 1);
+                        }
+
+                        item.querySelectorAll('input, select').forEach(function (el) {
+                            if (el.name && el.name.includes('funcoes[')) {
+                                el.name = el.name.replace(/funcoes\[\d+]/, 'funcoes[' + idx + ']');
+                            }
+
+                            if (el.id && /^funcoes_\d+_funcao_id$/.test(el.id)) {
+                                el.id = 'funcoes_' + idx + '_funcao_id';
+                            }
+                        });
+                    });
+                }
+
             });
         </script>
         <script>

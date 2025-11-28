@@ -1,5 +1,58 @@
 @extends('layouts.operacional')
 
+@php
+    /** @var \App\Models\Tarefa|null $tarefa */
+    $isEdit = isset($tarefa);
+
+    $aso = $isEdit ? $tarefa->asoSolicitacao : null;
+
+    // funcionário selecionado no select
+    $funcionarioSelecionadoId = old('funcionario_id', $isEdit ? ($tarefa->funcionario_id ?? '') : '');
+
+    $temFuncionario = !empty($funcionarioSelecionadoId);
+
+    // treinamentos selecionados: old() > aso_solicitacao > []
+    $treinamentosSelecionados = old(
+        'treinamentos',
+        $aso && is_array($aso->treinamentos) ? $aso->treinamentos : []
+    );
+
+    // Vai fazer treinamento? old() > aso_solicitacao > 0
+    $vaiFazerTreinamento = (int) old(
+        'vai_fazer_treinamento',
+        $aso ? (int) $aso->vai_fazer_treinamento : 0
+    );
+
+    // Data do ASO (Y-m-d): old() > aso_solicitacao > $dataAso calculado no controller (fallback)
+    $dataAsoValue = old(
+        'data_aso',
+        $aso && $aso->data_aso
+            ? $aso->data_aso->format('Y-m-d')
+            : ($dataAso ?? '')
+    );
+
+    // Unidade: old() > aso_solicitacao > unidadeSelecionada calculado no controller (fallback)
+    $unidadeSelecionada = old(
+        'unidade_id',
+        $aso ? $aso->unidade_id : ($unidadeSelecionada ?? null)
+    );
+
+    // Tipo de ASO: old() > aso_solicitacao
+    $tipoAsoSelected = old(
+        'tipo_aso',
+        $aso->tipo_aso ?? null
+    );
+
+    // Email para envio do ASO
+    $emailAso = old(
+        'email_aso',
+        $aso->email_aso ?? ''
+    );
+
+    // Helper para pegar dados do funcionário no modo edição
+    $funcionario = $isEdit ? optional($tarefa->funcionario) : null;
+@endphp
+
 @section('title', 'Agendar ASO')
 
 @section('content')
@@ -17,7 +70,7 @@
         {{-- Card principal --}}
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
 
-            {{-- Cabeçalho azul igual protótipo --}}
+            {{-- Cabeçalho azul --}}
             <div class="px-6 py-4 bg-gradient-to-r from-[#0A3A80] to-[#1E68D9]">
                 <h1 class="text-lg md:text-xl font-semibold text-white mb-1">
                     Agendar ASO
@@ -40,43 +93,56 @@
                     </div>
                 @endif
 
-                <form method="POST" action="{{ route('operacional.kanban.aso.store', $cliente) }}" class="space-y-6">
+                    <form
+                        method="POST"
+                        action="{{ $isEdit
+                            ? route('operacional.kanban.aso.update', $tarefa)
+                            : route('operacional.kanban.aso.store', $cliente) }}"
+                    >
                     @csrf
+                    @if($isEdit)
+                        @method('PUT')
+                    @endif
 
-                    {{-- Tipo de ASO (linha 1 do protótipo) --}}
+                    {{-- Tipo de ASO --}}
                     <div class="space-y-2">
                         <label class="block text-xs font-medium text-slate-600">
                             Tipo de ASO *
                         </label>
+
                         <select name="tipo_aso"
                                 class="w-full rounded-xl border border-slate-200 text-sm py-2.5 px-3 bg-white
                                        focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400">
                             <option value="">Selecione o tipo de ASO</option>
                             @foreach($tiposAso as $key => $label)
-                                <option value="{{ $key }}" @selected(old('tipo_aso') == $key)>{{ $label }}</option>
+                                <option value="{{ $key }}" @selected($tipoAsoSelected === $key)>
+                                    {{ $label }}
+                                </option>
                             @endforeach
                         </select>
                     </div>
 
-                    {{-- Bloco de colaborador + dados do funcionário --}}
-                    <div class="space-y-6"
-                         x-data="{ temFuncionario: {{ old('funcionario_id') ? 'true' : 'false' }} }">
+                    {{-- Colaborador + dados do funcionário --}}
+                    <div class="space-y-6 mt-4">
 
+                        {{-- Colaborador --}}
                         <div class="space-y-2">
                             <label class="block text-xs font-medium text-slate-600">
                                 Colaborador *
                             </label>
+
                             <select name="funcionario_id"
-                                    class="w-full rounded-xl border border-slate-200 text-sm py-2.5 px-3 bg-white
-                                        focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400"
-                                    x-on:change="temFuncionario = $el.value !== ''">
-                                <option value="">Selecione o colaborador</option>
+                                    id="funcionario_id"
+                                    class="w-full rounded-xl border border-slate-200 text-sm py-2.5 px-3">
+                                <option value="">Novo colaborador</option>
                                 @foreach($funcionarios as $func)
-                                    <option value="{{ $func->id }}" @selected(old('funcionario_id') == $func->id)>
-                                        {{ $func->nome }} @if($func->cpf) - {{ $func->cpf }} @endif
+                                    <option value="{{ $func->id }}"
+                                        {{ (string) $funcionarioSelecionadoId === (string) $func->id ? 'selected' : '' }}>
+                                        {{ $func->nome }}
                                     </option>
                                 @endforeach
                             </select>
+
                             <p class="text-[11px] text-slate-400">
                                 Se for um colaborador novo, deixe o campo acima em branco e preencha os dados abaixo.
                             </p>
@@ -89,20 +155,21 @@
                                     Nome Completo *
                                 </label>
                                 <input type="text"
+                                       id="campo_nome"
                                        name="nome"
-                                       value="{{ old('nome') }}"
+                                       value="{{ old('nome', $funcionario->nome ?? '') }}"
                                        placeholder="Nome completo"
-                                       :disabled="temFuncionario"
                                        class="w-full rounded-xl border border-slate-200 text-sm py-2.5 px-3
-                                            focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400"
-                                       :class="temFuncionario ? 'bg-slate-100 cursor-not-allowed' : 'bg-white'">
+                                              focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400
+                                              {{ $temFuncionario ? 'bg-slate-100 cursor-not-allowed' : 'bg-white' }}"
+                                    {{ $temFuncionario ? 'disabled' : '' }}>
                             </div>
 
                             <x-funcoes.select-with-create
                                 name="funcao_id"
                                 label="Função"
                                 :funcoes="$funcoes"
-                                :selected="old('funcao_id')"
+                                :selected="old('funcao_id', $funcionario->funcao_id ?? null)"
                             />
                         </div>
 
@@ -113,13 +180,14 @@
                                     CPF *
                                 </label>
                                 <input type="text"
+                                       id="campo_cpf"
                                        name="cpf"
-                                       value="{{ old('cpf') }}"
+                                       value="{{ old('cpf', $funcionario->cpf ?? '') }}"
                                        placeholder="000.000.000-00"
-                                       :disabled="temFuncionario"
                                        class="w-full rounded-xl border border-slate-200 text-sm py-2.5 px-3
-                          focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400"
-                                       :class="temFuncionario ? 'bg-slate-100 cursor-not-allowed' : 'bg-white'">
+                                              focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400
+                                              {{ $temFuncionario ? 'bg-slate-100 cursor-not-allowed' : 'bg-white' }}"
+                                    {{ $temFuncionario ? 'disabled' : '' }}>
                             </div>
 
                             <div>
@@ -127,13 +195,14 @@
                                     RG *
                                 </label>
                                 <input type="text"
+                                       id="campo_rg"
                                        name="rg"
-                                       value="{{ old('rg') }}"
+                                       value="{{ old('rg', $funcionario->rg ?? '') }}"
                                        placeholder="00.000.000-0"
-                                       :disabled="temFuncionario"
                                        class="w-full rounded-xl border border-slate-200 text-sm py-2.5 px-3
-                          focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400"
-                                       :class="temFuncionario ? 'bg-slate-100 cursor-not-allowed' : 'bg-white'">
+                                              focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400
+                                              {{ $temFuncionario ? 'bg-slate-100 cursor-not-allowed' : 'bg-white' }}"
+                                    {{ $temFuncionario ? 'disabled' : '' }}>
                             </div>
 
                             <div>
@@ -141,74 +210,74 @@
                                     Data de Nascimento *
                                 </label>
                                 <input type="date"
+                                       id="campo_data_nascimento"
                                        name="data_nascimento"
-                                       value="{{ old('data_nascimento') }}"
-                                       :disabled="temFuncionario"
+                                       value="{{ old(
+                                                    'data_nascimento',
+                                                    isset($tarefa) && $tarefa?->funcionario
+                                                        ? $tarefa->funcionario->data_nascimento?->format('Y-m-d')
+                                                        : ''
+                                                ) }}"
                                        class="w-full rounded-xl border border-slate-200 text-sm py-2.5 px-3
-                          focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400"
-                                       :class="temFuncionario ? 'bg-slate-100 cursor-not-allowed' : 'bg-white'">
+                                              focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400
+                                              {{ $temFuncionario ? 'bg-slate-100 cursor-not-allowed' : 'bg-white' }}"
+                                    {{ $temFuncionario ? 'disabled' : '' }}>
                             </div>
                         </div>
                     </div>
 
-                    {{-- E-mail para envio do ASO (linha 4 do protótipo) --}}
-                    <div>
+                    {{-- E-mail para envio do ASO --}}
+                    <div class="mt-6">
                         <label class="block text-xs font-medium text-slate-600 mb-1">
                             E-mail para envio de ASO
                         </label>
                         <input type="email"
                                name="email_aso"
-                               value="{{ old('email_aso') }}"
+                               value="{{ $emailAso }}"
                                placeholder="email@exemplo.com"
                                class="w-full rounded-xl border border-slate-200 text-sm py-2.5 px-3
                                       focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400">
                     </div>
 
-                    {{-- Vai fazer treinamento conosco? (toggle + lista) --}}
-                    <div class="space-y-3"
-                         x-data="{ treina: {{ old('vai_fazer_treinamento', 0) ? 1 : 0 }} }">
-
+                    {{-- Vai fazer treinamento conosco? --}}
+                    <div class="space-y-3 mt-6">
                         <p class="text-xs font-medium text-slate-600">
                             Vai fazer treinamento conosco?
                         </p>
 
                         {{-- campo real enviado pro backend --}}
                         <input type="hidden"
+                               id="vai_fazer_treinamento"
                                name="vai_fazer_treinamento"
-                               x-ref="campoTreinamento"
-                               :value="treina">
+                               value="{{ $vaiFazerTreinamento ? 1 : 0 }}">
 
                         <div class="grid grid-cols-2 gap-3 text-sm">
                             {{-- SIM --}}
                             <button type="button"
-                                    @click="treina = 1; $refs.campoTreinamento.value = 1"
-                                    :class="treina == 1
-                                        ? 'px-4 py-2 rounded-xl border text-center text-xs font-medium bg-slate-900 text-white border-slate-900'
-                                        : 'px-4 py-2 rounded-xl border text-center text-xs font-medium bg-white text-slate-700 border-slate-300'">
+                                    id="btn_treina_sim"
+                                    class="px-4 py-2 rounded-xl border text-center text-xs font-medium
+                                        {{ $vaiFazerTreinamento ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-700 border-slate-300' }}">
                                 Sim
                             </button>
 
                             {{-- NÃO --}}
                             <button type="button"
-                                    @click="treina = 0; $refs.campoTreinamento.value = 0"
-                                    :class="treina == 0
-                                        ? 'px-4 py-2 rounded-xl border text-center text-xs font-medium bg-slate-900 text-white border-slate-900'
-                                        : 'px-4 py-2 rounded-xl border text-center text-xs font-medium bg-white text-slate-700 border-slate-300'">
+                                    id="btn_treina_nao"
+                                    class="px-4 py-2 rounded-xl border text-center text-xs font-medium
+                                        {{ !$vaiFazerTreinamento ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-700 border-slate-300' }}">
                                 Não
                             </button>
                         </div>
 
-                        {{-- Lista de treinamentos (expande igual protótipo) --}}
+                        {{-- Lista de treinamentos --}}
                         <div id="listaTreinamentos"
-                             class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2"
-                             x-show="treina == 1"
-                             x-cloak>
+                             class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2 {{ $vaiFazerTreinamento ? '' : 'hidden' }}">
                             @foreach($treinamentosDisponiveis as $key => $label)
                                 <label class="inline-flex items-center gap-2 text-sm text-slate-700">
                                     <input type="checkbox"
                                            name="treinamentos[]"
                                            value="{{ $key }}"
-                                           @checked(collect(old('treinamentos'))->contains($key))
+                                           @checked(in_array($key, (array) $treinamentosSelecionados))
                                            class="rounded border-slate-300 text-sky-500 focus:ring-sky-400">
                                     <span>{{ $label }}</span>
                                 </label>
@@ -218,11 +287,10 @@
                                 Você pode selecionar mais de um treinamento.
                             </p>
                         </div>
-
                     </div>
 
-                    {{-- Data e Local de Realização (bloco final do protótipo) --}}
-                    <div class="border-t border-slate-100 pt-4 mt-2 space-y-4">
+                    {{-- Data e Local de Realização --}}
+                    <div class="border-t border-slate-100 pt-4 mt-6 space-y-4">
                         <h2 class="text-sm font-semibold text-slate-800">
                             Data e Local de Realização
                         </h2>
@@ -234,7 +302,7 @@
                                 </label>
                                 <input type="date"
                                        name="data_aso"
-                                       value="{{ old('data_aso') }}"
+                                       value="{{ $dataAsoValue }}"
                                        class="w-full rounded-xl border border-slate-200 text-sm py-2.5 px-3
                                               focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400">
                             </div>
@@ -248,7 +316,8 @@
                                                focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400">
                                     <option value="">Selecione a unidade</option>
                                     @foreach($unidades as $unidade)
-                                        <option value="{{ $unidade->id }}" @selected(old('unidade_id') == $unidade->id)>
+                                        <option value="{{ $unidade->id }}"
+                                            @selected((string) $unidadeSelecionada === (string) $unidade->id)>
                                             {{ $unidade->nome }}
                                         </option>
                                     @endforeach
@@ -257,28 +326,28 @@
                         </div>
                     </div>
 
-                    {{-- Botão final (full width, azul, igual protótipo) --}}
+                    {{-- Botão final --}}
                     <div class="mt-4">
                         <button type="submit"
                                 class="w-full px-6 py-3 rounded-xl bg-sky-500 hover:bg-sky-600 text-white text-sm font-medium shadow-sm">
-                            Criar Tarefa ASO
+                            {{ $isEdit ? 'Atualizar Tarefa ASO' : 'Criar Tarefa ASO' }}
                         </button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
+
     @push('scripts')
+        {{-- Máscara + validação de CPF --}}
         <script>
             document.addEventListener('DOMContentLoaded', function () {
-                // pega o primeiro input com name="cpf" da página
                 var cpfInput = document.querySelector('input[name="cpf"]');
                 if (!cpfInput) return;
 
-                // máscara enquanto digita
                 cpfInput.addEventListener('input', function () {
-                    var v = cpfInput.value.replace(/\D/g, '');   // só números
-                    v = v.slice(0, 11);                          // máximo 11 dígitos
+                    var v = cpfInput.value.replace(/\D/g, '');
+                    v = v.slice(0, 11);
 
                     if (v.length > 9) {
                         cpfInput.value = v.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, "$1.$2.$3-$4");
@@ -291,7 +360,6 @@
                     }
                 });
 
-                // validação ao sair do campo
                 cpfInput.addEventListener('blur', function () {
                     var cpfLimpo = cpfInput.value.replace(/\D/g, '');
 
@@ -308,10 +376,9 @@
                 });
             });
 
-            // valida CPF (algoritmo padrão)
             function cpfValido(cpf) {
                 if (!cpf || cpf.length !== 11) return false;
-                if (/^(\d)\1{10}$/.test(cpf)) return false; // todos os dígitos iguais
+                if (/^(\d)\1{10}$/.test(cpf)) return false;
 
                 var soma = 0;
                 for (var i = 0; i < 9; i++) {
@@ -332,11 +399,10 @@
                 return true;
             }
 
-            // mostra mensagem de erro logo abaixo do input
             function mostrarErroCPF(input, mensagem) {
                 limparErroCPF(input);
 
-                input.style.borderColor = '#dc2626'; // vermelho
+                input.style.borderColor = '#dc2626';
                 var p = document.createElement('p');
                 p.className = 'cpf-error';
                 p.style.color = '#dc2626';
@@ -349,18 +415,93 @@
                 }
             }
 
-            // remove mensagem de erro e estilo
             function limparErroCPF(input) {
                 input.style.borderColor = '';
 
                 if (!input.parentNode) return;
                 var erro = input.parentNode.querySelector('.cpf-error');
-                if (erro) {
-                    erro.remove();
-                }
+                if (erro) erro.remove();
             }
         </script>
 
+        {{-- Habilita / desabilita campos de funcionário conforme select --}}
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const selectFuncionario = document.getElementById('funcionario_id');
+                if (!selectFuncionario) return;
 
+                const campos = [
+                    document.getElementById('campo_nome'),
+                    document.getElementById('campo_cpf'),
+                    document.getElementById('campo_rg'),
+                    document.getElementById('campo_data_nascimento'),
+                ];
+
+                function toggleCamposFuncionario() {
+                    const temFuncionario = selectFuncionario.value !== '';
+
+                    campos.forEach(function (campo) {
+                        if (!campo) return;
+
+                        campo.disabled = temFuncionario;
+
+                        campo.classList.toggle('bg-slate-100', temFuncionario);
+                        campo.classList.toggle('cursor-not-allowed', temFuncionario);
+                        campo.classList.toggle('bg-white', !temFuncionario);
+                    });
+                }
+
+                toggleCamposFuncionario();
+                selectFuncionario.addEventListener('change', toggleCamposFuncionario);
+            });
+        </script>
+
+        {{-- Toggle de treinamentos (Sim / Não) --}}
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const campo = document.getElementById('vai_fazer_treinamento');
+                const btnSim = document.getElementById('btn_treina_sim');
+                const btnNao = document.getElementById('btn_treina_nao');
+                const lista = document.getElementById('listaTreinamentos');
+
+                if (!campo || !btnSim || !btnNao || !lista) return;
+
+                function atualizarTreinamento() {
+                    const ativo = campo.value === '1';
+
+                    if (ativo) {
+                        lista.classList.remove('hidden');
+                    } else {
+                        lista.classList.add('hidden');
+                    }
+
+                    if (ativo) {
+                        btnSim.classList.add('bg-slate-900', 'text-white', 'border-slate-900');
+                        btnSim.classList.remove('bg-white', 'text-slate-700', 'border-slate-300');
+
+                        btnNao.classList.add('bg-white', 'text-slate-700', 'border-slate-300');
+                        btnNao.classList.remove('bg-slate-900', 'text-white', 'border-slate-900');
+                    } else {
+                        btnNao.classList.add('bg-slate-900', 'text-white', 'border-slate-900');
+                        btnNao.classList.remove('bg-white', 'text-slate-700', 'border-slate-300');
+
+                        btnSim.classList.add('bg-white', 'text-slate-700', 'border-slate-300');
+                        btnSim.classList.remove('bg-slate-900', 'text-white', 'border-slate-900');
+                    }
+                }
+
+                btnSim.addEventListener('click', function () {
+                    campo.value = '1';
+                    atualizarTreinamento();
+                });
+
+                btnNao.addEventListener('click', function () {
+                    campo.value = '0';
+                    atualizarTreinamento();
+                });
+
+                atualizarTreinamento();
+            });
+        </script>
     @endpush
 @endsection

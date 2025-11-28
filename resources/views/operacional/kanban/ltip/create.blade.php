@@ -15,7 +15,7 @@
             {{-- Cabeçalho --}}
             <div class="px-6 py-4 bg-gradient-to-r from-red-700 to-red-600 text-white">
                 <h1 class="text-lg font-semibold">
-                    LTIP - Insalubridade e Periculosidade
+                    LTIP - Insalubridade e Periculosidade {{ !empty($isEdit) ? '(Editar)' : '' }}
                 </h1>
                 <p class="text-xs text-white/80 mt-1">
                     {{ $cliente->razao_social }}
@@ -23,9 +23,14 @@
             </div>
 
             <form method="POST"
-                  action="{{ route('operacional.ltip.store', $cliente) }}"
+                  action="{{ !empty($isEdit) && $ltip
+                        ? route('operacional.ltip.update', $ltip)
+                        : route('operacional.ltip.store', $cliente) }}"
                   class="p-6 space-y-6">
                 @csrf
+                @if(!empty($isEdit) && $ltip)
+                    @method('PUT')
+                @endif
 
                 @if ($errors->any())
                     <div class="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-700">
@@ -46,7 +51,7 @@
                            name="endereco_avaliacoes"
                            class="w-full rounded-lg border-slate-200 text-sm px-3 py-2"
                            placeholder="Endereço completo"
-                           value="{{ old('endereco_avaliacoes') }}">
+                           value="{{ old('endereco_avaliacoes', $ltip->endereco_avaliacoes ?? '') }}">
                 </section>
 
                 {{-- Funções e Quantidades --}}
@@ -61,37 +66,40 @@
                     </div>
 
                     <div id="ltip-funcoes-wrapper" class="space-y-3">
-                        {{-- Linha base --}}
-                        <div class="ltip-funcao-item rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                            <div class="flex items-center justify-between mb-2">
-                            <span data-role="ltip-funcao-badge"
-                                  class="text-[11px] px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 font-semibold">
-                                Função 1
-                            </span>
-                            </div>
-
-                            <div class="grid grid-cols-12 gap-3 items-end">
-                                <div class="col-span-8">
-                                    <x-funcoes.select-with-create
-                                        name="funcoes[0][funcao_id]"
-                                        field-id="funcoes_0_funcao_id"
-                                        label="Função"
-                                        :funcoes="$funcoes"
-                                        :selected="old('funcoes.0.funcao_id')"
-                                        :show-create="false"
-                                    />
+                        @foreach($funcoesForm as $idx => $f)
+                            <div class="ltip-funcao-item rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span data-role="ltip-funcao-badge"
+                                          class="text-[11px] px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 font-semibold">
+                                        Função {{ $idx + 1 }}
+                                    </span>
                                 </div>
 
-                                <div class="col-span-4">
-                                    <label class="block text-xs font-medium text-slate-500 mb-1">Quantidade</label>
-                                    <input type="number"
-                                           name="funcoes[0][quantidade]"
-                                           class="w-full rounded-lg border-slate-200 text-sm px-3 py-2 ltip-qtd-input"
-                                           value="{{ old('funcoes.0.quantidade', 1) }}"
-                                           min="1">
+                                <div class="grid grid-cols-12 gap-3 items-end">
+                                    <div class="col-span-8">
+                                        <x-funcoes.select-with-create
+                                            name="funcoes[{{ $idx }}][funcao_id]"
+                                            field-id="funcoes_{{ $idx }}_funcao_id"
+                                            label="Função"
+                                            :funcoes="$funcoes"
+                                            :selected="old('funcoes.'.$idx.'.funcao_id', $f['funcao_id'] ?? null)"
+                                            :show-create="false"
+                                        />
+                                    </div>
+
+                                    <div class="col-span-4">
+                                        <label class="block text-xs font-medium text-slate-500 mb-1">
+                                            Quantidade
+                                        </label>
+                                        <input type="number"
+                                               name="funcoes[{{ $idx }}][quantidade]"
+                                               class="w-full rounded-lg border-slate-200 text-sm px-3 py-2 ltip-qtd-input"
+                                               value="{{ old('funcoes.'.$idx.'.quantidade', $f['quantidade'] ?? 1) }}"
+                                               min="1">
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        @endforeach
                     </div>
 
                     @error('funcoes')
@@ -99,12 +107,11 @@
                     @enderror
                 </section>
 
-
                 {{-- Footer --}}
                 <div class="pt-4 border-t border-slate-100 mt-4">
                     <button type="submit"
                             class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700">
-                        Criar Tarefa LTIP
+                        {{ !empty($isEdit) ? 'Salvar alterações' : 'Criar Tarefa LTIP' }}
                     </button>
                 </div>
             </form>
@@ -114,28 +121,32 @@
     @push('scripts')
         <script>
             document.addEventListener('DOMContentLoaded', function () {
-
                 const wrapper = document.getElementById('ltip-funcoes-wrapper');
                 const btnAdd  = document.getElementById('ltip-btn-add-funcao');
 
                 btnAdd.addEventListener('click', function () {
-
                     const itens  = wrapper.querySelectorAll('.ltip-funcao-item');
                     const index  = itens.length;
 
                     const base   = itens[0];
                     const clone  = base.cloneNode(true);
 
-                    // === Atualiza SELECT da função ===
+                    // SELECTS
                     clone.querySelectorAll('select').forEach(select => {
-                        select.name = select.name.replace(/\[\d+]/, '[' + index + ']');
-                        select.id   = select.id.replace(/\_\d+\_/, '_' + index + '_');
+                        if (select.name && select.name.includes('funcoes[')) {
+                            select.name = select.name.replace(/\[\d+]/, '[' + index + ']');
+                        }
+                        if (select.id && select.id.startsWith('funcoes_')) {
+                            select.id = select.id.replace(/_\d+_funcao_id$/, '_' + index + '_funcao_id');
+                        }
                         select.value = '';
                     });
 
-                    // === Atualiza inputs (quantidade etc.) ===
+                    // INPUTS
                     clone.querySelectorAll('input').forEach(input => {
-                        input.name = input.name.replace(/\[\d+]/, '[' + index + ']');
+                        if (input.name && input.name.includes('funcoes[')) {
+                            input.name = input.name.replace(/\[\d+]/, '[' + index + ']');
+                        }
 
                         if (input.name.includes('[quantidade]')) {
                             input.value = 1;
@@ -144,7 +155,7 @@
                         }
                     });
 
-                    // Atualiza badge "Função X"
+                    // Badge
                     const badge = clone.querySelector('[data-role="ltip-funcao-badge"]');
                     if (badge) {
                         badge.textContent = 'Função ' + (index + 1);
@@ -152,9 +163,7 @@
 
                     wrapper.appendChild(clone);
                 });
-
             });
         </script>
     @endpush
-
 @endsection

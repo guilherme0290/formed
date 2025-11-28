@@ -1,5 +1,11 @@
 @extends('layouts.operacional')
 
+
+@php
+    /** @var \App\Models\PcmsoSolicitacoes|null $pcmso */
+    $isEdit = isset($pcmso);
+@endphp
+
 @section('pageTitle', 'PCMSO - Específico')
 
 @section('content')
@@ -18,10 +24,15 @@
             </div>
 
             <form method="POST"
-                  action="{{ route('operacional.pcmso.store-com-pgr', [$cliente, 'especifico']) }}"
+                  action="{{ $isEdit
+                        ? route('operacional.kanban.pcmso.update', $pcmso->tarefa_id)
+                        : route('operacional.pcmso.store-com-pgr', [$cliente, 'especifico']) }}"
                   enctype="multipart/form-data"
                   class="p-6 space-y-4">
                 @csrf
+                @if($isEdit)
+                    @method('PUT')
+                @endif
 
                 @if ($errors->any())
                     <div class="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-700 mb-3">
@@ -38,7 +49,7 @@
                         <label class="block text-sm font-medium text-slate-700 mb-1">
                             Nome da Obra *
                         </label>
-                        <input type="text" name="obra_nome" value="{{ old('obra_nome') }}"
+                        <input type="text" name="obra_nome"   value="{{ old('obra_nome', $pcmso->obra_nome ?? '') }}"
                                class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                                placeholder="Nome da obra">
                     </div>
@@ -47,7 +58,7 @@
                         <label class="block text-sm font-medium text-slate-700 mb-1">
                             CNPJ do Contratante
                         </label>
-                        <input type="text" name="obra_cnpj_contratante" value="{{ old('obra_cnpj_contratante') }}"
+                        <input type="text" name="obra_cnpj_contratante"  value="{{ old('obra_cnpj_contratante', $pcmso->obra_cnpj_contratante ?? '') }}"
                                class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                                placeholder="00.000.000/0000-00">
                     </div>
@@ -56,7 +67,7 @@
                         <label class="block text-sm font-medium text-slate-700 mb-1">
                             CEI/CNO
                         </label>
-                        <input type="text" name="obra_cei_cno" value="{{ old('obra_cei_cno') }}"
+                        <input type="text" name="obra_cei_cno"  value="{{ old('obra_cei_cno', $pcmso->obra_cei_cno ?? '') }}"
                                class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                                placeholder="Número do CEI ou CNO">
                     </div>
@@ -65,7 +76,7 @@
                         <label class="block text-sm font-medium text-slate-700 mb-1">
                             Endereço da Obra
                         </label>
-                        <input type="text" name="obra_endereco" value="{{ old('obra_endereco') }}"
+                        <input type="text" name="obra_endereco"  value="{{ old('obra_endereco', $pcmso->obra_endereco ?? '') }}"
                                class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                                placeholder="Endereço completo">
                     </div>
@@ -73,14 +84,36 @@
 
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">
-                        Inserir PGR / Inventário de Risco *
+                        Inserir PGR / Inventário de Risco {{ $isEdit ? '' : '*' }}
                     </label>
+
                     <input type="file" name="pgr_arquivo" accept="application/pdf"
                            class="w-full text-sm rounded-lg border border-slate-200 px-3 py-2
-                                  file:mr-3 file:px-3 file:py-2 file:rounded-lg
-                                  file:border-0 file:bg-purple-600 file:text-white
-                                  hover:file:bg-purple-700">
+                  file:mr-3 file:px-3 file:py-2 file:rounded-lg
+                  file:border-0 file:bg-purple-600 file:text-white
+                  hover:file:bg-purple-700">
+
+                    @if($isEdit && !empty($pcmso->pgr_arquivo_path))
+
+                        <div class="mt-2 text-xs text-slate-600">
+                            <p>
+                                Arquivo atual:
+                                <a href="{{ Storage::disk('public')->url($pcmso->pgr_arquivo_path) }}"
+                                   target="_blank"
+                                   class="text-purple-600 underline">
+                                    Abrir PGR atual
+                                </a>
+                            </p>
+
+                            <label class="inline-flex items-center gap-2 mt-1 text-[11px] text-red-600">
+                                <input type="checkbox" name="remover_arquivo" value="1"
+                                       class="rounded border-slate-300">
+                                <span>Remover arquivo atual</span>
+                            </label>
+                        </div>
+                    @endif
                 </div>
+
 
                 <div class="rounded-xl bg-purple-50 border border-purple-100 px-4 py-3 text-xs text-purple-800">
                     Tarefa de PCMSO Específico será criada com prazo de <strong>10 dias</strong>.
@@ -95,9 +128,10 @@
 
                     <button type="submit"
                             class="flex-1 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm
-                                   font-semibold py-2.5 transition">
-                        Criar Tarefa PCMSO
+                                font-semibold py-2.5 transition">
+                        {{ $isEdit ? 'Salvar alterações' : 'Criar Tarefa PCMSO' }}
                     </button>
+
                 </div>
             </form>
         </div>

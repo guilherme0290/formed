@@ -59,8 +59,155 @@ class PgrController extends Controller
             'funcoes'   => $funcoes,
             'tipoLabel' => $tipoLabel,
             'valorArt'  => $valorArt,
+            'tarefa'    => null,
+            'pgr'       => null,
+            'modo'      => 'create',
         ]);
     }
+
+    public function pgrEdit(Tarefa $tarefa, Request $request)
+    {
+        $usuario   = $request->user();
+        $empresaId = $usuario->empresa_id;
+
+        abort_if($tarefa->empresa_id !== $empresaId, 403);
+
+        // relação na Tarefa: public function pgr() { return $this->hasOne(PgrSolicitacoes::class, 'tarefa_id'); }
+        $pgr = $tarefa->pgr;
+        abort_if(!$pgr, 404);
+
+        $cliente = $tarefa->cliente;
+
+        $tipo      = $pgr->tipo; // matriz|especifico
+        $tipoLabel = $tipo === 'matriz' ? 'Matriz' : 'Específico';
+
+        $funcoes = Funcao::where('empresa_id', $empresaId)
+            ->orderBy('nome')
+            ->get();
+
+        // se quiser manter o valor já salvo, senão usa fixo
+        $valorArt = $pgr->valor_art ?? 500.00;
+
+        return view('operacional.kanban.pgr.form', [
+            'cliente'   => $cliente,
+            'tipo'      => $tipo,
+            'tipoLabel' => $tipoLabel,
+            'funcoes'   => $funcoes,
+            'valorArt'  => $valorArt,
+
+            // extras para modo edição
+            'tarefa'    => $tarefa,
+            'pgr'       => $pgr,
+            'modo'      => 'edit',
+        ]);
+    }
+
+    public function pgrUpdate(Tarefa $tarefa, Request $request)
+    {
+        $usuario   = $request->user();
+        $empresaId = $usuario->empresa_id;
+
+        abort_if($tarefa->empresa_id !== $empresaId, 403);
+
+        $pgr = $tarefa->pgr;
+        abort_if(!$pgr, 404);
+
+        // mesma validação do store
+        $data = $request->validate([
+            'tipo'         => ['required', 'in:matriz,especifico'],
+            'com_art'      => ['required', 'boolean'],
+            'qtd_homens'   => ['required', 'integer', 'min:0'],
+            'qtd_mulheres' => ['required', 'integer', 'min:0'],
+
+            'contratante_nome'        => ['nullable', 'string', 'max:255'],
+            'contratante_cnpj'        => ['nullable', 'string', 'max:20'],
+            'obra_nome'               => ['nullable', 'string', 'max:255'],
+            'obra_endereco'           => ['nullable', 'string'],
+            'obra_cej_cno'            => ['nullable', 'string', 'max:50'],
+            'obra_turno_trabalho'     => ['nullable', 'string', 'max:255'],
+
+            'funcoes'                 => ['required', 'array', 'min:1'],
+            'funcoes.*.funcao_id'     => ['required', 'integer', 'exists:funcoes,id'],
+            'funcoes.*.quantidade'    => ['required', 'integer', 'min:1'],
+            'funcoes.*.cbo'           => ['nullable', 'string', 'max:20'],
+            'funcoes.*.descricao'     => ['nullable', 'string'],
+        ]);
+
+        $totalTrabalhadores = (int)$data['qtd_homens'] + (int)$data['qtd_mulheres'];
+
+        $totalFuncoes = collect($data['funcoes'])
+            ->sum(function ($funcao) {
+                return (int)($funcao['quantidade'] ?? 0);
+            });
+
+        if ($totalFuncoes !== $totalTrabalhadores) {
+            return back()
+                ->withInput()
+                ->withErrors([
+                    'funcoes' => "A soma das quantidades das funções ({$totalFuncoes}) deve ser igual ao total de trabalhadores ({$totalTrabalhadores}).",
+                ]);
+        }
+
+        $tipoLabel = $data['tipo'] === 'matriz' ? 'Matriz' : 'Específico';
+        $valorArt  = $data['com_art'] ? 500.00 : null;
+
+        DB::transaction(function () use (
+            $data,
+            $pgr,
+            $tarefa,
+            $tipoLabel,
+            $totalTrabalhadores,
+            $valorArt,
+            $usuario
+        ) {
+            // Atualiza PGR
+            $pgr->update([
+                'tipo'                => $data['tipo'],
+                'com_art'             => (bool) $data['com_art'],
+                'qtd_homens'          => $data['qtd_homens'],
+                'qtd_mulheres'        => $data['qtd_mulheres'],
+                'total_trabalhadores' => $totalTrabalhadores,
+                'funcoes'             => $data['funcoes'],
+                'valor_art'           => $valorArt,
+
+                'contratante_nome'    => $data['contratante_nome'] ?? null,
+                'contratante_cnpj'    => $data['contratante_cnpj'] ?? null,
+                'obra_nome'           => $data['obra_nome'] ?? null,
+                'obra_endereco'       => $data['obra_endereco'] ?? null,
+                'obra_cej_cno'        => $data['obra_cej_cno'] ?? null,
+                'obra_turno_trabalho' => $data['obra_turno_trabalho'] ?? null,
+            ]);
+
+            // Monta descrição amigável considerando se já tem PCMSO
+            $descricao = "PGR - {$tipoLabel}";
+            if ($pgr->com_pcms0) {
+                $descricao .= ' + PCMSO';
+            }
+            if ($pgr->com_art) {
+                $descricao .= ' (COM ART)';
+            }
+
+            $tarefa->update([
+                'titulo'    => "PGR - {$tipoLabel}",
+                'descricao' => $descricao,
+            ]);
+
+            // log
+            TarefaLog::create([
+                'tarefa_id'      => $tarefa->id,
+                'user_id'        => $usuario->id,
+                'de_coluna_id'   => $tarefa->coluna_id,
+                'para_coluna_id' => $tarefa->coluna_id,
+                'acao'           => 'atualizado',
+                'observacao'     => 'Dados do PGR atualizados.',
+            ]);
+        });
+
+        return redirect()
+            ->route('operacional.kanban')
+            ->with('ok', 'PGR atualizado com sucesso.');
+    }
+
 
     /**
      * Passo 3 – salvar PGR e criar Tarefa + PgrSolicitacao

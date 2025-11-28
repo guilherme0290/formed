@@ -18,6 +18,11 @@ class LtcatSolicitacoes extends Model
         'funcoes',
         'total_funcoes',
         'total_funcionarios',
+        // Específico
+        'nome_obra',
+        'cnpj_contratante',
+        'cei_cno' ,
+        'endereco_obra',
     ];
 
     protected $casts = [

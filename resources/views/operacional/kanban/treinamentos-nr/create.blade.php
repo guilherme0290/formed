@@ -15,7 +15,7 @@
             {{-- Cabeçalho --}}
             <div class="px-6 py-4 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white">
                 <h1 class="text-lg font-semibold">
-                    Treinamentos de NRs
+                    Treinamentos de NRs {{ !empty($isEdit) ? '(Editar)' : '' }}
                 </h1>
                 <p class="text-xs text-white/80 mt-1">
                     {{ $cliente->razao_social }}
@@ -23,9 +23,14 @@
             </div>
 
             <form method="POST"
-                  action="{{ route('operacional.treinamentos-nr.store', $cliente) }}"
+                  action="{{ !empty($isEdit) && $tarefa
+                        ? route('operacional.treinamentos-nr.update', $tarefa)
+                        : route('operacional.treinamentos-nr.store', $cliente) }}"
                   class="p-6 space-y-6">
                 @csrf
+                @if(!empty($isEdit) && $tarefa)
+                    @method('PUT')
+                @endif
 
                 {{-- Erros --}}
                 @if ($errors->any())
@@ -117,6 +122,10 @@
                     </div>
 
                     {{-- Lista de funcionários --}}
+                    @php
+                        $selecionados = old('funcionarios', $selecionados ?? []);
+                    @endphp
+
                     <div id="lista-funcionarios"
                          class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-80 overflow-y-auto pr-1">
                         @foreach($funcionarios as $func)
@@ -125,7 +134,8 @@
                                     <input type="checkbox"
                                            name="funcionarios[]"
                                            value="{{ $func->id }}"
-                                           class="mt-1 h-3 w-3 text-indigo-600 border-slate-300 rounded">
+                                           class="mt-1 h-3 w-3 text-indigo-600 border-slate-300 rounded"
+                                        @checked(in_array($func->id, $selecionados))>
                                     <div>
                                         <p class="font-semibold text-slate-800 text-sm">
                                             {{ $func->nome }}
@@ -148,6 +158,11 @@
                 </section>
 
                 {{-- 3. Onde será realizado? --}}
+                @php
+                    $localAtual = old('local_tipo', $detalhes->local_tipo ?? 'clinica');
+                    $unidadeAtual = old('unidade_id', $detalhes->unidade_id ?? '');
+                @endphp
+
                 <section class="space-y-3 pt-4 border-t border-slate-100 mt-4">
                     <h2 class="text-sm font-semibold text-slate-800">3. Onde será realizado?</h2>
 
@@ -155,8 +170,8 @@
                         {{-- Na Clínica --}}
                         <label class="relative">
                             <input type="radio" name="local_tipo" value="clinica"
-                                   class="sr-only" checked>
-                            <div class="local-radio-card rounded-2xl border border-indigo-300 bg-indigo-50 px-4 py-3 cursor-pointer">
+                                   class="sr-only" @checked($localAtual === 'clinica')>
+                            <div class="local-radio-card rounded-2xl border px-4 py-3 cursor-pointer">
                                 <p class="text-sm font-semibold text-slate-800">Na Clínica</p>
                                 <p class="text-[11px] text-slate-500 mt-0.5">
                                     Treinamento na unidade FORMED
@@ -166,8 +181,9 @@
 
                         {{-- In Company --}}
                         <label class="relative">
-                            <input type="radio" name="local_tipo" value="empresa" class="sr-only">
-                            <div class="local-radio-card rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 cursor-pointer">
+                            <input type="radio" name="local_tipo" value="empresa"
+                                   class="sr-only" @checked($localAtual === 'empresa')>
+                            <div class="local-radio-card rounded-2xl border px-4 py-3 cursor-pointer">
                                 <p class="text-sm font-semibold text-slate-800">In Company</p>
                                 <p class="text-[11px] text-slate-500 mt-0.5">
                                     Treinamento na empresa do cliente
@@ -185,7 +201,8 @@
                                 class="w-full rounded-xl border-slate-200 text-sm px-3 py-2">
                             <option value="">Escolha uma unidade</option>
                             @foreach($unidades as $unidade)
-                                <option value="{{ $unidade->id }}">
+                                <option value="{{ $unidade->id }}"
+                                    @selected($unidadeAtual == $unidade->id)>
                                     {{ $unidade->nome }}
                                 </option>
                             @endforeach
@@ -217,7 +234,7 @@
                 <div class="pt-4 border-t border-slate-100 mt-4">
                     <button type="submit"
                             class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700">
-                        Criar Tarefa de Treinamento
+                        {{ !empty($isEdit) ? 'Salvar alterações' : 'Criar Tarefa de Treinamento' }}
                     </button>
                 </div>
 
@@ -226,8 +243,6 @@
     </div>
 
     @push('scripts')
-
-
         <script>
             document.addEventListener('DOMContentLoaded', function () {
                 const csrf   = '{{ csrf_token() }}';
@@ -261,7 +276,7 @@
                         nome:       nfNome.value.trim(),
                         cpf:        nfCpf.value.trim(),
                         nascimento: nfNasc.value || null,
-                        funcao_id:  nfFuncaoSel.value || null,   // <-- agora enviamos funcao_id
+                        funcao_id:  nfFuncaoSel.value || null,
                     };
 
                     if (!payload.nome || !payload.cpf || !payload.funcao_id) {
@@ -292,7 +307,7 @@
                             nfNome.value      = '';
                             nfCpf.value       = '';
                             nfNasc.value      = '';
-                            nfFuncaoSel.value = '';  // <-- limpa select de função
+                            nfFuncaoSel.value = '';
 
                             cardNovo.classList.add('hidden');
                             atualizarContador();
@@ -394,104 +409,88 @@
 
                 atualizarLocalUI();
 
+                // Máscara e validação CPF do modal
+                document.addEventListener('DOMContentLoaded', function () {
+                    var cpfInput = document.querySelector('input[name="cpf"]');
+                    if (!cpfInput) return;
 
-                //
+                    cpfInput.addEventListener('input', function () {
+                        var v = cpfInput.value.replace(/\D/g, '');
+                        v = v.slice(0, 11);
 
+                        if (v.length > 9) {
+                            cpfInput.value = v.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, "$1.$2.$3-$4");
+                        } else if (v.length > 6) {
+                            cpfInput.value = v.replace(/(\d{3})(\d{3})(\d{1,3})/, "$1.$2.$3");
+                        } else if (v.length > 3) {
+                            cpfInput.value = v.replace(/(\d{3})(\d{1,3})/, "$1.$2");
+                        } else {
+                            cpfInput.value = v;
+                        }
+                    });
 
-            });
+                    cpfInput.addEventListener('blur', function () {
+                        var cpfLimpo = cpfInput.value.replace(/\D/g, '');
 
-            document.addEventListener('DOMContentLoaded', function () {
-                // pega o primeiro input com name="cpf" da página
-                var cpfInput = document.querySelector('input[name="cpf"]');
-                if (!cpfInput) return;
+                        if (cpfLimpo === '') {
+                            limparErroCPF(cpfInput);
+                            return;
+                        }
 
-                // máscara enquanto digita
-                cpfInput.addEventListener('input', function () {
-                    var v = cpfInput.value.replace(/\D/g, '');   // só números
-                    v = v.slice(0, 11);                          // máximo 11 dígitos
-
-                    if (v.length > 9) {
-                        cpfInput.value = v.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, "$1.$2.$3-$4");
-                    } else if (v.length > 6) {
-                        cpfInput.value = v.replace(/(\d{3})(\d{3})(\d{1,3})/, "$1.$2.$3");
-                    } else if (v.length > 3) {
-                        cpfInput.value = v.replace(/(\d{3})(\d{1,3})/, "$1.$2");
-                    } else {
-                        cpfInput.value = v;
-                    }
+                        if (!cpfValido(cpfLimpo)) {
+                            mostrarErroCPF(cpfInput, 'CPF inválido');
+                        } else {
+                            limparErroCPF(cpfInput);
+                        }
+                    });
                 });
 
-                // validação ao sair do campo
-                cpfInput.addEventListener('blur', function () {
-                    var cpfLimpo = cpfInput.value.replace(/\D/g, '');
+                function cpfValido(cpf) {
+                    if (!cpf || cpf.length !== 11) return false;
+                    if (/^(\d)\1{10}$/.test(cpf)) return false;
 
-                    if (cpfLimpo === '') {
-                        limparErroCPF(cpfInput);
-                        return;
+                    var soma = 0;
+                    for (var i = 0; i < 9; i++) {
+                        soma += parseInt(cpf.charAt(i)) * (10 - i);
                     }
+                    var resto = (soma * 10) % 11;
+                    if (resto === 10 || resto === 11) resto = 0;
+                    if (resto !== parseInt(cpf.charAt(9))) return false;
 
-                    if (!cpfValido(cpfLimpo)) {
-                        mostrarErroCPF(cpfInput, 'CPF inválido');
-                    } else {
-                        limparErroCPF(cpfInput);
+                    soma = 0;
+                    for (var j = 0; j < 10; j++) {
+                        soma += parseInt(cpf.charAt(j)) * (11 - j);
                     }
-                });
+                    resto = (soma * 10) % 11;
+                    if (resto === 10 || resto === 11) resto = 0;
+                    if (resto !== parseInt(cpf.charAt(10))) return false;
+
+                    return true;
+                }
+
+                function mostrarErroCPF(input, mensagem) {
+                    limparErroCPF(input);
+
+                    input.style.borderColor = '#dc2626';
+                    var p = document.createElement('p');
+                    p.className = 'cpf-error';
+                    p.style.color = '#dc2626';
+                    p.style.fontSize = '12px';
+                    p.style.marginTop = '4px';
+                    p.textContent = mensagem;
+
+                    if (input.parentNode) {
+                        input.parentNode.appendChild(p);
+                    }
+                }
+
+                function limparErroCPF(input) {
+                    input.style.borderColor = '';
+                    if (!input.parentNode) return;
+                    var erro = input.parentNode.querySelector('.cpf-error');
+                    if (erro) erro.remove();
+                }
             });
-
-            // valida CPF (algoritmo padrão)
-            function cpfValido(cpf) {
-                if (!cpf || cpf.length !== 11) return false;
-                if (/^(\d)\1{10}$/.test(cpf)) return false; // todos os dígitos iguais
-
-                var soma = 0;
-                for (var i = 0; i < 9; i++) {
-                    soma += parseInt(cpf.charAt(i)) * (10 - i);
-                }
-                var resto = (soma * 10) % 11;
-                if (resto === 10 || resto === 11) resto = 0;
-                if (resto !== parseInt(cpf.charAt(9))) return false;
-
-                soma = 0;
-                for (var j = 0; j < 10; j++) {
-                    soma += parseInt(cpf.charAt(j)) * (11 - j);
-                }
-                resto = (soma * 10) % 11;
-                if (resto === 10 || resto === 11) resto = 0;
-                if (resto !== parseInt(cpf.charAt(10))) return false;
-
-                return true;
-            }
-
-            // mostra mensagem de erro logo abaixo do input
-            function mostrarErroCPF(input, mensagem) {
-                limparErroCPF(input);
-
-                input.style.borderColor = '#dc2626'; // vermelho
-                var p = document.createElement('p');
-                p.className = 'cpf-error';
-                p.style.color = '#dc2626';
-                p.style.fontSize = '12px';
-                p.style.marginTop = '4px';
-                p.textContent = mensagem;
-
-                if (input.parentNode) {
-                    input.parentNode.appendChild(p);
-                }
-            }
-
-            // remove mensagem de erro e estilo
-            function limparErroCPF(input) {
-                input.style.borderColor = '';
-
-                if (!input.parentNode) return;
-                var erro = input.parentNode.querySelector('.cpf-error');
-                if (erro) {
-                    erro.remove();
-                }
-            }
-            //
-
         </script>
     @endpush
-
 @endsection

@@ -134,6 +134,11 @@ class Tarefa extends Model
         return $this->hasOne(PaeSolicitacoes::class, 'tarefa_id');
     }
 
+    public function asoSolicitacao()
+    {
+        return $this->hasOne(AsoSolicitacoes::class, 'tarefa_id');
+    }
+
 
 
 
