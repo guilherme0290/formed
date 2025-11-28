@@ -31,7 +31,7 @@
             </ul>
         </div>
     @endif
-    <div class="w-full px-4 md:px-8 py-8">
+    <div class="w-full max-w-7xl mx-auto px-3 md:px-4 py-4 md:py-5">
 
         {{-- Barra de busca --}}
         <div class="flex items-center gap-4 mb-6">
@@ -50,7 +50,7 @@
         </div>
 
         {{-- Título --}}
-        <div class="mb-6">
+        <div class="mb-4">
             <h1 class="text-2xl font-semibold text-slate-900">Painel Operacional</h1>
             <p class="text-sm text-slate-500">
                 Suas tarefas atribuídas - {{ $usuario->name }}
@@ -59,11 +59,11 @@
 
 
         {{-- Filtros --}}
-        <form method="GET" class="grid md:grid-cols-3 gap-4 mb-6 text-sm">
+        <form method="GET" class="grid md:grid-cols-3 gap-3 mb-4 text-sm">
             <div>
-                <label class="block text-xs font-medium text-slate-500 mb-1">Tipo de Serviço</label>
+                <label class="block text-[11px] font-medium text-slate-500 mb-0.5">Tipo de Serviço</label>
                 <select name="servico_id"
-                        class="w-full rounded-xl border-slate-200 bg-white py-2 px-3 text-sm focus:ring-sky-400 focus:border-sky-400">
+                        class="w-full rounded-xl border-slate-200 bg-white py-1.5 px-3 text-sm focus:ring-sky-400 focus:border-sky-400">
                     <option value="">Todos os serviços</option>
                     @foreach($servicos as $servico)
                         <option value="{{ $servico->id }}" @selected($filtroServico == $servico->id)>
@@ -74,9 +74,9 @@
             </div>
 
             <div>
-                <label class="block text-xs font-medium text-slate-500 mb-1">Responsável</label>
+                <label class="block text-[11px] font-medium text-slate-500 mb-0.5">Responsável</label>
                 <select name="responsavel_id"
-                        class="w-full rounded-xl border-slate-200 bg-white py-2 px-3 text-sm focus:ring-sky-400 focus:border-sky-400">
+                        class="w-full rounded-xl border-slate-200 bg-white py-1.5 px-3 text-sm focus:ring-sky-400 focus:border-sky-400">
                     <option value="">Todos os responsáveis</option>
                     @foreach($responsaveis as $resp)
                         <option value="{{ $resp->id }}" @selected($filtroResponsavel == $resp->id)>
@@ -87,9 +87,9 @@
             </div>
 
             <div>
-                <label class="block text-xs font-medium text-slate-500 mb-1">Status (Coluna)</label>
+                <label class="block text-[11px] font-medium text-slate-500 mb-0.5">Status (Coluna)</label>
                 <select name="coluna_id"
-                        class="w-full rounded-xl border-slate-200 bg-white py-2 px-3 text-sm focus:ring-sky-400 focus:border-sky-400">
+                        class="w-full rounded-xl border-slate-200 bg-white py-1.5 px-3 text-sm focus:ring-sky-400 focus:border-sky-400">
                     <option value="">Todos os status</option>
                     @foreach($colunas as $col)
                         <option value="{{ $col->id }}" @selected($filtroColuna == $col->id)>
@@ -100,20 +100,20 @@
             </div>
 
             <div>
-                <label class="block text-xs font-medium text-slate-500 mb-1">Data inicial</label>
+                <label class="block text-[11px] font-medium text-slate-500 mb-0.5">Data inicial</label>
                 <input type="date" name="de" value="{{ $filtroDe }}"
-                       class="w-full rounded-xl border-slate-200 bg-white py-2 px-3 text-sm focus:ring-sky-400 focus:border-sky-400">
+                       class="w-full rounded-xl border-slate-200 bg-white py-1.5 px-3 text-sm focus:ring-sky-400 focus:border-sky-400">
             </div>
 
             <div>
-                <label class="block text-xs font-medium text-slate-500 mb-1">Data final</label>
+                <label class="block text-[11px] font-medium text-slate-500 mb-0.5">Data final</label>
                 <input type="date" name="ate" value="{{ $filtroAte }}"
-                       class="w-full rounded-xl border-slate-200 bg-white py-2 px-3 text-sm focus:ring-sky-400 focus:border-sky-400">
+                       class="w-full rounded-xl border-slate-200 bg-white py-1.5 px-3 text-sm focus:ring-sky-400 focus:border-sky-400">
             </div>
 
             <div class="flex items-end">
                 <button type="submit"
-                        class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-medium shadow-sm hover:bg-slate-800">
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 text-white text-sm font-medium shadow-sm hover:bg-slate-800">
                     Filtrar
                 </button>
             </div>
@@ -121,7 +121,7 @@
 
         {{-- Kanban --}}
         <div class="w-full px-2 md:px-4 py-6">
-            <div class="flex gap-3 md:gap-4 overflow-x-auto pb-4 justify-start md:justify-center">
+            <div class="flex gap-2 md:gap-3 pb-4 justify-center">
 
 
             @foreach($colunas as $coluna)
@@ -129,10 +129,10 @@
                         $tarefasColuna = $tarefasPorColuna[$coluna->id] ?? collect();
                     @endphp
 
-                        <section
-                            class="bg-white border border-slate-200 rounded-2xl flex flex-col h-[68vh]
-                                 w-60 md:w-64 lg:w-72 flex-shrink-0 shadow-md"
-                            >
+                    <section
+                        class="bg-white border border-slate-200 rounded-2xl flex flex-col h-[68vh]
+           w-52 md:w-56 lg:w-60 flex-shrink-0 shadow-md"
+                    >
                                 <header
                                     class="flex items-center justify-between px-3 py-2 border-b border-slate-100
                                     bg-slate-50/90 rounded-t-2xl"

@@ -72,5 +72,139 @@
 
 {{-- Scripts específicos das views --}}
 @stack('scripts')
+
+@push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+
+            function abrirModal(modalId, targetSelectId) {
+                const modal = document.getElementById(modalId);
+                if (!modal) return;
+
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                modal.dataset.funcaoTarget = targetSelectId;
+
+                const input = modal.querySelector('[data-funcao-input]');
+                const erro  = modal.querySelector('[data-funcao-error]');
+
+                if (erro) {
+                    erro.textContent = '';
+                    erro.classList.add('hidden');
+                }
+                if (input) {
+                    input.value = '';
+                    input.focus();
+                }
+            }
+
+            function fecharModal(modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                modal.dataset.funcaoTarget = '';
+            }
+
+            // Clique no botão "+"
+            document.addEventListener('click', function (e) {
+                const btn = e.target.closest('[data-funcao-open-modal]');
+                if (btn) {
+                    const modalId   = btn.getAttribute('data-funcao-open-modal');
+                    const targetSel = btn.getAttribute('data-funcao-target');
+                    abrirModal(modalId, targetSel);
+                }
+            });
+
+            // Eventos internos do modal (cancelar / salvar)
+            document.addEventListener('click', function (e) {
+                const modal = e.target.closest('[data-funcao-modal]');
+                if (!modal) return;
+
+                // Cancelar
+                if (e.target.matches('[data-funcao-cancel]')) {
+                    fecharModal(modal);
+                    return;
+                }
+
+                // Salvar
+                if (e.target.matches('[data-funcao-save]')) {
+                    const input  = modal.querySelector('[data-funcao-input]');
+                    const erroEl = modal.querySelector('[data-funcao-error]');
+                    const nome   = (input?.value || '').trim();
+
+                    if (!nome) {
+                        if (erroEl) {
+                            erroEl.textContent = 'Informe o nome da função.';
+                            erroEl.classList.remove('hidden');
+                        }
+                        if (input) input.focus();
+                        return;
+                    }
+
+                    const route = modal.dataset.funcaoRoute;
+                    const token = modal.dataset.funcaoCsrf;
+                    const targetId = modal.dataset.funcaoTarget;
+
+                    if (!route || !token || !targetId) return;
+
+                    // desabilita botão
+                    const btnSave = e.target;
+                    btnSave.disabled = true;
+
+                    fetch(route, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': token,
+                        },
+                        body: JSON.stringify({ nome: nome })
+                    })
+                        .then(r => r.json())
+                        .then(json => {
+                            if (!json.ok) {
+                                if (erroEl) {
+                                    erroEl.textContent = json.message || 'Não foi possível salvar a função.';
+                                    erroEl.classList.remove('hidden');
+                                }
+                                return;
+                            }
+
+                            const select = document.getElementById(targetId);
+                            if (select) {
+                                const opt = document.createElement('option');
+                                opt.value = json.id;
+                                opt.textContent = json.nome;
+                                select.appendChild(opt);
+                                select.value = json.id;
+                            }
+
+                            fecharModal(modal);
+                        })
+                        .catch(() => {
+                            if (erroEl) {
+                                erroEl.textContent = 'Erro na comunicação com o servidor.';
+                                erroEl.classList.remove('hidden');
+                            }
+                        })
+                        .finally(() => {
+                            btnSave.disabled = false;
+                        });
+                }
+            });
+
+            // Fechar clicando fora do conteúdo (opcional)
+            document.addEventListener('click', function (e) {
+                const modal = e.target.closest('[data-funcao-modal]');
+                if (!modal) return;
+
+                // se clicou diretamente no fundo escuro
+                if (e.target === modal) {
+                    fecharModal(modal);
+                }
+            });
+        });
+    </script>
+@endpush
+
 </body>
 </html>
