@@ -53,11 +53,16 @@ class Funcionario extends Model
 
     public function funcao()
     {
-        return $this->belongsTo(Funcao::class);
+        return $this->belongsTo(\App\Models\Funcao::class, 'funcao_id');
     }
 
     public function getFuncaoNomeAttribute()
     {
         return $this->funcao ? $this->funcao->nome : '—';
+    }
+
+    public function documentos()
+    {
+        return $this->hasMany(FuncionarioDocumento::class);
     }
 }

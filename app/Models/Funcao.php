@@ -25,4 +25,9 @@ class Funcao extends Model
     {
         return $query->where('empresa_id', $empresaId);
     }
+
+    public function funcionarios()
+    {
+        return $this->hasMany(Funcionario::class);
+    }
 }

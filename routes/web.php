@@ -23,6 +23,8 @@ use App\Http\Controllers\Operacional\TreinamentoNrController;
 use App\Http\Controllers\FuncaoController;
 use App\Http\Controllers\TarefaController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Cliente\ClienteDashboardController;
+use App\Http\Controllers\Cliente\ClienteFuncionarioController;
 
 // ==================== Controllers ====================
 
@@ -271,6 +273,34 @@ Route::middleware('auth')->group(function () {
     Route::get('operacional/tarefas/detalhes/ajax',
         [PainelController::class, 'detalhesAjax']
     )->name('operacional.tarefas.detalhes.ajax');
+
+
+    // ======================================================
+    //                  CLIENTE (PAINEL)
+    // ======================================================
+    Route::prefix('cliente')
+        ->name('cliente.')
+        ->middleware(['auth']) // ajuste o middleware que você já usa
+        ->group(function () {
+
+            Route::get('/', [ClienteDashboardController::class, 'index'])
+                ->name('dashboard');
+
+            // Funcionários
+            Route::get('/funcionarios', [ClienteFuncionarioController::class, 'index'])
+                ->name('funcionarios.index');
+
+            Route::get('/funcionarios/novo', [ClienteFuncionarioController::class, 'create'])
+                ->name('funcionarios.create');
+
+            Route::post('/funcionarios', [ClienteFuncionarioController::class, 'store'])
+                ->name('funcionarios.store');
+
+            Route::get('/funcionarios/{funcionario}', [ClienteFuncionarioController::class, 'show'])
+                ->name('funcionarios.show');
+        });
+
+    // ======================================================
 
 
     // ======================================================
