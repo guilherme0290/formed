@@ -73,7 +73,8 @@
                                 <span class="text-base md:text-lg">›</span>
                             </a>
                         @else
-                            <a href="{{ route('cliente.dashboard') }}"
+                            {{-- Primeiro o usuário escolhe o cliente na lista --}}
+                            <a href="{{ route('clientes.index', ['modo' => 'portal']) }}"
                                class="inline-flex items-center gap-1 text-xs md:text-sm font-medium text-sky-300 hover:text-sky-200 transition">
                                 <span>Acessar portal</span>
                                 <span class="text-base md:text-lg">›</span>

@@ -16,9 +16,7 @@ class AuthenticatedSessionController extends Controller
      */
     public function create(Request $request): View
     {
-        // pega o redirect da URL, ex: /login?redirect=operacional
-        $redirect = $request->query('redirect', 'master'); // padrão master
-
+        $redirect = $request->query('redirect', 'master');
         return view('auth.login', compact('redirect'));
     }
 
@@ -30,18 +28,21 @@ class AuthenticatedSessionController extends Controller
         $request->authenticate();
         $request->session()->regenerate();
 
-        // se não vier nada, padrão = master
+        // redirect vindo do form (hidden)
         $destino = $request->input('redirect', 'master');
         $user = $request->user();
-        $papelNome = optional($user->papel)->nome;
+        $papelNome = strtoupper(optional($user->papel)->nome);
 
-        // Se for operacional, SEMPRE vai pro operacional
-        if (strtoupper($papelNome) === 'OPERACIONAL') {
+        // Se for Operacional, sempre vai pro painel operacional
+        if ($papelNome === 'OPERACIONAL') {
             return redirect()->route('operacional.kanban');
         }
 
+        // Redireciona conforme o destino pedido
         return match ($destino) {
+            'cliente'     => redirect()->route('cliente.dashboard'),
             'operacional' => redirect()->route('operacional.kanban'),
+            'master'      => redirect()->route('master.dashboard'),
             default       => redirect()->route('master.dashboard'),
         };
     }

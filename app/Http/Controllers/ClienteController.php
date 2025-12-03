@@ -313,4 +313,21 @@ class ClienteController extends Controller
 
         return response()->json($resultado);
     }
+
+    /**
+     * >>> PORTAL DO CLIENTE <<<
+     * Seleciona o cliente e guarda na sessão para usar no painel /cliente
+     */
+    public function selecionarParaPortal(Request $request, Cliente $cliente)
+    {
+        // garante que o cliente pertence à mesma empresa do usuário logado
+        $this->authorizeCliente($cliente);
+
+        // salva o ID do cliente na sessão
+        $request->session()->put('portal_cliente_id', $cliente->id);
+
+        // manda pro dashboard do portal
+        return redirect()->route('cliente.dashboard');
+    }
+
 }

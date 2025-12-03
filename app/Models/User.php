@@ -91,5 +91,10 @@ class User extends Authenticatable
         return $this->hasPapel('Financeiro');
     }
 
+    public function cliente()
+    {
+        return $this->belongsTo(Cliente::class);
+    }
+
 
 }

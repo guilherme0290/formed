@@ -17,19 +17,29 @@
 
     <div class="flex items-center justify-between mb-6">
         <div>
-            <h1 class="text-2xl font-semibold text-gray-800">Clientes</h1>
-            <p class="text-sm text-gray-500">Gerencie os clientes da sua empresa.</p>
+            @if($modo === 'portal')
+                <h1 class="text-2xl font-semibold text-gray-800">Selecione um Cliente</h1>
+                <p class="text-sm text-gray-500">
+                    Escolha o cliente para acessar o Portal do Cliente.
+                </p>
+            @else
+                <h1 class="text-2xl font-semibold text-gray-800">Clientes</h1>
+                <p class="text-sm text-gray-500">Gerencie os clientes da sua empresa.</p>
+            @endif
         </div>
 
-        <a href="{{ route('clientes.create') }}"
-           class="px-4 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700">
-            Novo Cliente
-        </a>
+        @if($modo !== 'portal')
+            <a href="{{ route('clientes.create') }}"
+               class="px-4 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700">
+                Novo Cliente
+            </a>
+        @endif
     </div>
 
     {{-- FILTRO --}}
     <div class="bg-white rounded-xl p-5 shadow border mb-6">
         <form method="GET" class="grid md:grid-cols-4 gap-4">
+            <input type="hidden" name="modo" value="{{ $modo }}">
 
             <div class="col-span-2">
                 <label class="block text-sm font-medium mb-1">Busca</label>
@@ -51,7 +61,7 @@
                 <button class="px-4 py-2 bg-blue-600 text-white rounded-lg shadow">
                     Filtrar
                 </button>
-                <a href="{{ route('clientes.index') }}"
+                <a href="{{ route('clientes.index', ['modo' => $modo]) }}"
                    class="px-4 py-2 bg-gray-200 rounded-lg">
                     Limpar
                 </a>
@@ -109,23 +119,33 @@
                         @endif
                     </td>
 
-                    <td class="px-4 py-3 text-center">
-                        <a href="{{ route('clientes.edit', $cliente) }}"
-                           class="px-3 py-1 text-blue-700 bg-blue-100 rounded-lg text-xs">
-                            Editar
-                        </a>
+                    <td class="px-4 py-3 text-center space-y-1">
+                        @if($modo === 'portal')
+                            {{-- Botão para selecionar o cliente do Portal --}}
+                            <a href="{{ route('portal-cliente.selecionar', $cliente) }}"
+                               class="inline-flex items-center justify-center px-3 py-1.5
+                                      bg-sky-600 text-white rounded-lg text-xs font-medium
+                                      hover:bg-sky-700">
+                                Acessar portal
+                            </a>
+                        @else
+                            <a href="{{ route('clientes.edit', $cliente) }}"
+                               class="px-3 py-1 text-blue-700 bg-blue-100 rounded-lg text-xs">
+                                Editar
+                            </a>
 
-                        <form action="{{ route('clientes.destroy', $cliente) }}"
-                              method="POST"
-                              class="inline"
-                              onsubmit="return confirm('Tem certeza que deseja excluir este cliente?')">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit"
-                                    class="px-3 py-1 text-red-700 bg-red-100 rounded-lg text-xs">
-                                Excluir
-                            </button>
-                        </form>
+                            <form action="{{ route('clientes.destroy', $cliente) }}"
+                                  method="POST"
+                                  class="inline"
+                                  onsubmit="return confirm('Tem certeza que deseja excluir este cliente?')">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit"
+                                        class="px-3 py-1 text-red-700 bg-red-100 rounded-lg text-xs">
+                                    Excluir
+                                </button>
+                            </form>
+                        @endif
                     </td>
                 </tr>
             @empty
@@ -139,7 +159,7 @@
         </table>
 
         <div class="p-4">
-            {{-- se quiser paginação, é só descomentar --}}
+            {{-- se quiser paginação --}}
             {{-- {{ $clientes->links() }} --}}
         </div>
     </div>

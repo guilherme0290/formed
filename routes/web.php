@@ -283,6 +283,9 @@ Route::middleware('auth')->group(function () {
         ->middleware(['auth']) // ajuste o middleware que você já usa
         ->group(function () {
 
+            Route::get('/cliente/selecionar/{cliente}', [ClientePortalController::class, 'selecionar'])
+                ->name('cliente.selecionar');
+
             Route::get('/', [ClienteDashboardController::class, 'index'])
                 ->name('dashboard');
 

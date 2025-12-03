@@ -8,16 +8,25 @@ use Illuminate\Http\Request;
 
 class ClienteDashboardController extends Controller
 {
+    /**
+     * Tela inicial do Portal do Cliente
+     */
     public function index(Request $request)
     {
         $user = $request->user();
 
-        // 1 cliente : N usuários  -> pegamos o cliente pela empresa_id
-        $cliente = Cliente::where('empresa_id', $user->empresa_id)->firstOrFail();
+        // Pega o cliente que foi escolhido ao clicar no card
+        $clienteId = $request->session()->get('portal_cliente_id');
 
-        return view('clientes.dashboard', [
-            'user'    => $user,
-            'cliente' => $cliente,
+        if (!$clienteId) {
+            abort(403, 'NENHUM CLIENTE FOI SELECIONADO PARA O PORTAL.');
+        }
+
+        $cliente = Cliente::findOrFail($clienteId);
+
+        return view('cliente.dashboard', [
+            'user'    => $user,    // só para mostrar no topo, se quiser
+            'cliente' => $cliente, // usa pra nome, cnpj, etc.
         ]);
     }
 }
