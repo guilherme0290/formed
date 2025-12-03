@@ -429,195 +429,343 @@
                                     data-treinamento-unidade="{{ optional($treiDet->unidade)->nome ?? '' }}"
                                     @endif
                                 >
+                                    {{--                                    --}}{{-- ================== CABEÇALHO ================== --}}
+                                    {{--                                    <div class="flex items-center justify-between mb-2">--}}
+                                    {{--                                        <h4 class="text-[13px] font-semibold text-slate-800">--}}
+                                    {{--                                            {{ $servicoNome }}--}}
+                                    {{--                                        </h4>--}}
+                                    {{--                                        <span--}}
+                                    {{--                                            class="text-[10px] px-2 py-0.5 rounded bg-slate-100 border text-slate-500">--}}
+                                    {{--                                            #{{ $tarefa->id }}--}}
+                                    {{--                                        </span>--}}
+                                    {{--                                    </div>--}}
+
+                                    {{--                                    --}}{{-- ================== CLIENTE ================== --}}
+                                    {{--                                    <p class="text-[11px] text-slate-700 font-medium">--}}
+                                    {{--                                        {{ $clienteNome }}--}}
+                                    {{--                                    </p>--}}
+
+                                    {{--                                    --}}{{-- ================== BLOCO DINÂMICO POR SERVIÇO ================== --}}
+
+                                    {{--                                    @if($servicoNome === 'ASO')--}}
+                                    {{--                                        @php--}}
+                                    {{--                                            $func = optional($tarefa->funcionario);--}}
+                                    {{--                                        @endphp--}}
+                                    {{--                                        <div class="mt-2 text-[11px] space-y-0.5">--}}
+                                    {{--                                            <p>--}}
+                                    {{--                                                <span class="font-medium">Funcionário:</span>--}}
+                                    {{--                                                {{ $func->nome ?? '—' }}--}}
+                                    {{--                                            </p>--}}
+                                    {{--                                            <p>--}}
+                                    {{--                                                <span class="font-medium">CPF:</span>--}}
+                                    {{--                                                {{ $func->cpf ?? '—' }}--}}
+                                    {{--                                            </p>--}}
+                                    {{--                                            <p>--}}
+                                    {{--                                                <span class="font-medium">Função:</span>--}}
+                                    {{--                                                {{ $funcionarioFuncao ?? '—' }}--}}
+                                    {{--                                            </p>--}}
+
+                                    {{--                                        </div>--}}
+                                    {{--                                    @endif--}}
+
+
+                                    {{--                                    --}}{{-- PGR --}}
+                                    {{--                                    @if($servicoNome === 'PGR' && $pgr)--}}
+                                    {{--                                        <div--}}
+                                    {{--                                            class="mt-2 bg-emerald-50 border border-emerald-100 rounded p-2 text-[11px]">--}}
+                                    {{--                                            <p><b>Tipo:</b> {{ $pgr->tipo }}</p>--}}
+                                    {{--                                            <p><b>Total trabalhadores:</b> {{ $pgr->total_trabalhadores }}</p>--}}
+
+                                    {{--                                            <p class="mt-1"><b>Funções:</b></p>--}}
+                                    {{--                                            <ul class="list-disc list-inside text-[10px]">--}}
+                                    {{--                                                @foreach($pgr->funcoes ?? [] as $f)--}}
+                                    {{--                                                    @php $fn = \App\Models\Funcao::find($f['funcao_id']); @endphp--}}
+                                    {{--                                                    <li>{{ $fn?->nome }} ({{ $f['quantidade'] }})</li>--}}
+                                    {{--                                                @endforeach--}}
+                                    {{--                                            </ul>--}}
+                                    {{--                                        </div>--}}
+                                    {{--                                    @endif--}}
+
+                                    {{--                                    --}}{{-- APR --}}
+                                    {{--                                    @if($servicoNome === 'APR' && $tarefa->aprSolicitacao)--}}
+                                    {{--                                        <div class="mt-2 bg-purple-50 border border-purple-100 rounded p-2 text-[11px]">--}}
+                                    {{--                                            <p><b>Endereço:</b> {{ $tarefa->aprSolicitacao->endereco_atividade }}</p>--}}
+
+                                    {{--                                            @if($tarefa->aprSolicitacao->funcoes_envolvidas)--}}
+                                    {{--                                                <p class="mt-1">--}}
+                                    {{--                                                    <b>Funções envolvidas:</b>--}}
+                                    {{--                                                    {{ $tarefa->aprSolicitacao->funcoes_envolvidas }}--}}
+                                    {{--                                                </p>--}}
+                                    {{--                                            @endif--}}
+
+                                    {{--                                            @if($tarefa->aprSolicitacao->etapas_atividade)--}}
+                                    {{--                                                <p class="mt-1">--}}
+                                    {{--                                                    <b>Etapas da atividade:</b>--}}
+                                    {{--                                                    {{ $tarefa->aprSolicitacao->etapas_atividade }}--}}
+                                    {{--                                                </p>--}}
+                                    {{--                                            @endif--}}
+                                    {{--                                        </div>--}}
+                                    {{--                                    @endif--}}
+
+                                    {{--                                    --}}{{-- LTCAT --}}
+                                    {{--                                    @if($servicoNome === 'LTCAT' && $tarefa->ltcatSolicitacao)--}}
+                                    {{--                                        @php--}}
+                                    {{--                                            $lt = $tarefa->ltcatSolicitacao;--}}
+                                    {{--                                            $tipoLabel = $lt->tipo === 'matriz'--}}
+                                    {{--                                                ? 'Matriz'--}}
+                                    {{--                                                : ($lt->tipo === 'especifico' ? 'Específico' : ucfirst($lt->tipo));--}}
+                                    {{--                                        @endphp--}}
+
+                                    {{--                                        <div--}}
+                                    {{--                                            class="mt-2 bg-orange-50 border border-orange-100 rounded p-2 text-[11px] space-y-0.5">--}}
+                                    {{--                                            <p><b>Tipo:</b> {{ $tipoLabel ?: '—' }}</p>--}}
+
+                                    {{--                                            @if($lt->endereco_avaliacoes)--}}
+                                    {{--                                                <p><b>Endereço:</b> {{ $lt->endereco_avaliacoes }}</p>--}}
+                                    {{--                                            @endif--}}
+
+                                    {{--                                            <p>--}}
+                                    {{--                                                <b>Total Funções:</b> {{ $lt->total_funcoes ?? '—' }}--}}
+                                    {{--                                                &nbsp;|&nbsp;--}}
+                                    {{--                                                <b>Total Funcionários:</b> {{ $lt->total_funcionarios ?? '—' }}--}}
+                                    {{--                                            </p>--}}
+
+                                    {{--                                            @if($lt->funcoes_resumo)--}}
+                                    {{--                                                <p><b>Funções:</b> {{ $lt->funcoes_resumo }}</p>--}}
+                                    {{--                                            @endif--}}
+                                    {{--                                        </div>--}}
+                                    {{--                                    @endif--}}
+
+                                    {{--                                    --}}{{-- LTIP --}}
+                                    {{--                                    @if($servicoNome === 'LTIP' && $ltip)--}}
+                                    {{--                                        <div class="mt-2 bg-blue-50 border border-blue-100 rounded p-2 text-[11px]">--}}
+                                    {{--                                            <p><b>Endereço:</b> {{ $ltip->endereco_avaliacoes }}</p>--}}
+                                    {{--                                            <p><b>Total Funcionários:</b> {{ $ltip->total_funcionarios }}</p>--}}
+
+                                    {{--                                            @if(is_array($ltip->funcoes))--}}
+                                    {{--                                                <p class="mt-1"><b>Funções:</b></p>--}}
+                                    {{--                                                <ul class="list-disc list-inside text-[10px]">--}}
+                                    {{--                                                    @foreach($ltip->funcoes as $f)--}}
+                                    {{--                                                        @php--}}
+                                    {{--                                                            $fn = \App\Models\Funcao::find($f['funcao_id'] ?? null);--}}
+                                    {{--                                                        @endphp--}}
+                                    {{--                                                        <li>{{ $fn?->nome ?? 'Função' }} ({{ $f['quantidade'] ?? 0 }})--}}
+                                    {{--                                                        </li>--}}
+                                    {{--                                                    @endforeach--}}
+                                    {{--                                                </ul>--}}
+                                    {{--                                            @endif--}}
+                                    {{--                                        </div>--}}
+                                    {{--                                    @endif--}}
+
+                                    {{--                                    --}}{{-- PAE --}}
+                                    {{--                                    @if($servicoNome === 'PAE' && $tarefa->paeSolicitacao)--}}
+                                    {{--                                        @php $pae = $tarefa->paeSolicitacao; @endphp--}}
+                                    {{--                                        <div--}}
+                                    {{--                                            class="mt-2 bg-red-50 border border-red-100 rounded p-2 text-[11px] space-y-0.5">--}}
+                                    {{--                                            <p><b>Endereço Local:</b> {{ $pae->endereco_local }}</p>--}}
+                                    {{--                                            <p><b>Total de funcionários:</b> {{ $pae->total_funcionarios }}</p>--}}
+                                    {{--                                            @if($pae->descricao_instalacoes)--}}
+                                    {{--                                                <p><b>Instalações:</b> {{ $pae->descricao_instalacoes }}</p>--}}
+                                    {{--                                            @endif--}}
+                                    {{--                                        </div>--}}
+                                    {{--                                    @endif--}}
+
+                                    {{--                                    --}}{{-- PCMSO --}}
+                                    {{--                                    @if($servicoNome === 'PCMSO' && $tarefa->pcmsoSolicitacao)--}}
+                                    {{--                                        <div class="mt-2 bg-cyan-50 border border-cyan-100 rounded p-2 text-[11px]">--}}
+                                    {{--                                            <p><b>Tipo:</b> {{ $tarefa->pcmsoSolicitacao->tipo }}</p>--}}
+                                    {{--                                            <p><b>Prazo:</b> {{ $tarefa->pcmsoSolicitacao->prazo_dias }} dias</p>--}}
+                                    {{--                                        </div>--}}
+                                    {{--                                    @endif--}}
+                                    {{--                                    @if($servicoNome === 'Treinamentos NRs' && $tarefa->treinamentoNr && $tarefa->treinamentoNrDetalhes)--}}
+                                    {{--                                        @php--}}
+                                    {{--                                            $treiFuncs = $tarefa->treinamentoNr()->with('funcionario.funcao')->get();--}}
+                                    {{--                                            $treiDet   = $tarefa->treinamentoNrDetalhes;--}}
+
+                                    {{--                                            $listaParticipantes = $treiFuncs->pluck('funcionario.nome')->join(', ');--}}
+
+                                    {{--                                            $listaFuncoes = $treiFuncs->map(function($t){--}}
+                                    {{--                                                return $t->funcionario->funcao_nome; // accessor--}}
+                                    {{--                                            })->join(', ');--}}
+                                    {{--                                        @endphp--}}
+
+                                    {{--                                        --}}{{-- Datasets usados no modal --}}
+                                    {{--                                        <span--}}
+                                    {{--                                            data-trei-local="{{ $treiDet->local_tipo }}"--}}
+                                    {{--                                            data-trei-unidade="{{ optional($treiDet->unidade)->nome }}"--}}
+                                    {{--                                            data-trei-participantes="{{ $listaParticipantes }}"--}}
+                                    {{--                                            data-trei-funcoes="{{ $listaFuncoes }}"--}}
+                                    {{--                                        ></span>--}}
+
+                                    {{--                                        <div--}}
+                                    {{--                                            class="mt-2 bg-indigo-50 border border-indigo-100 rounded p-2 text-[11px] space-y-1">--}}
+                                    {{--                                            <p><b>Local:</b>--}}
+                                    {{--                                                {{ $treiDet->local_tipo === 'clinica' ? 'Clínica' : 'In Company' }}--}}
+                                    {{--                                                @if($treiDet->local_tipo === 'clinica')--}}
+                                    {{--                                                    · {{ optional($treiDet->unidade)->nome }}--}}
+                                    {{--                                                @endif--}}
+                                    {{--                                            </p>--}}
+
+                                    {{--                                            <p><b>Participantes:</b> {{ $listaParticipantes }}</p>--}}
+                                    {{--                                            <p><b>Funções:</b> {{ $listaFuncoes }}</p>--}}
+                                    {{--                                        </div>--}}
+                                    {{--                                    @endif--}}
+
+
+
+
+                                    {{--                                    --}}{{-- ================== RODAPÉ ================== --}}
+                                    {{--                                    <div class="mt-3 border-t pt-2 text-[10px] text-slate-500 flex justify-between">--}}
+                                    {{--                                        <span>{{ $dataHora }}</span>--}}
+                                    {{--                                        <span>{{ ucfirst($tarefa->prioridade) }}</span>--}}
+                                    {{--                                    </div>--}}
+                                    @php
+                                        // Label da tagzinha à direita
+                                        $badgeLabel    = $servicoNome;
+                                        $tituloCard    = $servicoNome;      // default
+                                        $subtituloCard = $clienteNome;      // default
+
+                                        // -------- ASO --------
+                                        if ($servicoNome === 'ASO') {
+                                            $nomeFunc = $funcionarioNome
+                                                ?? optional($tarefa->funcionario)->nome
+                                                ?? 'Sem funcionário';
+
+                                            $tituloCard    = 'ASO - ' . $nomeFunc;
+                                            $subtituloCard = $clienteNome;
+
+                                        // -------- PGR --------
+                                        } elseif ($servicoNome === 'PGR') {
+                                            if ($pgr && $pgr->obra_nome) {
+                                                $tituloCard    = 'PGR - ' . $pgr->obra_nome;
+                                                $subtituloCard = $clienteNome;
+                                            } else {
+                                                $tituloCard    = 'PGR - ' . $clienteNome;
+                                            }
+
+                                        // -------- PCMSO --------
+                                        } elseif ($servicoNome === 'PCMSO') {
+                                            $pcmso = $tarefa->pcmsoSolicitacao ?? null;
+
+                                            if ($pcmso && $pcmso->obra_nome) {
+                                                $tituloCard    = 'PCMSO - ' . $pcmso->obra_nome;
+                                                $subtituloCard = $clienteNome;
+                                            } else {
+                                                $tituloCard    = 'PCMSO - ' . $clienteNome;
+                                            }
+
+                                        // -------- LTCAT --------
+                                        } elseif ($servicoNome === 'LTCAT') {
+                                            $lt = $tarefa->ltcatSolicitacao ?? null;
+
+                                            if ($lt && $lt->endereco_avaliacoes) {
+                                                $tituloCard    = 'LTCAT - ' . $lt->endereco_avaliacoes;
+                                                $subtituloCard = $clienteNome;
+                                            } else {
+                                                $tituloCard    = 'LTCAT - ' . $clienteNome;
+                                            }
+
+                                        // -------- LTIP --------
+                                        } elseif ($servicoNome === 'LTIP') {
+                                            $ltip = $tarefa->ltipSolicitacao ?? null;
+
+                                            if ($ltip && $ltip->endereco_avaliacoes) {
+                                                $tituloCard    = 'LTIP - ' . $ltip->endereco_avaliacoes;
+                                                $subtituloCard = $clienteNome;
+                                            } else {
+                                                $tituloCard    = 'LTIP - ' . $clienteNome;
+                                            }
+
+                                        // -------- APR --------
+                                        } elseif ($servicoNome === 'APR') {
+                                            $apr = $tarefa->aprSolicitacao ?? null;
+
+                                            if ($apr && $apr->endereco_atividade) {
+                                                $tituloCard    = 'APR - ' . $apr->endereco_atividade;
+                                                $subtituloCard = $clienteNome;
+                                            } else {
+                                                $tituloCard    = 'APR - ' . $clienteNome;
+                                            }
+
+                                        // -------- PAE --------
+                                        } elseif ($servicoNome === 'PAE') {
+                                            $pae = $tarefa->paeSolicitacao ?? null;
+
+                                            if ($pae && $pae->endereco_local) {
+                                                $tituloCard    = 'PAE - ' . $pae->endereco_local;
+                                                $subtituloCard = $clienteNome;
+                                            } else {
+                                                $tituloCard    = 'PAE - ' . $clienteNome;
+                                            }
+
+                                        // -------- TREINAMENTOS NRs --------
+                                        } elseif ($servicoNome === 'Treinamentos NRs') {
+                                            $tituloCard    = 'Treinamento NR - ' . $clienteNome;
+                                            $subtituloCard = 'Colaboradores: ' . ($tarefa->treinamentoNr()->count() ?? 0);
+
+                                        // -------- DEFAULT (qualquer outro serviço) --------
+                                        } else {
+                                            $tituloCard    = $servicoNome . ' - ' . $clienteNome;
+                                            $subtituloCard = $clienteNome;
+                                        }
+                                    @endphp
+
                                     {{-- ================== CABEÇALHO ================== --}}
-                                    <div class="flex items-center justify-between mb-2">
-                                        <h4 class="text-[13px] font-semibold text-slate-800">
-                                            {{ $servicoNome }}
+                                    <div class="flex items-start justify-between gap-2 mb-1.5">
+                                        <h4 class="text-[15px] font-semibold text-slate-800 leading-snug">
+                                            {{ $tituloCard }}
                                         </h4>
+
                                         <span
-                                            class="text-[10px] px-2 py-0.5 rounded bg-slate-100 border text-slate-500">
-                                            #{{ $tarefa->id }}
-                                        </span>
+                                            class="inline-flex items-center px-2 py-0.5 rounded-full
+                                               text-[11px] font-semibold bg-slate-100 border border-slate-200
+                                               text-slate-600">
+                                        {{ $badgeLabel }}
+                                    </span>
                                     </div>
 
-                                    {{-- ================== CLIENTE ================== --}}
-                                    <p class="text-[11px] text-slate-700 font-medium">
-                                        {{ $clienteNome }}
+                                    {{-- ================== SUBTÍTULO (CLIENTE / ENDEREÇO / OBRA) ================== --}}
+                                    <p class="text-[13px] text-slate-500 font-medium mb-2">
+                                        {{ $subtituloCard }}
                                     </p>
 
-                                    {{-- ================== BLOCO DINÂMICO POR SERVIÇO ================== --}}
+                                    {{-- ================== DATA / HORÁRIO ================== --}}
+                                    <div class="flex items-center gap-1 text-[11px] text-slate-500 mb-2">
+                                        <svg class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="none">
+                                            <circle cx="10" cy="10" r="8" stroke="#9CA3AF" stroke-width="1.5"/>
+                                            <path d="M10 5.5V10.2L13 12" stroke="#9CA3AF" stroke-width="1.5"
+                                                  stroke-linecap="round" stroke-linejoin="round"/>
+                                        </svg>
+                                        <span>{{ $dataHora }}</span>
+                                    </div>
 
-                                    @if($servicoNome === 'ASO')
-                                        @php
-                                            $func = optional($tarefa->funcionario);
-                                        @endphp
-                                        <div class="mt-2 text-[11px] space-y-0.5">
-                                            <p>
-                                                <span class="font-medium">Funcionário:</span>
-                                                {{ $func->nome ?? '—' }}
-                                            </p>
-                                            <p>
-                                                <span class="font-medium">CPF:</span>
-                                                {{ $func->cpf ?? '—' }}
-                                            </p>
-                                            <p>
-                                                <span class="font-medium">Função:</span>
-                                                {{ $funcionarioFuncao ?? '—' }}
-                                            </p>
-
+                                    {{-- ================== SLA / PRAZO ================== --}}
+                                    @if($slaData && $slaData !== '-')
+                                        <div class="mb-2">
+                                            <div
+                                                class="inline-flex items-center gap-1 px-3 py-1 rounded-md border
+                   border-amber-200 bg-amber-50 text-[11px] text-amber-700">
+                                                <svg class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="none">
+                                                    <circle cx="10" cy="10" r="8" stroke="#FBBF24" stroke-width="1.5"/>
+                                                    <path d="M10 5.5V10.2L13 12" stroke="#F59E0B" stroke-width="1.5"
+                                                          stroke-linecap="round" stroke-linejoin="round"/>
+                                                </svg>
+                                                <span>{{ $slaData }}</span>
+                                            </div>
                                         </div>
                                     @endif
-
-
-                                    {{-- PGR --}}
-                                    @if($servicoNome === 'PGR' && $pgr)
-                                        <div
-                                            class="mt-2 bg-emerald-50 border border-emerald-100 rounded p-2 text-[11px]">
-                                            <p><b>Tipo:</b> {{ $pgr->tipo }}</p>
-                                            <p><b>Total trabalhadores:</b> {{ $pgr->total_trabalhadores }}</p>
-
-                                            <p class="mt-1"><b>Funções:</b></p>
-                                            <ul class="list-disc list-inside text-[10px]">
-                                                @foreach($pgr->funcoes ?? [] as $f)
-                                                    @php $fn = \App\Models\Funcao::find($f['funcao_id']); @endphp
-                                                    <li>{{ $fn?->nome }} ({{ $f['quantidade'] }})</li>
-                                                @endforeach
-                                            </ul>
-                                        </div>
-                                    @endif
-
-                                    {{-- APR --}}
-                                    @if($servicoNome === 'APR' && $tarefa->aprSolicitacao)
-                                        <div class="mt-2 bg-purple-50 border border-purple-100 rounded p-2 text-[11px]">
-                                            <p><b>Endereço:</b> {{ $tarefa->aprSolicitacao->endereco_atividade }}</p>
-
-                                            @if($tarefa->aprSolicitacao->funcoes_envolvidas)
-                                                <p class="mt-1">
-                                                    <b>Funções envolvidas:</b>
-                                                    {{ $tarefa->aprSolicitacao->funcoes_envolvidas }}
-                                                </p>
-                                            @endif
-
-                                            @if($tarefa->aprSolicitacao->etapas_atividade)
-                                                <p class="mt-1">
-                                                    <b>Etapas da atividade:</b>
-                                                    {{ $tarefa->aprSolicitacao->etapas_atividade }}
-                                                </p>
-                                            @endif
-                                        </div>
-                                    @endif
-
-                                    {{-- LTCAT --}}
-                                    @if($servicoNome === 'LTCAT' && $tarefa->ltcatSolicitacao)
-                                        @php
-                                            $lt = $tarefa->ltcatSolicitacao;
-                                            $tipoLabel = $lt->tipo === 'matriz'
-                                                ? 'Matriz'
-                                                : ($lt->tipo === 'especifico' ? 'Específico' : ucfirst($lt->tipo));
-                                        @endphp
-
-                                        <div
-                                            class="mt-2 bg-orange-50 border border-orange-100 rounded p-2 text-[11px] space-y-0.5">
-                                            <p><b>Tipo:</b> {{ $tipoLabel ?: '—' }}</p>
-
-                                            @if($lt->endereco_avaliacoes)
-                                                <p><b>Endereço:</b> {{ $lt->endereco_avaliacoes }}</p>
-                                            @endif
-
-                                            <p>
-                                                <b>Total Funções:</b> {{ $lt->total_funcoes ?? '—' }}
-                                                &nbsp;|&nbsp;
-                                                <b>Total Funcionários:</b> {{ $lt->total_funcionarios ?? '—' }}
-                                            </p>
-
-                                            @if($lt->funcoes_resumo)
-                                                <p><b>Funções:</b> {{ $lt->funcoes_resumo }}</p>
-                                            @endif
-                                        </div>
-                                    @endif
-
-                                    {{-- LTIP --}}
-                                    @if($servicoNome === 'LTIP' && $ltip)
-                                        <div class="mt-2 bg-blue-50 border border-blue-100 rounded p-2 text-[11px]">
-                                            <p><b>Endereço:</b> {{ $ltip->endereco_avaliacoes }}</p>
-                                            <p><b>Total Funcionários:</b> {{ $ltip->total_funcionarios }}</p>
-
-                                            @if(is_array($ltip->funcoes))
-                                                <p class="mt-1"><b>Funções:</b></p>
-                                                <ul class="list-disc list-inside text-[10px]">
-                                                    @foreach($ltip->funcoes as $f)
-                                                        @php
-                                                            $fn = \App\Models\Funcao::find($f['funcao_id'] ?? null);
-                                                        @endphp
-                                                        <li>{{ $fn?->nome ?? 'Função' }} ({{ $f['quantidade'] ?? 0 }})
-                                                        </li>
-                                                    @endforeach
-                                                </ul>
-                                            @endif
-                                        </div>
-                                    @endif
-
-                                    {{-- PAE --}}
-                                    @if($servicoNome === 'PAE' && $tarefa->paeSolicitacao)
-                                        @php $pae = $tarefa->paeSolicitacao; @endphp
-                                        <div
-                                            class="mt-2 bg-red-50 border border-red-100 rounded p-2 text-[11px] space-y-0.5">
-                                            <p><b>Endereço Local:</b> {{ $pae->endereco_local }}</p>
-                                            <p><b>Total de funcionários:</b> {{ $pae->total_funcionarios }}</p>
-                                            @if($pae->descricao_instalacoes)
-                                                <p><b>Instalações:</b> {{ $pae->descricao_instalacoes }}</p>
-                                            @endif
-                                        </div>
-                                    @endif
-
-                                    {{-- PCMSO --}}
-                                    @if($servicoNome === 'PCMSO' && $tarefa->pcmsoSolicitacao)
-                                        <div class="mt-2 bg-cyan-50 border border-cyan-100 rounded p-2 text-[11px]">
-                                            <p><b>Tipo:</b> {{ $tarefa->pcmsoSolicitacao->tipo }}</p>
-                                            <p><b>Prazo:</b> {{ $tarefa->pcmsoSolicitacao->prazo_dias }} dias</p>
-                                        </div>
-                                    @endif
-                                    @if($servicoNome === 'Treinamentos NRs' && $tarefa->treinamentoNr && $tarefa->treinamentoNrDetalhes)
-                                        @php
-                                            $treiFuncs = $tarefa->treinamentoNr()->with('funcionario.funcao')->get();
-                                            $treiDet   = $tarefa->treinamentoNrDetalhes;
-
-                                            $listaParticipantes = $treiFuncs->pluck('funcionario.nome')->join(', ');
-
-                                            $listaFuncoes = $treiFuncs->map(function($t){
-                                                return $t->funcionario->funcao_nome; // accessor
-                                            })->join(', ');
-                                        @endphp
-
-                                        {{-- Datasets usados no modal --}}
-                                        <span
-                                            data-trei-local="{{ $treiDet->local_tipo }}"
-                                            data-trei-unidade="{{ optional($treiDet->unidade)->nome }}"
-                                            data-trei-participantes="{{ $listaParticipantes }}"
-                                            data-trei-funcoes="{{ $listaFuncoes }}"
-                                        ></span>
-
-                                        <div
-                                            class="mt-2 bg-indigo-50 border border-indigo-100 rounded p-2 text-[11px] space-y-1">
-                                            <p><b>Local:</b>
-                                                {{ $treiDet->local_tipo === 'clinica' ? 'Clínica' : 'In Company' }}
-                                                @if($treiDet->local_tipo === 'clinica')
-                                                    · {{ optional($treiDet->unidade)->nome }}
-                                                @endif
-                                            </p>
-
-                                            <p><b>Participantes:</b> {{ $listaParticipantes }}</p>
-                                            <p><b>Funções:</b> {{ $listaFuncoes }}</p>
-                                        </div>
-                                    @endif
-
-
-
 
                                     {{-- ================== RODAPÉ ================== --}}
-                                    <div class="mt-3 border-t pt-2 text-[10px] text-slate-500 flex justify-between">
-                                        <span>{{ $dataHora }}</span>
-                                        <span>{{ ucfirst($tarefa->prioridade) }}</span>
+                                    <div class="mt-2 pt-2 border-t border-slate-100 text-[10px] text-slate-500
+                                        flex items-center justify-between">
+                                        <span>#{{ $tarefa->id }}</span>
+
+                                        <div class="inline-flex items-center gap-1 font-medium text-slate-600">
+                                            <svg class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="none">
+                                                <path d="M5 5h10v10H5z" stroke="#9CA3AF" stroke-width="1.4"/>
+                                            </svg>
+                                            <span>Detalhes</span>
+                                        </div>
                                     </div>
                                 </article>
 
@@ -1296,7 +1444,7 @@
                         docsList.innerHTML = anexos.map(a => `
                                 <li>
                                     <a href="${a.url}" target="_blank" class="underline text-[13px] font-medium">
-                                        ${ a.label || 'Documento'}
+                                        ${a.label || 'Documento'}
                                     </a>
                                     <span class="text-[11px] text-slate-500">
                                         (${a.tamanho || '-'} · ${a.mime || '-'}${a.data ? ' · ' + a.data : ''}${a.uploaded_by ? ' · ' + a.uploaded_by : ''})
