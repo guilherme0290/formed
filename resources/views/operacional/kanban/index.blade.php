@@ -31,7 +31,7 @@
             </ul>
         </div>
     @endif
-    <div class="w-full max-w-7xl mx-auto px-3 md:px-4 py-4 md:py-5">
+    <div class="w-full px-3 md:px-6 py-4 md:py-5">
 
         {{-- Barra de busca + Nova Tarefa --}}
         <div class="flex flex-col md:flex-row md:items-center gap-3 md:gap-4 mb-6">
@@ -150,43 +150,100 @@
                 </div>
             </form>
         </section>
+        @php
+            $statusCardsConfig = [
+                'pendente'              => ['icon' => '⏳', 'bg' => 'from-amber-400 to-amber-500'],
+                'pendentes'             => ['icon' => '⏳', 'bg' => 'from-amber-400 to-amber-500'],
+
+                'em-execucao'           => ['icon' => '▶️', 'bg' => 'from-sky-500 to-blue-500'],
+
+                'correcao'              => ['icon' => '🛠️', 'bg' => 'from-orange-500 to-orange-600'],
+
+                'aguardando'            => ['icon' => '⏱️', 'bg' => 'from-purple-500 to-fuchsia-500'],
+                'aguardando-fornecedor' => ['icon' => '⏱️', 'bg' => 'from-purple-500 to-fuchsia-500'],
+
+                'finalizada'            => ['icon' => '✅', 'bg' => 'from-emerald-500 to-green-500'],
+                'finalizadas'           => ['icon' => '✅', 'bg' => 'from-emerald-500 to-green-500'],
+
+                'atrasado'              => ['icon' => '⛔', 'bg' => 'from-rose-500 to-red-500'],
+                'atrasados'             => ['icon' => '⛔', 'bg' => 'from-rose-500 to-red-500'],
+            ];
+        @endphp
+
+
 
         {{-- Kanban --}}
+        {{-- Kanban --}}
         <div class="mt-4 pb-6 overflow-x-auto xl:overflow-x-visible">
-            <div class="flex gap-2 md:gap-3">
+            <div class="flex gap-3 md:gap-4 min-w-max">
                 @foreach($colunas as $coluna)
                     @php
+                        $slug = Str::slug($coluna->nome);
+                        $config = $statusCardsConfig[$slug] ?? [
+                            'icon' => '📌',
+                            'bg'   => 'from-slate-400 to-slate-500',
+                        ];
+
+                        /** @var \Illuminate\Support\Collection $tarefasColuna */
                         $tarefasColuna = $tarefasPorColuna[$coluna->id] ?? collect();
+                        $totalColuna = $tarefasColuna->count();
                     @endphp
 
-                    <section
-                        class="bg-white border border-slate-200 rounded-2xl flex flex-col h-[68vh]
-                       w-52 md:w-56 lg:w-60 flex-shrink-0 shadow-md">
-                        {{-- header da coluna --}}
-                        <header
-                            class="flex items-center justify-between px-3 py-2 border-b border-slate-100
-                           bg-slate-50/90 rounded-t-2xl">
-                            <div class="flex items-center gap-2 text-slate-700">
-                                <div
-                                    class="w-2.5 h-2.5 rounded-full bg-[color:var(--color-brand-azul)] shadow-sm"></div>
-                                <h2 class="text-[13px] font-semibold tracking-tight">
+                    {{-- UMA COLUNA COMPLETA (card resumo + raia) --}}
+
+                        <section class="flex flex-col w-56 md:w-60 lg:w-64 flex-shrink-0 gap-3">
+
+                        {{-- Card resumo da coluna --}}
+                        <article
+                            class="rounded-2xl px-4 py-3 bg-gradient-to-r {{ $config['bg'] }}
+                           text-white shadow-md flex items-center justify-between">
+
+                            <div>
+                                <h3 class="text-[11px] md:text-xs font-semibold uppercase tracking-wide opacity-90">
                                     {{ $coluna->nome }}
-                                </h2>
+                                </h3>
+                                <p class="mt-1 text-xl md:text-2xl font-bold leading-none">
+                                    {{ $totalColuna }}
+                                </p>
                             </div>
 
-                            <span
-                                class="inline-flex items-center justify-center min-w-[2rem] h-7 rounded-full
-                               bg-white text-[11px] font-semibold text-slate-600 border border-slate-200
-                               shadow-sm">
-                                    {{ $tarefasColuna->count() }}
-                            </span>
-                        </header>
+                            <div class="text-2xl md:text-3xl opacity-70">
+                                {{ $config['icon'] }}
+                            </div>
+                        </article>
 
-                        {{-- cards --}}
-                        <div class="flex-1 overflow-y-auto px-3 py-3 space-y-3 kanban-column"
-                             data-coluna-id="{{ $coluna->id }}"
-                             data-coluna-cor="{{ $coluna->cor  }}"
-                             data-coluna-slug="{{ Str::slug($coluna->nome) }}">
+                        {{-- Raia do Kanban dessa coluna --}}
+                        <article
+                            class="bg-white border border-slate-200 rounded-2xl flex flex-col
+                           h-[64vh] md:h-[68vh] shadow-md">
+
+                            {{-- header da coluna --}}
+{{--                            <header--}}
+{{--                                class="flex items-center justify-between px-3 py-2 border-b border-slate-100--}}
+{{--                               bg-slate-50/90 rounded-t-2xl">--}}
+{{--                                <div class="flex items-center gap-2 text-slate-700">--}}
+{{--                                    <div--}}
+{{--                                        class="w-2.5 h-2.5 rounded-full bg-[color:var(--color-brand-azul)] shadow-sm"></div>--}}
+{{--                                    <h2 class="text-[13px] font-semibold tracking-tight">--}}
+{{--                                        {{ $coluna->nome }}--}}
+{{--                                    </h2>--}}
+{{--                                </div>--}}
+
+{{--                                <span--}}
+{{--                                    class="inline-flex items-center justify-center min-w-[2rem] h-7 rounded-full--}}
+{{--                                   bg-white text-[11px] font-semibold text-slate-600 border border-slate-200--}}
+{{--                                   shadow-sm">--}}
+{{--                                            {{ $tarefasColuna->count() }}--}}
+{{--                                </span>--}}
+{{--                            </header>--}}
+
+                            {{-- cards --}}
+                            <div class="flex-1 overflow-y-auto px-3 py-3 space-y-3 kanban-column"
+                                 data-coluna-id="{{ $coluna->id }}"
+                                 data-coluna-cor="{{ $coluna->cor }}"
+                                 data-coluna-slug="{{ Str::slug($coluna->nome) }}">
+                                {{-- aqui permanece o foreach dos cards de tarefa que você já tinha --}}
+
                             @forelse($tarefasColuna as $tarefa)
                                 @php
                                     $clienteNome  = optional($tarefa->cliente)->razao_social ?? 'Sem cliente';

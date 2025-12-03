@@ -81,9 +81,10 @@
     <div class="flex-1 flex flex-col bg-slate-50">
 
         <header class="bg-blue-900 text-white shadow-sm">
-            <div class="max-w-7xl mx-auto px-4 md:px-6 h-14 flex items-center justify-between gap-3">
+            <div class="w-full px-4 md:px-6 h-14 flex items-center justify-between gap-3">
 
-                <div class="flex items-center gap-3">
+
+            <div class="flex items-center gap-3">
                     {{-- Botão abrir/fechar sidebar (MOBILE) --}}
                     <button type="button"
                             class="inline-flex md:hidden items-center justify-center p-2 rounded-lg text-blue-50 hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-white"
