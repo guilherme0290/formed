@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Storage;
 
 class PgrSolicitacoes extends Model
 {
@@ -69,5 +70,14 @@ class PgrSolicitacoes extends Model
         }
 
         return implode(', ', $lista);
+    }
+
+    public function getPgrArquivoUrlAttribute(): ?string
+    {
+        if (!$this->pgr_arquivo_path) {
+            return null;
+        }
+
+        return Storage::disk('s3')->url($this->pgr_arquivo_path);
     }
 }

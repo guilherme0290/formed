@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Operacional;
 
 use App\Http\Controllers\Controller;
+use App\Models\Anexos;
 use App\Models\Cliente;
 use App\Models\Funcao;
 use App\Models\KanbanColuna;
@@ -112,6 +113,8 @@ class PgrController extends Controller
         $pgr = $tarefa->pgr;
         abort_if(!$pgr, 404);
 
+        $cliente = $tarefa->cliente;
+
         // mesma validação do store
         $data = $request->validate([
             'tipo'         => ['required', 'in:matriz,especifico'],
@@ -202,6 +205,18 @@ class PgrController extends Controller
                 'observacao'     => 'Dados do PGR atualizados.',
             ]);
         });
+
+        if ($request->hasFile('anexos')) {
+            Anexos::salvarDoRequest($request, 'anexos', [
+                'empresa_id'     => $empresaId,
+                'cliente_id'     => $cliente?->id,
+                'tarefa_id'      => $tarefa->id,
+                'funcionario_id' => null,
+                'uploaded_by'    => $usuario->id,
+                'servico'        => 'PGR',
+                'subpath'        => 'anexos-custom/' . $empresaId,
+            ]);
+        }
 
         return redirect()
             ->route('operacional.kanban')
@@ -335,6 +350,18 @@ class PgrController extends Controller
                 'observacao'    => 'Tarefa PGR criada pelo usuário.',
             ]);
         });
+
+        if ($request->hasFile('anexos')) {
+            Anexos::salvarDoRequest($request, 'anexos', [
+                'empresa_id'     => $empresaId,
+                'cliente_id'     => $cliente->id,
+                'tarefa_id'      => $tarefaId,
+                'funcionario_id' => null,
+                'uploaded_by'    => $usuario->id,
+                'servico'        => 'PGR',
+                'subpath'        => 'anexos-custom/' . $empresaId, // mesmo padrão dos outros
+            ]);
+        }
 
         // redireciona para pergunta de PCMSO
         return redirect()
