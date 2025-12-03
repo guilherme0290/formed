@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Operacional;
 
+use App\Helpers\S3Helper;
 use App\Http\Controllers\Controller;
+use App\Models\Anexos;
 use App\Models\Cliente;
 use App\Models\KanbanColuna;
 use App\Models\PcmsoSolicitacoes;
@@ -58,12 +60,14 @@ class PcmsoController extends Controller
             return view('operacional.kanban.pcmso.form_matriz', [
                 'cliente' => $cliente,
                 'tipo'    => $tipo,
+                'anexos'  => collect(),
             ]);
         }
 
         return view('operacional.kanban.pcmso.form_especifico', [
             'cliente' => $cliente,
             'tipo'    => $tipo,
+            'anexos'  => collect(),
         ]);
     }
 
@@ -88,16 +92,20 @@ class PcmsoController extends Controller
         if ($tipo === 'especifico') {
             $rules = array_merge($rules, [
                 'obra_nome'              => ['required', 'string', 'max:255'],
-                'obra_cnpj_contratante'  => [ 'string', 'max:20'],
-                'obra_cei_cno'           => [ 'string', 'max:50'],
-                'obra_endereco'          => [ 'string', 'max:255'],
+                'obra_cnpj_contratante'  => ['string', 'max:20'],
+                'obra_cei_cno'           => ['string', 'max:50'],
+                'obra_endereco'          => ['string', 'max:255'],
             ]);
         }
 
         $data = $request->validate($rules);
 
-        // armazena PDF do PGR
-        $path = $request->file('pgr_arquivo')->store('pcmso_pgr', 'public');
+        // armazena PDF do PGR no S3
+        // o campo pgr_arquivo_path vai guardar a "key" do S3 (ex: pcmso_pgr/1/arquivo.pdf)
+        $path = S3Helper::upload(
+            $request->file('pgr_arquivo'),
+            'pcmso_pgr/' . $empresaId
+        );
 
         // coluna inicial (Pendente)
         $colunaInicial = KanbanColuna::where('empresa_id', $empresaId)
@@ -126,7 +134,8 @@ class PcmsoController extends Controller
             $prazoDias,
             $path,
             $data,
-            &$tarefaId
+            &$tarefaId,
+            $request
         ) {
             // cria Tarefa no Kanban
             $tarefa = Tarefa::create([
@@ -150,7 +159,7 @@ class PcmsoController extends Controller
                 'responsavel_id'        => $usuario->id,
                 'tipo'                  => $tipo,
                 'pgr_origem'            => 'arquivo_cliente',
-                'pgr_arquivo_path'      => $path,
+                'pgr_arquivo_path'      => $path, // key do S3
                 'obra_nome'             => $data['obra_nome']             ?? null,
                 'obra_cnpj_contratante' => $data['obra_cnpj_contratante'] ?? null,
                 'obra_cei_cno'          => $data['obra_cei_cno']          ?? null,
@@ -166,6 +175,17 @@ class PcmsoController extends Controller
                 'para_coluna_id'=> optional($colunaInicial)->id,
                 'acao'          => 'criado',
                 'observacao'    => 'Tarefa PCMSO criada pelo usuário.',
+            ]);
+
+            // anexos adicionais (também já estão indo pro S3 via helper)
+            Anexos::salvarDoRequest($request, 'anexos', [
+                'empresa_id'     => $empresaId,
+                'cliente_id'     => $cliente->id,
+                'tarefa_id'      => $tarefa->id,
+                'funcionario_id' =>  null,
+                'uploaded_by'    => auth()->user()->id,
+                'servico'        => 'PCMSO',
+                'subpath'        => 'anexos-custom/' . $empresaId,
             ]);
         });
 
@@ -184,6 +204,12 @@ class PcmsoController extends Controller
         $pcmso = $tarefa->pcmsoSolicitacao;
         abort_if(!$pcmso, 404);
 
+        $anexos = Anexos::where('empresa_id', $empresaId)
+            ->where('tarefa_id', $tarefa->id)
+            ->where('servico', 'PCMSO')
+            ->orderByDesc('created_at')
+            ->get();
+
         $cliente = $tarefa->cliente;
         $tipo    = $pcmso->tipo === 'especifico' ? 'especifico' : 'matriz';
 
@@ -193,6 +219,7 @@ class PcmsoController extends Controller
                 'tipo'    => $tipo,
                 'pcmso'   => $pcmso,
                 'isEdit'  => true,
+                'anexos'  => $anexos,
             ]);
         }
 
@@ -201,6 +228,7 @@ class PcmsoController extends Controller
             'tipo'    => $tipo,
             'pcmso'   => $pcmso,
             'isEdit'  => true,
+            'anexos'  => $anexos,
         ]);
     }
 
@@ -235,23 +263,29 @@ class PcmsoController extends Controller
 
         $data = $request->validate($rules);
 
+        $disk = Storage::disk('s3');
+
         $pathAtual = $pcmso->pgr_arquivo_path;
 
         // se marcou para remover o arquivo
         $remover = (bool)($data['remover_arquivo'] ?? false);
         if ($remover && $pathAtual) {
-            if (Storage::disk('public')->exists($pathAtual)) {
-                Storage::disk('public')->delete($pathAtual);
+            if ($disk->exists($pathAtual)) {
+                $disk->delete($pathAtual);
             }
             $pathAtual = null;
         }
 
         // se subiu novo arquivo, substitui
         if ($request->hasFile('pgr_arquivo')) {
-            if ($pathAtual && Storage::disk('public')->exists($pathAtual)) {
-                Storage::disk('public')->delete($pathAtual);
+            if ($pathAtual && $disk->exists($pathAtual)) {
+                $disk->delete($pathAtual);
             }
-            $pathAtual = $request->file('pgr_arquivo')->store('pcmso_pgr', 'public');
+
+            $pathAtual = S3Helper::upload(
+                $request->file('pgr_arquivo'),
+                'pcmso_pgr/' . $empresaId
+            );
         }
 
         // regra opcional: não deixar ficar sem PGR anexado
@@ -263,7 +297,7 @@ class PcmsoController extends Controller
 
         // monta payload de atualização
         $updateData = [
-            'pgr_arquivo_path' => $pathAtual,
+            'pgr_arquivo_path' => $pathAtual, // key no S3
         ];
 
         if ($tipo === 'especifico') {
@@ -275,10 +309,22 @@ class PcmsoController extends Controller
             ]);
         }
 
+        // salva anexos adicionais (continua igual)
+        Anexos::salvarDoRequest($request, 'anexos', [
+            'empresa_id'     => $empresaId,
+            'cliente_id'     => $cliente->id,
+            'tarefa_id'      => $tarefa->id,
+            'funcionario_id' => null,
+            'uploaded_by'    => auth()->user()->id,
+            'servico'        => 'PCMSO',
+            'subpath'        => 'anexos-custom/' . $empresaId,
+        ]);
+
         $pcmso->update($updateData);
 
         return redirect()
             ->route('operacional.kanban')
             ->with('ok', 'PCMSO atualizado com sucesso!');
     }
+
 }

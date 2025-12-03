@@ -4,6 +4,9 @@
 @php
     /** @var \App\Models\PcmsoSolicitacoes|null $pcmso */
     $isEdit = isset($pcmso);
+    $anexos = $anexos ?? collect();
+    use Illuminate\Support\Str;
+    use App\Helpers\S3Helper;
 @endphp
 
 @section('pageTitle', 'PCMSO - Específico')
@@ -44,96 +47,350 @@
                     </div>
                 @endif
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">
-                            Nome da Obra *
-                        </label>
-                        <input type="text" name="obra_nome"   value="{{ old('obra_nome', $pcmso->obra_nome ?? '') }}"
-                               class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                               placeholder="Nome da obra">
+                <div class="border-b border-slate-200 mb-4">
+                    <nav class="flex gap-6 text-sm">
+                        <button type="button"
+                                class="pcmso-tab-btn border-b-2 border-sky-500 text-sky-600 font-semibold pb-2"
+                                data-tab="dados">
+                            Dados do PCMSO
+                        </button>
+
+                        <button type="button"
+                                class="pcmso-tab-btn text-slate-500 hover:text-slate-700 pb-2"
+                                data-tab="anexos">
+                            Anexos
+                        </button>
+                    </nav>
+                </div>
+                <div id="pcmso-tab-dados" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">
+                                Nome da Obra *
+                            </label>
+                            <input type="text" name="obra_nome"   value="{{ old('obra_nome', $pcmso->obra_nome ?? '') }}"
+                                   class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                                   placeholder="Nome da obra">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">
+                                CNPJ do Contratante
+                            </label>
+                            <input type="text" name="obra_cnpj_contratante"  value="{{ old('obra_cnpj_contratante', $pcmso->obra_cnpj_contratante ?? '') }}"
+                                   class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                                   placeholder="00.000.000/0000-00">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">
+                                CEI/CNO
+                            </label>
+                            <input type="text" name="obra_cei_cno"  value="{{ old('obra_cei_cno', $pcmso->obra_cei_cno ?? '') }}"
+                                   class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                                   placeholder="Número do CEI ou CNO">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">
+                                Endereço da Obra
+                            </label>
+                            <input type="text" name="obra_endereco"  value="{{ old('obra_endereco', $pcmso->obra_endereco ?? '') }}"
+                                   class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                                   placeholder="Endereço completo">
+                        </div>
                     </div>
 
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">
-                            CNPJ do Contratante
+                            Inserir PGR / Inventário de Risco {{ $isEdit ? '' : '*' }}
                         </label>
-                        <input type="text" name="obra_cnpj_contratante"  value="{{ old('obra_cnpj_contratante', $pcmso->obra_cnpj_contratante ?? '') }}"
-                               class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                               placeholder="00.000.000/0000-00">
+
+                        <input type="file" name="pgr_arquivo" accept="application/pdf"
+                               class="w-full text-sm rounded-lg border border-slate-200 px-3 py-2
+                      file:mr-3 file:px-3 file:py-2 file:rounded-lg
+                      file:border-0 file:bg-purple-600 file:text-white
+                      hover:file:bg-purple-700">
+
+                        @if($isEdit && !empty($pcmso->pgr_arquivo_path))
+
+                            <div class="mt-2 text-xs text-slate-600">
+                                <p>
+                                    Arquivo atual:
+                                    <a href="{{ $pcmso->pgr_arquivo_path ? S3Helper::url($pcmso->pgr_arquivo_path) : '#' }}"
+                                       target="_blank"
+                                       class="text-purple-600 underline">
+                                        Abrir PGR atual
+                                    </a>
+                                </p>
+
+                                <label class="inline-flex items-center gap-2 mt-1 text-[11px] text-red-600">
+                                    <input type="checkbox" name="remover_arquivo" value="1"
+                                           class="rounded border-slate-300">
+                                    <span>Remover arquivo atual</span>
+                                </label>
+                            </div>
+                        @endif
                     </div>
 
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">
-                            CEI/CNO
-                        </label>
-                        <input type="text" name="obra_cei_cno"  value="{{ old('obra_cei_cno', $pcmso->obra_cei_cno ?? '') }}"
-                               class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                               placeholder="Número do CEI ou CNO">
+
+                    <div class="rounded-xl bg-purple-50 border border-purple-100 px-4 py-3 text-xs text-purple-800">
+                        Tarefa de PCMSO Específico será criada com prazo de <strong>10 dias</strong>.
                     </div>
 
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">
-                            Endereço da Obra
-                        </label>
-                        <input type="text" name="obra_endereco"  value="{{ old('obra_endereco', $pcmso->obra_endereco ?? '') }}"
-                               class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-                               placeholder="Endereço completo">
+                    <div class="flex items-center justify-between gap-3 pt-2">
+                        <a href="{{ route('operacional.pcmso.possui-pgr', [$cliente, 'especifico']) }}"
+                           class="flex-1 text-center rounded-lg bg-slate-50 border border-slate-200 text-sm font-semibold
+                                  text-slate-700 py-2.5 hover:bg-slate-100 transition">
+                            Voltar
+                        </a>
+
+                        <button type="submit"
+                                class="flex-1 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm
+                                    font-semibold py-2.5 transition">
+                            {{ $isEdit ? 'Salvar alterações' : 'Criar Tarefa PCMSO' }}
+                        </button>
+
                     </div>
                 </div>
+                {{-- ABA ANEXOS --}}
+                {{-- ABA ANEXOS --}}
+                <div id="pcmso-tab-anexos" class="space-y-4 hidden">
+                    <p class="text-xs text-slate-600">
+                        Anexe aqui documentos relacionados ao PCMSO (PDF, DOC, DOCX).
+                        Você pode arrastar e soltar ou clicar na área abaixo.
+                    </p>
 
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">
-                        Inserir PGR / Inventário de Risco {{ $isEdit ? '' : '*' }}
-                    </label>
+                    {{-- Dropzone --}}
+                    <div id="pcmso-dropzone-anexos"
+                         class="flex flex-col items-center justify-center px-6 py-10 border-2 border-dashed rounded-2xl
+                border-slate-300 bg-slate-50 text-center cursor-pointer
+                hover:border-sky-400 hover:bg-sky-50 transition">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mb-2" fill="none" viewBox="0 0 24 24"
+                             stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                  d="M3 15.75V18a3 3 0 003 3h12a3 3 0 003-3v-2.25M16.5 9.75L12 5.25m0 0L7.5 9.75M12 5.25V15" />
+                        </svg>
+                        <p class="text-sm text-slate-700">
+                            Arraste arquivos aqui
+                        </p>
+                        <p class="text-[11px] text-slate-400 mt-1">
+                            ou clique para selecionar
+                        </p>
 
-                    <input type="file" name="pgr_arquivo" accept="application/pdf"
-                           class="w-full text-sm rounded-lg border border-slate-200 px-3 py-2
-                  file:mr-3 file:px-3 file:py-2 file:rounded-lg
-                  file:border-0 file:bg-purple-600 file:text-white
-                  hover:file:bg-purple-700">
+                        <input id="pcmso-input-anexos"
+                               type="file"
+                               name="anexos[]"
+                               multiple
+                               accept=".pdf,.doc,.docx"
+                               class="hidden">
+                    </div>
 
-                    @if($isEdit && !empty($pcmso->pgr_arquivo_path))
+                    {{-- Lista de arquivos selecionados (novos) --}}
+                    <ul id="pcmso-lista-anexos" class="mt-3 text-xs text-slate-600 space-y-1"></ul>
 
-                        <div class="mt-2 text-xs text-slate-600">
-                            <p>
-                                Arquivo atual:
-                                <a href="{{ Storage::disk('public')->url($pcmso->pgr_arquivo_path) }}"
-                                   target="_blank"
-                                   class="text-purple-600 underline">
-                                    Abrir PGR atual
-                                </a>
-                            </p>
+                    {{-- Anexos já salvos --}}
+                    @if($isEdit)
+                        <div class="mt-6">
+                            <h3 class="text-sm font-semibold text-slate-800 mb-3">
+                                Anexos desta tarefa
+                            </h3>
 
-                            <label class="inline-flex items-center gap-2 mt-1 text-[11px] text-red-600">
-                                <input type="checkbox" name="remover_arquivo" value="1"
-                                       class="rounded border-slate-300">
-                                <span>Remover arquivo atual</span>
-                            </label>
+                            @if($anexos->isEmpty())
+                                <p class="text-xs text-slate-400">
+                                    Nenhum anexo cadastrado ainda.
+                                </p>
+                            @else
+                                <ul class="divide-y divide-slate-100 border border-slate-200 rounded-2xl overflow-hidden">
+                                    @foreach($anexos as $anexo)
+                                        @php
+                                            $ext = strtolower(pathinfo($anexo->nome_original, PATHINFO_EXTENSION));
+
+                                            $iconClasses = match($ext) {
+                                                'pdf'          => 'bg-red-100 text-red-600',
+                                                'doc', 'docx'  => 'bg-blue-100 text-blue-600',
+                                                default        => 'bg-slate-100 text-slate-600',
+                                            };
+
+                                            $sizeKb = $anexo->tamanho
+                                                ? round($anexo->tamanho / 1024, 1)
+                                                : null;
+                                        @endphp
+
+                                        <li class="flex items-center justify-between px-4 py-3">
+                                            <div class="flex items-center gap-3 min-w-0">
+                                                <div
+                                                    class="h-9 w-9 rounded-xl flex items-center justify-center text-[11px] font-semibold {{ $iconClasses }}">
+                                                    {{ strtoupper($ext ?: 'ARQ') }}
+                                                </div>
+
+                                                <div class="min-w-0">
+                                                    <p class="text-sm text-slate-800 truncate max-w-xs">
+                                                        {{ $anexo->nome_original }}
+                                                    </p>
+                                                    <p class="text-[11px] text-slate-400">
+                                                        @if($sizeKb)
+                                                            {{ number_format($sizeKb, 1, ',', '.') }} KB ·
+                                                        @endif
+                                                        Enviado em {{ $anexo->created_at?->format('d/m/Y H:i') }}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div class="flex items-center gap-2">
+                                                <a href="{{ route('operacional.anexos.view', $anexo) }}"
+                                                   target="_blank"
+                                                   class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium
+                                          border border-slate-200 text-slate-700 hover:bg-slate-50">
+                                                    Ver
+                                                </a>
+
+                                                <a href="{{ route('operacional.anexos.download', $anexo) }}"
+                                                   class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium
+                                          bg-sky-500 text-white hover:bg-sky-600">
+                                                    Download
+                                                </a>
+
+                                                {{-- Botão lixeira (excluir) --}}
+                                                <button type="button"
+                                                        class="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-red-100
+                                               text-red-500 hover:bg-red-50 text-xs"
+                                                        title="Excluir anexo"
+                                                        data-delete-anexo="{{ route('operacional.anexos.destroy', $anexo) }}">
+                                                    <svg xmlns="http://www.w3.org/2000/svg"
+                                                         viewBox="0 0 24 24"
+                                                         fill="none"
+                                                         stroke="currentColor"
+                                                         stroke-width="1.7"
+                                                         class="w-4 h-4">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                              d="M9.75 9.75v6.75M14.25 9.75v6.75M4.5 6.75h15M18.75 6.75
+                                                 l-.861 12.067A2.25 2.25 0 0 1 15.648 21H8.352a2.25 2.25 0 0 1-2.241-2.183L5.25 6.75M9 6.75V4.5
+                                                 A1.5 1.5 0 0 1 10.5 3h3A1.5 1.5 0 0 1 15 4.5v2.25"/>
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            @endif
                         </div>
                     @endif
+
+                    {{-- Botão de salvar também nesta aba --}}
+                    <div class="mt-4">
+                        <button type="submit"
+                                class="w-full px-6 py-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium shadow-sm">
+                            {{ $isEdit ? 'Salvar alterações' : 'Criar Tarefa PCMSO' }}
+                        </button>
+                    </div>
                 </div>
 
-
-                <div class="rounded-xl bg-purple-50 border border-purple-100 px-4 py-3 text-xs text-purple-800">
-                    Tarefa de PCMSO Específico será criada com prazo de <strong>10 dias</strong>.
-                </div>
-
-                <div class="flex items-center justify-between gap-3 pt-2">
-                    <a href="{{ route('operacional.pcmso.possui-pgr', [$cliente, 'especifico']) }}"
-                       class="flex-1 text-center rounded-lg bg-slate-50 border border-slate-200 text-sm font-semibold
-                              text-slate-700 py-2.5 hover:bg-slate-100 transition">
-                        Voltar
-                    </a>
-
-                    <button type="submit"
-                            class="flex-1 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm
-                                font-semibold py-2.5 transition">
-                        {{ $isEdit ? 'Salvar alterações' : 'Criar Tarefa PCMSO' }}
-                    </button>
-
-                </div>
             </form>
         </div>
     </div>
+    @push('scripts')
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                // ----- TABS -----
+                const tabButtons = document.querySelectorAll('.pcmso-tab-btn');
+                const tabDados   = document.getElementById('pcmso-tab-dados');
+                const tabAnexos  = document.getElementById('pcmso-tab-anexos');
+
+                tabButtons.forEach(btn => {
+                    btn.addEventListener('click', function () {
+                        const tab = this.dataset.tab;
+
+                        if (tab === 'dados') {
+                            tabDados.classList.remove('hidden');
+                            tabAnexos.classList.add('hidden');
+                        } else {
+                            tabAnexos.classList.remove('hidden');
+                            tabDados.classList.add('hidden');
+                        }
+
+                        tabButtons.forEach(b => {
+                            b.classList.remove('border-b-2', 'border-sky-500', 'text-sky-600', 'font-semibold');
+                            b.classList.add('text-slate-500');
+                        });
+
+                        this.classList.remove('text-slate-500');
+                        this.classList.add('border-b-2', 'border-sky-500', 'text-sky-600', 'font-semibold');
+                    });
+                });
+
+                // ----- DROPZONE -----
+                const dropzone   = document.getElementById('pcmso-dropzone-anexos');
+                const inputFiles = document.getElementById('pcmso-input-anexos');
+                const lista      = document.getElementById('pcmso-lista-anexos');
+
+                if (dropzone && inputFiles && lista) {
+                    function atualizarLista() {
+                        lista.innerHTML = '';
+                        if (!inputFiles.files.length) {
+                            const li = document.createElement('li');
+                            li.textContent = 'Nenhum arquivo selecionado.';
+                            lista.appendChild(li);
+                            return;
+                        }
+                        Array.from(inputFiles.files).forEach(file => {
+                            const li = document.createElement('li');
+                            li.textContent = file.name + ' (' + Math.round(file.size / 1024) + ' KB)';
+                            lista.appendChild(li);
+                        });
+                    }
+
+                    dropzone.addEventListener('click', () => inputFiles.click());
+                    inputFiles.addEventListener('change', atualizarLista);
+
+                    dropzone.addEventListener('dragover', e => {
+                        e.preventDefault();
+                        dropzone.classList.add('border-sky-400', 'bg-sky-50');
+                    });
+
+                    dropzone.addEventListener('dragleave', e => {
+                        e.preventDefault();
+                        dropzone.classList.remove('border-sky-400', 'bg-sky-50');
+                    });
+
+                    dropzone.addEventListener('drop', e => {
+                        e.preventDefault();
+                        dropzone.classList.remove('border-sky-400', 'bg-sky-50');
+                        if (!e.dataTransfer.files.length) return;
+                        inputFiles.files = e.dataTransfer.files;
+                        atualizarLista();
+                    });
+
+                    atualizarLista();
+                }
+
+                // ----- DELETE ANEXO -----
+                document.querySelectorAll('[data-delete-anexo]').forEach(btn => {
+                    btn.addEventListener('click', function () {
+                        const url = this.dataset.deleteAnexo;
+                        if (!url) return;
+
+                        if (!confirm('Confirma excluir este anexo?')) return;
+
+                        let form = document.getElementById('form-delete-anexo');
+                        if (!form) {
+                            form = document.createElement('form');
+                            form.id = 'form-delete-anexo';
+                            form.method = 'POST';
+                            form.style.display = 'none';
+                            const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+                            form.innerHTML = `
+                                <input type="hidden" name="_token" value="${token}">
+                                <input type="hidden" name="_method" value="DELETE">
+                            `;
+                            document.body.appendChild(form);
+                        }
+
+                        form.action = url;
+                        form.submit();
+                    });
+                });
+            });
+        </script>
+    @endpush
 @endsection

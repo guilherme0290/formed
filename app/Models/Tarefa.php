@@ -78,8 +78,10 @@ class Tarefa extends Model
         if (!$this->path_documento_cliente) {
             return null;
         }
-        // supondo disco "public"
-        return Storage::disk('public')->url($this->path_documento_cliente);
+        return Storage::disk('s3')->temporaryUrl(
+            $this->path_documento_cliente,
+            now()->addMinutes(10)
+        );
     }
 
     public function ultimoLogMovimentacao(): ?TarefaLog
@@ -88,6 +90,10 @@ class Tarefa extends Model
         return $this->logs()->latest('created_at')->first();
     }
 
+    public function anexos()
+    {
+        return $this->hasMany(Anexos::class);
+    }
 
     public function pgr()
     {
@@ -138,6 +144,8 @@ class Tarefa extends Model
     {
         return $this->hasOne(AsoSolicitacoes::class, 'tarefa_id');
     }
+
+
 
 
 

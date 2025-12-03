@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\S3Helper;
 use App\Models\TarefaLog;
 use Illuminate\Http\Request;
 use App\Models\Tarefa;
@@ -86,14 +87,13 @@ class TarefaController extends Controller
         DB::beginTransaction();
 
         try {
-            // salva arquivo
-            $path = $request->file('arquivo_cliente')
-                ->store("tarefas/{$tarefa->empresa_id}", 'public');
+
+            $path = S3Helper::upload( $request->file('arquivo_cliente'), 'tarefas');
 
             $tarefa->update([
-                'coluna_id'           => $colunaFinalizada->id,
-                'finalizado_em'       => now(),
-                'path_documento_cliente'=> $path,
+                'coluna_id'               => $colunaFinalizada->id,
+                'finalizado_em'           => now(),
+                'path_documento_cliente'  => $path,
             ]);
 
             $log = TarefaLog::create([
@@ -109,12 +109,18 @@ class TarefaController extends Controller
 
             DB::commit();
 
+
+
             return response()->json([
                 'ok'           => true,
                 'status_label' => $colunaFinalizada->nome,
-                'arquivo_url'  => $tarefa->path_documento_cliente
-                    ? asset('storage/' . $tarefa->path_documento_cliente)
-                    : null,
+
+                // 🔁 URL já vinda do S3
+                'arquivo_url'  => $path ? Storage::disk('s3')->temporaryUrl(
+                    $path,
+                    now()->addMinutes(10)
+                ) : null,
+
                 'log'          => [
                     'de'   => optional($log->deColuna)->nome ?? 'Início',
                     'para' => optional($log->paraColuna)->nome ?? '-',
@@ -131,4 +137,5 @@ class TarefaController extends Controller
             ], 500);
         }
     }
+
 }

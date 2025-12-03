@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Operacional;
 
 use App\Http\Controllers\Controller;
+use App\Models\Anexos;
 use App\Models\AsoSolicitacoes;
 use App\Models\Cliente;
 use App\Models\Funcao;
@@ -41,7 +42,7 @@ class AsoController extends Controller
             'email_aso' => ['nullable', 'email'],
         ]);
 
-        $tarefa = DB::transaction(function () use ($data, $empresaId, $cliente, $usuario) {
+        $tarefa = DB::transaction(function () use ($data, $empresaId, $cliente, $usuario,$request) {
 
             // 1) Resolve funcionário (existente ou novo)
             if (!empty($data['funcionario_id'])) {
@@ -135,6 +136,16 @@ class AsoController extends Controller
                 'observacao' => $descricao,
             ]);
 
+            Anexos::salvarDoRequest($request, 'anexos', [
+                'empresa_id'     => $empresaId,
+                'cliente_id'     => $cliente->id,
+                'tarefa_id'      => $tarefa->id,
+                'funcionario_id' => $funcionario->id ?? null,
+                'uploaded_by'    => $usuario->id,
+                'servico'        => 'ASO',
+                 'subpath'     => 'anexos-custom/' . $empresaId, // opcional, se quiser sobrescrever
+            ]);
+
             return $tarefa;
         });
 
@@ -147,6 +158,10 @@ class AsoController extends Controller
     {
         $empresaId = Auth::user()->empresa_id;
         $cliente = $tarefa->cliente;
+
+        $anexos = $tarefa->anexos()
+            ->orderByDesc('created_at')
+            ->get();
 
         $tiposAso = [
             'admissional' => 'Admissional',
@@ -234,6 +249,7 @@ class AsoController extends Controller
             'funcoes' => $funcoes,
             'unidades' => $unidades,
             'dataAso' => $dataAso,
+            'anexos' => $anexos,
             'unidadeSelecionada' => $unidadeSelecionada,
             'vaiFazerTreinamento' => $vaiFazerTreinamento,
             'treinamentosDisponiveis' => $treinamentosDisponiveis,
@@ -263,7 +279,7 @@ class AsoController extends Controller
             'email_aso' => ['nullable', 'email'],
         ]);
 
-        DB::transaction(function () use ($data, $empresaId, $cliente, $tarefa) {
+        DB::transaction(function () use ($data, $empresaId, $cliente, $tarefa, $request) {
 
             // FUNCIONÁRIO (reaproveita/atualiza)
             if (!empty($data['funcionario_id'])) {
@@ -340,12 +356,23 @@ class AsoController extends Controller
                 'treinamentos' => $treinamentos,
             ]);
 
+            Anexos::salvarDoRequest($request, 'anexos', [
+                'empresa_id'     => $empresaId,
+                'cliente_id'     => $cliente->id,
+                'tarefa_id'      => $tarefa->id,
+                'funcionario_id' => $funcionario->id ?? null,
+                'uploaded_by'    => auth()->user()->id,
+                'servico'        => 'ASO',
+                'subpath'     => 'anexos-custom/' . $empresaId, // opcional, se quiser sobrescrever
+            ]);
+
             $aso->save();
         });
 
         return redirect()
             ->route('operacional.kanban')
             ->with('ok', 'Tarefa ASO atualizada com sucesso.');
+
     }
 
 
@@ -413,6 +440,7 @@ class AsoController extends Controller
             'vaiFazerTreinamento'      => $vaiFazerTreinamento,
             'dataAso'                  => $dataAso,
             'unidadeSelecionada'       => $unidadeSelecionada,
+            'anexos'                   => collect(),
         ]);
     }
 

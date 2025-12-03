@@ -22,6 +22,7 @@ use App\Http\Controllers\Operacional\PaeController;
 use App\Http\Controllers\Operacional\TreinamentoNrController;
 use App\Http\Controllers\FuncaoController;
 use App\Http\Controllers\TarefaController;
+use App\Http\Controllers\AnexoController;
 use Illuminate\Support\Facades\Route;
 
 // ==================== Controllers ====================
@@ -265,12 +266,26 @@ Route::middleware('auth')->group(function () {
 
         Route::post('funcoes', [FuncaoController::class, 'storefast'])
             ->name('funcoes.store-ajax');
+
+        Route::post('tarefas/{tarefa}/anexos', [AnexoController::class, 'store'])
+            ->name('tarefas.anexos.store');
+
+        Route::get('/anexos/{anexo}/view', [AnexoController::class, 'view'])
+            ->name('anexos.view');
+
+        Route::get('anexos/{anexo}/download', [AnexoController::class, 'download'])
+            ->name('anexos.download');
+
+        Route::delete('anexos/{anexo}', [AnexoController::class, 'destroy'])
+            ->name('anexos.destroy');
     });
 
 
     Route::get('operacional/tarefas/detalhes/ajax',
         [PainelController::class, 'detalhesAjax']
     )->name('operacional.tarefas.detalhes.ajax');
+
+
 
 
     // ======================================================
