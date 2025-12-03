@@ -12,12 +12,44 @@
     <link rel="shortcut icon" type="image/png" href="{{ asset('favicon.png') }}">
 </head>
 <body class="bg-slate-900">
-<div class="min-h-screen flex">
+<div class="min-h-screen flex relative">
+
+    {{-- BACKDROP (mobile) --}}
+    <div id="operacional-sidebar-backdrop"
+         class="fixed inset-0 bg-black/40 z-20 opacity-0 pointer-events-none transition-opacity duration-200 md:hidden"></div>
 
     {{-- Sidebar esquerda --}}
-    <aside class="hidden md:flex flex-col w-56 bg-slate-950 text-slate-100">
-        <div class="h-16 flex items-center px-6 text-lg font-semibold">
-            Operacional
+    <aside id="operacional-sidebar"
+           class="fixed inset-y-0 left-0 z-30 w-64 bg-slate-950 text-slate-100
+                  transform -translate-x-full transition-transform duration-200 ease-in-out
+                  flex flex-col
+                  md:static md:translate-x-0">
+
+        <div class="h-16 flex items-center justify-between px-4 text-lg font-semibold border-b border-slate-800">
+
+            <div class="flex items-center gap-2">
+                {{-- Botão de colapse (DESKTOP) --}}
+                <button type="button"
+                        class="hidden md:inline-flex items-center justify-center p-1.5 rounded-lg text-slate-300 hover:bg-slate-800"
+                        data-sidebar-collapse
+                        title="Recolher/expandir">
+                    {{-- Chevron simples --}}
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                         viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M15 19l-7-7 7-7"/>
+                    </svg>
+                </button>
+
+                <span data-sidebar-label-header>Operacional</span>
+            </div>
+
+            {{-- Botão fechar (somente mobile) --}}
+            <button type="button"
+                    class="inline-flex items-center justify-center p-2 rounded-lg text-slate-300 hover:bg-slate-800 md:hidden"
+                    data-sidebar-close>
+                ✕
+            </button>
         </div>
 
         <nav class="flex-1 px-3 mt-4 space-y-1">
@@ -26,39 +58,56 @@
                 <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-700">
                     🗂️
                 </span>
-                <span>Painel Operacional</span>
+                <span data-sidebar-label>Painel Operacional</span>
             </a>
         </nav>
 
         <div class="px-4 py-4 border-t border-slate-800 space-y-2 text-sm">
             <a href="{{ url('/') }}" class="flex items-center gap-2 text-slate-300 hover:text-white">
-                <span>⏪</span> <span>Voltar ao Início</span>
+                <span>⏪</span>
+                <span data-sidebar-label>Voltar ao Início</span>
             </a>
             <form method="POST" action="{{ route('logout') }}">
                 @csrf
                 <button class="flex items-center gap-2 text-rose-400 hover:text-rose-300">
-                    <span>🚪</span> Sair
+                    <span>🚪</span>
+                    <span data-sidebar-label>Sair</span>
                 </button>
             </form>
         </div>
     </aside>
 
-    {{-- Área principal à direita --}}
+    {{-- Área principal --}}
     <div class="flex-1 flex flex-col bg-slate-50">
 
         <header class="bg-blue-900 text-white shadow-sm">
-            <div class="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
-                <div class="flex items-baseline gap-3">
-                    <span class="font-semibold text-lg tracking-tight">FORMED</span>
-                    <span class="text-xs md:text-sm text-blue-100">
-                    Medicina e Segurança do Trabalho
-                </span>
+            <div class="max-w-7xl mx-auto px-4 md:px-6 h-14 flex items-center justify-between gap-3">
+
+                <div class="flex items-center gap-3">
+                    {{-- Botão abrir/fechar sidebar (MOBILE) --}}
+                    <button type="button"
+                            class="inline-flex md:hidden items-center justify-center p-2 rounded-lg text-blue-50 hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-white"
+                            data-sidebar-toggle>
+                        <span class="sr-only">Abrir menu</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+                             viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M4 6h16M4 12h16M4 18h16"/>
+                        </svg>
+                    </button>
+
+                    <div class="flex flex-col">
+                        <span class="font-semibold text-lg tracking-tight leading-none">FORMED</span>
+                        <span class="text-[11px] md:text-xs text-blue-100">
+                            Medicina e Segurança do Trabalho
+                        </span>
+                    </div>
                 </div>
 
                 <div class="flex items-center gap-3 text-xs md:text-sm text-blue-50">
-                <span class="hidden md:inline">
-                    {{ auth()->user()->name ?? '' }}
-                </span>
+                    <span class="hidden md:inline">
+                        {{ auth()->user()->name ?? '' }}
+                    </span>
                 </div>
             </div>
         </header>
@@ -83,12 +132,137 @@
 {{-- SortableJS para drag & drop do Kanban --}}
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 
-{{-- Scripts específicos das views --}}
-@stack('scripts')
-
-@push('scripts')
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+            const MOBILE_BREAKPOINT = 768;
+
+            const sidebar       = document.getElementById('operacional-sidebar');
+            const backdrop      = document.getElementById('operacional-sidebar-backdrop');
+            const btnToggleMob  = document.querySelector('[data-sidebar-toggle]');
+            const btnCloses     = document.querySelectorAll('[data-sidebar-close]');
+            const btnCollapse   = document.querySelector('[data-sidebar-collapse]');
+            const labels        = document.querySelectorAll('[data-sidebar-label]');
+            const headerTitle   = document.querySelector('[data-sidebar-label-header]');
+
+            let desktopCollapsed = false;
+
+            function isMobile() {
+                return window.innerWidth < MOBILE_BREAKPOINT;
+            }
+
+            // --- MOBILE: abrir/fechar overlay ---
+
+            function abrirSidebarMobile() {
+                if (!sidebar) return;
+                sidebar.classList.remove('-translate-x-full');
+                sidebar.classList.add('translate-x-0');
+
+                if (backdrop) {
+                    backdrop.classList.remove('opacity-0', 'pointer-events-none');
+                    backdrop.classList.add('opacity-100');
+                }
+            }
+
+            function fecharSidebarMobile() {
+                if (!sidebar) return;
+                sidebar.classList.remove('translate-x-0');
+                sidebar.classList.add('-translate-x-full');
+
+                if (backdrop) {
+                    backdrop.classList.add('opacity-0', 'pointer-events-none');
+                    backdrop.classList.remove('opacity-100');
+                }
+            }
+
+            // --- DESKTOP: colapsar/expandir (ícones x texto) ---
+
+            function setDesktopCollapsed(collapsed) {
+                if (!sidebar) return;
+                desktopCollapsed = collapsed;
+
+                if (collapsed) {
+                    // encolhe a largura e esconde labels
+                    sidebar.style.width = '4rem';
+                    labels.forEach(el => el.classList.add('hidden'));
+                    if (headerTitle) headerTitle.classList.add('hidden');
+                } else {
+                    // volta ao normal (usa w-64 do Tailwind)
+                    sidebar.style.width = '';
+                    labels.forEach(el => el.classList.remove('hidden'));
+                    if (headerTitle) headerTitle.classList.remove('hidden');
+                }
+            }
+
+            // --- Clique no botão do header (MOBILE) ---
+            if (btnToggleMob) {
+                btnToggleMob.addEventListener('click', function () {
+                    if (!isMobile()) return;
+
+                    if (sidebar.classList.contains('-translate-x-full')) {
+                        abrirSidebarMobile();
+                    } else {
+                        fecharSidebarMobile();
+                    }
+                });
+            }
+
+            // --- Clique no botão de colapse (DESKTOP) ---
+            if (btnCollapse) {
+                btnCollapse.addEventListener('click', function () {
+                    if (isMobile()) return;
+                    setDesktopCollapsed(!desktopCollapsed);
+                });
+            }
+
+            // Botões de fechar (só mobile, já estão md:hidden)
+            btnCloses.forEach(btn => {
+                btn.addEventListener('click', function () {
+                    if (isMobile()) {
+                        fecharSidebarMobile();
+                    }
+                });
+            });
+
+            // Clicar no backdrop fecha (mobile)
+            if (backdrop) {
+                backdrop.addEventListener('click', function () {
+                    if (isMobile()) {
+                        fecharSidebarMobile();
+                    }
+                });
+            }
+
+            // ESC fecha (mobile)
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape' && isMobile()) {
+                    fecharSidebarMobile();
+                }
+            });
+
+            // Estado inicial
+            if (isMobile()) {
+                fecharSidebarMobile();
+            } else {
+                setDesktopCollapsed(false); // começa expandido no desktop
+            }
+
+            // Se a tela for redimensionada, ajusta comportamento
+            window.addEventListener('resize', function () {
+                if (isMobile()) {
+                    // Voltou para mobile: garante expandido internamente e fecha overlay
+                    setDesktopCollapsed(false);
+                    fecharSidebarMobile();
+                } else {
+                    // Voltou para desktop: garante que não fique com translate-x-full
+                    sidebar.classList.remove('-translate-x-full', 'translate-x-0');
+                    if (backdrop) {
+                        backdrop.classList.add('opacity-0', 'pointer-events-none');
+                        backdrop.classList.remove('opacity-100');
+                    }
+                }
+            });
+
+            // ------------------ MODAL DE FUNÇÃO (código original) ------------------ //
 
             function abrirModal(modalId, targetSelectId) {
                 const modal = document.getElementById(modalId);
@@ -153,13 +327,12 @@
                         return;
                     }
 
-                    const route = modal.dataset.funcaoRoute;
-                    const token = modal.dataset.funcaoCsrf;
+                    const route    = modal.dataset.funcaoRoute;
+                    const token    = modal.dataset.funcaoCsrf;
                     const targetId = modal.dataset.funcaoTarget;
 
                     if (!route || !token || !targetId) return;
 
-                    // desabilita botão
                     const btnSave = e.target;
                     btnSave.disabled = true;
 
@@ -205,19 +378,20 @@
                 }
             });
 
-            // Fechar clicando fora do conteúdo (opcional)
+            // Fechar modal clicando no fundo
             document.addEventListener('click', function (e) {
                 const modal = e.target.closest('[data-funcao-modal]');
                 if (!modal) return;
 
-                // se clicou diretamente no fundo escuro
                 if (e.target === modal) {
                     fecharModal(modal);
                 }
             });
         });
     </script>
-@endpush
+
+
+@stack('scripts')
 
 </body>
 </html>
