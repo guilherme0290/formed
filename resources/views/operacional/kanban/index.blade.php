@@ -109,9 +109,15 @@
                     </label>
                     <select name="coluna_id"
                             class="w-full rounded-xl border border-slate-200 bg-slate-50/60 py-2 px-3 text-sm
-                               text-slate-700
-                               focus:bg-white focus:ring-2 focus:ring-sky-400 focus:border-sky-400">
+                                   text-slate-700
+                                   focus:bg-white focus:ring-2 focus:ring-sky-400 focus:border-sky-400">
                         <option value="">Todos os status</option>
+
+                        {{-- 🔹 Novo item: Canceladas (soft delete) --}}
+                        <option value="canceladas" @selected($filtroColuna === 'canceladas')>
+                            Canceladas
+                        </option>
+
                         @foreach($colunas as $col)
                             <option value="{{ $col->id }}" @selected($filtroColuna == $col->id)>
                                 {{ $col->nome }}
@@ -191,7 +197,7 @@
 
                     {{-- UMA COLUNA COMPLETA (card resumo + raia) --}}
 
-                        <section class="flex flex-col w-56 md:w-60 lg:w-64 flex-shrink-0 gap-3">
+                    <section class="flex flex-col w-56 md:w-60 lg:w-64 flex-shrink-0 gap-3">
 
                         {{-- Card resumo da coluna --}}
                         <article
@@ -217,26 +223,6 @@
                             class="bg-white border border-slate-200 rounded-2xl flex flex-col
                            h-[64vh] md:h-[68vh] shadow-md">
 
-                            {{-- header da coluna --}}
-{{--                            <header--}}
-{{--                                class="flex items-center justify-between px-3 py-2 border-b border-slate-100--}}
-{{--                               bg-slate-50/90 rounded-t-2xl">--}}
-{{--                                <div class="flex items-center gap-2 text-slate-700">--}}
-{{--                                    <div--}}
-{{--                                        class="w-2.5 h-2.5 rounded-full bg-[color:var(--color-brand-azul)] shadow-sm"></div>--}}
-{{--                                    <h2 class="text-[13px] font-semibold tracking-tight">--}}
-{{--                                        {{ $coluna->nome }}--}}
-{{--                                    </h2>--}}
-{{--                                </div>--}}
-
-{{--                                <span--}}
-{{--                                    class="inline-flex items-center justify-center min-w-[2rem] h-7 rounded-full--}}
-{{--                                   bg-white text-[11px] font-semibold text-slate-600 border border-slate-200--}}
-{{--                                   shadow-sm">--}}
-{{--                                            {{ $tarefasColuna->count() }}--}}
-{{--                                </span>--}}
-{{--                            </header>--}}
-
                             {{-- cards --}}
                             <div class="flex-1 overflow-y-auto px-3 py-3 space-y-3 kanban-column"
                                  data-coluna-id="{{ $coluna->id }}"
@@ -244,116 +230,121 @@
                                  data-coluna-slug="{{ Str::slug($coluna->nome) }}">
                                 {{-- aqui permanece o foreach dos cards de tarefa que você já tinha --}}
 
-                            @forelse($tarefasColuna as $tarefa)
-                                @php
-                                    $clienteNome  = optional($tarefa->cliente)->razao_social ?? 'Sem cliente';
-                                    $servicoNome  = optional($tarefa->servico)->nome ?? 'Sem serviço';
+                                @forelse($tarefasColuna as $tarefa)
+                                    @php
+                                        $clienteNome  = optional($tarefa->cliente)->razao_social ?? 'Sem cliente';
+                                        $servicoNome  = optional($tarefa->servico)->nome ?? 'Sem serviço';
+                                        $isCancelada = $tarefa->trashed();
 
-                                    $respNome     = optional($tarefa->responsavel)->name ?? 'Sem responsável';
-                                    $dataHora     = $tarefa->inicio_previsto
-                                                    ? \Carbon\Carbon::parse($tarefa->inicio_previsto)->format('d/m/Y H:i')
-                                                    : 'Sem data';
+                                        $respNome     = optional($tarefa->responsavel)->name ?? 'Sem responsável';
+                                        $dataHora     = $tarefa->inicio_previsto
+                                                        ? \Carbon\Carbon::parse($tarefa->inicio_previsto)->format('d/m/Y H:i')
+                                                        : 'Sem data';
 
-                                    $funcionario   = optional($tarefa->funcionario);
-                                    $funcionarioNome   = $funcionario->nome ?? null;
-                                    $funcionarioCpf    = $funcionario->cpf ?? null;
-                                    $funcionarioFuncao = $funcionario->funcao_nome ?? null;
+                                        $funcionario   = optional($tarefa->funcionario);
+                                        $funcionarioNome   = $funcionario->nome ?? null;
+                                        $funcionarioCpf    = $funcionario->cpf ?? null;
+                                        $funcionarioFuncao = $funcionario->funcao_nome ?? null;
 
-                                    $slaData      = $tarefa->fim_previsto
-                                                    ? \Carbon\Carbon::parse($tarefa->fim_previsto)->format('d/m/Y')
-                                                    : '-';
-                                    $obs          = $tarefa->descricao ?? '';
+                                        $slaData      = $tarefa->fim_previsto
+                                                        ? \Carbon\Carbon::parse($tarefa->fim_previsto)->format('d/m/Y')
+                                                        : '-';
+                                        $obs          = $tarefa->descricao ?? '';
 
-                                    $clienteCnpj  = optional($tarefa->cliente)->cnpj ?? '';
-                                    $clienteTel   = optional($tarefa->cliente)->telefone ?? '';
+                                        $clienteCnpj  = optional($tarefa->cliente)->cnpj ?? '';
+                                        $clienteTel   = optional($tarefa->cliente)->telefone ?? '';
 
-                                    $pgr  = $tarefa->pgrSolicitacao ?? null;
-                                    $ltip = $tarefa->ltipSolicitacao;
+                                        $pgr  = $tarefa->pgrSolicitacao ?? null;
+                                        $ltip = $tarefa->ltipSolicitacao;
 
-                                    // ====== NOVO: dados específicos do ASO via aso_solicitacoes ======
-                                    $aso                  = $tarefa->asoSolicitacao;
-                                    $asoTipoLabel         = '';
-                                    $asoDataFormatada     = '';
-                                    $asoUnidadeNome       = '';
-                                    $asoTreinamentoFlag   = '';
-                                    $asoTreinamentosLista = '';
-                                    $asoEmail             = '';
+                                        // ====== NOVO: dados específicos do ASO via aso_solicitacoes ======
+                                        $aso                  = $tarefa->asoSolicitacao;
+                                        $asoTipoLabel         = '';
+                                        $asoDataFormatada     = '';
+                                        $asoUnidadeNome       = '';
+                                        $asoTreinamentoFlag   = '';
+                                        $asoTreinamentosLista = '';
+                                        $asoEmail             = '';
 
-                                    if ($aso) {
-                                        $mapTiposAso = [
-                                            'admissional'      => 'Admissional',
-                                            'periodico'        => 'Periódico',
-                                            'demissional'      => 'Demissional',
-                                            'mudanca_funcao'   => 'Mudança de Função',
-                                            'retorno_trabalho' => 'Retorno ao Trabalho',
-                                        ];
+                                        if ($aso) {
+                                            $mapTiposAso = [
+                                                'admissional'      => 'Admissional',
+                                                'periodico'        => 'Periódico',
+                                                'demissional'      => 'Demissional',
+                                                'mudanca_funcao'   => 'Mudança de Função',
+                                                'retorno_trabalho' => 'Retorno ao Trabalho',
+                                            ];
 
-                                        $asoTipoLabel     = $mapTiposAso[$aso->tipo_aso] ?? ucfirst($aso->tipo_aso);
-                                        $asoDataFormatada = $aso->data_aso
-                                            ? \Carbon\Carbon::parse($aso->data_aso)->format('d/m/Y')
-                                            : '';
 
-                                        $asoUnidadeNome   = optional($aso->unidade)->nome ?? '';
-                                        $asoEmail         = $aso->email_aso ?? '';
-                                        $asoTreinamentoFlag = $aso->vai_fazer_treinamento ? 'Sim' : 'Não';
+                                            $asoTipoLabel     = $mapTiposAso[$aso->tipo_aso] ?? ucfirst($aso->tipo_aso);
+                                            $asoDataFormatada = $aso->data_aso
+                                                ? \Carbon\Carbon::parse($aso->data_aso)->format('d/m/Y')
+                                                : '';
 
-                                        // labels dos treinamentos
-                                        $mapTrein = [
-                                            'nr_35' => 'NR-35 - Trabalho em Altura',
-                                            'nr_18' => 'NR-18 - Integração',
-                                            'nr_12' => 'NR-12 - Máquinas e Equipamentos',
-                                            'nr_06' => 'NR-06 - EPI',
-                                            'nr_05' => 'NR-05 - CIPA Designada',
-                                            'nr_01' => 'NR-01 - Ordem de Serviço',
-                                            'nr_33' => 'NR-33 - Espaço Confinado',
-                                            'nr_11' => 'NR-11 - Movimentação de Carga',
-                                            'nr_10' => 'NR-10 - Elétrica',
-                                        ];
+                                            $asoUnidadeNome   = optional($aso->unidade)->nome ?? '';
+                                            $asoEmail         = $aso->email_aso ?? '';
+                                            $asoTreinamentoFlag = $aso->vai_fazer_treinamento ? 'Sim' : 'Não';
 
-                                        $labelsTrein = [];
-                                        foreach ((array) $aso->treinamentos as $code) {
-                                            $labelsTrein[] = $mapTrein[$code] ?? strtoupper($code);
+                                            // labels dos treinamentos
+                                            $mapTrein = [
+                                                'nr_35' => 'NR-35 - Trabalho em Altura',
+                                                'nr_18' => 'NR-18 - Integração',
+                                                'nr_12' => 'NR-12 - Máquinas e Equipamentos',
+                                                'nr_06' => 'NR-06 - EPI',
+                                                'nr_05' => 'NR-05 - CIPA Designada',
+                                                'nr_01' => 'NR-01 - Ordem de Serviço',
+                                                'nr_33' => 'NR-33 - Espaço Confinado',
+                                                'nr_11' => 'NR-11 - Movimentação de Carga',
+                                                'nr_10' => 'NR-10 - Elétrica',
+                                            ];
+
+                                            $labelsTrein = [];
+                                            foreach ((array) $aso->treinamentos as $code) {
+                                                $labelsTrein[] = $mapTrein[$code] ?? strtoupper($code);
+                                            }
+                                            $asoTreinamentosLista = implode(', ', $labelsTrein);
                                         }
-                                        $asoTreinamentosLista = implode(', ', $labelsTrein);
-                                    }
 
-                                    $editUrl = null;
-                                    if ($servicoNome === 'ASO') {
-                                        $editUrl = route('operacional.kanban.aso.editar', $tarefa);
-                                    }
-                                    if ($servicoNome === 'PGR') {
-                                        $editUrl = route('operacional.kanban.pgr.editar', $tarefa);
-                                    }
-                                    if ($servicoNome === 'PCMSO') {
-                                        $editUrl = route('operacional.kanban.pcmso.edit', $tarefa);
-                                    }
-                                    if ($servicoNome === 'LTCAT') {
-                                        $editUrl = route('operacional.ltcat.edit', $tarefa);
-                                    }
-                                    if ($servicoNome === 'LTIP') {
-                                        $editUrl = route('operacional.ltip.edit', $tarefa);
-                                    }
-                                    if ($servicoNome === 'APR') {
-                                        $editUrl = route('operacional.apr.edit', $tarefa);
-                                    }
-                                    if ($servicoNome === 'PAE') {
-                                        $editUrl = route('operacional.pae.edit', $tarefa);
-                                    }
-                                    if ($servicoNome === 'Treinamentos NRs') {
-                                        $editUrl = route('operacional.treinamentos-nr.edit', $tarefa);
-                                    }
+                                        $editUrl = null;
+                                        if ($servicoNome === 'ASO') {
+                                            $editUrl = route('operacional.kanban.aso.editar', $tarefa);
+                                        }
+                                        if ($servicoNome === 'PGR') {
+                                            $editUrl = route('operacional.kanban.pgr.editar', $tarefa);
+                                        }
+                                        if ($servicoNome === 'PCMSO') {
+                                            $editUrl = route('operacional.kanban.pcmso.edit', $tarefa);
+                                        }
+                                        if ($servicoNome === 'LTCAT') {
+                                            $editUrl = route('operacional.ltcat.edit', $tarefa);
+                                        }
+                                        if ($servicoNome === 'LTIP') {
+                                            $editUrl = route('operacional.ltip.edit', $tarefa);
+                                        }
+                                        if ($servicoNome === 'APR') {
+                                            $editUrl = route('operacional.apr.edit', $tarefa);
+                                        }
+                                        if ($servicoNome === 'PAE') {
+                                            $editUrl = route('operacional.pae.edit', $tarefa);
+                                        }
+                                        if ($servicoNome === 'Treinamentos NRs') {
+                                            $editUrl = route('operacional.treinamentos-nr.edit', $tarefa);
+                                        }
 
-                                @endphp
+                                    @endphp
 
 
 
 
-                                <article
-                                    class="kanban-card bg-white rounded-2xl shadow-md border border-slate-200 border-l-4
+                                    <article
+                                        class="kanban-card bg-white rounded-2xl shadow-md border border-slate-200 border-l-4
                                         px-3 py-3 text-xs cursor-pointer hover:shadow-lg transition hover:-translate-y-0.5"
+                                        @if($isCancelada) opacity-60 ring-1 ring-red-200 @endif"
                                     style="border-left-color: {{ $coluna->cor  }};"
 
                                     data-move-url="{{ route('operacional.tarefas.mover', $tarefa) }}"
+
+                                    data-cancelada="{{ $isCancelada ? '1' : '0' }}"
 
                                     @php
                                         $anexos = $tarefa->anexos ?? collect();
@@ -382,12 +373,14 @@
                                     data-datahora="{{ $dataHora }}"
                                     data-sla="{{ $slaData }}"
                                     data-move-url="{{ route('operacional.tarefas.mover', $tarefa) }}"
-                                    data-finalizar-url="{{ route('operacional.tarefas.finalizar-com-arquivo', $tarefa) }}"
+                                    data-finalizar-url="{{ route('operacional.tarefas.finalizar-com-arquivo', $tarefa) }}
+                                    "
                                     data-prioridade="{{ ucfirst($tarefa->prioridade) }}"
                                     data-status="{{ $coluna->nome }}"
                                     data-observacoes="{{ e($obs) }}"
 
-                                    data-funcionario="{{ $funcionarioNome . ($funcionarioCpf ? ' | CPF '.$funcionarioCpf : '') }}"
+                                    data-funcionario="{{ $funcionarioNome . ($funcionarioCpf ? ' | CPF '.$funcionarioCpf : '') }}
+                                    "
                                     data-funcionario-funcao="{{ $funcionarioFuncao }}"
                                     data-funcionario-cpf="{{ $funcionarioCpf }}"
 
@@ -406,18 +399,18 @@
                                     {{-- PGR --}}
                                     @if($pgr)
                                         data-pgr-tipo="{{ $pgr->tipo }}"
-                                    data-pgr-com-art="{{ $pgr->com_art ? '1' : '0' }}"
-                                    data-pgr-qtd-homens="{{ $pgr->qtd_homens }}"
-                                    data-pgr-qtd-mulheres="{{ $pgr->qtd_mulheres }}"
-                                    data-pgr-total-trabalhadores="{{ $pgr->total_trabalhadores }}"
-                                    data-pgr-com-pcmso="{{ $pgr->com_pcms0 ? '1' : '0' }}"
-                                    data-pgr-contratante="{{ $pgr->contratante_nome }}"
-                                    data-pgr-contratante-cnpj="{{ $pgr->contratante_cnpj }}"
-                                    data-pgr-obra-nome="{{ $pgr->obra_nome }}"
-                                    data-pgr-obra-endereco="{{ $pgr->obra_endereco }}"
-                                    data-pgr-obra-cej-cno="{{ $pgr->obra_cej_cno }}"
-                                    data-pgr-obra-turno="{{ $pgr->obra_turno_trabalho }}"
-                                    data-pgr-funcoes="{{ $pgr->funcoes_resumo }}"
+                                        data-pgr-com-art="{{ $pgr->com_art ? '1' : '0' }}"
+                                        data-pgr-qtd-homens="{{ $pgr->qtd_homens }}"
+                                        data-pgr-qtd-mulheres="{{ $pgr->qtd_mulheres }}"
+                                        data-pgr-total-trabalhadores="{{ $pgr->total_trabalhadores }}"
+                                        data-pgr-com-pcmso="{{ $pgr->com_pcms0 ? '1' : '0' }}"
+                                        data-pgr-contratante="{{ $pgr->contratante_nome }}"
+                                        data-pgr-contratante-cnpj="{{ $pgr->contratante_cnpj }}"
+                                        data-pgr-obra-nome="{{ $pgr->obra_nome }}"
+                                        data-pgr-obra-endereco="{{ $pgr->obra_endereco }}"
+                                        data-pgr-obra-cej-cno="{{ $pgr->obra_cej_cno }}"
+                                        data-pgr-obra-turno="{{ $pgr->obra_turno_trabalho }}"
+                                        data-pgr-funcoes="{{ $pgr->funcoes_resumo }}"
                                     @endif
                                     @if($tarefa->arquivo_cliente_url)
                                         data-arquivo-cliente-url="{{ $tarefa->arquivo_cliente_url }}"
@@ -426,17 +419,18 @@
                                     {{-- APR --}}
                                     @if($tarefa->aprSolicitacao)
                                         data-apr-endereco="{{ $tarefa->aprSolicitacao->endereco_atividade }}"
-                                    data-apr-funcoes="{{ e($tarefa->aprSolicitacao->funcoes_envolvidas) }}"
-                                    data-apr-etapas="{{ e($tarefa->aprSolicitacao->etapas_atividade) }}"
+                                        data-apr-funcoes="{{ e($tarefa->aprSolicitacao->funcoes_envolvidas) }}"
+                                        data-apr-etapas="{{ e($tarefa->aprSolicitacao->etapas_atividade) }}"
                                     @endif
 
                                     {{-- LTCAT --}}
                                     @if($tarefa->ltcatSolicitacao)
                                         data-ltcat-tipo="{{ $tarefa->ltcatSolicitacao->tipo }}"
-                                    data-ltcat-endereco="{{ $tarefa->ltcatSolicitacao->endereco_avaliacoes }}"
-                                    data-ltcat-total-funcoes="{{ $tarefa->ltcatSolicitacao->total_funcoes }}"
-                                    data-ltcat-total-funcionarios="{{ $tarefa->ltcatSolicitacao->total_funcionarios }}"
-                                    data-ltcat-funcoes="{{ $tarefa->ltcatSolicitacao->funcoes_resumo }}"
+                                        data-ltcat-endereco="{{ $tarefa->ltcatSolicitacao->endereco_avaliacoes }}"
+                                        data-ltcat-total-funcoes="{{ $tarefa->ltcatSolicitacao->total_funcoes }}"
+                                        data-ltcat-total-funcionarios="{{ $tarefa->ltcatSolicitacao->total_funcionarios }}
+                                        "
+                                        data-ltcat-funcoes="{{ $tarefa->ltcatSolicitacao->funcoes_resumo }}"
                                     @endif
 
                                     {{-- LTIP --}}
@@ -444,8 +438,8 @@
                                         {{-- data-* usados no modal --}}
 
                                         data-ltip-endereco="{{ $ltip->endereco_avaliacoes }}"
-                                    data-ltip-total-funcionarios="{{ $ltip->total_funcionarios }}"
-                                    data-ltip-funcoes="{{ collect($ltip->funcoes ?? [])->map(function($f){
+                                        data-ltip-total-funcionarios="{{ $ltip->total_funcionarios }}"
+                                        data-ltip-funcoes="{{ collect($ltip->funcoes ?? [])->map(function($f){
                                             $fn = \App\Models\Funcao::find($f['funcao_id'] ?? null);
                                             return ($fn?->nome ?? 'Função') . ' (' . ($f['quantidade'] ?? 0) . ')';
                                         })->implode(' | ') }}"
@@ -455,22 +449,22 @@
                                     @if($tarefa->paeSolicitacao)
                                         @php $pae = $tarefa->paeSolicitacao; @endphp
                                         data-pae-endereco="{{ $pae->endereco_local }}"
-                                    data-pae-total-funcionarios="{{ $pae->total_funcionarios }}"
-                                    data-pae-descricao="{{ $pae->descricao_instalacoes }}"
+                                        data-pae-total-funcionarios="{{ $pae->total_funcionarios }}"
+                                        data-pae-descricao="{{ $pae->descricao_instalacoes }}"
                                     @endif
 
                                     {{-- PCMSO --}}
                                     @if($tarefa->pcmsoSolicitacao)
                                         @php $pcmso = $tarefa->pcmsoSolicitacao; @endphp
                                         data-pcmso-tipo="{{ $pcmso->tipo }}"
-                                    data-pcmso-prazo="{{ $pcmso->prazo_dias }}"
-                                    data-pcmso-obra-nome="{{ $pcmso->obra_nome }}"
-                                    data-pcmso-obra-cnpj="{{ $pcmso->obra_cnpj_contratante }}"
-                                    data-pcmso-obra-cei="{{ $pcmso->obra_cei_cno }}"
-                                    data-pcmso-obra-endereco="{{ $pcmso->obra_endereco }}"
-                                    @if($pcmso->pgr_arquivo_path)
-                                        data-pcmso-pgr-url="{{ $pcmso->pgr_arquivo_url }}"
-                                    @endif
+                                        data-pcmso-prazo="{{ $pcmso->prazo_dias }}"
+                                        data-pcmso-obra-nome="{{ $pcmso->obra_nome }}"
+                                        data-pcmso-obra-cnpj="{{ $pcmso->obra_cnpj_contratante }}"
+                                        data-pcmso-obra-cei="{{ $pcmso->obra_cei_cno }}"
+                                        data-pcmso-obra-endereco="{{ $pcmso->obra_endereco }}"
+                                        @if($pcmso->pgr_arquivo_path)
+                                            data-pcmso-pgr-url="{{ $pcmso->pgr_arquivo_url }}"
+                                        @endif
                                     @endif
                                     @if($tarefa->treinamentoNr && $tarefa->treinamentoNrDetalhes)
                                         @php
@@ -481,201 +475,12 @@
                                         @endphp
 
                                         data-treinamento-participantes="{{ $listaNomes }}"
-                                    data-treinamento-funcoes="{{ $listaFuncoes }}"
-                                    data-treinamento-local="{{ $treiDet->local_tipo }}"
-                                    data-treinamento-unidade="{{ optional($treiDet->unidade)->nome ?? '' }}"
+                                        data-treinamento-funcoes="{{ $listaFuncoes }}"
+                                        data-treinamento-local="{{ $treiDet->local_tipo }}"
+                                        data-treinamento-unidade="{{ optional($treiDet->unidade)->nome ?? '' }}"
                                     @endif
-                                >
-                                    {{--                                    --}}{{-- ================== CABEÇALHO ================== --}}
-                                    {{--                                    <div class="flex items-center justify-between mb-2">--}}
-                                    {{--                                        <h4 class="text-[13px] font-semibold text-slate-800">--}}
-                                    {{--                                            {{ $servicoNome }}--}}
-                                    {{--                                        </h4>--}}
-                                    {{--                                        <span--}}
-                                    {{--                                            class="text-[10px] px-2 py-0.5 rounded bg-slate-100 border text-slate-500">--}}
-                                    {{--                                            #{{ $tarefa->id }}--}}
-                                    {{--                                        </span>--}}
-                                    {{--                                    </div>--}}
+                                    >
 
-                                    {{--                                    --}}{{-- ================== CLIENTE ================== --}}
-                                    {{--                                    <p class="text-[11px] text-slate-700 font-medium">--}}
-                                    {{--                                        {{ $clienteNome }}--}}
-                                    {{--                                    </p>--}}
-
-                                    {{--                                    --}}{{-- ================== BLOCO DINÂMICO POR SERVIÇO ================== --}}
-
-                                    {{--                                    @if($servicoNome === 'ASO')--}}
-                                    {{--                                        @php--}}
-                                    {{--                                            $func = optional($tarefa->funcionario);--}}
-                                    {{--                                        @endphp--}}
-                                    {{--                                        <div class="mt-2 text-[11px] space-y-0.5">--}}
-                                    {{--                                            <p>--}}
-                                    {{--                                                <span class="font-medium">Funcionário:</span>--}}
-                                    {{--                                                {{ $func->nome ?? '—' }}--}}
-                                    {{--                                            </p>--}}
-                                    {{--                                            <p>--}}
-                                    {{--                                                <span class="font-medium">CPF:</span>--}}
-                                    {{--                                                {{ $func->cpf ?? '—' }}--}}
-                                    {{--                                            </p>--}}
-                                    {{--                                            <p>--}}
-                                    {{--                                                <span class="font-medium">Função:</span>--}}
-                                    {{--                                                {{ $funcionarioFuncao ?? '—' }}--}}
-                                    {{--                                            </p>--}}
-
-                                    {{--                                        </div>--}}
-                                    {{--                                    @endif--}}
-
-
-                                    {{--                                    --}}{{-- PGR --}}
-                                    {{--                                    @if($servicoNome === 'PGR' && $pgr)--}}
-                                    {{--                                        <div--}}
-                                    {{--                                            class="mt-2 bg-emerald-50 border border-emerald-100 rounded p-2 text-[11px]">--}}
-                                    {{--                                            <p><b>Tipo:</b> {{ $pgr->tipo }}</p>--}}
-                                    {{--                                            <p><b>Total trabalhadores:</b> {{ $pgr->total_trabalhadores }}</p>--}}
-
-                                    {{--                                            <p class="mt-1"><b>Funções:</b></p>--}}
-                                    {{--                                            <ul class="list-disc list-inside text-[10px]">--}}
-                                    {{--                                                @foreach($pgr->funcoes ?? [] as $f)--}}
-                                    {{--                                                    @php $fn = \App\Models\Funcao::find($f['funcao_id']); @endphp--}}
-                                    {{--                                                    <li>{{ $fn?->nome }} ({{ $f['quantidade'] }})</li>--}}
-                                    {{--                                                @endforeach--}}
-                                    {{--                                            </ul>--}}
-                                    {{--                                        </div>--}}
-                                    {{--                                    @endif--}}
-
-                                    {{--                                    --}}{{-- APR --}}
-                                    {{--                                    @if($servicoNome === 'APR' && $tarefa->aprSolicitacao)--}}
-                                    {{--                                        <div class="mt-2 bg-purple-50 border border-purple-100 rounded p-2 text-[11px]">--}}
-                                    {{--                                            <p><b>Endereço:</b> {{ $tarefa->aprSolicitacao->endereco_atividade }}</p>--}}
-
-                                    {{--                                            @if($tarefa->aprSolicitacao->funcoes_envolvidas)--}}
-                                    {{--                                                <p class="mt-1">--}}
-                                    {{--                                                    <b>Funções envolvidas:</b>--}}
-                                    {{--                                                    {{ $tarefa->aprSolicitacao->funcoes_envolvidas }}--}}
-                                    {{--                                                </p>--}}
-                                    {{--                                            @endif--}}
-
-                                    {{--                                            @if($tarefa->aprSolicitacao->etapas_atividade)--}}
-                                    {{--                                                <p class="mt-1">--}}
-                                    {{--                                                    <b>Etapas da atividade:</b>--}}
-                                    {{--                                                    {{ $tarefa->aprSolicitacao->etapas_atividade }}--}}
-                                    {{--                                                </p>--}}
-                                    {{--                                            @endif--}}
-                                    {{--                                        </div>--}}
-                                    {{--                                    @endif--}}
-
-                                    {{--                                    --}}{{-- LTCAT --}}
-                                    {{--                                    @if($servicoNome === 'LTCAT' && $tarefa->ltcatSolicitacao)--}}
-                                    {{--                                        @php--}}
-                                    {{--                                            $lt = $tarefa->ltcatSolicitacao;--}}
-                                    {{--                                            $tipoLabel = $lt->tipo === 'matriz'--}}
-                                    {{--                                                ? 'Matriz'--}}
-                                    {{--                                                : ($lt->tipo === 'especifico' ? 'Específico' : ucfirst($lt->tipo));--}}
-                                    {{--                                        @endphp--}}
-
-                                    {{--                                        <div--}}
-                                    {{--                                            class="mt-2 bg-orange-50 border border-orange-100 rounded p-2 text-[11px] space-y-0.5">--}}
-                                    {{--                                            <p><b>Tipo:</b> {{ $tipoLabel ?: '—' }}</p>--}}
-
-                                    {{--                                            @if($lt->endereco_avaliacoes)--}}
-                                    {{--                                                <p><b>Endereço:</b> {{ $lt->endereco_avaliacoes }}</p>--}}
-                                    {{--                                            @endif--}}
-
-                                    {{--                                            <p>--}}
-                                    {{--                                                <b>Total Funções:</b> {{ $lt->total_funcoes ?? '—' }}--}}
-                                    {{--                                                &nbsp;|&nbsp;--}}
-                                    {{--                                                <b>Total Funcionários:</b> {{ $lt->total_funcionarios ?? '—' }}--}}
-                                    {{--                                            </p>--}}
-
-                                    {{--                                            @if($lt->funcoes_resumo)--}}
-                                    {{--                                                <p><b>Funções:</b> {{ $lt->funcoes_resumo }}</p>--}}
-                                    {{--                                            @endif--}}
-                                    {{--                                        </div>--}}
-                                    {{--                                    @endif--}}
-
-                                    {{--                                    --}}{{-- LTIP --}}
-                                    {{--                                    @if($servicoNome === 'LTIP' && $ltip)--}}
-                                    {{--                                        <div class="mt-2 bg-blue-50 border border-blue-100 rounded p-2 text-[11px]">--}}
-                                    {{--                                            <p><b>Endereço:</b> {{ $ltip->endereco_avaliacoes }}</p>--}}
-                                    {{--                                            <p><b>Total Funcionários:</b> {{ $ltip->total_funcionarios }}</p>--}}
-
-                                    {{--                                            @if(is_array($ltip->funcoes))--}}
-                                    {{--                                                <p class="mt-1"><b>Funções:</b></p>--}}
-                                    {{--                                                <ul class="list-disc list-inside text-[10px]">--}}
-                                    {{--                                                    @foreach($ltip->funcoes as $f)--}}
-                                    {{--                                                        @php--}}
-                                    {{--                                                            $fn = \App\Models\Funcao::find($f['funcao_id'] ?? null);--}}
-                                    {{--                                                        @endphp--}}
-                                    {{--                                                        <li>{{ $fn?->nome ?? 'Função' }} ({{ $f['quantidade'] ?? 0 }})--}}
-                                    {{--                                                        </li>--}}
-                                    {{--                                                    @endforeach--}}
-                                    {{--                                                </ul>--}}
-                                    {{--                                            @endif--}}
-                                    {{--                                        </div>--}}
-                                    {{--                                    @endif--}}
-
-                                    {{--                                    --}}{{-- PAE --}}
-                                    {{--                                    @if($servicoNome === 'PAE' && $tarefa->paeSolicitacao)--}}
-                                    {{--                                        @php $pae = $tarefa->paeSolicitacao; @endphp--}}
-                                    {{--                                        <div--}}
-                                    {{--                                            class="mt-2 bg-red-50 border border-red-100 rounded p-2 text-[11px] space-y-0.5">--}}
-                                    {{--                                            <p><b>Endereço Local:</b> {{ $pae->endereco_local }}</p>--}}
-                                    {{--                                            <p><b>Total de funcionários:</b> {{ $pae->total_funcionarios }}</p>--}}
-                                    {{--                                            @if($pae->descricao_instalacoes)--}}
-                                    {{--                                                <p><b>Instalações:</b> {{ $pae->descricao_instalacoes }}</p>--}}
-                                    {{--                                            @endif--}}
-                                    {{--                                        </div>--}}
-                                    {{--                                    @endif--}}
-
-                                    {{--                                    --}}{{-- PCMSO --}}
-                                    {{--                                    @if($servicoNome === 'PCMSO' && $tarefa->pcmsoSolicitacao)--}}
-                                    {{--                                        <div class="mt-2 bg-cyan-50 border border-cyan-100 rounded p-2 text-[11px]">--}}
-                                    {{--                                            <p><b>Tipo:</b> {{ $tarefa->pcmsoSolicitacao->tipo }}</p>--}}
-                                    {{--                                            <p><b>Prazo:</b> {{ $tarefa->pcmsoSolicitacao->prazo_dias }} dias</p>--}}
-                                    {{--                                        </div>--}}
-                                    {{--                                    @endif--}}
-                                    {{--                                    @if($servicoNome === 'Treinamentos NRs' && $tarefa->treinamentoNr && $tarefa->treinamentoNrDetalhes)--}}
-                                    {{--                                        @php--}}
-                                    {{--                                            $treiFuncs = $tarefa->treinamentoNr()->with('funcionario.funcao')->get();--}}
-                                    {{--                                            $treiDet   = $tarefa->treinamentoNrDetalhes;--}}
-
-                                    {{--                                            $listaParticipantes = $treiFuncs->pluck('funcionario.nome')->join(', ');--}}
-
-                                    {{--                                            $listaFuncoes = $treiFuncs->map(function($t){--}}
-                                    {{--                                                return $t->funcionario->funcao_nome; // accessor--}}
-                                    {{--                                            })->join(', ');--}}
-                                    {{--                                        @endphp--}}
-
-                                    {{--                                        --}}{{-- Datasets usados no modal --}}
-                                    {{--                                        <span--}}
-                                    {{--                                            data-trei-local="{{ $treiDet->local_tipo }}"--}}
-                                    {{--                                            data-trei-unidade="{{ optional($treiDet->unidade)->nome }}"--}}
-                                    {{--                                            data-trei-participantes="{{ $listaParticipantes }}"--}}
-                                    {{--                                            data-trei-funcoes="{{ $listaFuncoes }}"--}}
-                                    {{--                                        ></span>--}}
-
-                                    {{--                                        <div--}}
-                                    {{--                                            class="mt-2 bg-indigo-50 border border-indigo-100 rounded p-2 text-[11px] space-y-1">--}}
-                                    {{--                                            <p><b>Local:</b>--}}
-                                    {{--                                                {{ $treiDet->local_tipo === 'clinica' ? 'Clínica' : 'In Company' }}--}}
-                                    {{--                                                @if($treiDet->local_tipo === 'clinica')--}}
-                                    {{--                                                    · {{ optional($treiDet->unidade)->nome }}--}}
-                                    {{--                                                @endif--}}
-                                    {{--                                            </p>--}}
-
-                                    {{--                                            <p><b>Participantes:</b> {{ $listaParticipantes }}</p>--}}
-                                    {{--                                            <p><b>Funções:</b> {{ $listaFuncoes }}</p>--}}
-                                    {{--                                        </div>--}}
-                                    {{--                                    @endif--}}
-
-
-
-
-                                    {{--                                    --}}{{-- ================== RODAPÉ ================== --}}
-                                    {{--                                    <div class="mt-3 border-t pt-2 text-[10px] text-slate-500 flex justify-between">--}}
-                                    {{--                                        <span>{{ $dataHora }}</span>--}}
-                                    {{--                                        <span>{{ ucfirst($tarefa->prioridade) }}</span>--}}
-                                    {{--                                    </div>--}}
                                     @php
                                         // Label da tagzinha à direita
                                         $badgeLabel    = $servicoNome;
@@ -773,12 +578,23 @@
                                             {{ $tituloCard }}
                                         </h4>
 
-                                        <span
-                                            class="inline-flex items-center px-2 py-0.5 rounded-full
-                                               text-[11px] font-semibold bg-slate-100 border border-slate-200
-                                               text-slate-600">
-                                        {{ $badgeLabel }}
-                                    </span>
+                                        <div class="flex flex-col items-end gap-1">
+                                            <span
+                                                class="inline-flex items-center px-2 py-0.5 rounded-full
+                                                       text-[11px] font-semibold bg-slate-100 border border-slate-200
+                                                       text-slate-600">
+                                                {{ $badgeLabel }}
+                                            </span>
+
+                                                @if($isCancelada)
+                                                    <span
+                                                        class="inline-flex items-center px-2 py-0.5 rounded-full
+                                                       text-[10px] font-semibold bg-red-50 border border-red-200
+                                                       text-red-700 uppercase tracking-wide">
+                                                            Cancelada
+                                                    </span>
+                                            @endif
+                                        </div>
                                     </div>
 
                                     {{-- ================== SUBTÍTULO (CLIENTE / ENDEREÇO / OBRA) ================== --}}
@@ -801,7 +617,7 @@
                                         <div class="mb-2">
                                             <div
                                                 class="inline-flex items-center gap-1 px-3 py-1 rounded-md border
-                   border-amber-200 bg-amber-50 text-[11px] text-amber-700">
+                                                    border-amber-200 bg-amber-50 text-[11px] text-amber-700">
                                                 <svg class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="none">
                                                     <circle cx="10" cy="10" r="8" stroke="#FBBF24" stroke-width="1.5"/>
                                                     <path d="M10 5.5V10.2L13 12" stroke="#F59E0B" stroke-width="1.5"
@@ -824,17 +640,19 @@
                                             <span>Detalhes</span>
                                         </div>
                                     </div>
-                                </article>
+                        </article>
 
-                            @empty
-                                <p class="text-[11px] text-slate-400 italic">Nenhuma tarefa nesta coluna.</p>
-                            @endforelse
-                        </div>
-                    </section>
+                        @empty
+                            <p class="text-[11px] text-slate-400 italic">Nenhuma tarefa nesta coluna.</p>
 
-                @endforeach
+                    @endforelse
             </div>
+
+            </section>
+
+            @endforeach
         </div>
+    </div>
     </div>
     @include('operacional.kanban.modals.anexo-documento-cliente')
 
@@ -1294,7 +1112,7 @@
                            href="#"
                            target="_blank"
                            class="inline-flex items-center gap-2 text-xs font-semibold text-emerald-700
-              hover:text-emerald-900 underline">
+                                 hover:text-emerald-900 underline">
                             📎 Abrir arquivo anexado
                         </a>
                     </section>
@@ -1342,8 +1160,8 @@
                                     type="button"
                                     id="btn-excluir-tarefa"
                                     class="mt-2 w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg
-                   border border-red-200 bg-red-50 text-red-700 text-sm font-semibold shadow-sm
-                   hover:bg-red-100 transition">
+                                   border border-red-200 bg-red-50 text-red-700 text-sm font-semibold shadow-sm
+                                   hover:bg-red-100 transition">
                                     Excluir Tarefa
                                 </button>
                             @endif
@@ -1430,6 +1248,8 @@
             function openDetalhesModal(card) {
                 if (!card) return;
 
+                const isCancelada = card.dataset.cancelada === '1';
+                modal.dataset.cancelada = isCancelada ? '1' : '0';
                 // Campos básicos
                 spanId.textContent = card.dataset.id ?? '';
                 spanCliente.textContent = card.dataset.cliente ?? '';
@@ -1728,23 +1548,63 @@
                 }
 
                 // badge de status
-                const status = (card.dataset.status || '').toLowerCase();
-                badgeStatus.className =
-                    'inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border ';
-
-                if (status.includes('pendente')) {
-                    badgeStatus.className += 'bg-amber-100 text-amber-700 border-amber-200';
-                } else if (status.includes('execução') || status.includes('execucao')) {
-                    badgeStatus.className += 'bg-blue-100 text-blue-700 border-blue-200';
-                } else if (status.includes('atrasado')) {
-                    badgeStatus.className += 'bg-rose-100 text-rose-700 border-rose-200';
+                if (isCancelada) {
+                    spanStatusText.textContent = 'Cancelada';
+                    badgeStatus.className =
+                        'inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ' +
+                        'bg-red-100 text-red-700 border border-red-200';
                 } else {
-                    badgeStatus.className += 'bg-slate-100 text-slate-700 border-slate-200';
+                    spanStatusText.textContent = card.dataset.status || '';
+                    badgeStatus.className =
+                        'inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border ';
+
+                    if (status.includes('pendente')) {
+                        badgeStatus.className += 'bg-amber-100 text-amber-700 border-amber-200';
+                    } else if (status.includes('execução') || status.includes('execucao')) {
+                        badgeStatus.className += 'bg-blue-100 text-blue-700 border-blue-200';
+                    } else if (status.includes('atrasado')) {
+                        badgeStatus.className += 'bg-rose-100 text-rose-700 border-rose-200';
+                    } else {
+                        badgeStatus.className += 'bg-slate-100 text-slate-700 border-slate-200';
+                    }
                 }
 
                 modal.dataset.moveUrl = card.dataset.moveUrl || '';
                 modal.dataset.tarefaId = card.dataset.id || '';
                 modal.dataset.editUrl = card.dataset.editUrl || '';
+
+                // === BLOQUEIO DE AÇÕES SE CANCELADA ===
+                const btnEditar      = document.getElementById('btn-editar-tarefa');
+                const btnSalvarObs   = document.getElementById('btn-salvar-observacao');
+                const btnExcluir     = document.getElementById('btn-excluir-tarefa');
+                const moverBtns      = document.querySelectorAll('.js-mover-coluna');
+
+                // const isCancelada = card.dataset.cancelada === '1';
+
+                function toggleBtn(btn, disabled) {
+                    if (!btn) return;
+                    if (disabled) {
+                        btn.setAttribute('disabled', 'disabled');
+                        btn.classList.add('opacity-50', 'cursor-not-allowed');
+                    } else {
+                        btn.removeAttribute('disabled');
+                        btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    }
+                }
+
+                if (isCancelada) {
+                    toggleBtn(btnEditar, true);
+                    toggleBtn(btnSalvarObs, true);
+                    toggleBtn(btnExcluir, true);
+                    moverBtns.forEach(b => toggleBtn(b, true));
+                } else {
+                    toggleBtn(btnEditar, false);
+                    toggleBtn(btnSalvarObs, false);
+                    toggleBtn(btnExcluir, false);
+                    moverBtns.forEach(b => toggleBtn(b, false));
+                }
+
+
 
                 modal.classList.remove('hidden');
                 modal.classList.add('flex');
@@ -1918,6 +1778,12 @@
                         handle: '.kanban-card',
                         draggable: '.kanban-card',
 
+                        onMove: function (evt) {
+                            const card = evt.dragged;
+                            if (card.dataset.cancelada === '1') {
+                                return false; // se a tarefa estiver cancelada, cancela o movimento
+                            }
+                        },
                         onEnd: function (evt) {
                             const card = evt.item;
                             const colunaId = card.closest('.kanban-column').dataset.colunaId;
@@ -1925,6 +1791,12 @@
                             const colunaCor = colunaEl?.dataset.colunaCor || '#38bdf8';
                             const colunaSlug = colunaEl?.dataset.colunaSlug || '';
                             const moveUrl = card.dataset.moveUrl;
+
+                            // segurança extra: se por algum motivo chegou aqui, não processa
+                            if (card.dataset.cancelada === '1') {
+                                evt.from.insertBefore(card, evt.from.children[evt.oldIndex] || null);
+                                return;
+                            }
 
                             // ajusta cor da borda com a cor da coluna
                             if (colunaCor) {
@@ -2047,6 +1919,13 @@
             buttons.forEach(button => {
                 button.addEventListener('click', function () {
                     const colunaId = this.dataset.colunaId;
+
+                    const isCancelada = modal.dataset.cancelada === '1';
+                    console.log(isCancelada)
+                    if (isCancelada) {
+                        alert('Esta tarefa está cancelada e não pode ser movimentada.');
+                        return;
+                    }
 
                     // Rota do método mover
                     const url = modal.dataset.moveUrl;

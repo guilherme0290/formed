@@ -40,6 +40,8 @@ class PainelController extends Controller
         $filtroDe          = $request->input('de');
         $filtroAte         = $request->input('ate');
 
+        $filtroCanceladas = ($filtroColuna === 'canceladas');
+
         // Colunas do Kanban
         $colunas = KanbanColuna::where('empresa_id', $empresaId)
             ->orderBy('ordem')
@@ -48,19 +50,38 @@ class PainelController extends Controller
         // Descobre a coluna "finalizada" (slug = finalizada)
         $colunaFinalizada = $colunas->firstWhere('slug', 'finalizada');
 
-        // Query base das tarefas
-        $tarefasQuery = Tarefa::with([
-            'cliente',
-            'servico',
-            'responsavel',
-            'coluna',
-            'funcionario',
-            'pgr',
-            'logs.deColuna',
-            'logs.paraColuna',
-            'logs.user',
-        ])
-            ->where('empresa_id', $empresaId);
+        /**
+         * Query base das tarefas
+         * - Se "apenas canceladas" estiver marcado, usamos onlyTrashed()
+         *   para trazer apenas tarefas softdeletadas.
+         * - Caso contrário, usamos a query normal (sem trashed).
+         */
+        if ($filtroCanceladas) {
+            $tarefasQuery = Tarefa::onlyTrashed()
+                ->with([
+                    'cliente',
+                    'servico',
+                    'responsavel',
+                    'coluna',
+                    'funcionario',
+                    'logs.deColuna',
+                    'logs.paraColuna',
+                    'logs.user',
+                ])
+                ->where('empresa_id', $empresaId);
+        } else {
+            $tarefasQuery = Tarefa::with([
+                'cliente',
+                'servico',
+                'responsavel',
+                'coluna',
+                'funcionario',
+                'logs.deColuna',
+                'logs.paraColuna',
+                'logs.user',
+            ])
+                ->where('empresa_id', $empresaId);
+        }
 
         // Aplica filtros
         if ($filtroServico) {
@@ -71,7 +92,7 @@ class PainelController extends Controller
             $tarefasQuery->where('responsavel_id', $filtroResponsavel);
         }
 
-        if ($filtroColuna) {
+        if ($filtroColuna && $filtroCanceladas == null) {
             $tarefasQuery->where('coluna_id', $filtroColuna);
         }
 
@@ -87,9 +108,16 @@ class PainelController extends Controller
          * Regra: por padrão, NÃO listar tarefas finalizadas de dias anteriores.
          * - Outras colunas continuam normais.
          * - Na coluna "finalizada", só entram tarefas com finalizado_em HOJE.
-         * - Se o usuário filtrou por data (de/ate), não aplicamos essa restrição.
+         * - Se o usuário filtrou por data (de/ate), por coluna ou por canceladas,
+         *   NÃO aplicamos essa restrição (mostrar exatamente o que ele pediu).
          */
-        if (!$filtroDe && !$filtroAte && $colunaFinalizada) {
+        if (
+            !$filtroDe &&
+            !$filtroAte &&
+            !$filtroColuna &&        // 👈 se estiver filtrando coluna, não restringe
+            !$filtroCanceladas &&    // 👈 se estiver vendo canceladas (onlyTrashed), não restringe
+            $colunaFinalizada
+        ) {
             $hoje = now()->toDateString();
 
             $tarefasQuery->where(function ($q) use ($colunaFinalizada, $hoje) {
@@ -145,8 +173,11 @@ class PainelController extends Controller
             'filtroColuna'      => $filtroColuna,
             'filtroDe'          => $filtroDe,
             'filtroAte'         => $filtroAte,
+            'filtroCanceladas'  => $filtroCanceladas,
         ]);
     }
+
+
 
 
 
