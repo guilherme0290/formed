@@ -24,6 +24,7 @@ use App\Http\Controllers\FuncaoController;
 use App\Http\Controllers\TarefaController;
 use App\Http\Controllers\AnexoController;
 use Illuminate\Support\Facades\Route;
+use \App\Http\Controllers\Comercial\PropostaController;
 
 // ==================== Controllers ====================
 
@@ -284,6 +285,28 @@ Route::middleware('auth')->group(function () {
     Route::get('operacional/tarefas/detalhes/ajax',
         [PainelController::class, 'detalhesAjax']
     )->name('operacional.tarefas.detalhes.ajax');
+
+
+
+    Route::middleware(['auth'])
+        ->prefix('comercial')
+        ->name('comercial.')
+        ->group(function () {
+
+            // Painel Comercial
+            Route::get('/', [DashboardController::class, 'index'])
+                ->name('dashboard');
+
+            // Propostas
+            Route::get('/propostas/criar', [PropostaController::class, 'create'])
+                ->name('propostas.create');
+
+            Route::post('/propostas', [PropostaController::class, 'store'])
+                ->name('propostas.store');
+
+            Route::get('/propostas/{proposta}', [PropostaController::class, 'show'])
+                ->name('propostas.show');
+        });
 
 
 

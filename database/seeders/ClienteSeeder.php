@@ -792,7 +792,7 @@ class ClienteSeeder extends Seeder
                 'cnpj' => '53840542000210',
                 'nome_fantasia' => null,
                 'telefone' => '',
-                'email' => 'comercial@formedseg.com.br',
+                'email' => 'comercial.blade.php@formedseg.com.br',
                 'ativo' => 1,
             ],
             [
@@ -945,7 +945,7 @@ class ClienteSeeder extends Seeder
                 'cnpj' => '60109627000107',
                 'nome_fantasia' => 'FORMED MEDICINA E SEGURANCA DO TRABALHO LTDA',
                 'telefone' => '11992283886',
-                'email' => 'comercial@formedseg.com.br',
+                'email' => 'comercial.blade.php@formedseg.com.br',
                 'ativo' => 1,
             ],
             [
@@ -1629,7 +1629,7 @@ class ClienteSeeder extends Seeder
                 'cnpj' => '64181308000163',
                 'nome_fantasia' => 'PERFURARE FUROS E CORTES LTDA',
                 'telefone' => '11976403670',
-                'email' => 'comercial@perfurare.com.br',
+                'email' => 'comercial.blade.php@perfurare.com.br',
                 'ativo' => 1,
             ],
             [

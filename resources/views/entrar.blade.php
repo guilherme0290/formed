@@ -43,9 +43,11 @@
                     </div>
 
                     <div class="mt-6">
-                        <span class="inline-flex items-center gap-1 text-xs md:text-sm font-medium text-sky-300/70 opacity-60 cursor-not-allowed">
-                            Em desenvolvimento
-                        </span>
+                        <a href="{{ route('comercial.dashboard') }}"
+                           class="inline-flex items-center gap-1 text-xs md:text-sm font-medium text-sky-300 hover:text-sky-200 transition">
+                            <span>Acessar painel</span>
+                            <span class="text-base md:text-lg">›</span>
+                        </a>
                     </div>
                 </div>
 
