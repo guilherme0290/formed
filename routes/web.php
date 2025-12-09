@@ -46,8 +46,8 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     // ======================================================
-//                  OPERACIONAL
-// ======================================================
+    //                  OPERACIONAL
+    // ======================================================
     Route::prefix('operacional')->name('operacional.')->group(function () {
 
         // ======================================================
@@ -74,11 +74,9 @@ Route::middleware('auth')->group(function () {
         Route::delete('/tarefas/{tarefa}', [PainelController::class, 'destroy'])
             ->name('operacional.tarefas.destroy');
 
-
         Route::post('/tarefas/{tarefa}/finalizar-com-arquivo',
             [TarefaController::class, 'finalizarComArquivo']
         )->name('tarefas.finalizar-com-arquivo');
-
 
         // ======================================================
         //  FUNCIONÁRIOS DO CLIENTE
@@ -138,8 +136,6 @@ Route::middleware('auth')->group(function () {
 
         Route::put('/kanban/pgr/{tarefa}', [PgrController::class, 'pgrUpdate'])
             ->name('kanban.pgr.update');
-
-
 
         // ======================================================
         //  PCMSO
@@ -269,27 +265,20 @@ Route::middleware('auth')->group(function () {
             ->name('funcoes.store-ajax');
     });
 
-
     Route::get('operacional/tarefas/detalhes/ajax',
         [PainelController::class, 'detalhesAjax']
     )->name('operacional.tarefas.detalhes.ajax');
 
-
     // ======================================================
-    //                  CLIENTE (PAINEL)
-    // ======================================================
+//                  CLIENTE (PAINEL)
+// ======================================================
     Route::prefix('cliente')
         ->name('cliente.')
-        ->middleware(['auth']) // ajuste o middleware que você já usa
         ->group(function () {
-
-            Route::get('/cliente/selecionar/{cliente}', [ClientePortalController::class, 'selecionar'])
-                ->name('cliente.selecionar');
 
             Route::get('/', [ClienteDashboardController::class, 'index'])
                 ->name('dashboard');
 
-            // Funcionários
             Route::get('/funcionarios', [ClienteFuncionarioController::class, 'index'])
                 ->name('funcionarios.index');
 
@@ -304,9 +293,6 @@ Route::middleware('auth')->group(function () {
         });
 
     // ======================================================
-
-
-    // ======================================================
     //                  CLIENTES (CRUD)
     // ======================================================
     Route::prefix('master/clientes')->name('clientes.')->group(function () {
@@ -316,6 +302,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/{cliente}/edit', [ClienteController::class, 'edit'])->name('edit');
         Route::put('/{cliente}',      [ClienteController::class, 'update'])->name('update');
         Route::delete('/{cliente}',   [ClienteController::class, 'destroy'])->name('destroy');
+
+        // 👉 NOVA ROTA: selecionar cliente para o portal
+        Route::get('/{cliente}/portal', [ClienteController::class, 'selecionarParaPortal'])
+            ->name('portal');
 
         // Consulta CNPJ
         Route::get('/consulta-cnpj/{cnpj}', [ClienteController::class, 'consultaCnpj'])
@@ -354,8 +344,6 @@ Route::middleware('auth')->group(function () {
         Route::post('usuarios/{user}/toggle',  [AcessosController::class, 'usuariosToggle'])->name('usuarios.toggle');
         Route::post('usuarios/{user}/reset',   [AcessosController::class, 'usuariosReset'])->name('usuarios.reset');
         Route::post('usuarios/{user}/password',[AcessosController::class, 'usuariosSetPassword'])->name('usuarios.password');
-
-        //
 
         // CRUD de Funções
         Route::get('funcoes',        [FuncaoController::class, 'index'])->name('funcoes.index');

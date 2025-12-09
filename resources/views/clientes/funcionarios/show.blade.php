@@ -73,10 +73,19 @@
                         <dd>{{ $funcionario->cpf }}</dd>
                     </div>
 
-                    @if($funcionario->telefone ?? false)
+                    {{-- *** ALTERADO: usar CELULAR em vez de telefone *** --}}
+                    @if($funcionario->celular ?? false)
                         <div>
                             <dt class="text-xs font-medium text-slate-500">Celular</dt>
-                            <dd>{{ $funcionario->telefone }}</dd>
+                            <dd>{{ $funcionario->celular }}</dd>
+                        </div>
+                    @endif
+
+                    {{-- *** NOVO: mostrar SETOR se tiver *** --}}
+                    @if($funcionario->setor ?? false)
+                        <div>
+                            <dt class="text-xs font-medium text-slate-500">Setor</dt>
+                            <dd>{{ $funcionario->setor }}</dd>
                         </div>
                     @endif
 
@@ -126,3 +135,4 @@
         </div>
     </div>
 @endsection
+

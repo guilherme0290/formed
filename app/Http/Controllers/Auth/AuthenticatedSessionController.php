@@ -28,23 +28,43 @@ class AuthenticatedSessionController extends Controller
         $request->authenticate();
         $request->session()->regenerate();
 
-        // redirect vindo do form (hidden)
-        $destino = $request->input('redirect', 'master');
-        $user = $request->user();
+        $destino   = $request->input('redirect', 'master');
+        $user      = $request->user();
         $papelNome = strtoupper(optional($user->papel)->nome);
 
-        // Se for Operacional, sempre vai pro painel operacional
+        // Se for OPERACIONAL, sempre manda pro operacional
         if ($papelNome === 'OPERACIONAL') {
             return redirect()->route('operacional.kanban');
         }
 
-        // Redireciona conforme o destino pedido
-        return match ($destino) {
-            'cliente'     => redirect()->route('cliente.dashboard'),
-            'operacional' => redirect()->route('operacional.kanban'),
-            'master'      => redirect()->route('master.dashboard'),
-            default       => redirect()->route('master.dashboard'),
-        };
+        // =========================
+        // MÓDULO CLIENTE
+        // =========================
+        if ($destino === 'cliente') {
+
+            // usuário precisa estar vinculado a um cliente
+            if ($user->cliente_id) {
+
+                // salva o cliente escolhido na sessão do portal
+                $request->session()->put('portal_cliente_id', $user->cliente_id);
+
+                return redirect()->route('cliente.dashboard');
+            }
+
+
+        }
+
+        // =========================
+        // MÓDULO OPERACIONAL
+        // =========================
+        if ($destino === 'operacional') {
+            return redirect()->route('operacional.kanban');
+        }
+
+        // =========================
+        // MASTER (padrão)
+        // =========================
+        return redirect()->route('master.dashboard');
     }
 
     /**

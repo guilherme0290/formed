@@ -24,9 +24,10 @@ class ClienteDashboardController extends Controller
 
         $cliente = Cliente::findOrFail($clienteId);
 
-        return view('cliente.dashboard', [
-            'user'    => $user,    // só para mostrar no topo, se quiser
-            'cliente' => $cliente, // usa pra nome, cnpj, etc.
+        // Aqui é VIEW, não redirect
+        return view('clientes.dashboard', [
+            'user'    => $user,    // mostra no topo se quiser
+            'cliente' => $cliente, // nome, cnpj etc.
         ]);
     }
 }

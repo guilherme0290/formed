@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Cliente;
 use App\Http\Controllers\Controller;
 use App\Models\Cliente;
 use App\Models\Funcionario;
+use App\Models\Funcao;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class ClienteFuncionarioController extends Controller
 {
@@ -26,16 +28,17 @@ class ClienteFuncionarioController extends Controller
         $status = $request->query('status', 'todos'); // todos|ativos|inativos
 
         $funcionariosQuery = Funcionario::query()
+            ->with('funcao') // <<< ADICIONADO: carrega a função junto
             ->where('cliente_id', $cliente->id);
 
-        // busca por nome / CPF / função
+        // busca por nome / CPF (depois ajustamos função se quiser buscar por nome da função)
         if ($q !== '') {
             $doc = preg_replace('/\D+/', '', $q);
 
             $funcionariosQuery->where(function ($w) use ($q, $doc) {
                 $w->where('nome', 'like', "%{$q}%")
-                    ->orWhere('cpf', 'like', "%{$doc}%")
-                    ->orWhere('funcao', 'like', "%{$q}%");
+                    ->orWhere('cpf', 'like', "%{$doc}%");
+                // se quiser buscar por função, depois fazemos via relacionamento
             });
         }
 
@@ -55,7 +58,7 @@ class ClienteFuncionarioController extends Controller
         $totalDocsVencidos = 0; // placeholder
         $totalDocsAVencer  = 0; // placeholder
 
-        return view('cliente.funcionarios.index', [
+        return view('clientes.funcionarios.index', [
             'cliente'           => $cliente,
             'funcionarios'      => $funcionarios,
             'q'                 => $q,
@@ -80,9 +83,15 @@ class ClienteFuncionarioController extends Controller
 
         $cliente = Cliente::findOrFail($user->cliente_id);
 
-        return view('cliente.funcionarios.form', [
+        // carrega as funções da empresa para o select
+        $funcoes = Funcao::where('empresa_id', $user->empresa_id)
+            ->orderBy('nome')
+            ->get();
+
+        return view('clientes.funcionarios.form', [
             'cliente'     => $cliente,
             'funcionario' => null,
+            'funcoes'     => $funcoes,
             'tab'         => 'geral',
         ]);
     }
@@ -106,7 +115,12 @@ class ClienteFuncionarioController extends Controller
             'rg'              => ['nullable', 'string', 'max:20'],
             'data_nascimento' => ['nullable', 'date'],
             'data_admissao'   => ['nullable', 'date'],
-            'funcao'          => ['nullable', 'string', 'max:255'],
+            'celular'         => ['nullable', 'string', 'max:20'],
+            'setor'           => ['nullable', 'string', 'max:100'],
+
+            // vindo do componente
+            'funcao_id'       => ['nullable', 'integer', 'exists:funcoes,id'],
+            'campo_funcao'    => ['nullable', 'string', 'max:255'],
 
             'treinamento_nr'          => ['nullable', 'boolean'],
             'exame_admissional'      => ['nullable', 'boolean'],
@@ -116,8 +130,22 @@ class ClienteFuncionarioController extends Controller
             'exame_retorno_trabalho' => ['nullable', 'boolean'],
         ]);
 
+        // se não escolheu uma função existente mas digitou uma nova, cria
+        if (empty($dados['funcao_id']) && !empty($dados['campo_funcao'])) {
+            $novaFuncao = Funcao::create([
+                'empresa_id' => $cliente->empresa_id,
+                'nome'       => $dados['campo_funcao'],
+                'ativo'      => 1,
+            ]);
+
+            $dados['funcao_id'] = $novaFuncao->id;
+        }
+
+        // não precisamos guardar o texto "campo_funcao" na tabela de funcionários
+        unset($dados['campo_funcao']);
+
         // checkboxes
-        $dados['treinamento_nr']          = $r->boolean('treinamento_nr');
+        $dados['treinamento_nr']         = $r->boolean('treinamento_nr');
         $dados['exame_admissional']      = $r->boolean('exame_admissional');
         $dados['exame_periodico']        = $r->boolean('exame_periodico');
         $dados['exame_demissional']      = $r->boolean('exame_demissional');
@@ -126,6 +154,7 @@ class ClienteFuncionarioController extends Controller
 
         // vínculo correto
         $dados['cliente_id'] = $cliente->id;
+        $dados['empresa_id'] = $cliente->empresa_id;
 
         $funcionario = Funcionario::create($dados);
 
@@ -153,8 +182,9 @@ class ClienteFuncionarioController extends Controller
             abort(403, 'Funcionário não pertence a este cliente.');
         }
 
-        return view('cliente.funcionarios.show', compact('cliente', 'funcionario'));
-    }
+        // <<< ADICIONADO: garantir que a função esteja carregada na tela de detalhes
+        $funcionario->load('funcao');
 
-    // Se quiser manter create/store depois, fazemos usando o mesmo cliente da sessão
+        return view('clientes.funcionarios.show', compact('cliente', 'funcionario'));
+    }
 }

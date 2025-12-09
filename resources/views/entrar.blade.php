@@ -49,12 +49,12 @@
                     </div>
                 </div>
 
-                {{-- Cliente (habilitado) --}}
+                {{-- Cliente (desabilitado) --}}
                 <div class="rounded-3xl bg-gradient-to-br from-slate-900/90 to-slate-800/90
-     border border-white/5 shadow-xl shadow-slate-950/50 p-6
-     flex flex-col justify-between
-     transition-transform transition-shadow duration-200 ease-out
-     hover:-translate-y-1 hover:shadow-2xl hover:shadow-sky-900/60 hover:border-sky-400/40">
+            border border-white/5 shadow-xl shadow-slate-950/50 p-6
+            flex flex-col justify-between
+            transition-transform transition-shadow duration-200 ease-out
+            hover:-translate-y-1 hover:shadow-2xl hover:shadow-sky-900/60 hover:border-sky-400/40">
                     <div>
                         <div class="inline-flex items-center justify-center h-10 w-10 rounded-2xl bg-emerald-500/15 text-emerald-300 mb-4 text-xl">
                             👥
@@ -66,20 +66,11 @@
                     </div>
 
                     <div class="mt-6">
-                        @guest
-                            <a href="{{ route('login', ['redirect' => 'cliente']) }}"
-                               class="inline-flex items-center gap-1 text-xs md:text-sm font-medium text-sky-300 hover:text-sky-200 transition">
-                                <span>Acessar portal</span>
-                                <span class="text-base md:text-lg">›</span>
-                            </a>
-                        @else
-                            {{-- Primeiro o usuário escolhe o cliente na lista --}}
-                            <a href="{{ route('clientes.index', ['modo' => 'portal']) }}"
-                               class="inline-flex items-center gap-1 text-xs md:text-sm font-medium text-sky-300 hover:text-sky-200 transition">
-                                <span>Acessar portal</span>
-                                <span class="text-base md:text-lg">›</span>
-                            </a>
-                        @endguest
+                        <a href="{{ route('cliente.dashboard') }}"
+                           class="inline-flex items-center gap-1 text-xs md:text-sm font-medium text-sky-300 hover:text-sky-200 transition">
+                            <span>Acessar painel</span>
+                            <span class="text-base md:text-lg">›</span>
+                        </a>
                     </div>
                 </div>
 
@@ -101,11 +92,7 @@
 
                     <div class="mt-6">
                         @guest
-                            <a href="{{ route('login', ['redirect' => 'operacphp artisan config:clear
-php artisan cache:clear
-php artisan route:clear
-php artisan view:clear
-ional']) }}"
+                            <a href="{{ route('login', ['redirect' => 'operacional']) }}"
                                class="inline-flex items-center gap-1 text-xs md:text-sm font-medium text-sky-300 hover:text-sky-200 transition">
                                 <span>Acessar painel</span>
                                 <span class="text-base md:text-lg">›</span>

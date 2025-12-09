@@ -137,12 +137,24 @@
                             <span class="font-medium text-slate-600">CPF:</span>
                             {{ $f->cpf }}
                         </p>
-                        @if($f->telefone ?? false)
+
+                        {{-- CELULAR --}}
+                        @if($f->celular ?? false)
                             <p>
-                                <span class="font-medium text-slate-600">Telefone:</span>
-                                {{ $f->telefone }}
+                                <span class="font-medium text-slate-600">Celular:</span>
+                                {{ $f->celular }}
                             </p>
                         @endif
+
+                        {{-- SETOR --}}
+                        @if($f->setor ?? false)
+                            <p>
+                                <span class="font-medium text-slate-600">Setor:</span>
+                                {{ $f->setor }}
+                            </p>
+                        @endif
+
+                        {{-- VAGA ATUAL (já existia) --}}
                         @if($f->vaga_atual ?? false)
                             <p>
                                 <span class="font-medium text-slate-600">Vaga atual:</span>

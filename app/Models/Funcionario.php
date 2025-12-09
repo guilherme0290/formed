@@ -26,6 +26,9 @@ class Funcionario extends Model
         'exame_demissional',
         'exame_mudanca_funcao',
         'exame_retorno_trabalho',
+        'celular',
+        'setor',
+        'ativo',
     ];
 
     protected $casts = [
