@@ -92,6 +92,12 @@ class AprController extends Controller
             ]);
         });
 
+        if ($user->isCliente()) {
+            return redirect()
+                ->route('cliente.dashboard')
+                ->with('ok', 'Solicitação de APR criada com sucesso e enviada para análise.');
+        }
+
         return redirect()
             ->route('operacional.kanban')
             ->with('ok', 'Tarefa APR criada com sucesso!');

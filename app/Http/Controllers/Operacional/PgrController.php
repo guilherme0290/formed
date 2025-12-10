@@ -400,6 +400,12 @@ class PgrController extends Controller
             'descricao' => $descricao,
         ]);
 
+        if ($usuario->isCliente()) {
+            return redirect()
+                ->route('cliente.dashboard')
+                ->with('ok', 'Solicitação de PGR criada com sucesso e enviada para análise.');
+        }
+
         return redirect()
             ->route('operacional.kanban')
             ->with('ok', 'Tarefa PGR criada e enviada para a coluna Pendente.');

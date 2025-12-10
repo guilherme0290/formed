@@ -169,6 +169,12 @@ class PcmsoController extends Controller
             ]);
         });
 
+        if ($usuario->isCliente()) {
+            return redirect()
+                ->route('cliente.dashboard')
+                ->with('ok', "Solicitação de PCMSO {$tipoLabel} criada com sucesso e enviada para análise.");
+        }
+
         return redirect()
             ->route('operacional.kanban')
             ->with('ok', "Tarefa PCMSO {$tipoLabel} criada com sucesso!");

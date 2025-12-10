@@ -3,9 +3,15 @@
 @section('pageTitle', 'Treinamentos de NRs')
 
 @section('content')
+    @php
+        $usuario = auth()->user();
+    @endphp
+
     <div class="container mx-auto px-4 py-6">
         <div class="mb-4 flex items-center justify-between">
-            <a href="{{ route('operacional.kanban.servicos', $cliente) }}"
+            <a href="{{ ($usuario && method_exists($usuario, 'isCliente') && $usuario->isCliente())
+                        ? route('cliente.dashboard')
+                        : route('operacional.kanban.servicos', $cliente) }}"
                class="inline-flex items-center gap-2 text-xs px-3 py-1.5 rounded-full border border-slate-200 bg-white hover:bg-slate-50">
                 ← Voltar
             </a>

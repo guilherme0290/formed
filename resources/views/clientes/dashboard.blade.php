@@ -13,6 +13,18 @@
         $contatoTelefone = $cliente->telefone ?? $user->telefone ?? '(00) 0000-0000';
         $contatoEmail    = $cliente->email ?? $user->email ?? 'email@dominio.com';
     @endphp
+    {{-- 🔔 ALERTAS DE SUCESSO / ERRO --}}
+    @if (session('ok'))
+        <div class="mb-4 mx-4 md:mx-0 rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700">
+            {{ session('ok') }}
+        </div>
+    @endif
+
+    @if (session('erro'))
+        <div class="mb-4 mx-4 md:mx-0 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+            {{ session('erro') }}
+        </div>
+    @endif
 
     {{-- FAIXA AZUL DO CLIENTE (NOME + CNPJ + CONTATO) --}}
     <section
