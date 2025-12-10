@@ -117,10 +117,11 @@
                         })
                         .then(r => r.json())
                         .then(json => {
-                            if (!json.ok) {
-                                erro = json.message || 'Não foi possível salvar a função.';
-                                return;
-                            }
+                            // ✅ considera sucesso se tiver ID (e opcionalmente ok/success)
+                                if (!json || (!json.ok && !json.success && !json.id)) {
+                                    erro = json.message || 'Não foi possível salvar a função.';
+                                    return;
+                                }
 
                             if (target) {
                                 const select = document.getElementById(target);

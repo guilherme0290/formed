@@ -161,3 +161,20 @@
         </div>
     </div>
 @endsection
+@push('scripts')
+    <script>
+        document.addEventListener('click', function (e) {
+            const btn = e.target.closest('[data-funcao-open-modal]');
+            if (!btn) return;
+
+            window.dispatchEvent(
+                new CustomEvent('open-funcao-modal', {
+                    detail: {
+                        modalId: btn.dataset.funcaoOpenModal,
+                        targetId: btn.dataset.funcaoTarget
+                    }
+                })
+            );
+        });
+    </script>
+@endpush

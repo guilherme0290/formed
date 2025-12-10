@@ -61,11 +61,10 @@
                         R$ 250,00
                     </span>
 
-                    <button type="button"
-                            class="text-[color:var(--color-brand-azul)] font-medium opacity-60 cursor-not-allowed"
-                            title="Em desenvolvimento">
+                    <a href="{{ route('cliente.servicos.aso') }}"
+                       class="text-[color:var(--color-brand-azul)] font-medium hover:opacity-100 opacity-80">
                         Solicitar
-                    </button>
+                    </a>
                 </div>
             </div>
 
@@ -88,11 +87,10 @@
                         R$ 600,00
                     </span>
 
-                    <button type="button"
-                            class="text-[color:var(--color-brand-azul)] font-medium opacity-60 cursor-not-allowed"
-                            title="Em desenvolvimento">
+                    <a href="{{ route('cliente.servicos.pgr') }}"
+                       class="text-[color:var(--color-brand-azul)] font-medium hover:opacity-100 opacity-80">
                         Solicitar
-                    </button>
+                    </a>
                 </div>
             </div>
 
@@ -115,11 +113,10 @@
                         R$ 350,00
                     </span>
 
-                    <button type="button"
-                            class="text-[color:var(--color-brand-azul)] font-medium opacity-60 cursor-not-allowed"
-                            title="Em desenvolvimento">
+                    <a href="{{ route('cliente.servicos.pcmso') }}"
+                       class="text-[color:var(--color-brand-azul)] font-medium hover:opacity-100 opacity-80">
                         Solicitar
-                    </button>
+                    </a>
                 </div>
             </div>
 
@@ -142,11 +139,10 @@
                         A partir de R$ 2.000,00
                     </span>
 
-                    <button type="button"
-                            class="text-[color:var(--color-brand-azul)] font-medium opacity-60 cursor-not-allowed"
-                            title="Em desenvolvimento">
+                    <a href="{{ route('cliente.servicos.ltcat') }}"
+                       class="text-[color:var(--color-brand-azul)] font-medium hover:opacity-100 opacity-80">
                         Solicitar
-                    </button>
+                    </a>
                 </div>
             </div>
 
@@ -169,11 +165,10 @@
                         Sob consulta
                     </span>
 
-                    <button type="button"
-                            class="text-[color:var(--color-brand-azul)] font-medium opacity-60 cursor-not-allowed"
-                            title="Em desenvolvimento">
+                    <a href="{{ route('cliente.servicos.apr') }}"
+                       class="text-[color:var(--color-brand-azul)] font-medium hover:opacity-100 opacity-80">
                         Solicitar
-                    </button>
+                    </a>
                 </div>
             </div>
 
@@ -196,11 +191,10 @@
                         A partir de R$ 40,00
                     </span>
 
-                    <button type="button"
-                            class="text-[color:var(--color-brand-azul)] font-medium opacity-60 cursor-not-allowed"
-                            title="Em desenvolvimento">
+                    <a href="{{ route('cliente.servicos.treinamentos') }}"
+                       class="text-[color:var(--color-brand-azul)] font-medium hover:opacity-100 opacity-80">
                         Solicitar
-                    </button>
+                    </a>
                 </div>
             </div>
 

@@ -25,6 +25,8 @@ use App\Http\Controllers\TarefaController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Cliente\ClienteDashboardController;
 use App\Http\Controllers\Cliente\ClienteFuncionarioController;
+use Illuminate\Http\Request;
+use App\Models\Cliente;
 
 // ==================== Controllers ====================
 
@@ -290,6 +292,71 @@ Route::middleware('auth')->group(function () {
 
             Route::get('/funcionarios/{funcionario}', [ClienteFuncionarioController::class, 'show'])
                 ->name('funcionarios.show');
+
+            // SERVIÇOS
+            // ASO
+            Route::get('/servicos/aso', function (Request $request) {
+                $clienteId = session('portal_cliente_id'); // se o nome da chave for outro, é só trocar aqui
+
+                $cliente = Cliente::findOrFail($clienteId);
+                return redirect()->route('operacional.kanban.aso.create', $cliente);
+            })->name('servicos.aso');
+
+            //PGR
+
+            Route::get('/servicos/pgr', function (Request $request) {
+                $clienteId = session('portal_cliente_id');
+                $cliente   = Cliente::findOrFail($clienteId);
+
+                // reaproveita o PASSO 1 do PGR (selecionar tipo)
+                return redirect()->route('operacional.kanban.pgr.tipo', $cliente);
+            })->name('servicos.pgr');
+
+            //PCMSO
+
+            Route::get('/servicos/pcmso', function (Request $request) {
+                $clienteId = session('portal_cliente_id');
+                $cliente   = Cliente::findOrFail($clienteId);
+
+                return redirect()->route('operacional.pcmso.tipo', $cliente);
+            })->name('servicos.pcmso');
+
+            //LTCAT
+
+
+            Route::get('/servicos/ltcat', function (Request $request) {
+                $clienteId = session('portal_cliente_id');
+                $cliente   = Cliente::findOrFail($clienteId);
+
+                return redirect()->route('operacional.ltcat.tipo', $cliente);
+            })->name('servicos.ltcat');
+
+            //APR
+
+            Route::get('/servicos/apr', function (Request $request) {
+                $clienteId = session('portal_cliente_id');
+                $cliente   = Cliente::findOrFail($clienteId);
+
+                return redirect()->route('operacional.apr.create', $cliente);
+            })->name('servicos.apr');
+
+            //servicos/treinamentos
+
+            Route::get('/servicos/treinamentos', function () {
+                $clienteId = session('portal_cliente_id');
+                $cliente = \App\Models\Cliente::findOrFail($clienteId);
+
+                return redirect()->route('operacional.treinamentos-nr.create', $cliente);
+            })->name('servicos.treinamentos');
+
+
+
+
+
+
+
+
+
         });
 
     // ======================================================
