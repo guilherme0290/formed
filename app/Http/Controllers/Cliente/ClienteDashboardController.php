@@ -1,0 +1,33 @@
+<?php
+
+namespace App\Http\Controllers\Cliente;
+
+use App\Http\Controllers\Controller;
+use App\Models\Cliente;
+use Illuminate\Http\Request;
+
+class ClienteDashboardController extends Controller
+{
+    /**
+     * Tela inicial do Portal do Cliente
+     */
+    public function index(Request $request)
+    {
+        $user = $request->user();
+
+        // Pega o cliente que foi escolhido ao clicar no card
+        $clienteId = $request->session()->get('portal_cliente_id');
+
+        if (!$clienteId) {
+            abort(403, 'NENHUM CLIENTE FOI SELECIONADO PARA O PORTAL.');
+        }
+
+        $cliente = Cliente::findOrFail($clienteId);
+
+        // Aqui é VIEW, não redirect
+        return view('clientes.dashboard', [
+            'user'    => $user,    // mostra no topo se quiser
+            'cliente' => $cliente, // nome, cnpj etc.
+        ]);
+    }
+}

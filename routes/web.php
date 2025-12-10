@@ -24,6 +24,10 @@ use App\Http\Controllers\FuncaoController;
 use App\Http\Controllers\TarefaController;
 use App\Http\Controllers\AnexoController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Cliente\ClienteDashboardController;
+use App\Http\Controllers\Cliente\ClienteFuncionarioController;
+use Illuminate\Http\Request;
+use App\Models\Cliente;
 use \App\Http\Controllers\Comercial\PropostaController;
 
 // ==================== Controllers ====================
@@ -281,11 +285,97 @@ Route::middleware('auth')->group(function () {
             ->name('anexos.destroy');
     });
 
-
     Route::get('operacional/tarefas/detalhes/ajax',
         [PainelController::class, 'detalhesAjax']
     )->name('operacional.tarefas.detalhes.ajax');
 
+    // ======================================================
+//                  CLIENTE (PAINEL)
+// ======================================================
+    Route::prefix('cliente')
+        ->name('cliente.')
+        ->group(function () {
+
+            Route::get('/', [ClienteDashboardController::class, 'index'])
+                ->name('dashboard');
+
+            Route::get('/funcionarios', [ClienteFuncionarioController::class, 'index'])
+                ->name('funcionarios.index');
+
+            Route::get('/funcionarios/novo', [ClienteFuncionarioController::class, 'create'])
+                ->name('funcionarios.create');
+
+            Route::post('/funcionarios', [ClienteFuncionarioController::class, 'store'])
+                ->name('funcionarios.store');
+
+            Route::get('/funcionarios/{funcionario}', [ClienteFuncionarioController::class, 'show'])
+                ->name('funcionarios.show');
+
+            // SERVIÇOS
+            // ASO
+            Route::get('/servicos/aso', function (Request $request) {
+                $clienteId = session('portal_cliente_id'); // se o nome da chave for outro, é só trocar aqui
+
+                $cliente = Cliente::findOrFail($clienteId);
+                return redirect()->route('operacional.kanban.aso.create', $cliente);
+            })->name('servicos.aso');
+
+            //PGR
+
+            Route::get('/servicos/pgr', function (Request $request) {
+                $clienteId = session('portal_cliente_id');
+                $cliente   = Cliente::findOrFail($clienteId);
+
+                // reaproveita o PASSO 1 do PGR (selecionar tipo)
+                return redirect()->route('operacional.kanban.pgr.tipo', $cliente);
+            })->name('servicos.pgr');
+
+            //PCMSO
+
+            Route::get('/servicos/pcmso', function (Request $request) {
+                $clienteId = session('portal_cliente_id');
+                $cliente   = Cliente::findOrFail($clienteId);
+
+                return redirect()->route('operacional.pcmso.tipo', $cliente);
+            })->name('servicos.pcmso');
+
+            //LTCAT
+
+
+            Route::get('/servicos/ltcat', function (Request $request) {
+                $clienteId = session('portal_cliente_id');
+                $cliente   = Cliente::findOrFail($clienteId);
+
+                return redirect()->route('operacional.ltcat.tipo', $cliente);
+            })->name('servicos.ltcat');
+
+            //APR
+
+            Route::get('/servicos/apr', function (Request $request) {
+                $clienteId = session('portal_cliente_id');
+                $cliente   = Cliente::findOrFail($clienteId);
+
+                return redirect()->route('operacional.apr.create', $cliente);
+            })->name('servicos.apr');
+
+            //servicos/treinamentos
+
+            Route::get('/servicos/treinamentos', function () {
+                $clienteId = session('portal_cliente_id');
+                $cliente = \App\Models\Cliente::findOrFail($clienteId);
+
+                return redirect()->route('operacional.treinamentos-nr.create', $cliente);
+            })->name('servicos.treinamentos');
+
+
+
+
+
+
+
+
+
+        });
 
 
     Route::middleware(['auth'])
@@ -321,6 +411,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/{cliente}/edit', [ClienteController::class, 'edit'])->name('edit');
         Route::put('/{cliente}',      [ClienteController::class, 'update'])->name('update');
         Route::delete('/{cliente}',   [ClienteController::class, 'destroy'])->name('destroy');
+
+        // 👉 NOVA ROTA: selecionar cliente para o portal
+        Route::get('/{cliente}/portal', [ClienteController::class, 'selecionarParaPortal'])
+            ->name('portal');
 
         // Consulta CNPJ
         Route::get('/consulta-cnpj/{cnpj}', [ClienteController::class, 'consultaCnpj'])
@@ -359,8 +453,6 @@ Route::middleware('auth')->group(function () {
         Route::post('usuarios/{user}/toggle',  [AcessosController::class, 'usuariosToggle'])->name('usuarios.toggle');
         Route::post('usuarios/{user}/reset',   [AcessosController::class, 'usuariosReset'])->name('usuarios.reset');
         Route::post('usuarios/{user}/password',[AcessosController::class, 'usuariosSetPassword'])->name('usuarios.password');
-
-        //
 
         // CRUD de Funções
         Route::get('funcoes',        [FuncaoController::class, 'index'])->name('funcoes.index');

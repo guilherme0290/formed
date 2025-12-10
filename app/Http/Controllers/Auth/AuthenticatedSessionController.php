@@ -16,9 +16,7 @@ class AuthenticatedSessionController extends Controller
      */
     public function create(Request $request): View
     {
-        // pega o redirect da URL, ex: /login?redirect=operacional
-        $redirect = $request->query('redirect', 'master'); // padrão master
-
+        $redirect = $request->query('redirect', 'master');
         return view('auth.login', compact('redirect'));
     }
 
@@ -30,24 +28,43 @@ class AuthenticatedSessionController extends Controller
         $request->authenticate();
         $request->session()->regenerate();
 
-        // se não vier nada, padrão = master
-        $destino = $request->input('redirect', 'master');
-        $user = $request->user();
-        $papelNome = optional($user->papel)->nome;
+        $destino   = $request->input('redirect', 'master');
+        $user      = $request->user();
+        $papelNome = strtoupper(optional($user->papel)->nome);
 
         // Se for operacional, SEMPRE vai pro operacional
         if (strtoupper($papelNome) === 'OPERACIONAL') {
             return redirect()->route('operacional.kanban');
         }
 
-        if (strtoupper($papelNome) === 'COMERCIAL') {
-            return redirect()->route('comercial.dashboard');
+        // =========================
+        // MÓDULO CLIENTE
+        // =========================
+        if ($destino === 'cliente') {
+
+            // usuário precisa estar vinculado a um cliente
+            if ($user->cliente_id) {
+
+                // salva o cliente escolhido na sessão do portal
+                $request->session()->put('portal_cliente_id', $user->cliente_id);
+
+                return redirect()->route('cliente.dashboard');
+            }
+
+
         }
 
-        return match ($destino) {
-            'operacional' => redirect()->route('operacional.kanban'),
-            default       => redirect()->route('master.dashboard'),
-        };
+        // =========================
+        // MÓDULO OPERACIONAL
+        // =========================
+        if ($destino === 'operacional') {
+            return redirect()->route('operacional.kanban');
+        }
+
+        // =========================
+        // MASTER (padrão)
+        // =========================
+        return redirect()->route('master.dashboard');
     }
 
     /**

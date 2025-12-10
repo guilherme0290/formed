@@ -322,6 +322,12 @@ class LtcatController extends Controller
             ]);
         });
 
+        if ($user->isCliente()) {
+            return redirect()
+                ->route('cliente.dashboard')
+                ->with('ok', 'Solicitação de LTCAT criada com sucesso e enviada para análise.');
+        }
+
         return redirect()
             ->route('operacional.kanban')
             ->with('ok', 'Tarefa LTCAT criada com sucesso!');

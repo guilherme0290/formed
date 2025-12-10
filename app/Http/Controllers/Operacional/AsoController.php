@@ -149,9 +149,14 @@ class AsoController extends Controller
             return $tarefa;
         });
 
+        if ($usuario->isCliente()) {
+            return redirect()
+                ->route('cliente.dashboard')
+                ->with('ok', "Agendamento ASO criado com sucesso para o colaborador {$tarefa->titulo}.");
+        }
         return redirect()
             ->route('operacional.kanban')
-            ->with('ok', "Tarefa ASO criada para o colaborador {$tarefa->titulo}.");
+            ->with('ok', "Tarefa ASO agendada {$tarefa->titulo}.");
     }
 
     public function edit(Tarefa $tarefa)
