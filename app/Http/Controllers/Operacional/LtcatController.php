@@ -17,14 +17,13 @@ use Illuminate\Support\Facades\DB;
 class LtcatController extends Controller
 {
     // Tela "LTCAT - Selecione o Tipo"
-    public function tipo(Cliente $cliente, Request $request)
+    public function selecionarTipo(Cliente $cliente, Request $request)
     {
-        $user = $request->user();
-
-        abort_if($cliente->empresa_id !== $user->empresa_id, 403);
+        $origem = $request->query('origem');
 
         return view('operacional.kanban.ltcat.tipo', [
             'cliente' => $cliente,
+            'origem'  => $origem,
         ]);
     }
 

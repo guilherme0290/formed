@@ -7,74 +7,11 @@
     @php
         /** @var \App\Models\Cliente $cliente */
         /** @var \App\Models\User $user */
-        $razaoOuFantasia = $cliente->nome_fantasia ?: $cliente->razao_social;
-        $cnpjFormatado   = $cliente->cnpj ?? '';
+
+        // Usados apenas nos cards "Seu Comercial"
         $contatoNome     = $cliente->contato_nome ?? $user->name ?? 'Contato não informado';
         $contatoTelefone = $cliente->telefone ?? $user->telefone ?? '(00) 0000-0000';
-        $contatoEmail    = $cliente->email ?? $user->email ?? 'email@dominio.com';
     @endphp
-    {{-- 🔔 ALERTAS DE SUCESSO / ERRO --}}
-    @if (session('ok'))
-        <div class="mb-4 mx-4 md:mx-0 rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700">
-            {{ session('ok') }}
-        </div>
-    @endif
-
-    @if (session('erro'))
-        <div class="mb-4 mx-4 md:mx-0 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-            {{ session('erro') }}
-        </div>
-    @endif
-
-    {{-- FAIXA AZUL DO CLIENTE (NOME + CNPJ + CONTATO) --}}
-    <section
-        class="mb-8 -mx-4 md:-mx-8 rounded-b-3xl bg-[#1450d2] shadow-lg shadow-slate-900/20 text-white">
-        <div class="max-w-6xl mx-auto px-4 md:px-8 py-4 md:py-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-
-            {{-- Nome do cliente + CNPJ --}}
-            <div class="flex items-start gap-3">
-                <div class="h-10 w-10 rounded-2xl bg-white/10 flex items-center justify-center text-2xl">
-                    🏢
-                </div>
-                <div>
-                    <h1 class="text-base md:text-lg font-semibold leading-tight">
-                        {{ $razaoOuFantasia }}
-                    </h1>
-                    @if($cnpjFormatado)
-                        <p class="text-xs md:text-[13px] text-blue-100 mt-1">
-                            CNPJ: {{ $cnpjFormatado }}
-                        </p>
-                    @endif
-                </div>
-            </div>
-
-            {{-- Dados de contato (à direita, igual ao layout de referência) --}}
-            <div class="flex flex-col text-xs md:text-[13px] text-blue-50 md:text-right">
-                <div class="flex flex-col md:flex-row md:items-center md:gap-6">
-                    <div class="mb-1 md:mb-0">
-                        <span class="uppercase text-[10px] tracking-[0.18em] text-blue-100/80 block">
-                            Contato
-                        </span>
-                        <span class="font-medium">{{ $contatoNome }}</span>
-                    </div>
-
-                    <div class="mb-1 md:mb-0">
-                        <span class="uppercase text-[10px] tracking-[0.18em] text-blue-100/80 block">
-                            Telefone
-                        </span>
-                        <span class="font-medium">{{ $contatoTelefone }}</span>
-                    </div>
-
-                    <div>
-                        <span class="uppercase text-[10px] tracking-[0.18em] text-blue-100/80 block">
-                            E-mail
-                        </span>
-                        <span class="font-medium">{{ $contatoEmail }}</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
 
     {{-- TÍTULO DO PAINEL --}}
     <section class="max-w-6xl mx-auto px-4 md:px-0">

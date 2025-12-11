@@ -51,6 +51,12 @@
 
     // Helper para pegar dados do funcionário no modo edição
     $funcionario = $isEdit ? optional($tarefa->funcionario) : null;
+
+    // 🔹 Origem da tela (cliente ou operacional)
+    $origem = request()->query('origem');
+    $rotaVoltar = $origem === 'cliente'
+        ? route('cliente.dashboard')
+        : route('operacional.kanban.servicos', $cliente);
 @endphp
 
 @section('title', 'Agendar ASO')
@@ -60,7 +66,7 @@
 
         {{-- Voltar --}}
         <div class="mb-4">
-            <a href="{{ route('operacional.kanban.servicos', $cliente) }}"
+            <a href="{{ $rotaVoltar }}"
                class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 bg-white text-sm text-slate-700 hover:bg-slate-50">
                 <span>←</span>
                 <span>Voltar</span>

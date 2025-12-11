@@ -40,9 +40,11 @@ class AuthenticatedSessionController extends Controller
         // =========================
         // MÓDULO CLIENTE
         // =========================
+// MÓDULO CLIENTE
+// =========================
         if ($destino === 'cliente') {
 
-            // usuário precisa estar vinculado a um cliente
+            // se o usuário tiver cliente vinculado
             if ($user->cliente_id) {
 
                 // salva o cliente escolhido na sessão do portal
@@ -51,7 +53,14 @@ class AuthenticatedSessionController extends Controller
                 return redirect()->route('cliente.dashboard');
             }
 
+            // 🚨 NÃO TEM cliente_id → desloga e volta pro login
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
 
+            return redirect()
+                ->route('login', ['redirect' => 'cliente'])
+                ->with('error', 'Seu usuário não está vinculado a nenhum cliente. Acesse com um usuário de cliente.');
         }
 
         // =========================

@@ -3,32 +3,40 @@
 @section('title', 'PGR - ' . $tipoLabel)
 
 @section('content')
+    @php
+        $origem = request()->query('origem'); // 'cliente' ou null
+
+        // rota para o PASSO 1 (selecionar tipo), preservando origem
+        $rotaVoltarTipo = route('operacional.kanban.pgr.tipo', [
+            'cliente' => $cliente->id,
+            'origem'  => $origem,
+        ]);
+
+        /** @var string $modo */ // 'create' ou 'edit'
+        $modo = $modo ?? 'create';
+    @endphp
+
     <div class="max-w-5xl mx-auto px-4 md:px-8 py-8">
 
+        {{-- BOTÃO VOLTAR CORRETO --}}
         <div class="mb-4">
-            <a href="{{ route('operacional.kanban.pgr.tipo', $cliente) }}"
+            <a href="{{ $rotaVoltarTipo }}"
                class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 bg-white text-sm text-slate-700 hover:bg-slate-50">
                 <span>←</span>
                 <span>Voltar</span>
             </a>
         </div>
 
-
-        @php
-            /** @var string $modo */        // 'create' ou 'edit'
-            $modo = $modo ?? 'create';
-        @endphp
         <form method="POST"
               action="{{ $modo === 'edit'
-                ? route('operacional.kanban.pgr.update', $tarefa)
-                : route('operacional.kanban.pgr.store', $cliente) }}">
+                    ? route('operacional.kanban.pgr.update', $tarefa)
+                    : route('operacional.kanban.pgr.store', $cliente) }}">
             @csrf
             @if($modo === 'edit')
                 @method('PUT')
             @endif
 
             <input type="hidden" name="tipo" value="{{ old('tipo', $tipo ?? ($pgr->tipo ?? 'matriz')) }}">
-
 
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                 {{-- Cabeçalho --}}
@@ -63,7 +71,7 @@
                         </div>
 
                         <input type="hidden" name="com_art" id="input-com-art"
-                               value="{{ old('com_art', isset($pgr) ? (int)$pgr->com_art : 1) }}">
+                               value="{{ old('com_art', isset($pgr) ? (int) $pgr->com_art : 1) }}">
 
                         <div id="alert-art"
                              class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
@@ -77,8 +85,9 @@
 
                             <div class="grid md:grid-cols-2 gap-4 mb-4">
                                 <div>
-                                    <label class="block text-xs font-medium text-slate-500 mb-1">Nome/Razão
-                                        Social</label>
+                                    <label class="block text-xs font-medium text-slate-500 mb-1">
+                                        Nome/Razão Social
+                                    </label>
                                     <input type="text" name="contratante_nome"
                                            value="{{ old('contratante_nome', $pgr->contratante_nome ?? '') }}"
                                            class="w-full rounded-lg border-slate-200 text-sm px-3 py-2">
@@ -101,8 +110,7 @@
                                            class="w-full rounded-lg border-slate-200 text-sm px-3 py-2">
                                 </div>
                                 <div>
-                                    <label class="block text-xs font-medium text-slate-500 mb-1">Endereço da
-                                        Obra</label>
+                                    <label class="block text-xs font-medium text-slate-500 mb-1">Endereço da Obra</label>
                                     <input type="text" name="obra_endereco"
                                            value="{{ old('obra_endereco', $pgr->obra_endereco ?? '') }}"
                                            class="w-full rounded-lg border-slate-200 text-sm px-3 py-2">
@@ -117,8 +125,9 @@
                                            class="w-full rounded-lg border-slate-200 text-sm px-3 py-2">
                                 </div>
                                 <div>
-                                    <label class="block text-xs font-medium text-slate-500 mb-1">Turno(s) de
-                                        Trabalho</label>
+                                    <label class="block text-xs font-medium text-slate-500 mb-1">
+                                        Turno(s) de Trabalho
+                                    </label>
                                     <input type="text" name="obra_turno_trabalho"
                                            value="{{ old('obra_turno_trabalho', $pgr->obra_turno_trabalho ?? '') }}"
                                            placeholder="Ex: Diurno (7h às 17h)"
@@ -161,7 +170,6 @@
                         </div>
                     </section>
 
-                    {{-- 3. Funções e Cargos --}}
                     {{-- 3. Funções e Cargos --}}
                     <section>
                         {{-- Cabeçalho da seção: título + botão alinhados --}}
@@ -262,11 +270,9 @@
                         @enderror
                     </section>
 
-
-
                     {{-- Rodapé --}}
                     <div class="flex flex-col md:flex-row gap-3 mt-4">
-                        <a href="{{ route('operacional.kanban.pgr.tipo', $cliente) }}"
+                        <a href="{{ $rotaVoltarTipo }}"
                            class="flex-1 inline-flex items-center justify-center px-4 py-2.5 rounded-lg border border-slate-200 bg-white text-sm text-slate-700 hover:bg-slate-50">
                             Voltar
                         </a>
@@ -321,7 +327,6 @@
                     aplicarEstadoArt(inputComArt.value || '1');
                 }
 
-
                 // ========= TOTAL TRABALHADORES =========
                 const inputHomens = document.querySelector('input[name="qtd_homens"]');
                 const inputMulheres = document.querySelector('input[name="qtd_mulheres"]');
@@ -339,7 +344,6 @@
                     atualizarTotal();
                 }
 
-                // ========= FUNÇÕES E CARGOS (dinâmico) =========
                 // ========= FUNÇÕES E CARGOS (dinâmico) =========
                 const wrapper = document.getElementById('funcoes-wrapper');
                 const btnAdd = document.getElementById('btn-add-funcao');
@@ -380,7 +384,7 @@
                         wrapper.appendChild(clone);
                     });
 
-                    // 🔹 NOVO: remover função com delegação de evento
+                    // remover função com delegação de evento
                     wrapper.addEventListener('click', function (e) {
                         const btn = e.target.closest('.btn-remove-funcao');
                         if (!btn) return;
@@ -427,7 +431,7 @@
         </script>
         <script>
             document.addEventListener('DOMContentLoaded', function () {
-                // pega o primeiro input com name="cnpj" da página
+                // pega o primeiro input com name="contratante_cnpj" da página
                 var cnpjInput = document.querySelector('input[name="contratante_cnpj"]');
                 if (!cnpjInput) return;
 
@@ -535,6 +539,5 @@
                 }
             }
         </script>
-
     @endpush
 @endsection
