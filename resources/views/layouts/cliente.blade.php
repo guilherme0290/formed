@@ -57,7 +57,7 @@
         </div>
     </header>
 
-    {{-- 🔵 ALTERAÇÃO: FAIXA AZUL DO CLIENTE COLADA NO LAYOUT --}}
+    {{-- 🔵 FAIXA AZUL DO CLIENTE --}}
     @isset($cliente)
         @php
             $razaoOuFantasia = $cliente->nome_fantasia ?: $cliente->razao_social;
@@ -68,7 +68,7 @@
         @endphp
 
         <section
-            class="w-full bg-[#1450d2] text-white shadow-lg shadow-slate-900/20 rounded-b-3xl
+            class="w-full bg-[#1450d2] text-white shadow-lg shadow-slate-900/20
                    py-5 md:py-6">
 
             <div class="max-w-7xl mx-auto px-6 md:px-8 flex flex-col md:flex-row
@@ -97,34 +97,32 @@
                     <div class="flex flex-col md:flex-row md:items-center md:justify-end gap-6 lg:gap-12">
 
                         <div class="md:mr-10 lg:mr-16">
-            <span class="uppercase text-[10px] tracking-[0.18em] text-blue-100/70 block">
-                Contato
-            </span>
+                            <span class="uppercase text-[10px] tracking-[0.18em] text-blue-100/70 block">
+                                Contato
+                            </span>
                             <span class="font-medium">{{ $contatoNome }}</span>
                         </div>
 
                         <div class="md:mr-10 lg:mr-16 md:mt-0 mt-2">
-            <span class="uppercase text-[10px] tracking-[0.18em] text-blue-100/70 block">
-                Telefone
-            </span>
+                            <span class="uppercase text-[10px] tracking-[0.18em] text-blue-100/70 block">
+                                Telefone
+                            </span>
                             <span class="font-medium">{{ $contatoTelefone }}</span>
                         </div>
 
                         <div class="md:mt-0 mt-2">
-            <span class="uppercase text-[10px] tracking-[0.18em] text-blue-100/70 block">
-                E-mail
-            </span>
+                            <span class="uppercase text-[10px] tracking-[0.18em] text-blue-100/70 block">
+                                E-mail
+                            </span>
                             <span class="font-medium break-all">{{ $contatoEmail }}</span>
                         </div>
 
                     </div>
                 </div>
-
-
             </div>
         </section>
     @endisset
-    {{-- 🔵 FIM FAIXA CLIENTE NO LAYOUT --}}
+    {{-- 🔵 FIM FAIXA CLIENTE --}}
 
     {{-- ALERTAS --}}
     @if (session('ok'))
@@ -143,20 +141,52 @@
         </div>
     @endif
 
-    {{-- CONTEÚDO COM MARCA D'ÁGUA --}}
-    <main class="flex-1 relative overflow-hidden">
-        <div class="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.06]">
-            <img src="{{ asset('storage/logo.svg') }}"
-                 alt="FORMED"
-                 class="max-w-[512px] w-full">
-        </div>
-
-        <div class="relative z-10">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-                @yield('content')
+    {{-- CONTEÚDO + SIDEBAR --}}
+    <div class="flex flex-1">
+        {{-- SIDEBAR DO CLIENTE --}}
+        <aside class="hidden md:flex flex-col w-56 bg-slate-950 text-slate-100">
+            <div class="h-16 flex items-center px-6 text-lg font-semibold">
+                Portal do Cliente
             </div>
-        </div>
-    </main>
+
+            <nav class="flex-1 px-3 mt-4 space-y-1">
+                <a href="{{ route('cliente.dashboard') }}"
+                   class="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800 text-slate-50 text-sm font-medium">
+                    <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-700">
+                        🏠
+                    </span>
+                    <span>Painel do Cliente</span>
+                </a>
+            </nav>
+
+            <div class="px-4 py-4 border-t border-slate-800 space-y-2 text-sm">
+                <a href="{{ url('/') }}" class="flex items-center gap-2 text-slate-300 hover:text-white">
+                    <span>⏪</span> <span>Voltar ao Início</span>
+                </a>
+                <form method="POST" action="{{ route('logout') }}">
+                    @csrf
+                    <button class="flex items-center gap-2 text-rose-400 hover:text-rose-300">
+                        <span>🚪</span> Sair
+                    </button>
+                </form>
+            </div>
+        </aside>
+
+        {{-- CONTEÚDO COM MARCA D'ÁGUA (IGUAL ESTAVA) --}}
+        <main class="flex-1 relative overflow-hidden">
+            <div class="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.06]">
+                <img src="{{ asset('storage/logo.svg') }}"
+                     alt="FORMED"
+                     class="max-w-[512px] w-full">
+            </div>
+
+            <div class="relative z-10">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+                    @yield('content')
+                </div>
+            </div>
+        </main>
+    </div>
 </div>
 
 @stack('scripts')
