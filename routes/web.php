@@ -30,6 +30,7 @@ use Illuminate\Http\Request;
 use App\Models\Cliente;
 use \App\Http\Controllers\Comercial\PropostaController;
 
+
 // ==================== Controllers ====================
 
 
@@ -176,7 +177,7 @@ Route::middleware('auth')->group(function () {
         // ======================================================
 
         // Selecionar tipo (Matriz | Específico)
-        Route::get('clientes/{cliente}/ltcat/tipo', [LtcatController::class, 'tipo'])
+        Route::get('clientes/{cliente}/ltcat/tipo', [LtcatController::class, 'selecionarTipo'])
             ->name('ltcat.tipo');
 
         // Formulário (?tipo=matriz ou ?tipo=especifico)
@@ -290,8 +291,8 @@ Route::middleware('auth')->group(function () {
     )->name('operacional.tarefas.detalhes.ajax');
 
     // ======================================================
-//                  CLIENTE (PAINEL)
-// ======================================================
+   //                  CLIENTE (PAINEL)
+   // ======================================================
     Route::prefix('cliente')
         ->name('cliente.')
         ->group(function () {
@@ -311,13 +312,25 @@ Route::middleware('auth')->group(function () {
             Route::get('/funcionarios/{funcionario}', [ClienteFuncionarioController::class, 'show'])
                 ->name('funcionarios.show');
 
+            // 🔁 Ativar / Inativar funcionário (portal do cliente)
+            Route::patch('/funcionarios/{funcionario}/toggle-status',
+                [ClienteFuncionarioController::class, 'toggleStatus']
+            )->name('funcionarios.toggle-status');
+
             // SERVIÇOS
+
+
             // ASO
             Route::get('/servicos/aso', function (Request $request) {
-                $clienteId = session('portal_cliente_id'); // se o nome da chave for outro, é só trocar aqui
+                $clienteId = session('portal_cliente_id');
 
                 $cliente = Cliente::findOrFail($clienteId);
-                return redirect()->route('operacional.kanban.aso.create', $cliente);
+
+                // 🔹 Passa origem=cliente para a tela de ASO
+                return redirect()->route('operacional.kanban.aso.create', [
+                    'cliente' => $cliente,
+                    'origem'  => 'cliente',
+                ]);
             })->name('servicos.aso');
 
             //PGR
@@ -326,8 +339,11 @@ Route::middleware('auth')->group(function () {
                 $clienteId = session('portal_cliente_id');
                 $cliente   = Cliente::findOrFail($clienteId);
 
-                // reaproveita o PASSO 1 do PGR (selecionar tipo)
-                return redirect()->route('operacional.kanban.pgr.tipo', $cliente);
+                // adiciona ?origem=cliente na URL
+                return redirect()->route('operacional.kanban.pgr.tipo', [
+                    'cliente' => $cliente->id,
+                    'origem'  => 'cliente'
+                ]);
             })->name('servicos.pgr');
 
             //PCMSO
@@ -336,7 +352,10 @@ Route::middleware('auth')->group(function () {
                 $clienteId = session('portal_cliente_id');
                 $cliente   = Cliente::findOrFail($clienteId);
 
-                return redirect()->route('operacional.pcmso.tipo', $cliente);
+                return redirect()->route('operacional.pcmso.tipo', [
+                    'cliente' => $cliente,
+                    'origem'  => 'cliente',
+                ]);
             })->name('servicos.pcmso');
 
             //LTCAT
@@ -346,7 +365,10 @@ Route::middleware('auth')->group(function () {
                 $clienteId = session('portal_cliente_id');
                 $cliente   = Cliente::findOrFail($clienteId);
 
-                return redirect()->route('operacional.ltcat.tipo', $cliente);
+                return redirect()->route('operacional.ltcat.tipo', [
+                    'cliente' => $cliente->id,
+                    'origem'  => 'cliente',
+                ]);
             })->name('servicos.ltcat');
 
             //APR
@@ -367,15 +389,7 @@ Route::middleware('auth')->group(function () {
                 return redirect()->route('operacional.treinamentos-nr.create', $cliente);
             })->name('servicos.treinamentos');
 
-
-
-
-
-
-
-
-
-        });
+    });
 
 
     Route::middleware(['auth'])

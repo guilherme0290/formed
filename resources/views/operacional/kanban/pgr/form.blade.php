@@ -1,44 +1,53 @@
 @extends('layouts.operacional')
 
-@php
-    /** @var \App\Models\Tarefa|null $tarefa */
-    /** @var \App\Models\Cliente $cliente */
-    use App\Helpers\S3Helper;
-    $modo = $modo ?? (isset($tarefa) ? 'edit' : 'create');
-    $tipoLabel = $tipoLabel ?? 'Matriz';
-
-    // coleção de anexos desta tarefa (ou vazio)
-    $anexos = $anexos ?? collect();
-@endphp
-
 @section('title', 'PGR - ' . $tipoLabel)
 
 @section('content')
+    @php
+
+            use App\Helpers\S3Helper;
+            $modo = $modo ?? (isset($tarefa) ? 'edit' : 'create');
+            $tipoLabel = $tipoLabel ?? 'Matriz';
+
+            // coleção de anexos desta tarefa (ou vazio)
+            $anexos = $anexos ?? collect();
+            $origem = request()->query('origem'); // 'cliente' ou null
+
+            // rota para o PASSO 1 (selecionar tipo), preservando origem
+            $rotaVoltarTipo = route('operacional.kanban.pgr.tipo', [
+                'cliente' => $cliente->id,
+                'origem'  => $origem,
+            ]);
+
+            /** @var string $modo */ // 'create' ou 'edit'
+            $modo = $modo ?? 'create';
+    @endphp
+
     <div class="max-w-5xl mx-auto px-4 md:px-8 py-8">
 
+        {{-- BOTÃO VOLTAR CORRETO --}}
         <div class="mb-4">
-            <a href="{{ route('operacional.kanban.pgr.tipo', $cliente) }}"
+            <a href="{{ $rotaVoltarTipo }}"
                class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 bg-white text-sm text-slate-700 hover:bg-slate-50">
                 <span>←</span>
                 <span>Voltar</span>
             </a>
         </div>
 
-        @php
-            /** @var string $modo */        // 'create' ou 'edit'
-        @endphp
+
 
         <form method="POST"
               enctype="multipart/form-data"
               action="{{ $modo === 'edit'
-                ? route('operacional.kanban.pgr.update', $tarefa)
-                : route('operacional.kanban.pgr.store', $cliente) }}">
+                    ? route('operacional.kanban.pgr.update', $tarefa)
+                    : route('operacional.kanban.pgr.store', $cliente) }}">
             @csrf
             @if($modo === 'edit')
                 @method('PUT')
             @endif
 
             <input type="hidden" name="tipo" value="{{ old('tipo', $tipo ?? ($pgr->tipo ?? 'matriz')) }}">
+
 
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                 {{-- Cabeçalho --}}
@@ -116,91 +125,91 @@
                             <section class="mb-6 bg-white border border-slate-200 rounded-2xl p-5">
                                 <h2 class="text-sm font-semibold text-slate-800 mb-4">2. Contratante</h2>
 
-                                <div class="grid md:grid-cols-2 gap-4 mb-4">
-                                    <div>
-                                        <label class="block text-xs font-medium text-slate-500 mb-1">Nome/Razão
-                                            Social</label>
-                                        <input type="text" name="contratante_nome"
-                                               value="{{ old('contratante_nome', $pgr->contratante_nome ?? '') }}"
-                                               class="w-full rounded-lg border-slate-200 text-sm px-3 py-2">
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs font-medium text-slate-500 mb-1">CNPJ</label>
-                                        <input type="text" name="contratante_cnpj"
-                                               value="{{ old('contratante_cnpj', $pgr->contratante_cnpj ?? '') }}"
-                                               class="w-full rounded-lg border-slate-200 text-sm px-3 py-2">
-                                    </div>
-                                </div>
-
-                                <h2 class="text-sm font-semibold text-slate-800 mb-3 mt-2">3. Obra</h2>
-
-                                <div class="grid md:grid-cols-2 gap-4 mb-3">
-                                    <div>
-                                        <label class="block text-xs font-medium text-slate-500 mb-1">Nome da Obra</label>
-                                        <input type="text" name="obra_nome"
-                                               value="{{ old('obra_nome', $pgr->obra_nome ?? '') }}"
-                                               class="w-full rounded-lg border-slate-200 text-sm px-3 py-2">
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs font-medium text-slate-500 mb-1">Endereço da
-                                            Obra</label>
-                                        <input type="text" name="obra_endereco"
-                                               value="{{ old('obra_endereco', $pgr->obra_endereco ?? '') }}"
-                                               class="w-full rounded-lg border-slate-200 text-sm px-3 py-2">
-                                    </div>
-                                </div>
-
-                                <div class="grid md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label class="block text-xs font-medium text-slate-500 mb-1">CEJ/CNO</label>
-                                        <input type="text" name="obra_cej_cno"
-                                               value="{{ old('obra_cej_cno', $pgr->obra_cej_cno ?? '') }}"
-                                               class="w-full rounded-lg border-slate-200 text-sm px-3 py-2">
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs font-medium text-slate-500 mb-1">Turno(s) de
-                                            Trabalho</label>
-                                        <input type="text" name="obra_turno_trabalho"
-                                               value="{{ old('obra_turno_trabalho', $pgr->obra_turno_trabalho ?? '') }}"
-                                               placeholder="Ex: Diurno (7h às 17h)"
-                                               class="w-full rounded-lg border-slate-200 text-sm px-3 py-2">
-                                    </div>
-                                </div>
-                            </section>
-                        @endif
-
-                        {{-- 3. TRABALHADORES --}}
-                        <section>
-                            <h2 class="text-sm font-semibold text-slate-800 mb-3">4. Trabalhadores</h2>
-
-                            <div class="grid grid-cols-1 md:grid-cols-[1.2fr,1.2fr,auto] gap-3 items-end">
+                            <div class="grid md:grid-cols-2 gap-4 mb-4">
                                 <div>
-                                    <label class="block text-xs font-medium text-slate-500 mb-1">
-                                        Funcionários Homens
-                                    </label>
-                                    <input type="number" name="qtd_homens"
-                                           value="{{ old('qtd_homens', $pgr->qtd_homens ?? 0) }}"
+                                    <label class="block text-xs font-medium text-slate-500 mb-1">Nome/Razão
+                                        Social</label>
+                                    <input type="text" name="contratante_nome"
+                                           value="{{ old('contratante_nome', $pgr->contratante_nome ?? '') }}"
                                            class="w-full rounded-lg border-slate-200 text-sm px-3 py-2">
                                 </div>
-
                                 <div>
-                                    <label class="block text-xs font-medium text-slate-500 mb-1">
-                                        Funcionárias Mulheres
-                                    </label>
-                                    <input type="number" name="qtd_mulheres"
-                                           value="{{ old('qtd_mulheres', $pgr->qtd_mulheres ?? 0) }}"
+                                    <label class="block text-xs font-medium text-slate-500 mb-1">CNPJ</label>
+                                    <input type="text" name="contratante_cnpj"
+                                           value="{{ old('contratante_cnpj', $pgr->contratante_cnpj ?? '') }}"
                                            class="w-full rounded-lg border-slate-200 text-sm px-3 py-2">
                                 </div>
+                            </div>
 
-                                <div class="flex flex-col items-center justify-center">
-                                    <span class="text-xs font-medium text-slate-500 mb-1">Total</span>
-                                    <div id="total-trabalhadores"
-                                         class="inline-flex items-center justify-center px-4 py-2 rounded-full bg-sky-500 text-white text-sm font-semibold">
-                                        0
-                                    </div>
+                            <h2 class="text-sm font-semibold text-slate-800 mb-3 mt-2">3. Obra</h2>
+
+                            <div class="grid md:grid-cols-2 gap-4 mb-3">
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-500 mb-1">Nome da Obra</label>
+                                    <input type="text" name="obra_nome"
+                                           value="{{ old('obra_nome', $pgr->obra_nome ?? '') }}"
+                                           class="w-full rounded-lg border-slate-200 text-sm px-3 py-2">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-500 mb-1">Endereço da
+                                        Obra</label>
+                                    <input type="text" name="obra_endereco"
+                                           value="{{ old('obra_endereco', $pgr->obra_endereco ?? '') }}"
+                                           class="w-full rounded-lg border-slate-200 text-sm px-3 py-2">
+                                </div>
+                            </div>
+
+                            <div class="grid md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-500 mb-1">CEJ/CNO</label>
+                                    <input type="text" name="obra_cej_cno"
+                                           value="{{ old('obra_cej_cno', $pgr->obra_cej_cno ?? '') }}"
+                                           class="w-full rounded-lg border-slate-200 text-sm px-3 py-2">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-500 mb-1">Turno(s) de
+                                        Trabalho</label>
+                                    <input type="text" name="obra_turno_trabalho"
+                                           value="{{ old('obra_turno_trabalho', $pgr->obra_turno_trabalho ?? '') }}"
+                                           placeholder="Ex: Diurno (7h às 17h)"
+                                           class="w-full rounded-lg border-slate-200 text-sm px-3 py-2">
                                 </div>
                             </div>
                         </section>
+                    @endif
+
+                    {{-- 2. Trabalhadores --}}
+                    <section>
+                        <h2 class="text-sm font-semibold text-slate-800 mb-3">2. Trabalhadores</h2>
+
+                        <div class="grid grid-cols-1 md:grid-cols-[1.2fr,1.2fr,auto] gap-3 items-end">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-500 mb-1">
+                                    Funcionários Homens
+                                </label>
+                                <input type="number" name="qtd_homens"
+                                       value="{{ old('qtd_homens', $pgr->qtd_homens ?? 0) }}"
+                                       class="w-full rounded-lg border-slate-200 text-sm px-3 py-2">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-medium text-slate-500 mb-1">
+                                    Funcionárias Mulheres
+                                </label>
+                                <input type="number" name="qtd_mulheres"
+                                       value="{{ old('qtd_mulheres', $pgr->qtd_mulheres ?? 0) }}"
+                                       class="w-full rounded-lg border-slate-200 text-sm px-3 py-2">
+                            </div>
+
+                            <div class="flex flex-col items-center justify-center">
+                                <span class="text-xs font-medium text-slate-500 mb-1">Total</span>
+                                <div id="total-trabalhadores"
+                                     class="inline-flex items-center justify-center px-4 py-2 rounded-full bg-sky-500 text-white text-sm font-semibold">
+                                    0
+                                </div>
+                            </div>
+                        </div>
+                    </section>
 
                         {{-- 4. FUNÇÕES E CARGOS --}}
                         <section>
@@ -242,70 +251,70 @@
                                             </button>
                                         </div>
 
-                                        <div class="grid grid-cols-12 gap-3">
-                                            <div class="col-span-5 funcao-select-wrapper">
-                                                <x-funcoes.select-with-create
-                                                    name="funcoes[{{ $idx }}][funcao_id]"
-                                                    field-id="funcoes_{{ $idx }}_funcao_id"
-                                                    label="Cargo"
-                                                    :funcoes="$funcoes"
-                                                    :selected="old('funcoes.'.$idx.'.funcao_id', $f['funcao_id'] ?? null)"
-                                                    :show-create="false"
-                                                />
-                                            </div>
+                                    <div class="grid grid-cols-12 gap-3">
+                                        <div class="col-span-5 funcao-select-wrapper">
+                                            <x-funcoes.select-with-create
+                                                name="funcoes[{{ $idx }}][funcao_id]"
+                                                field-id="funcoes_{{ $idx }}_funcao_id"
+                                                label="Cargo"
+                                                :funcoes="$funcoes"
+                                                :selected="old('funcoes.'.$idx.'.funcao_id', $f['funcao_id'] ?? null)"
+                                                :show-create="false"
+                                            />
+                                        </div>
 
-                                            <div class="col-span-2">
-                                                <label class="block text-xs font-medium text-slate-500 mb-1">Qtd</label>
-                                                <input type="number"
-                                                       name="funcoes[{{ $idx }}][quantidade]"
-                                                       class="w-full rounded-lg border-slate-200 text-sm px-3 py-2"
-                                                       value="{{ old('funcoes.'.$idx.'.quantidade', $f['quantidade'] ?? 1) }}"
-                                                       min="1">
-                                            </div>
+                                        <div class="col-span-2">
+                                            <label class="block text-xs font-medium text-slate-500 mb-1">Qtd</label>
+                                            <input type="number"
+                                                   name="funcoes[{{ $idx }}][quantidade]"
+                                                   class="w-full rounded-lg border-slate-200 text-sm px-3 py-2"
+                                                   value="{{ old('funcoes.'.$idx.'.quantidade', $f['quantidade'] ?? 1) }}"
+                                                   min="1">
+                                        </div>
 
-                                            <div class="col-span-2">
-                                                <label class="block text-xs font-medium text-slate-500 mb-1">CBO</label>
-                                                <input type="text"
-                                                       name="funcoes[{{ $idx }}][cbo]"
-                                                       class="w-full rounded-lg border-slate-200 text-sm px-3 py-2"
-                                                       value="{{ old('funcoes.'.$idx.'.cbo', $f['cbo'] ?? '') }}"
-                                                       placeholder="0000-00">
-                                            </div>
+                                        <div class="col-span-2">
+                                            <label class="block text-xs font-medium text-slate-500 mb-1">CBO</label>
+                                            <input type="text"
+                                                   name="funcoes[{{ $idx }}][cbo]"
+                                                   class="w-full rounded-lg border-slate-200 text-sm px-3 py-2"
+                                                   value="{{ old('funcoes.'.$idx.'.cbo', $f['cbo'] ?? '') }}"
+                                                   placeholder="0000-00">
+                                        </div>
 
-                                            <div class="col-span-3">
-                                                <label class="block text-xs font-medium text-slate-500 mb-1">
-                                                    Descrição (opcional)
-                                                </label>
-                                                <input type="text"
-                                                       name="funcoes[{{ $idx }}][descricao]"
-                                                       class="w-full rounded-lg border-slate-200 text-sm px-3 py-2"
-                                                       value="{{ old('funcoes.'.$idx.'.descricao', $f['descricao'] ?? '') }}"
-                                                       placeholder="Atividades...">
-                                            </div>
+                                        <div class="col-span-3">
+                                            <label class="block text-xs font-medium text-slate-500 mb-1">
+                                                Descrição (opcional)
+                                            </label>
+                                            <input type="text"
+                                                   name="funcoes[{{ $idx }}][descricao]"
+                                                   class="w-full rounded-lg border-slate-200 text-sm px-3 py-2"
+                                                   value="{{ old('funcoes.'.$idx.'.descricao', $f['descricao'] ?? '') }}"
+                                                   placeholder="Atividades...">
                                         </div>
                                     </div>
-                                @endforeach
-                            </div>
+                                </div>
+                            @endforeach
+                        </div>
 
-                            <div class="flex justify-end mt-3">
-                                <button type="button" id="btn-add-funcao"
-                                        class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-500 text-white text-xs font-semibold hover:bg-emerald-600">
-                                    <span>+</span>
-                                    <span>Adicionar</span>
-                                </button>
-                            </div>
+                        <div class="flex justify-end mt-3">
+                            <button type="button" id="btn-add-funcao"
+                                    class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-500 text-white text-xs font-semibold hover:bg-emerald-600">
+                                <span>+</span>
+                                <span>Adicionar</span>
+                            </button>
+                        </div>
 
-                            @error('funcoes')
-                            <p class="mt-2 text-xs text-red-600">{{ $message }}</p>
-                            @enderror
-                        </section>
+                        @error('funcoes')
+                        <p class="mt-2 text-xs text-red-600">{{ $message }}</p>
+                        @enderror
+                    </section>
 
-                        {{-- Rodapé (botão salvar) --}}
-                        <div class="flex flex-col md:flex-row gap-3 mt-4 pt-4 border-t border-slate-100">
-                            <a href="{{ route('operacional.kanban.pgr.tipo', $cliente) }}"
-                               class="flex-1 inline-flex items-center justify-center px-4 py-2.5 rounded-lg border border-slate-200 bg-white text-sm text-slate-700 hover:bg-slate-50">
-                                Voltar
-                            </a>
+                    {{-- Rodapé --}}
+                    <div class="flex flex-col md:flex-row gap-3 mt-4">
+                        <a href="{{ $rotaVoltarTipo }}"
+                           class="flex-1 inline-flex items-center justify-center px-4 py-2.5 rounded-lg border border-slate-200 bg-white text-sm text-slate-700 hover:bg-slate-50">
+                            Voltar
+                        </a>
 
                             <button type="submit"
                                     class="flex-1 inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700">
@@ -518,9 +527,11 @@
                     });
                 });
 
+                // ao carregar, aplica o valor que veio do backend (create ou edit)
                 if (inputComArt) {
                     aplicarEstadoArt(inputComArt.value || '1');
                 }
+
 
                 // ========= TOTAL TRABALHADORES =========
                 const inputHomens = document.querySelector('input[name="qtd_homens"]');
@@ -579,6 +590,7 @@
                         wrapper.appendChild(clone);
                     });
 
+                    // 🔹 NOVO: remover função com delegação de evento
                     wrapper.addEventListener('click', function (e) {
                         const btn = e.target.closest('.btn-remove-funcao');
                         if (!btn) return;
@@ -597,6 +609,7 @@
                     });
                 }
 
+                // função auxiliar para reindexar os índices/names/labels
                 function reindexFuncoes(wrapper) {
                     const itens = wrapper.querySelectorAll('.funcao-item');
 
@@ -780,5 +793,6 @@
                 }
             });
         </script>
+
     @endpush
 @endsection

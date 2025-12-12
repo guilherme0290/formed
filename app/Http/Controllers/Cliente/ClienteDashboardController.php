@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Cliente;
 use App\Http\Controllers\Controller;
 use App\Models\Cliente;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class ClienteDashboardController extends Controller
 {
@@ -13,21 +14,48 @@ class ClienteDashboardController extends Controller
      */
     public function index(Request $request)
     {
+        // 1) Se NÃO tiver usuário autenticado -> manda pro login
         $user = $request->user();
 
-        // Pega o cliente que foi escolhido ao clicar no card
-        $clienteId = $request->session()->get('portal_cliente_id');
-
-        if (!$clienteId) {
-            abort(403, 'NENHUM CLIENTE FOI SELECIONADO PARA O PORTAL.');
+        if (!$user || !$user->id) { // cobre null, falso, etc.
+            return redirect()
+                ->route('login', ['redirect' => 'cliente']);
         }
 
-        $cliente = Cliente::findOrFail($clienteId);
+        // 2) Recupera o ID do cliente guardado na sessão
+        $clienteId = (int) $request->session()->get('portal_cliente_id');
 
-        // Aqui é VIEW, não redirect
+        // Se for null, vazio, 0 ou não numérico -> força novo login
+        if ($clienteId <= 0) {
+
+            // opcional: deslogar de vez
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect()
+                ->route('login', ['redirect' => 'cliente'])
+                ->with('error', 'Nenhum cliente selecionado. Faça login novamente pelo portal do cliente.');
+        }
+
+        // 3) Verifica se o cliente realmente existe
+        $cliente = Cliente::find($clienteId);
+
+        if (!$cliente) {
+            // limpa ID inválido e manda pro login de novo
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect()
+                ->route('login', ['redirect' => 'cliente'])
+                ->with('error', 'Cliente inválido. Acesse novamente pelo portal do cliente.');
+        }
+
+        // 4) Tudo certo -> mostra o dashboard
         return view('clientes.dashboard', [
-            'user'    => $user,    // mostra no topo se quiser
-            'cliente' => $cliente, // nome, cnpj etc.
+            'user'    => $user,
+            'cliente' => $cliente,
         ]);
     }
 }

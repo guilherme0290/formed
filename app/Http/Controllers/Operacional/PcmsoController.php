@@ -22,11 +22,16 @@ class PcmsoController extends Controller
      */
     public function selecionarTipo(Cliente $cliente, Request $request)
     {
-        $usuario = $request->user();
-        abort_if($cliente->empresa_id !== $usuario->empresa_id, 403);
+        $usuario   = $request->user();
+        $empresaId = $usuario->empresa_id;
+
+        abort_if($cliente->empresa_id !== $empresaId, 403);
+
+        $origem = $request->query('origem'); // 'cliente' ou null
 
         return view('operacional.kanban.pcmso.tipo', [
             'cliente' => $cliente,
+            'origem'  => $origem,
         ]);
     }
 

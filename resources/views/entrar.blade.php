@@ -67,12 +67,23 @@
                         </p>
                     </div>
 
+
                     <div class="mt-6">
-                        <a href="{{ route('login', ['redirect' => 'cliente']) }}"
-                           class="inline-flex items-center gap-1 text-xs md:text-sm font-medium text-sky-300 hover:text-sky-200 transition">
-                            <span>Acessar painel</span>
-                            <span class="text-base md:text-lg">›</span>
-                        </a>
+                        @guest
+                            <a href="{{ route('login', ['redirect' => 'cliente']) }}"
+                               class="inline-flex items-center gap-1 text-xs md:text-sm font-medium text-sky-300 hover:text-sky-200 transition">
+                                <span>Acessar painel</span>
+                                <span class="text-base md:text-lg">›</span>
+                            </a>
+                        @else
+                            <a href="{{ route('cliente.dashboard') }}"
+                               class="inline-flex items-center gap-1 text-xs md:text-sm font-medium text-sky-300 hover:text-sky-200 transition">
+                                <span>Acessar painel</span>
+                                <span class="text-base md:text-lg">›</span>
+                            </a>
+                        @endguest
+
+
                     </div>
                 </div>
 

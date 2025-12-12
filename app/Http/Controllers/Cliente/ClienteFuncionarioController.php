@@ -187,4 +187,28 @@ class ClienteFuncionarioController extends Controller
 
         return view('clientes.funcionarios.show', compact('cliente', 'funcionario'));
     }
+
+    public function toggleStatus(Request $request, Funcionario $funcionario)
+    {
+        // garante que o funcionário é do cliente logado no portal
+        $clienteIdSessao = $request->session()->get('portal_cliente_id');
+
+        abort_unless(
+            $clienteIdSessao && (int) $funcionario->cliente_id === (int) $clienteIdSessao,
+            403
+        );
+
+        // alterna o status
+        $funcionario->ativo = ! $funcionario->ativo;
+        $funcionario->save();
+
+        $mensagem = $funcionario->ativo
+            ? 'Funcionário reativado com sucesso.'
+            : 'Funcionário inativado com sucesso.';
+
+        return redirect()
+            ->route('cliente.funcionarios.show', $funcionario)
+            ->with('ok', $mensagem);
+    }
+
 }

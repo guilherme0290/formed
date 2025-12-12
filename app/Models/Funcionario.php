@@ -40,6 +40,7 @@ class Funcionario extends Model
         'exame_demissional'     => 'boolean',
         'exame_mudanca_funcao'  => 'boolean',
         'exame_retorno_trabalho'=> 'boolean',
+        'ativo'                  => 'boolean',
     ];
 
     public function cliente()
