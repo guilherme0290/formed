@@ -1,4 +1,5 @@
-@extends('layouts.operacional')
+@extends(request()->query('origem') === 'cliente' ? 'layouts.cliente' : 'layouts.operacional')
+
 
 @php
     /** @var \App\Models\Tarefa|null $tarefa */
@@ -106,8 +107,8 @@
                     method="POST"
                     enctype="multipart/form-data"
                     action="{{ $isEdit
-                            ? route('operacional.kanban.aso.update', $tarefa)
-                            : route('operacional.kanban.aso.store', $cliente) }}"
+                        ? route('operacional.kanban.aso.update', ['tarefa' => $tarefa, 'origem' => $origem])
+                        : route('operacional.kanban.aso.store', ['cliente' => $cliente, 'origem' => $origem]) }}"
                 >
                     @csrf
                     @if($isEdit)

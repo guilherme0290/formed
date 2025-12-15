@@ -92,15 +92,15 @@ class AprController extends Controller
             ]);
         });
 
-        if ($user->isCliente()) {
+        if (request()->query('origem') === 'cliente') {
             return redirect()
                 ->route('cliente.dashboard')
-                ->with('ok', 'Solicitação de APR criada com sucesso e enviada para análise.');
+                ->with('ok', 'Tarefa de Treinamento de NRs criada com sucesso.');
         }
 
         return redirect()
             ->route('operacional.kanban')
-            ->with('ok', 'Tarefa APR criada com sucesso!');
+            ->with('ok', 'Tarefa de Treinamento de NRs criada com sucesso.');
     }
 
     /**
@@ -159,6 +159,12 @@ class AprController extends Controller
                 ]);
             }
         });
+
+        if ($request->query('origem') === 'cliente') {
+            return redirect()
+                ->route('cliente.dashboard')
+                ->with('ok', 'APR atualizada com sucesso!');
+        }
 
         return redirect()
             ->route('operacional.kanban')

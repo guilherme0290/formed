@@ -1,4 +1,5 @@
-@extends('layouts.operacional')
+@extends(request()->query('origem') === 'cliente' ? 'layouts.cliente' : 'layouts.operacional')
+
 
 
 @php

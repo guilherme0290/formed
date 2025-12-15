@@ -1,18 +1,19 @@
-@extends('layouts.operacional')
+@extends(request()->query('origem') === 'cliente' ? 'layouts.cliente' : 'layouts.operacional')
+
 
 @section('pageTitle', 'Treinamentos de NRs')
 
 @section('content')
     @php
-        $usuario = auth()->user();
+        $origem = request()->query('origem');
     @endphp
 
     <div class="container mx-auto px-4 py-6">
         <div class="mb-4 flex items-center justify-between">
-            <a href="{{ ($usuario && method_exists($usuario, 'isCliente') && $usuario->isCliente())
-                        ? route('cliente.dashboard')
-                        : route('operacional.kanban.servicos', $cliente) }}"
-               class="inline-flex items-center gap-2 text-xs px-3 py-1.5 rounded-full border border-slate-200 bg-white hover:bg-slate-50">
+            <a href="{{ $origem === 'cliente'
+                    ? route('cliente.dashboard')
+                    : route('operacional.kanban.servicos', $cliente) }}"
+               class="inline-flex items-center gap-2 text-xs text-slate-600">
                 ← Voltar
             </a>
         </div>

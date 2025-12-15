@@ -1,10 +1,10 @@
-@extends('layouts.operacional')
+@extends(request()->query('origem') === 'cliente' ? 'layouts.cliente' : 'layouts.operacional')
 
 @section('pageTitle', 'LTCAT - Selecione o Tipo')
 
 @section('content')
     @php
-        // pega da view (vindo do controller) ou da querystring
+
         $origem = $origem ?? request()->query('origem');
 
         $rotaVoltar = $origem === 'cliente'

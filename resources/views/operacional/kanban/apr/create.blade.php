@@ -1,18 +1,19 @@
-@extends('layouts.operacional')
+@extends(request()->query('origem') === 'cliente' ? 'layouts.cliente' : 'layouts.operacional')
+
 
 @section('pageTitle', 'APR - Análise Preliminar de Riscos')
 
 @section('content')
 
-        @php
-            $usuario = auth()->user();
-        @endphp
+    @php
+        $origem = request()->query('origem');
+    @endphp
 
         <div class="container mx-auto px-4 py-6">
             <div class="mb-4 flex items-center justify-between">
-                <a href="{{ ($usuario && $usuario->isCliente())
-                        ? route('cliente.dashboard')
-                        : route('operacional.kanban.servicos', $cliente) }}"
+                <a href="{{ $origem === 'cliente'
+                    ? route('cliente.dashboard')
+                    : route('operacional.kanban.servicos', $cliente) }}"
                    class="inline-flex items-center gap-2 text-xs text-slate-600">
                     ← Voltar
                 </a>
@@ -32,8 +33,8 @@
 
             <form method="POST"
                   action="{{ !empty($isEdit) && $apr
-                        ? route('operacional.apr.update', $apr)
-                        : route('operacional.apr.store', $cliente) }}"
+                       ? route('operacional.apr.update', ['apr' => $apr, 'origem' => $origem])
+                       : route('operacional.apr.store', ['cliente' => $cliente, 'origem' => $origem]) }}"
                   class="p-6 space-y-6">
                 @csrf
                 @if(!empty($isEdit) && $apr)

@@ -149,11 +149,14 @@ class AsoController extends Controller
             return $tarefa;
         });
 
-        if ($usuario->isCliente()) {
+        $origem = $request->query('origem');
+
+        if ($origem === 'cliente') {
             return redirect()
                 ->route('cliente.dashboard')
-                ->with('ok', "Agendamento ASO criado com sucesso para o colaborador {$tarefa->titulo}.");
+                ->with('ok', "Agendamento ASO criado com sucesso para {$tarefa->titulo}.");
         }
+
         return redirect()
             ->route('operacional.kanban')
             ->with('ok', "Tarefa ASO agendada {$tarefa->titulo}.");
@@ -373,6 +376,14 @@ class AsoController extends Controller
 
             $aso->save();
         });
+
+        $origem = $request->query('origem');
+
+        if ($origem === 'cliente') {
+            return redirect()
+                ->route('cliente.dashboard')
+                ->with('ok', 'ASO atualizado com sucesso.');
+        }
 
         return redirect()
             ->route('operacional.kanban')

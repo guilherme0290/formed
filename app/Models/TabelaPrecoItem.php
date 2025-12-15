@@ -26,12 +26,12 @@ class TabelaPrecoItem extends Model
         return $this->belongsTo(Servico::class);
     }
 
-    public function historicos()
+    public function tabelaPadrao()
     {
-        return $this->hasMany(TabelaPrecoItemHistorico::class, 'item_id');
+        return $this->belongsTo(\App\Models\TabelaPrecoPadrao::class, 'tabela_preco_padrao_id');
     }
 
-    // aceita "R$ 1.234,56" ou "1.234,56" e converte para 1234.56
+
     public function setPrecoAttribute($value): void
     {
         if (is_string($value)) {

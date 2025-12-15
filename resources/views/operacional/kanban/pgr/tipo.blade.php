@@ -1,4 +1,4 @@
-@extends('layouts.operacional')
+@extends(request()->query('origem') === 'cliente' ? 'layouts.cliente' : 'layouts.operacional')
 
 @section('title', 'PGR - Selecione o Tipo')
 

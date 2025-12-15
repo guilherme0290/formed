@@ -35,6 +35,8 @@ class LtcatController extends Controller
 
         abort_if($cliente->empresa_id !== $empresaId, 403);
 
+        $origem = $request->query('origem');
+
         $tipo = $request->query('tipo'); // matriz | especifico
         abort_unless(in_array($tipo, ['matriz', 'especifico'], true), 404);
 
@@ -60,6 +62,8 @@ class LtcatController extends Controller
             'funcoesForm'  => $funcoesForm,
             'ltcat'        => null,
             'isEdit'       => false,
+            'origem'       => $origem,
+
         ]);
     }
 
@@ -186,9 +190,18 @@ class LtcatController extends Controller
             }
         });
 
+        $origem = $request->input('origem');
+
+        if ($origem === 'cliente') {
+            return redirect()
+                ->route('cliente.dashboard')
+                ->with('ok', 'LTCAT atualizado com sucesso!');
+        }
+
         return redirect()
             ->route('operacional.kanban')
             ->with('ok', 'LTCAT atualizado com sucesso!');
+
     }
 
 
@@ -321,7 +334,10 @@ class LtcatController extends Controller
             ]);
         });
 
-        if ($user->isCliente()) {
+
+        $origem = $request->input('origem');
+
+        if ($origem === 'cliente') {
             return redirect()
                 ->route('cliente.dashboard')
                 ->with('ok', 'Solicitação de LTCAT criada com sucesso e enviada para análise.');

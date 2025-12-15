@@ -377,16 +377,22 @@ Route::middleware('auth')->group(function () {
                 $clienteId = session('portal_cliente_id');
                 $cliente   = Cliente::findOrFail($clienteId);
 
-                return redirect()->route('operacional.apr.create', $cliente);
+                return redirect()->route('operacional.apr.create', [
+                    'cliente' => $cliente->id,
+                    'origem'  => 'cliente',
+                ]);
             })->name('servicos.apr');
 
             //servicos/treinamentos
 
             Route::get('/servicos/treinamentos', function () {
                 $clienteId = session('portal_cliente_id');
-                $cliente = \App\Models\Cliente::findOrFail($clienteId);
+                $cliente   = \App\Models\Cliente::findOrFail($clienteId);
 
-                return redirect()->route('operacional.treinamentos-nr.create', $cliente);
+                return redirect()->route('operacional.treinamentos-nr.create', [
+                    'cliente' => $cliente->id,
+                    'origem'  => 'cliente',
+                ]);
             })->name('servicos.treinamentos');
 
     });
@@ -410,6 +416,10 @@ Route::middleware('auth')->group(function () {
 
             Route::get('/propostas/{proposta}', [PropostaController::class, 'show'])
                 ->name('propostas.show');
+
+            Route::post('/propostas/{proposta}/fechar', [PropostaController::class, 'fechar'])
+                ->name('propostas.fechar');
+
         });
 
 
