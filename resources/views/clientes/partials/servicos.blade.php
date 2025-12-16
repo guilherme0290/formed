@@ -36,7 +36,7 @@
                     </span>
 
                     <a href="{{ route('cliente.funcionarios.index') }}"
-                       class="text-[color:var(--color-brand-azul)] font-medium hover:underline">
+                       class="text-[color:var(--color-brand-azul)] font-medium hover:opacity-100 opacity-80">
                         Acessar
                     </a>
                 </div>
@@ -65,6 +65,8 @@
                        class="text-[color:var(--color-brand-azul)] font-medium hover:opacity-100 opacity-80">
                         Solicitar
                     </a>
+
+
                 </div>
             </div>
 

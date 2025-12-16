@@ -25,4 +25,16 @@ class TabelaPrecoPadrao extends Model
     {
         return $this->hasMany(TabelaPrecoItem::class, 'tabela_preco_padrao_id');
     }
+
+    public function esocialFaixas()
+    {
+        return $this->hasMany(EsocialTabPreco::class, 'tabela_preco_padrao_id');
+    }
+
+    public function esocialFaixasAtivas()
+    {
+        return $this->hasMany(EsocialTabPreco::class, 'tabela_preco_padrao_id')
+            ->where('ativo', true)
+            ->orderBy('inicio');
+    }
 }

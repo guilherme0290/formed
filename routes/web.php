@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\ClientesApiController;
 use App\Http\Controllers\Api\ServicosApiController;
 use App\Http\Controllers\ClienteController;
+use App\Http\Controllers\Comercial\EsocialFaixaController;
 use App\Http\Controllers\Master\AcessosController;
 use App\Http\Controllers\Master\DashboardController;
 use App\Http\Controllers\Operacional\AsoController;
@@ -14,12 +15,13 @@ use App\Http\Controllers\Operacional\PgrController;
 use App\Http\Controllers\PapelController;
 use App\Http\Controllers\PermissaoController;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\TabelaPrecoController;
+use App\Http\Controllers\Comercial\TabelaPrecoController;
 use App\Http\Controllers\TabelaPrecoItemController;
 use App\Http\Controllers\Operacional\LtcatController;
 use App\Http\Controllers\Operacional\AprController;
 use App\Http\Controllers\Operacional\PaeController;
 use App\Http\Controllers\Operacional\TreinamentoNrController;
+use App\Http\Controllers\Comercial\TreinamentoNrController as ComercialTreinamentoNrController;
 use App\Http\Controllers\FuncaoController;
 use App\Http\Controllers\TarefaController;
 use App\Http\Controllers\AnexoController;
@@ -420,7 +422,53 @@ Route::middleware('auth')->group(function () {
             Route::post('/propostas/{proposta}/fechar', [PropostaController::class, 'fechar'])
                 ->name('propostas.fechar');
 
+            //tabela de preco
+            Route::get('/tabela-precos', [TabelaPrecoController::class, 'index'])
+                ->name('tabela-precos.index');
+
+            Route::post('/tabela-precos', [TabelaPrecoController::class, 'update'])
+                ->name('tabela-precos.update');
+
+            //tabela de preco ITENS
+
+            Route::get('/itens', [TabelaPrecoController::class, 'itensIndex'])->name('tabela-precos.itens.index');
+            Route::get('/itens/novo', [TabelaPrecoController::class, 'createItem'])->name('tabela-precos.itens.create');
+            Route::post('/itens', [TabelaPrecoController::class, 'storeItem'])->name('tabela-precos.itens.store');
+            Route::put('/itens/{item}', [TabelaPrecoController::class, 'updateItem'])->name('tabela-precos.itens.update');
+            Route::delete('/itens/{item}', [TabelaPrecoController::class, 'destroyItem'])->name('tabela-precos.itens.destroy');
+
+            //Esocial
+            Route::get('/esocial/faixas', [EsocialFaixaController::class, 'indexJson'])
+                ->name('esocial.faixas.json');
+
+            Route::post('/esocial/faixas', [EsocialFaixaController::class, 'store'])
+                ->name('esocial.faixas.store');
+
+            Route::put('/esocial/faixas/{faixa}', [EsocialFaixaController::class, 'update'])
+                ->name('esocial.faixas.update');
+
+            Route::delete('/esocial/faixas/{faixa}', [EsocialFaixaController::class, 'destroy'])
+                ->name('esocial.faixas.destroy');
+//            Route::get('/esocial/faixas', [EsocialFaixaController::class, 'index'])
+//                ->name('tabela-precos.esocial.faixas.index');
+//
+//            Route::get('/esocial/faixas/json', [EsocialFaixaController::class, 'indexJson'])
+//                ->name('tabela-precos.esocial.faixas.json');
+//
+//            Route::post('/esocial/faixas', [EsocialFaixaController::class, 'store'])
+//                ->name('tabela-precos.esocial.faixas.store');
+//
+//            Route::put('/esocial/faixas/{faixa}', [EsocialFaixaController::class, 'update'])
+//                ->name('tabela-precos.esocial.faixas.update');
+//
+//            Route::delete('/esocial/faixas/{faixa}', [EsocialFaixaController::class, 'destroy'])
+//                ->name('tabela-precos.esocial.faixas.destroy');
+
+            //Treinamento NRs
+            Route::get('/treinamentos-nrs/json', [ComercialTreinamentoNrController::class, 'indexJson'])
+                ->name('tabela-precos.treinamentos-nrs.json');
         });
+
 
 
 
@@ -488,14 +536,14 @@ Route::middleware('auth')->group(function () {
     // ======================================================
     //                TABELA DE PREÇOS
     // ======================================================
-    Route::prefix('master/tabela-precos')->name('tabela-precos.')->group(function () {
-        Route::get('/', [TabelaPrecoController::class,'index'])->name('index');
-
-        Route::post('/itens',                 [TabelaPrecoItemController::class,'store'])->name('items.store');
-        Route::put('/itens/{item}',           [TabelaPrecoItemController::class,'update'])->name('items.update');
-        Route::patch('/itens/{item}/toggle',  [TabelaPrecoItemController::class,'toggle'])->name('items.toggle');
-        Route::delete('/itens/{item}',        [TabelaPrecoItemController::class,'destroy'])->name('items.destroy');
-    });
+//    Route::prefix('master/tabela-precos')->name('tabela-precos.')->group(function () {
+//        Route::get('/', [TabelaPrecoController::class,'index'])->name('index');
+//
+//        Route::post('/itens',                 [TabelaPrecoItemController::class,'store'])->name('items.store');
+//        Route::put('/itens/{item}',           [TabelaPrecoItemController::class,'update'])->name('items.update');
+//        Route::patch('/itens/{item}/toggle',  [TabelaPrecoItemController::class,'toggle'])->name('items.toggle');
+//        Route::delete('/itens/{item}',        [TabelaPrecoItemController::class,'destroy'])->name('items.destroy');
+//    });
 
     // ======================================================
     //                    APIs internas

@@ -118,7 +118,7 @@
                     </a>
 
                     {{-- Tabela de Preços --}}
-                    <a href="{{ route('tabela-precos.index') }}"
+                    <a href="{{ route('comercial.tabela-precos.index') }}"
                        class="group rounded-2xl border border-green-100 bg-green-50/80 hover:bg-green-100 transition shadow-sm p-4 flex flex-col justify-between">
                         <div>
                             <div class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-green-500 text-white mb-3">
