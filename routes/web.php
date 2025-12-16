@@ -449,20 +449,7 @@ Route::middleware('auth')->group(function () {
 
             Route::delete('/esocial/faixas/{faixa}', [EsocialFaixaController::class, 'destroy'])
                 ->name('esocial.faixas.destroy');
-//            Route::get('/esocial/faixas', [EsocialFaixaController::class, 'index'])
-//                ->name('tabela-precos.esocial.faixas.index');
-//
-//            Route::get('/esocial/faixas/json', [EsocialFaixaController::class, 'indexJson'])
-//                ->name('tabela-precos.esocial.faixas.json');
-//
-//            Route::post('/esocial/faixas', [EsocialFaixaController::class, 'store'])
-//                ->name('tabela-precos.esocial.faixas.store');
-//
-//            Route::put('/esocial/faixas/{faixa}', [EsocialFaixaController::class, 'update'])
-//                ->name('tabela-precos.esocial.faixas.update');
-//
-//            Route::delete('/esocial/faixas/{faixa}', [EsocialFaixaController::class, 'destroy'])
-//                ->name('tabela-precos.esocial.faixas.destroy');
+
 
             //Treinamento NRs
             Route::get('/treinamentos-nrs/json', [ComercialTreinamentoNrController::class, 'indexJson'])

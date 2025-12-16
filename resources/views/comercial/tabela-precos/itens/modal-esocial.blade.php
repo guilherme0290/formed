@@ -20,11 +20,11 @@
 
                 {{-- grid header --}}
                 <div class="grid grid-cols-12 gap-2 text-xs font-semibold text-slate-500 mb-2">
-                    <div class="col-span-3">Faixa</div>
+                    <div class="col-span-2">Faixa</div>
                     <div class="col-span-5">Descrição</div>
-                    <div class="col-span-2 text-right">Preço</div>
-                    <div class="col-span-1 text-center">Ativo</div>
-                    <div class="col-span-1 text-right">Ações</div>
+                    <div class="col-span-1 text-right">Preço</div>
+                    <div class="col-span-2 text-center">Status</div>
+                    <div class="col-span-2 text-center">Ações</div>
                 </div>
 
                 {{-- rows --}}
@@ -42,7 +42,7 @@
 {{-- Modal interno: criar/editar faixa --}}
 <div id="modalEsocialForm" class="fixed inset-0 z-[60] hidden bg-black/40">
     <div class="min-h-full flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-xl rounded-2xl shadow-xl overflow-hidden">
+        <div class="bg-white w-full max-w-5xl rounded-2xl shadow-xl overflow-hidden">
             <div class="px-6 py-4 border-b flex items-center justify-between">
                 <h3 id="esocialFormTitle" class="text-base font-semibold">Nova Faixa</h3>
                 <button type="button" class="h-9 w-9 rounded-xl hover:bg-slate-100 text-slate-500"

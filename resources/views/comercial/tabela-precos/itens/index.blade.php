@@ -4,6 +4,12 @@
 @section('content')
     <div class="max-w-7xl mx-auto px-4 md:px-6 py-6 space-y-6">
 
+        <div class="mb-4">
+            <a href="{{ route('comercial.dashboard') }}"
+               class="inline-flex items-center text-sm text-slate-600 hover:text-slate-800">
+                ← Voltar ao Painel
+            </a>
+        </div>
         <header class="flex items-center justify-between">
             <div>
                 <h1 class="text-2xl font-semibold text-slate-900">Itens da Tabela de Preços</h1>
@@ -35,7 +41,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                               d="M12 6v6l4 2M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                     </svg>
-                    <span>Gerenciar faixas eSocial</span>
+                    <span>eSocial</span>
                 </button>
             </div>
         </header>
@@ -61,7 +67,7 @@
                         <th class="px-5 py-3 font-semibold">Serviço</th>
                         <th class="px-5 py-3 font-semibold">Item</th>
                         <th class="px-5 py-3 font-semibold">Preço</th>
-                        <th class="px-5 py-3 font-semibold">Ativo</th>
+                        <th class="px-5 py-3 font-semibold">Status</th>
                         <th class="px-5 py-3 font-semibold w-32">Ações</th>
                     </tr>
                     </thead>
@@ -87,12 +93,12 @@
                                 @if($item->ativo)
                                     <span
                                         class="text-xs px-2 py-1 rounded-full bg-green-50 text-green-700 border border-green-100">
-                                    Sim
+                                    Ativo
                                 </span>
                                 @else
                                     <span
                                         class="text-xs px-2 py-1 rounded-full bg-red-50 text-red-700 border border-red-100">
-                                    Não
+                                    Inativo
                                 </span>
                                 @endif
                             </td>
@@ -136,7 +142,7 @@
 
     </div>
 
-    {{-- MODAL NOVO ITEM --}}
+
     {{-- MODAL NOVO ITEM --}}
     <div id="modalNovoItem"
          class="fixed inset-0 z-50 hidden bg-black/40">
@@ -292,29 +298,7 @@
         </div>
     </div>
 
-    {{--    Modal eSocial--}}
-    {{--    <div id="modalEsocial"--}}
-    {{--         class="fixed inset-0 z-50 hidden bg-black/40">--}}
 
-    {{--        <div class="min-h-full flex items-center justify-center p-4">--}}
-    {{--            <div class="bg-white w-full max-w-3xl rounded-2xl shadow-xl">--}}
-
-    {{--                <div class="px-6 py-4 border-b flex justify-between">--}}
-    {{--                    <h2 class="text-lg font-semibold">Faixas de eSocial</h2>--}}
-    {{--                    <button onclick="closeEsocialModal()">✕</button>--}}
-    {{--                </div>--}}
-
-    {{--                <div class="p-6">--}}
-    {{--                    --}}{{-- tabela de faixas --}}
-    {{--                    <div id="esocialFaixas"></div>--}}
-
-    {{--                    <button class="mt-4 rounded-xl bg-blue-600 text-white px-4 py-2">--}}
-    {{--                        Nova Faixa--}}
-    {{--                    </button>--}}
-    {{--                </div>--}}
-    {{--            </div>--}}
-    {{--        </div>--}}
-    {{--    </div>--}}
     @include('comercial.tabela-precos.itens.modal-esocial')
 
 
@@ -585,11 +569,17 @@
                     el.modalItem.classList.add('hidden');
                 }
 
-                function openEsocialModal() {
+                async function openEsocialModal() {
                     if (!el.modalEsocial) return;
+
                     el.modalEsocial.classList.remove('hidden');
-                    // TODO: loadEsocialFaixas()
+
+                    // carrega e renderiza as faixas assim que abrir
+                    if (typeof window.loadEsocialFaixas === 'function') {
+                        await window.loadEsocialFaixas();
+                    }
                 }
+
 
                 function closeEsocialModal() {
                     if (!el.modalEsocial) return;
@@ -648,14 +638,15 @@
             // eSOCIAL (CRUD via AJAX)
             // ============================
 
+            const ESOCIAL_BASE_URL = @json(route('comercial.esocial.faixas.store'));
+            // ex: /comercial/esocial/faixas
+
             const ESOCIAL = {
                 urls: {
                     list:   @json(route('comercial.esocial.faixas.json')),
-                    store:  @json(route('comercial.esocial.faixas.store')),
-                    update: (id) =>
-                    @json(route('comercial.esocial.faixas.update', ['faixa' => '__ID__'])).replace('__ID__', id),
-                    destroy: (id) =>
-                    @json(route('comercial.esocial.faixas.destroy', ['faixa' => '__ID__'])).replace('__ID__', id),
+                    store:  ESOCIAL_BASE_URL,
+                    update: (id) => `${ESOCIAL_BASE_URL}/${id}`,
+                    destroy:(id) => `${ESOCIAL_BASE_URL}/${id}`,
                 },
                 csrf: document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
                 state: {
@@ -718,7 +709,7 @@
                     row.className = 'grid grid-cols-12 gap-2 items-center rounded-xl border border-slate-200 px-3 py-2';
 
                     row.innerHTML = `
-            <div class="col-span-3">
+            <div class="col-span-2">
                 <div class="text-sm font-semibold text-slate-800">${faixaTxt}</div>
                 <div class="text-[11px] text-slate-500">#${f.id}</div>
             </div>
@@ -727,16 +718,16 @@
                 ${f.descricao ? escapeHtml(f.descricao) : '<span class="text-slate-400">—</span>'}
             </div>
 
-            <div class="col-span-2 text-right text-sm font-semibold text-slate-800">
+            <div class="col-span-1 text-right text-sm font-semibold text-slate-800">
                 ${precoTxt}
             </div>
 
-            <div class="col-span-1 text-center">
-                ${f.ativo ? '<span class="text-xs px-2 py-1 rounded-full bg-green-50 text-green-700 border border-green-100">Sim</span>'
-                        : '<span class="text-xs px-2 py-1 rounded-full bg-red-50 text-red-700 border border-red-100">Não</span>'}
+            <div class="col-span-2 text-center">
+                ${f.ativo ? '<span class="text-xs px-2 py-1 rounded-full bg-green-50 text-green-700 border border-green-100">Ativo</span>'
+                        : '<span class="text-xs px-2 py-1 rounded-full bg-red-50 text-red-700 border border-red-100">Inativo</span>'}
             </div>
 
-            <div class="col-span-1 flex justify-end gap-2">
+            <div class="col-span-2 text-center ">
                 <button type="button"
                         class="text-blue-600 hover:underline text-sm"
                         data-action="edit" data-id="${f.id}">
@@ -931,6 +922,7 @@
                     closeEsocialForm();
                     await loadEsocialFaixas();
                     esocialAlert('ok', isEdit ? 'Faixa atualizada.' : 'Faixa criada.');
+                    window.loadEsocialFaixas = loadEsocialFaixas;
                 } catch (err) {
                     console.error(err);
                     esocialAlert('err', 'Falha ao salvar faixa.');

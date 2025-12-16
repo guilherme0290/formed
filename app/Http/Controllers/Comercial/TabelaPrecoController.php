@@ -180,10 +180,14 @@ class TabelaPrecoController extends Controller
 
         $padrao = TabelaPrecoPadrao::where('empresa_id', $empresaId)
             ->where('ativa', true)
+
             ->firstOrFail();
+
+        $esocialId = config('services.esocial_id');
 
         $servicos = Servico::where('empresa_id', $empresaId)
             ->where('ativo', true)
+            ->when($esocialId, fn($q) => $q->where('id', '!=', $esocialId))
             ->orderBy('nome')
             ->get();
 

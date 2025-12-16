@@ -19,88 +19,88 @@
                 </a>
             </div>
 
-        <div class="max-w-4xl mx-auto bg-white rounded-2xl shadow-lg overflow-hidden">
-            {{-- Cabeçalho --}}
-            <div class="px-6 py-4 bg-gradient-to-r from-amber-700 to-amber-600 text-white">
-                <h1 class="text-lg font-semibold">
-                    APR - Análise Preliminar de Riscos
-                    {{ !empty($isEdit) ? '(Editar)' : '' }}
-                </h1>
-                <p class="text-xs text-white/80 mt-1">
-                    {{ $cliente->razao_social }}
-                </p>
-            </div>
+            <div class="max-w-4xl mx-auto bg-white rounded-2xl shadow-lg overflow-hidden">
+                {{-- Cabeçalho --}}
+                <div class="px-6 py-4 bg-gradient-to-r from-amber-700 to-amber-600 text-white">
+                    <h1 class="text-lg font-semibold">
+                        APR - Análise Preliminar de Riscos
+                        {{ !empty($isEdit) ? '(Editar)' : '' }}
+                    </h1>
+                    <p class="text-xs text-white/80 mt-1">
+                        {{ $cliente->razao_social }}
+                    </p>
+                </div>
 
-            <form method="POST"
-                  action="{{ !empty($isEdit) && $apr
-                       ? route('operacional.apr.update', ['apr' => $apr, 'origem' => $origem])
-                       : route('operacional.apr.store', ['cliente' => $cliente, 'origem' => $origem]) }}"
-                  class="p-6 space-y-6">
-                @csrf
-                @if(!empty($isEdit) && $apr)
-                    @method('PUT')
-                @endif
+                <form method="POST"
+                      action="{{ !empty($isEdit) && $apr
+                           ? route('operacional.apr.update', ['apr' => $apr, 'origem' => $origem])
+                           : route('operacional.apr.store', ['cliente' => $cliente, 'origem' => $origem]) }}"
+                      class="p-6 space-y-6">
+                    @csrf
+                    @if(!empty($isEdit) && $apr)
+                        @method('PUT')
+                    @endif
 
-                @if ($errors->any())
-                    <div class="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-700 mb-2">
-                        <ul class="list-disc ms-4">
-                            @foreach($errors->all() as $err)
-                                <li>{{ $err }}</li>
-                            @endforeach
-                        </ul>
+                    @if ($errors->any())
+                        <div class="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-700 mb-2">
+                            <ul class="list-disc ms-4">
+                                @foreach($errors->all() as $err)
+                                    <li>{{ $err }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
+
+                    {{-- Endereço da Obra/Atividade --}}
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">
+                            Endereço da Obra/Atividade *
+                        </label>
+                        <input type="text"
+                               name="endereco_atividade"
+                               value="{{ old('endereco_atividade', $apr->endereco_atividade ?? '') }}"
+                               class="w-full rounded-lg border-slate-200 text-sm px-3 py-2
+                                      focus:outline-none focus:ring-2 focus:ring-amber-400/70 focus:border-amber-500"
+                               placeholder="Local onde será realizada a atividade">
                     </div>
-                @endif
 
-                {{-- Endereço da Obra/Atividade --}}
-                <div>
-                    <label class="block text-xs font-medium text-slate-600 mb-1">
-                        Endereço da Obra/Atividade *
-                    </label>
-                    <input type="text"
-                           name="endereco_atividade"
-                           value="{{ old('endereco_atividade', $apr->endereco_atividade ?? '') }}"
-                           class="w-full rounded-lg border-slate-200 text-sm px-3 py-2
-                                  focus:outline-none focus:ring-2 focus:ring-amber-400/70 focus:border-amber-500"
-                           placeholder="Local onde será realizada a atividade">
-                </div>
+                    {{-- Funções Envolvidas --}}
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">
+                            Funções Envolvidas *
+                        </label>
+                        <textarea
+                            name="funcoes_envolvidas"
+                            rows="3"
+                            class="w-full rounded-lg border-slate-200 text-sm px-3 py-2
+                                   focus:outline-none focus:ring-2 focus:ring-amber-400/70 focus:border-amber-500"
+                            placeholder="Liste as funções que participarão da atividade (ex: Carpinteiro, Ajudante, Eletricista)"
+                        >{{ old('funcoes_envolvidas', $apr->funcoes_envolvidas ?? '') }}</textarea>
+                    </div>
 
-                {{-- Funções Envolvidas --}}
-                <div>
-                    <label class="block text-xs font-medium text-slate-600 mb-1">
-                        Funções Envolvidas *
-                    </label>
-                    <textarea
-                        name="funcoes_envolvidas"
-                        rows="3"
-                        class="w-full rounded-lg border-slate-200 text-sm px-3 py-2
-                               focus:outline-none focus:ring-2 focus:ring-amber-400/70 focus:border-amber-500"
-                        placeholder="Liste as funções que participarão da atividade (ex: Carpinteiro, Ajudante, Eletricista)"
-                    >{{ old('funcoes_envolvidas', $apr->funcoes_envolvidas ?? '') }}</textarea>
-                </div>
+                    {{-- Etapas da Atividade --}}
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">
+                            Etapas da Atividade (Passo a Passo) *
+                        </label>
+                        <textarea
+                            name="etapas_atividade"
+                            rows="5"
+                            class="w-full rounded-lg border-slate-200 text-sm px-3 py-2
+                                   focus:outline-none focus:ring-2 focus:ring-amber-400/70 focus:border-amber-500"
+                            placeholder="Descreva passo a passo como a atividade será executada"
+                        >{{ old('etapas_atividade', $apr->etapas_atividade ?? '') }}</textarea>
+                    </div>
 
-                {{-- Etapas da Atividade --}}
-                <div>
-                    <label class="block text-xs font-medium text-slate-600 mb-1">
-                        Etapas da Atividade (Passo a Passo) *
-                    </label>
-                    <textarea
-                        name="etapas_atividade"
-                        rows="5"
-                        class="w-full rounded-lg border-slate-200 text-sm px-3 py-2
-                               focus:outline-none focus:ring-2 focus:ring-amber-400/70 focus:border-amber-500"
-                        placeholder="Descreva passo a passo como a atividade será executada"
-                    >{{ old('etapas_atividade', $apr->etapas_atividade ?? '') }}</textarea>
-                </div>
-
-                {{-- Footer --}}
-                <div class="pt-4 border-t border-slate-100 flex justify-end">
-                    <button type="submit"
-                            class="inline-flex items-center justify-center px-5 py-2.5 rounded-xl
-                                   bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 shadow-sm">
-                        {{ !empty($isEdit) ? 'Salvar alterações' : 'Criar Tarefa APR' }}
-                    </button>
-                </div>
-            </form>
+                    {{-- Footer --}}
+                    <div class="pt-4 border-t border-slate-100 flex justify-end">
+                        <button type="submit"
+                                class="inline-flex items-center justify-center px-5 py-2.5 rounded-xl
+                                       bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 shadow-sm">
+                            {{ !empty($isEdit) ? 'Salvar alterações' : 'Criar Tarefa APR' }}
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
-    </div>
 @endsection

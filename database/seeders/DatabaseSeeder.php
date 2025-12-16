@@ -31,7 +31,8 @@ class DatabaseSeeder extends Seeder
             ServicoSeeder::class,
             FuncaoSeeder::class,
             ClientePortalSeeder::class,
-            TreinamentoNRsSeed::class
+            TreinamentoNRsSeed::class,
+            TabelaPrecoPadraoFullSeeder::class,
         ]);
     }
 }
