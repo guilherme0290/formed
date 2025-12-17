@@ -35,7 +35,7 @@ return [
         ],
     ],
 
-    'treinamento_id' => env('FORMED_SERVICO_TREINAMENTO_ID'),
+    'treinamento_id' => env('FORMED_SERVICO_TREINAMENTO_ID', 8),
     'esocial_id'     => env('FORMED_SERVICO_ESOCIAL_ID'),
 
 ];

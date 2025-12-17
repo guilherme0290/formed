@@ -327,8 +327,7 @@
                     await load();
                     alertBox('ok', isEdit ? 'Treinamento atualizado.' : 'Treinamento criado.');
 
-                    // Opcional: se seus chips dependem dessa lista, você pode chamar uma função global aqui:
-                    // if (typeof window.refreshNrChipsIfOpen === 'function') window.refreshNrChipsIfOpen();
+                    window.dispatchEvent(new Event('treinamentos-nrs:changed'));
 
                 } catch (err) {
                     console.error(err);
@@ -350,6 +349,7 @@
 
                     await load();
                     alertBox('ok', 'Treinamento excluído.');
+                    window.dispatchEvent(new Event('treinamentos-nrs:changed'));
                 } catch (err) {
                     console.error(err);
                     alertBox('err', 'Falha ao excluir.');

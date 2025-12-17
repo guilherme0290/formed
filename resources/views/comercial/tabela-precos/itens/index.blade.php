@@ -52,7 +52,7 @@
                     <span>Exames</span>
                 </button>
                 <button type="button"
-                        onclick="openTreinamentosCrudModal()"
+                        onclick="openNovoTreinamentoItemModal()"
                         class="inline-flex items-center justify-center gap-2 rounded-2xl
                bg-white hover:bg-emerald-50 active:bg-emerald-100
                text-emerald-700 px-4 py-2 text-sm font-semibold shadow-sm
@@ -88,69 +88,147 @@
                     </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
-                    @forelse($itens as $item)
-                        <tr>
-                            <td class="px-5 py-3">
-                            <span class="text-slate-800 font-medium">
-                                {{ $item->servico?->nome ?? 'Item livre' }}
-                            </span>
-                            </td>
+                    @php
+                        $treinamentoId = (int) config('services.treinamento_id');
+                        $itensTreinamentos = $itens->filter(fn ($i) => (int) ($i->servico_id ?? 0) === $treinamentoId);
+                        $itensOutros = $itens->reject(fn ($i) => (int) ($i->servico_id ?? 0) === $treinamentoId);
+                    @endphp
 
-                            <td class="px-5 py-3">
-                                <div class="font-medium text-slate-800">{{ $item->descricao }}</div>
-                                <div class="text-xs text-slate-500">{{ $item->codigo }}</div>
-                            </td>
-
-                            <td class="px-5 py-3 font-semibold text-slate-800">
-                                R$ {{ number_format($item->preco, 2, ',', '.') }}
-                            </td>
-
-                            <td class="px-5 py-3">
-                                @if($item->ativo)
-                                    <span
-                                        class="text-xs px-2 py-1 rounded-full bg-green-50 text-green-700 border border-green-100">
-                                    Ativo
-                                </span>
-                                @else
-                                    <span
-                                        class="text-xs px-2 py-1 rounded-full bg-red-50 text-red-700 border border-red-100">
-                                    Inativo
-                                </span>
-                                @endif
-                            </td>
-
-                            <td class="px-5 py-3 flex gap-2">
-                                <button type="button"
-                                        class="text-blue-600 hover:underline text-sm"
-                                        onclick="openEditarItemModal(this)"
-                                        data-id="{{ $item->id }}"
-                                        data-servico-id="{{ $item->servico_id ?? '' }}"
-                                        data-codigo="{{ e($item->codigo ?? '') }}"
-                                        data-descricao="{{ e($item->descricao ?? '') }}"
-                                        data-preco="{{ $item->preco }}"
-                                        data-ativo="{{ $item->ativo ? 1 : 0 }}"
-                                        data-update-url="{{ route('comercial.tabela-precos.itens.update', $item) }}">
-                                    Editar
-                                </button>
-
-                                <form method="POST"
-                                      action="{{ route('comercial.tabela-precos.itens.destroy', $item) }}"
-                                      onsubmit="return confirm('Deseja remover este item?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button class="text-red-600 hover:underline text-sm">
-                                        Excluir
-                                    </button>
-                                </form>
-                            </td>
-                        </tr>
-                    @empty
+                    @if($itens->isEmpty())
                         <tr>
                             <td colspan="5" class="px-5 py-6 text-center text-slate-500">
                                 Nenhum item cadastrado.
                             </td>
                         </tr>
-                    @endforelse
+                    @else
+                        @if($itensOutros->isNotEmpty())
+                            <tr class="bg-slate-50">
+                                <td colspan="5" class="px-5 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                                    Serviços (ASO, documentos, laudos, etc.)
+                                </td>
+                            </tr>
+
+                            @foreach($itensOutros as $item)
+                                <tr>
+                                    <td class="px-5 py-3">
+                                        <span class="text-slate-800 font-medium">
+                                            {{ $item->servico?->nome ?? 'Item livre' }}
+                                        </span>
+                                    </td>
+
+                                    <td class="px-5 py-3">
+                                        <div class="font-medium text-slate-800">{{ $item->descricao }}</div>
+                                        <div class="text-xs text-slate-500">{{ $item->codigo }}</div>
+                                    </td>
+
+                                    <td class="px-5 py-3 font-semibold text-slate-800">
+                                        R$ {{ number_format($item->preco, 2, ',', '.') }}
+                                    </td>
+
+                                    <td class="px-5 py-3">
+                                        @if($item->ativo)
+                                            <span class="text-xs px-2 py-1 rounded-full bg-green-50 text-green-700 border border-green-100">
+                                                Ativo
+                                            </span>
+                                        @else
+                                            <span class="text-xs px-2 py-1 rounded-full bg-red-50 text-red-700 border border-red-100">
+                                                Inativo
+                                            </span>
+                                        @endif
+                                    </td>
+
+                                    <td class="px-5 py-3 flex gap-2">
+                                        <button type="button"
+                                                class="text-blue-600 hover:underline text-sm"
+                                                onclick="openEditarItemModal(this)"
+                                                data-id="{{ $item->id }}"
+                                                data-servico-id="{{ $item->servico_id ?? '' }}"
+                                                data-codigo="{{ e($item->codigo ?? '') }}"
+                                                data-descricao="{{ e($item->descricao ?? '') }}"
+                                                data-preco="{{ $item->preco }}"
+                                                data-ativo="{{ $item->ativo ? 1 : 0 }}"
+                                                data-update-url="{{ route('comercial.tabela-precos.itens.update', $item) }}">
+                                            Editar
+                                        </button>
+
+                                        <form method="POST"
+                                              action="{{ route('comercial.tabela-precos.itens.destroy', $item) }}"
+                                              onsubmit="return confirm('Deseja remover este item?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button class="text-red-600 hover:underline text-sm">
+                                                Excluir
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        @endif
+
+                        @if($itensTreinamentos->isNotEmpty())
+                            <tr class="bg-emerald-50 border-t-2 border-emerald-200">
+                                <td colspan="5" class="px-5 py-3 text-xs font-semibold text-emerald-800 uppercase tracking-wide">
+                                    Treinamentos (NRs)
+                                </td>
+                            </tr>
+
+                            @foreach($itensTreinamentos as $item)
+                                <tr>
+                                    <td class="px-5 py-3">
+                                        <span class="text-slate-800 font-medium">
+                                            {{ $item->servico?->nome ?? 'Treinamentos' }}
+                                        </span>
+                                    </td>
+
+                                    <td class="px-5 py-3">
+                                        <div class="font-medium text-slate-800">{{ $item->descricao }}</div>
+                                        <div class="text-xs text-slate-500">{{ $item->codigo }}</div>
+                                    </td>
+
+                                    <td class="px-5 py-3 font-semibold text-slate-800">
+                                        R$ {{ number_format($item->preco, 2, ',', '.') }}
+                                    </td>
+
+                                    <td class="px-5 py-3">
+                                        @if($item->ativo)
+                                            <span class="text-xs px-2 py-1 rounded-full bg-green-50 text-green-700 border border-green-100">
+                                                Ativo
+                                            </span>
+                                        @else
+                                            <span class="text-xs px-2 py-1 rounded-full bg-red-50 text-red-700 border border-red-100">
+                                                Inativo
+                                            </span>
+                                        @endif
+                                    </td>
+
+                                    <td class="px-5 py-3 flex gap-2">
+                                        <button type="button"
+                                                class="text-blue-600 hover:underline text-sm"
+                                                onclick="openEditarItemModal(this)"
+                                                data-id="{{ $item->id }}"
+                                                data-servico-id="{{ $item->servico_id ?? '' }}"
+                                                data-codigo="{{ e($item->codigo ?? '') }}"
+                                                data-descricao="{{ e($item->descricao ?? '') }}"
+                                                data-preco="{{ $item->preco }}"
+                                                data-ativo="{{ $item->ativo ? 1 : 0 }}"
+                                                data-update-url="{{ route('comercial.tabela-precos.itens.update', $item) }}">
+                                            Editar
+                                        </button>
+
+                                        <form method="POST"
+                                              action="{{ route('comercial.tabela-precos.itens.destroy', $item) }}"
+                                              onsubmit="return confirm('Deseja remover este item?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button class="text-red-600 hover:underline text-sm">
+                                                Excluir
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        @endif
+                    @endif
                     </tbody>
                 </table>
             </div>
@@ -226,6 +304,7 @@
                                     class="w-full mt-1 rounded-xl border-slate-200 text-sm px-3 py-2">
                                 <option value="">— Item livre (sem serviço) —</option>
                                 @foreach($servicos as $s)
+
                                     <option value="{{ $s->id }}" @selected(old('servico_id') == $s->id)>
                                         {{ $s->nome }}
                                     </option>
@@ -235,9 +314,17 @@
 
                         {{-- Chips Treinamentos NRs --}}
                         <div id="nrChipsContainer" class="hidden">
-                            <label class="text-xs font-semibold text-slate-600 mb-2 block">
-                                Treinamento (NR)
-                            </label>
+                            <div class="flex items-center justify-between gap-3 mb-2">
+                                <label class="text-xs font-semibold text-slate-600 block">
+                                    Treinamento (NR)
+                                </label>
+
+                                <button type="button"
+                                        onclick="openTreinamentosCrudModal()"
+                                        class="text-xs font-semibold text-emerald-700 hover:underline">
+                                    Cadastrar/editar treinamentos
+                                </button>
+                            </div>
 
                             <div id="nrChips"
                                  class="flex flex-wrap gap-2">
@@ -484,6 +571,14 @@
                         btn.addEventListener('click', () => selectNrChip(btn));
                         el.nrWrap.appendChild(btn);
                     });
+
+                    // Preseleciona chip se já houver código no input (ex: ao editar item)
+                    const currentCodigo = (el.codigo?.value || '').trim();
+                    if (currentCodigo) {
+                        const match = Array.from(el.nrWrap.querySelectorAll('button'))
+                            .find(b => (b.dataset.codigo || '').trim() === currentCodigo);
+                        if (match) selectNrChip(match);
+                    }
                 }
 
                 function selectNrChip(selected) {
@@ -516,6 +611,21 @@
                 // ============================
                 // MODAL ITENS
                 // ============================
+                function openNovoTreinamentoItemModal() {
+                    openNovoItemModal();
+
+                    // força serviço de treinamento e carrega NRs
+                    if (el.servico && SERVICO_TREINAMENTO_ID !== null) {
+                        el.servico.value = String(SERVICO_TREINAMENTO_ID);
+                    }
+                    if (el.codigo) el.codigo.value = '';
+                    if (el.descricao) el.descricao.value = '';
+
+                    handleServicoChange();
+
+                    el.title.textContent = 'Novo Item (Treinamento NR)';
+                }
+
                 function openNovoItemModal() {
                     el.title.textContent = 'Novo Item';
                     el.submit.textContent = 'Salvar';
@@ -595,12 +705,20 @@
                         el.servico.addEventListener('change', handleServicoChange);
                         handleServicoChange();
                     }
+
+                    // Se o CRUD de treinamentos alterar algo, atualiza os chips se o container estiver visível
+                    window.addEventListener('treinamentos-nrs:changed', () => {
+                        if (el.nrContainer && !el.nrContainer.classList.contains('hidden')) {
+                            loadNrChips();
+                        }
+                    });
                 });
 
                 // ============================
                 // EXPOE NO WINDOW (onclick="")
                 // ============================
                 window.openNovoItemModal = openNovoItemModal;
+                window.openNovoTreinamentoItemModal = openNovoTreinamentoItemModal;
                 window.openEditarItemModal = openEditarItemModal;
                 window.closeNovoItemModal = closeNovoItemModal;
 

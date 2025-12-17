@@ -411,12 +411,42 @@ Route::middleware('auth')->group(function () {
             Route::get('/', [DashboardController::class, 'index'])
                 ->name('dashboard');
 
+            // Apresentação de Proposta
+            Route::get('/apresentacao', [\App\Http\Controllers\Comercial\ApresentacaoController::class, 'cliente'])
+                ->name('apresentacao.cliente');
+            Route::post('/apresentacao', [\App\Http\Controllers\Comercial\ApresentacaoController::class, 'clienteStore'])
+                ->name('apresentacao.cliente.store');
+            Route::get('/apresentacao/segmento', [\App\Http\Controllers\Comercial\ApresentacaoController::class, 'segmento'])
+                ->name('apresentacao.segmento');
+            Route::get('/apresentacao/{segmento}', [\App\Http\Controllers\Comercial\ApresentacaoController::class, 'show'])
+                ->name('apresentacao.show');
+            Route::get('/apresentacao-cancelar', [\App\Http\Controllers\Comercial\ApresentacaoController::class, 'cancelar'])
+                ->name('apresentacao.cancelar');
+
             // Propostas
+            Route::get('/propostas', [PropostaController::class, 'index'])
+                ->name('propostas.index');
+
             Route::get('/propostas/criar', [PropostaController::class, 'create'])
                 ->name('propostas.create');
 
             Route::post('/propostas', [PropostaController::class, 'store'])
                 ->name('propostas.store');
+
+            Route::get('/propostas/{proposta}/editar', [PropostaController::class, 'edit'])
+                ->name('propostas.edit');
+
+            Route::put('/propostas/{proposta}', [PropostaController::class, 'update'])
+                ->name('propostas.update');
+
+            Route::delete('/propostas/{proposta}', [PropostaController::class, 'destroy'])
+                ->name('propostas.destroy');
+
+            Route::post('/propostas/{proposta}/enviar-whatsapp', [PropostaController::class, 'enviarWhatsapp'])
+                ->name('propostas.enviar-whatsapp');
+
+            Route::post('/propostas/{proposta}/enviar-email', [PropostaController::class, 'enviarEmail'])
+                ->name('propostas.enviar-email');
 
             Route::get('/propostas/{proposta}', [PropostaController::class, 'show'])
                 ->name('propostas.show');

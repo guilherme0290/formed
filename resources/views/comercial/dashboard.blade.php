@@ -88,7 +88,7 @@
                 {{-- Linha 1 --}}
                 <div class="grid gap-4 md:grid-cols-5">
                     {{-- Criar Proposta --}}
-                    <a href="{{ route('comercial.propostas.create') }}"
+                    <a href="{{ route('comercial.propostas.index') }}"
                        class="group rounded-2xl border border-blue-100 bg-blue-50/80 hover:bg-blue-100 transition shadow-sm p-4 flex flex-col justify-between">
                         <div>
                             <div class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500 text-white mb-3">
@@ -103,7 +103,7 @@
                     </a>
 
                     {{-- Gerar Apresentação --}}
-                    <a href="#"
+                    <a href="{{ route('comercial.apresentacao.cliente') }}"
                        class="group rounded-2xl border border-emerald-100 bg-emerald-50/80 hover:bg-emerald-100 transition shadow-sm p-4 flex flex-col justify-between">
                         <div>
                             <div class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500 text-white mb-3">

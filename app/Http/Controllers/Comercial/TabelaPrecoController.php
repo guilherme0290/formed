@@ -189,7 +189,7 @@ class TabelaPrecoController extends Controller
         $servicos = Servico::where('empresa_id', $empresaId)
             ->where('ativo', true)
             ->when($esocialId, fn($q) => $q->where('id', '!=', $esocialId))
-            ->when($treinamentoId, fn($q) => $q->where('id', '!=', $treinamentoId))
+            ->when($treinamentoId, fn($q) => $q->orderByRaw('CASE WHEN id = ? THEN 1 ELSE 0 END', [(int) $treinamentoId]))
             ->orderBy('nome')
             ->get();
 
