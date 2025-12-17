@@ -4,6 +4,8 @@ use App\Http\Controllers\Api\ClientesApiController;
 use App\Http\Controllers\Api\ServicosApiController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\Comercial\EsocialFaixaController;
+use App\Http\Controllers\Comercial\ExamesTabPrecoController;
+use App\Http\Controllers\Comercial\PropostaPrecoController;
 use App\Http\Controllers\Master\AcessosController;
 use App\Http\Controllers\Master\DashboardController;
 use App\Http\Controllers\Operacional\AsoController;
@@ -423,7 +425,7 @@ Route::middleware('auth')->group(function () {
                 ->name('propostas.fechar');
 
             //tabela de preco
-            Route::get('/tabela-precos', [TabelaPrecoController::class, 'index'])
+            Route::get('/tabela-precos', [TabelaPrecoController::class, 'itensIndex'])
                 ->name('tabela-precos.index');
 
             Route::post('/tabela-precos', [TabelaPrecoController::class, 'update'])
@@ -450,10 +452,44 @@ Route::middleware('auth')->group(function () {
             Route::delete('/esocial/faixas/{faixa}', [EsocialFaixaController::class, 'destroy'])
                 ->name('esocial.faixas.destroy');
 
+            Route::get('/propostas/preco-servico/{servico}', [PropostaPrecoController::class, 'precoServico'])
+                ->name('propostas.preco-servico');
+
+            Route::get('/propostas/preco-treinamento/{codigo}', [PropostaPrecoController::class, 'precoTreinamento'])
+                ->name('propostas.preco-treinamento');
+
+            Route::get('/propostas/esocial-preco', [PropostaPrecoController::class, 'esocialPreco'])
+                ->name('propostas.esocial-preco');
+
+            Route::get('/propostas/treinamentos-nrs.json', [PropostaPrecoController::class, 'treinamentosJson'])
+                ->name('propostas.treinamentos-nrs.json');
 
             //Treinamento NRs
-            Route::get('/treinamentos-nrs/json', [ComercialTreinamentoNrController::class, 'indexJson'])
-                ->name('tabela-precos.treinamentos-nrs.json');
+
+            Route::get('/treinamentos-nrs.json', [ComercialTreinamentoNrController::class, 'indexJson'])
+                ->name('treinamentos-nrs.json');
+
+            Route::post('/treinamentos-nrs', [ComercialTreinamentoNrController::class, 'store'])
+                ->name('treinamentos-nrs.store');
+
+            Route::put('/treinamentos-nrs/{nr}', [ComercialTreinamentoNrController::class, 'update'])
+                ->name('treinamentos-nrs.update');
+
+            Route::delete('/treinamentos-nrs/{nr}', [ComercialTreinamentoNrController::class, 'destroy'])
+                ->name('treinamentos-nrs.destroy');
+
+            //Exames
+            Route::get('/exames', [ExamesTabPrecoController::class, 'indexJson'])
+                ->name('exames.indexJson');
+
+            Route::post('/exames', [ExamesTabPrecoController::class, 'store'])
+                ->name('exames.store');
+
+            Route::put('/exames/{exame}', [ExamesTabPrecoController::class, 'update'])
+                ->name('exames.update');
+
+            Route::delete('/exames/{exame}', [ExamesTabPrecoController::class, 'destroy'])
+                ->name('exames.destroy');
         });
 
 

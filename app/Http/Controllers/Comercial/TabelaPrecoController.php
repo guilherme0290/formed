@@ -26,7 +26,7 @@ class TabelaPrecoController extends Controller
             ->orderBy('descricao')
             ->get();
 
-        return view('comercial.tabela-precos.index', compact('padrao','itens'));
+        return view('comercial.tabela-precos.itens.index', compact('padrao','itens'));
     }
 
     public function createItem()
@@ -184,10 +184,12 @@ class TabelaPrecoController extends Controller
             ->firstOrFail();
 
         $esocialId = config('services.esocial_id');
+        $treinamentoId = config('services.treinamento_id');
 
         $servicos = Servico::where('empresa_id', $empresaId)
             ->where('ativo', true)
             ->when($esocialId, fn($q) => $q->where('id', '!=', $esocialId))
+            ->when($treinamentoId, fn($q) => $q->where('id', '!=', $treinamentoId))
             ->orderBy('nome')
             ->get();
 

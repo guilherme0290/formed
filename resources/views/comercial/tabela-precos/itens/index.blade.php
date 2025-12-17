@@ -21,10 +21,10 @@
                 <button type="button"
                         onclick="openNovoItemModal()"
                         class="inline-flex items-center justify-center gap-2 rounded-2xl
-               bg-blue-600 hover:bg-blue-700 active:bg-blue-800
-               text-white px-5 py-2.5 text-sm font-semibold shadow-sm
-               ring-1 ring-blue-600/20 hover:ring-blue-700/30
-               transition">
+                       bg-blue-600 hover:bg-blue-700 active:bg-blue-800
+                       text-white px-5 py-2.5 text-sm font-semibold shadow-sm
+                       ring-1 ring-blue-600/20 hover:ring-blue-700/30
+                       transition">
                     <span class="text-base leading-none">＋</span>
                     <span>ASO, Documentos e Laudos</span>
                 </button>
@@ -32,16 +32,32 @@
                 <button type="button"
                         onclick="openEsocialModal()"
                         class="inline-flex items-center justify-center gap-2 rounded-2xl
-               bg-white hover:bg-indigo-50 active:bg-indigo-100
-               text-indigo-700 px-5 py-2.5 text-sm font-semibold shadow-sm
-               ring-1 ring-indigo-200 hover:ring-indigo-300
-               transition">
+                       bg-white hover:bg-indigo-50 active:bg-indigo-100
+                       text-indigo-700 px-5 py-2.5 text-sm font-semibold shadow-sm
+                       ring-1 ring-indigo-200 hover:ring-indigo-300
+                       transition">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
                          stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                               d="M12 6v6l4 2M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                     </svg>
                     <span>eSocial</span>
+                </button>
+                <button type="button"
+                        onclick="openExamesModal()"
+                        class="inline-flex items-center justify-center gap-2 rounded-2xl
+               bg-white hover:bg-blue-50 active:bg-blue-100
+               text-blue-700 px-4 py-2 text-sm font-semibold shadow-sm
+               ring-1 ring-blue-200 hover:ring-blue-300 transition">
+                    <span>Exames</span>
+                </button>
+                <button type="button"
+                        onclick="openTreinamentosCrudModal()"
+                        class="inline-flex items-center justify-center gap-2 rounded-2xl
+               bg-white hover:bg-emerald-50 active:bg-emerald-100
+               text-emerald-700 px-4 py-2 text-sm font-semibold shadow-sm
+               ring-1 ring-emerald-200 hover:ring-emerald-300 transition">
+                    <span>Treinamentos</span>
                 </button>
             </div>
         </header>
@@ -146,7 +162,6 @@
     {{-- MODAL NOVO ITEM --}}
     <div id="modalNovoItem"
          class="fixed inset-0 z-50 hidden bg-black/40">
-
         {{-- Centralizador + respiro --}}
         <div class="min-h-full w-full flex items-center justify-center p-4 md:p-6">
             {{-- Card modal --}}
@@ -266,14 +281,6 @@
 
                         </div>
 
-                        <div id="btnEsocialContainer" class="hidden">
-                            {{--                            <button type="button"--}}
-                            {{--                                    onclick="openEsocialModal()"--}}
-                            {{--                                    class="w-full mt-2 rounded-xl border border-indigo-200 bg-indigo-50--}}
-                            {{--                   text-indigo-700 px-4 py-2 text-sm font-semibold hover:bg-indigo-100">--}}
-                            {{--                                Gerenciar faixas de eSocial--}}
-                            {{--                            </button>--}}
-                        </div>
 
                         {{-- Footer fixo --}}
                         <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
@@ -300,6 +307,9 @@
 
 
     @include('comercial.tabela-precos.itens.modal-esocial')
+    @include('comercial.tabela-precos.itens.modal-exames')
+    @include('comercial.tabela-precos.itens.modal-treinamentos')
+
 
 
     @push('scripts')
@@ -307,17 +317,13 @@
             (function () {
 
                 // ============================
-                // CONFIG / ELEMENTOS
+                // CONFIG / ELEMENTOS (ITENS)
                 // ============================
                 const storeUrl = @json(route('comercial.tabela-precos.itens.store'));
-
                 const SERVICO_TREINAMENTO_ID = {{ config('services.treinamento_id') ?? 'null' }};
-                const SERVICO_ESOCIAL_ID = {{ config('services.esocial_id') ?? 'null' }};
-
 
                 const el = {
                     modalItem: document.getElementById('modalNovoItem'),
-                    modalEsocial: document.getElementById('modalEsocial'),
 
                     form: document.getElementById('formItem'),
                     spoof: document.getElementById('formMethodSpoof'),
@@ -337,9 +343,6 @@
 
                     nrWrap: document.getElementById('nrChips'),
                     nrContainer: document.getElementById('nrChipsContainer'),
-
-                    btnEsocial: document.getElementById('btnEsocialContainer'),
-                    esocialFaixas: document.getElementById('esocialFaixas'),
                 };
 
                 // Se algo essencial não existir, não quebra a página
@@ -456,22 +459,22 @@
                 }
 
                 // ============================
-                // SERVIÇO => CHIPS NRs / eSOCIAL
+                // CHIPS DE TREINAMENTOS (NRs)
                 // ============================
                 async function loadNrChips() {
                     if (!el.nrWrap) return;
 
-                    const res = await fetch(@json(route('comercial.tabela-precos.treinamentos-nrs.json')));
-                    const json = await res.json();
+                    const res = await fetch(@json(route('comercial.treinamentos-nrs.json')), {
+                        headers: { 'Accept': 'application/json' }
+                    });
 
-                    console.log(res)
+                    const json = await res.json().catch(() => ({data: []}));
 
                     el.nrWrap.innerHTML = '';
 
                     (json.data || []).forEach(nr => {
                         const btn = document.createElement('button');
                         btn.type = 'button';
-                        // btn.textContent = `${nr.codigo} – ${nr.titulo}`;
                         btn.textContent = `${nr.codigo}`;
                         btn.dataset.codigo = nr.codigo;
                         btn.dataset.descricao = nr.titulo;
@@ -492,9 +495,7 @@
                     selected.classList.add('bg-blue-600', 'text-white', 'border-blue-600');
 
                     if (el.codigo) el.codigo.value = selected.dataset.codigo || '';
-
                     if (el.descricao) el.descricao.value = selected.dataset.descricao || '';
-
                 }
 
                 function handleServicoChange() {
@@ -503,7 +504,6 @@
                     const val = el.servico.value;
 
                     if (el.nrContainer) el.nrContainer.classList.add('hidden');
-                    if (el.btnEsocial) el.btnEsocial.classList.add('hidden');
 
                     if (!val) return;
 
@@ -511,14 +511,10 @@
                         if (el.nrContainer) el.nrContainer.classList.remove('hidden');
                         loadNrChips();
                     }
-
-                    if (SERVICO_ESOCIAL_ID !== null && Number(val) === Number(SERVICO_ESOCIAL_ID)) {
-                        if (el.btnEsocial) el.btnEsocial.classList.remove('hidden');
-                    }
                 }
 
                 // ============================
-                // MODAIS
+                // MODAL ITENS
                 // ============================
                 function openNovoItemModal() {
                     el.title.textContent = 'Novo Item';
@@ -569,23 +565,6 @@
                     el.modalItem.classList.add('hidden');
                 }
 
-                async function openEsocialModal() {
-                    if (!el.modalEsocial) return;
-
-                    el.modalEsocial.classList.remove('hidden');
-
-                    // carrega e renderiza as faixas assim que abrir
-                    if (typeof window.loadEsocialFaixas === 'function') {
-                        await window.loadEsocialFaixas();
-                    }
-                }
-
-
-                function closeEsocialModal() {
-                    if (!el.modalEsocial) return;
-                    el.modalEsocial.classList.add('hidden');
-                }
-
                 // ============================
                 // EVENTS GERAIS (clicar fora / ESC)
                 // ============================
@@ -593,15 +572,11 @@
                     if (el.modalItem && !el.modalItem.classList.contains('hidden') && e.target === el.modalItem) {
                         closeNovoItemModal();
                     }
-                    if (el.modalEsocial && !el.modalEsocial.classList.contains('hidden') && e.target === el.modalEsocial) {
-                        closeEsocialModal();
-                    }
                 });
 
                 document.addEventListener('keydown', function (e) {
                     if (e.key === 'Escape') {
                         if (el.modalItem && !el.modalItem.classList.contains('hidden')) closeNovoItemModal();
-                        if (el.modalEsocial && !el.modalEsocial.classList.contains('hidden')) closeEsocialModal();
                     }
                 });
 
@@ -629,347 +604,9 @@
                 window.openEditarItemModal = openEditarItemModal;
                 window.closeNovoItemModal = closeNovoItemModal;
 
-                window.openEsocialModal = openEsocialModal;
-                window.closeEsocialModal = closeEsocialModal;
-
             })();
-
-            // ============================
-            // eSOCIAL (CRUD via AJAX)
-            // ============================
-
-            const ESOCIAL_BASE_URL = @json(route('comercial.esocial.faixas.store'));
-            // ex: /comercial/esocial/faixas
-
-            const ESOCIAL = {
-                urls: {
-                    list:   @json(route('comercial.esocial.faixas.json')),
-                    store:  ESOCIAL_BASE_URL,
-                    update: (id) => `${ESOCIAL_BASE_URL}/${id}`,
-                    destroy:(id) => `${ESOCIAL_BASE_URL}/${id}`,
-                },
-                csrf: document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-                state: {
-                    faixas: []
-                },
-                dom: {
-                    alert: document.getElementById('esocialAlert'),
-                    list: document.getElementById('esocialFaixas'),
-                    btnNova: document.getElementById('btnNovaFaixa'),
-
-                    modalForm: document.getElementById('modalEsocialForm'),
-                    form: document.getElementById('formEsocialFaixa'),
-                    title: document.getElementById('esocialFormTitle'),
-
-                    id: document.getElementById('esocial_faixa_id'),
-                    inicio: document.getElementById('esocial_inicio'),
-                    fim: document.getElementById('esocial_fim'),
-                    descricao: document.getElementById('esocial_descricao'),
-                    precoView: document.getElementById('esocial_preco_view'),
-                    precoHidden: document.getElementById('esocial_preco'),
-                    ativo: document.getElementById('esocial_ativo'),
-                    ativoLabel: document.getElementById('esocial_ativo_label'),
-                }
-            };
-
-            function esocialAlert(type, msg) {
-                if (!ESOCIAL.dom.alert) return;
-                ESOCIAL.dom.alert.classList.remove('hidden');
-                ESOCIAL.dom.alert.className = 'mb-4 rounded-xl border px-4 py-3 text-sm';
-
-                if (type === 'ok') {
-                    ESOCIAL.dom.alert.classList.add('bg-emerald-50', 'border-emerald-200', 'text-emerald-800');
-                } else {
-                    ESOCIAL.dom.alert.classList.add('bg-red-50', 'border-red-200', 'text-red-800');
-                }
-                ESOCIAL.dom.alert.textContent = msg;
-            }
-
-            function esocialAlertHide() {
-                if (!ESOCIAL.dom.alert) return;
-                ESOCIAL.dom.alert.classList.add('hidden');
-            }
-
-            function renderEsocialFaixas() {
-                const wrap = ESOCIAL.dom.list;
-                if (!wrap) return;
-
-                wrap.innerHTML = '';
-
-                if (!ESOCIAL.state.faixas.length) {
-                    wrap.innerHTML = `<div class="text-sm text-slate-500 py-3">Nenhuma faixa cadastrada ainda.</div>`;
-                    return;
-                }
-
-                ESOCIAL.state.faixas.forEach(f => {
-                    const faixaTxt = `${String(f.inicio).padStart(2, '0')} até ${f.fim == 999999 ? 'acima' : String(f.fim).padStart(2, '0')}`;
-                    const precoTxt = Number(f.preco || 0).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
-
-                    const row = document.createElement('div');
-                    row.className = 'grid grid-cols-12 gap-2 items-center rounded-xl border border-slate-200 px-3 py-2';
-
-                    row.innerHTML = `
-            <div class="col-span-2">
-                <div class="text-sm font-semibold text-slate-800">${faixaTxt}</div>
-                <div class="text-[11px] text-slate-500">#${f.id}</div>
-            </div>
-
-            <div class="col-span-5 text-sm text-slate-700">
-                ${f.descricao ? escapeHtml(f.descricao) : '<span class="text-slate-400">—</span>'}
-            </div>
-
-            <div class="col-span-1 text-right text-sm font-semibold text-slate-800">
-                ${precoTxt}
-            </div>
-
-            <div class="col-span-2 text-center">
-                ${f.ativo ? '<span class="text-xs px-2 py-1 rounded-full bg-green-50 text-green-700 border border-green-100">Ativo</span>'
-                        : '<span class="text-xs px-2 py-1 rounded-full bg-red-50 text-red-700 border border-red-100">Inativo</span>'}
-            </div>
-
-            <div class="col-span-2 text-center ">
-                <button type="button"
-                        class="text-blue-600 hover:underline text-sm"
-                        data-action="edit" data-id="${f.id}">
-                    Editar
-                </button>
-                <button type="button"
-                        class="text-red-600 hover:underline text-sm"
-                        data-action="del" data-id="${f.id}">
-                    Excluir
-                </button>
-            </div>
-        `;
-
-                    row.querySelector('[data-action="edit"]').addEventListener('click', () => openEsocialForm(f));
-                    row.querySelector('[data-action="del"]').addEventListener('click', () => deleteEsocialFaixa(f.id));
-
-                    wrap.appendChild(row);
-                });
-            }
-
-            async function loadEsocialFaixas() {
-                try {
-                    esocialAlertHide();
-
-                    const res = await fetch(ESOCIAL.urls.list, {headers: {'Accept': 'application/json'}});
-                    const json = await res.json();
-
-                    ESOCIAL.state.faixas = json.data || [];
-                    renderEsocialFaixas();
-                } catch (e) {
-                    esocialAlert('err', 'Falha ao carregar faixas do eSocial.');
-                    console.error(e);
-                }
-            }
-
-            // -------- Form modal (create/edit) --------
-
-            let esocialPrecoMaskReady = false;
-
-            function esocialOnlyDigits(str) {
-                return String(str || '').replace(/\D+/g, '');
-            }
-
-            function esocialCentsToNumber(d) {
-                return (parseInt(d || '0', 10) / 100);
-            }
-
-            function esocialFormatBRL(n) {
-                return Number(n || 0).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
-            }
-
-            function esocialSetPrecoFromNumber(n) {
-                const v = ESOCIAL.dom.precoView, h = ESOCIAL.dom.precoHidden;
-                if (!v || !h) return;
-
-                const num = Number(n || 0);
-                h.value = num.toFixed(2);
-                v.value = esocialFormatBRL(num);
-                v.dataset.digits = esocialOnlyDigits(Math.round(num * 100));
-            }
-
-            function esocialAttachMask() {
-                const v = ESOCIAL.dom.precoView, h = ESOCIAL.dom.precoHidden;
-                if (!v || !h) return;
-                if (esocialPrecoMaskReady) return;
-                esocialPrecoMaskReady = true;
-
-                esocialSetPrecoFromNumber(Number(h.value || 0));
-
-                v.addEventListener('input', () => {
-                    const digits = esocialOnlyDigits(v.value);
-                    v.dataset.digits = digits;
-
-                    const num = esocialCentsToNumber(digits);
-                    h.value = num.toFixed(2);
-                    v.value = esocialFormatBRL(num);
-
-                    requestAnimationFrame(() => v.setSelectionRange(v.value.length, v.value.length));
-                });
-
-                v.addEventListener('keydown', (e) => {
-                    const nav = ['Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'Delete'];
-                    if (e.ctrlKey || e.metaKey) return;
-
-                    if (e.key === 'Backspace') {
-                        e.preventDefault();
-                        const d = v.dataset.digits || '';
-                        const nd = d.slice(0, -1);
-                        v.dataset.digits = nd;
-
-                        const num = esocialCentsToNumber(nd);
-                        h.value = num.toFixed(2);
-                        v.value = esocialFormatBRL(num);
-
-                        requestAnimationFrame(() => v.setSelectionRange(v.value.length, v.value.length));
-                        return;
-                    }
-
-                    if (nav.includes(e.key)) return;
-                    if (!/^\d$/.test(e.key)) e.preventDefault();
-                });
-
-                v.addEventListener('paste', (e) => {
-                    e.preventDefault();
-                    const text = (e.clipboardData || window.clipboardData).getData('text');
-                    const digits = esocialOnlyDigits(text);
-                    v.dataset.digits = digits;
-
-                    const num = esocialCentsToNumber(digits);
-                    h.value = num.toFixed(2);
-                    v.value = esocialFormatBRL(num);
-
-                    requestAnimationFrame(() => v.setSelectionRange(v.value.length, v.value.length));
-                });
-
-                v.addEventListener('focus', () => {
-                    requestAnimationFrame(() => v.setSelectionRange(v.value.length, v.value.length));
-                });
-            }
-
-            function syncEsocialAtivoLabel() {
-                if (!ESOCIAL.dom.ativo || !ESOCIAL.dom.ativoLabel) return;
-                ESOCIAL.dom.ativoLabel.textContent = ESOCIAL.dom.ativo.checked ? 'Ativo' : 'Inativo';
-            }
-
-            function openEsocialForm(faixa = null) {
-                if (!ESOCIAL.dom.modalForm) return;
-
-                ESOCIAL.dom.title.textContent = faixa ? 'Editar Faixa' : 'Nova Faixa';
-
-                ESOCIAL.dom.id.value = faixa?.id ?? '';
-                ESOCIAL.dom.inicio.value = faixa?.inicio ?? '';
-                ESOCIAL.dom.fim.value = faixa?.fim ?? '';
-                ESOCIAL.dom.descricao.value = faixa?.descricao ?? '';
-                ESOCIAL.dom.ativo.checked = faixa ? !!faixa.ativo : true;
-                syncEsocialAtivoLabel();
-
-                ESOCIAL.dom.precoHidden.value = faixa ? Number(faixa.preco || 0).toFixed(2) : '0.00';
-                esocialAttachMask();
-                esocialSetPrecoFromNumber(Number(ESOCIAL.dom.precoHidden.value || 0));
-
-                ESOCIAL.dom.modalForm.classList.remove('hidden');
-            }
-
-            function closeEsocialForm() {
-                if (!ESOCIAL.dom.modalForm) return;
-                ESOCIAL.dom.modalForm.classList.add('hidden');
-            }
-
-            async function saveEsocialFaixa(e) {
-                e.preventDefault();
-                esocialAlertHide();
-
-                const id = ESOCIAL.dom.id.value;
-                const inicio = Number(ESOCIAL.dom.inicio.value || 0);
-                const fim = Number(ESOCIAL.dom.fim.value || 0);
-                const descricao = ESOCIAL.dom.descricao.value || null;
-                const preco = Number(ESOCIAL.dom.precoHidden.value || 0);
-                const ativo = ESOCIAL.dom.ativo.checked ? 1 : 0;
-
-                if (!inicio || !fim) return esocialAlert('err', 'Informe início e fim.');
-                if (inicio > fim) return esocialAlert('err', 'Início não pode ser maior que o fim.');
-                if (preco < 0) return esocialAlert('err', 'Preço inválido.');
-
-                const payload = {inicio, fim, descricao, preco, ativo};
-
-                try {
-                    const isEdit = !!id;
-                    const url = isEdit ? ESOCIAL.urls.update(id) : ESOCIAL.urls.store;
-
-                    const res = await fetch(url, {
-                        method: isEdit ? 'PUT' : 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json',
-                            'X-CSRF-TOKEN': ESOCIAL.csrf,
-                        },
-                        body: JSON.stringify(payload)
-                    });
-
-                    const json = await res.json().catch(() => ({}));
-
-                    if (!res.ok) {
-                        // Laravel validation
-                        if (json?.errors) {
-                            const first = Object.values(json.errors)[0]?.[0] || 'Erro ao salvar.';
-                            return esocialAlert('err', first);
-                        }
-                        return esocialAlert('err', json?.message || 'Erro ao salvar faixa.');
-                    }
-
-                    closeEsocialForm();
-                    await loadEsocialFaixas();
-                    esocialAlert('ok', isEdit ? 'Faixa atualizada.' : 'Faixa criada.');
-                    window.loadEsocialFaixas = loadEsocialFaixas;
-                } catch (err) {
-                    console.error(err);
-                    esocialAlert('err', 'Falha ao salvar faixa.');
-                }
-            }
-
-            async function deleteEsocialFaixa(id) {
-                if (!confirm('Deseja remover esta faixa?')) return;
-
-                try {
-                    const res = await fetch(ESOCIAL.urls.destroy(id), {
-                        method: 'DELETE',
-                        headers: {
-                            'Accept': 'application/json',
-                            'X-CSRF-TOKEN': ESOCIAL.csrf,
-                        }
-                    });
-
-                    const json = await res.json().catch(() => ({}));
-
-                    if (!res.ok) {
-                        return esocialAlert('err', json?.message || 'Erro ao excluir faixa.');
-                    }
-
-                    await loadEsocialFaixas();
-                    esocialAlert('ok', 'Faixa removida.');
-                } catch (err) {
-                    console.error(err);
-                    esocialAlert('err', 'Falha ao excluir faixa.');
-                }
-            }
-
-            function escapeHtml(str) {
-                return String(str)
-                    .replaceAll('&', '&amp;')
-                    .replaceAll('<', '&lt;')
-                    .replaceAll('>', '&gt;')
-                    .replaceAll('"', '&quot;')
-                    .replaceAll("'", "&#039;");
-            }
-
-            // 🔥 liga o botão "Nova Faixa" e o submit
-            if (ESOCIAL.dom.btnNova) ESOCIAL.dom.btnNova.addEventListener('click', () => openEsocialForm(null));
-            if (ESOCIAL.dom.form) ESOCIAL.dom.form.addEventListener('submit', saveEsocialFaixa);
-            if (ESOCIAL.dom.ativo) ESOCIAL.dom.ativo.addEventListener('change', syncEsocialAtivoLabel);
-
         </script>
     @endpush
+
 
 @endsection

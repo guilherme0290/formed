@@ -4,20 +4,21 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class TreinamentoNrsTabPreco extends Model
+
+class ExamesTabPreco extends Model
 {
-    protected $table = 'treinamento_nrs_tab_preco';
+    protected $table = 'exames_tab_preco';
 
     protected $fillable = [
         'empresa_id',
-        'codigo',
         'titulo',
-        'ordem',
+        'descricao',
+        'preco',
         'ativo',
     ];
 
     protected $casts = [
-        'ordem' => 'int',
+        'preco' => 'decimal:2',
         'ativo' => 'bool',
     ];
 }
