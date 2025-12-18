@@ -133,7 +133,7 @@
                     </a>
 
                     {{-- Contratos --}}
-                    <a href="#"
+                    <a href="{{ route('comercial.contratos.index') }}"
                        class="group rounded-2xl border border-purple-100 bg-purple-50/80 hover:bg-purple-100 transition shadow-sm p-4 flex flex-col justify-between">
                         <div>
                             <div class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-purple-500 text-white mb-3">
@@ -166,7 +166,7 @@
                 {{-- Linha 2 --}}
                 <div class="grid gap-4 md:grid-cols-5">
                     {{-- Acompanhamento --}}
-                    <a href="#"
+                    <a href="{{ route('comercial.pipeline.index') }}"
                        class="group rounded-2xl border border-rose-100 bg-rose-50/80 hover:bg-rose-100 transition shadow-sm p-4 flex flex-col justify-between">
                         <div>
                             <div class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-rose-500 text-white mb-3">

@@ -10,6 +10,8 @@ use App\Models\KanbanColuna;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use App\Services\PrecificacaoService;
+use App\Services\VendaService;
 
 class TarefaController extends Controller
 {
@@ -70,7 +72,7 @@ class TarefaController extends Controller
     }
 
 
-    public function finalizarComArquivo(Request $request, Tarefa $tarefa)
+    public function finalizarComArquivo(Request $request, Tarefa $tarefa, PrecificacaoService $precificacaoService, VendaService $vendaService)
     {
         $data = $request->validate([
             'arquivo_cliente' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'],
@@ -88,6 +90,23 @@ class TarefaController extends Controller
 
         try {
 
+            try {
+                $resultado = $precificacaoService->validarServicoNoContrato(
+                    (int) $tarefa->cliente_id,
+                    (int) $tarefa->servico_id,
+                    (int) $tarefa->empresa_id
+                );
+            } catch (\Throwable $e) {
+                $mensagem = 'Não é possível concluir esta tarefa porque o cliente não possui preço definido para este serviço na proposta/contrato ativo. Solicite ao Comercial para ajustar a proposta e fechar novamente, ou cadastrar o valor do serviço no contrato do cliente.';
+                if (method_exists($e, 'errors')) {
+                    $mensagem = collect($e->errors())->flatten()->first() ?? $mensagem;
+                }
+                return response()->json([
+                    'ok' => false,
+                    'error' => $mensagem,
+                ], 422);
+            }
+
             $path = S3Helper::upload( $request->file('arquivo_cliente'), 'tarefas');
 
             $tarefa->update([
@@ -95,6 +114,10 @@ class TarefaController extends Controller
                 'finalizado_em'           => now(),
                 'path_documento_cliente'  => $path,
             ]);
+
+            if (isset($resultado)) {
+                $vendaService->criarVendaPorTarefa($tarefa, $resultado['contrato'], $resultado['item']);
+            }
 
             $log = TarefaLog::create([
                 'tarefa_id'      => $tarefa->id,

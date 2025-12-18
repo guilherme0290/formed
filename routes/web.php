@@ -448,11 +448,26 @@ Route::middleware('auth')->group(function () {
             Route::post('/propostas/{proposta}/enviar-email', [PropostaController::class, 'enviarEmail'])
                 ->name('propostas.enviar-email');
 
+            Route::post('/propostas/{proposta}/status', [PropostaController::class, 'alterarStatus'])
+                ->name('propostas.status');
+
             Route::get('/propostas/{proposta}', [PropostaController::class, 'show'])
                 ->name('propostas.show');
 
             Route::post('/propostas/{proposta}/fechar', [PropostaController::class, 'fechar'])
                 ->name('propostas.fechar');
+
+            // Contratos
+            Route::get('/contratos', [\App\Http\Controllers\Comercial\ContratoController::class, 'index'])
+                ->name('contratos.index');
+            Route::get('/contratos/{contrato}', [\App\Http\Controllers\Comercial\ContratoController::class, 'show'])
+                ->name('contratos.show');
+
+            // Kanban de Propostas (Acompanhamento)
+            Route::get('/pipeline', [\App\Http\Controllers\Comercial\PipelineController::class, 'index'])
+                ->name('pipeline.index');
+            Route::post('/pipeline/propostas/{proposta}/mover', [\App\Http\Controllers\Comercial\PipelineController::class, 'mover'])
+                ->name('pipeline.mover');
 
             //tabela de preco
             Route::get('/tabela-precos', [TabelaPrecoController::class, 'itensIndex'])

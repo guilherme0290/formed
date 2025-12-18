@@ -3,6 +3,12 @@
 
 @section('content')
     <div class="bg-white rounded-2xl shadow border border-slate-200 max-w-4xl mx-auto">
+        <div class="mb-4">
+            <a href="{{ route('comercial.propostas.index') }}"
+               class="inline-flex items-center text-sm text-slate-600 hover:text-slate-800">
+                ← Voltar
+            </a>
+        </div>
         <div class="px-6 py-4 bg-blue-600 text-white rounded-t-2xl flex items-center justify-between">
             <div>
                 <h1 class="text-lg font-semibold">Proposta Comercial</h1>

@@ -17,6 +17,11 @@ class Proposta extends Model
         'esocial_valor_mensal',
         'valor_total',
         'status',
+        'pipeline_status',
+        'pipeline_updated_at',
+        'pipeline_updated_by',
+        'perdido_motivo',
+        'perdido_observacao',
         'observacoes',
     ];
 
@@ -24,6 +29,7 @@ class Proposta extends Model
         'incluir_esocial'       => 'bool',
         'esocial_valor_mensal'  => 'decimal:2',
         'valor_total'           => 'decimal:2',
+        'pipeline_updated_at'   => 'datetime',
     ];
 
     public function empresa()

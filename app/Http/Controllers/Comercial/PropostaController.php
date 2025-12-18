@@ -10,11 +10,10 @@ use App\Models\Servico;
 use App\Models\TreinamentoNrsTabPreco;
 use App\Models\UnidadeClinica;
 use Illuminate\Http\Request;
-use App\Models\ClienteTabelaPreco;
-use App\Models\ClienteTabelaPrecoItem;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use App\Services\PropostaService;
 
 class PropostaController extends Controller
 {
@@ -198,6 +197,40 @@ class PropostaController extends Controller
         }
     }
 
+    public function alterarStatus(Request $request, Proposta $proposta, PropostaService $service)
+    {
+        $user = auth()->user();
+        abort_unless($proposta->empresa_id === $user->empresa_id, 403);
+
+        $data = $request->validate([
+            'status' => ['required', 'string', 'in:RASCUNHO,ENVIADA,FECHADA,CANCELADA'],
+        ]);
+
+        $atual = strtoupper($proposta->status ?? '');
+        $novo = strtoupper($data['status']);
+
+        $permitido = match ($atual) {
+            'RASCUNHO' => in_array($novo, ['RASCUNHO','ENVIADA']),
+            'ENVIADA'  => in_array($novo, ['ENVIADA','FECHADA','CANCELADA']),
+            default    => false,
+        };
+
+        if (!$permitido) {
+            return response()->json(['message' => 'Transição não permitida.'], 422);
+        }
+
+        if ($novo === 'FECHADA') {
+            $service->fechar($proposta->id, $user->id);
+        } else {
+            $proposta->update(['status' => $novo]);
+        }
+
+        return response()->json([
+            'message' => 'Status atualizado.',
+            'status' => $novo,
+        ]);
+    }
+
     private function saveProposta(Request $request, ?Proposta $proposta = null)
     {
         $empresaId = auth()->user()->empresa_id;
@@ -242,6 +275,9 @@ class PropostaController extends Controller
             }],
         ]);
 
+        $servicoEsocialId = (int) (config('services.esocial_id') ?? 0);
+        $servicoExameId = (int) (config('services.exame_id') ?? 0);
+
         foreach ($data['itens'] as $idx => $it) {
             if (!array_key_exists('meta', $it) || $it['meta'] === null || $it['meta'] === '') {
                 $data['itens'][$idx]['meta'] = null;
@@ -251,6 +287,14 @@ class PropostaController extends Controller
             if (is_string($it['meta'])) {
                 $decoded = json_decode($it['meta'], true);
                 $data['itens'][$idx]['meta'] = is_array($decoded) ? $decoded : null;
+            }
+
+            if (($data['itens'][$idx]['tipo'] ?? '') === 'ESOCIAL' && $servicoEsocialId > 0 && empty($data['itens'][$idx]['servico_id'])) {
+                $data['itens'][$idx]['servico_id'] = $servicoEsocialId;
+            }
+
+            if (in_array($data['itens'][$idx]['tipo'] ?? '', ['EXAME','PACOTE_EXAMES'], true) && $servicoExameId > 0 && empty($data['itens'][$idx]['servico_id'])) {
+                $data['itens'][$idx]['servico_id'] = $servicoExameId;
             }
         }
 
@@ -271,11 +315,16 @@ class PropostaController extends Controller
         $incluirEsocial = !empty($data['incluir_esocial']);
 
         $valorItens = 0.0;
+        $temItemEsocial = false;
         foreach ($data['itens'] as $it) {
             $valorItens += (float) $it['valor_total'];
+            if (($it['tipo'] ?? '') === 'ESOCIAL') {
+                $temItemEsocial = true;
+            }
         }
 
-        $valorEsocial = $incluirEsocial ? (float) ($data['esocial_valor_mensal'] ?? 0) : 0.0;
+        $valorEsocialCampo = $incluirEsocial ? (float) ($data['esocial_valor_mensal'] ?? 0) : 0.0;
+        $valorEsocial = $temItemEsocial ? 0.0 : $valorEsocialCampo;
         $valorTotal = $valorItens + $valorEsocial;
 
         $codigo = $proposta?->codigo ?? ('PRP-' . now()->format('Ymd') . '-' . Str::upper(Str::random(4)));
@@ -290,7 +339,7 @@ class PropostaController extends Controller
 
                 'incluir_esocial' => $incluirEsocial,
                 'esocial_qtd_funcionarios' => $incluirEsocial ? ($data['esocial_qtd_funcionarios'] ?? 0) : null,
-                'esocial_valor_mensal' => $incluirEsocial ? $valorEsocial : 0,
+                'esocial_valor_mensal' => $incluirEsocial ? $valorEsocialCampo : 0,
 
                 'valor_total' => $valorTotal,
             ];
@@ -300,6 +349,7 @@ class PropostaController extends Controller
                 $proposta->itens()->delete();
             } else {
                 $payload['status'] = 'RASCUNHO';
+                $payload['pipeline_status'] = 'CONTATO_INICIAL';
                 $proposta = Proposta::create($payload);
             }
 
@@ -340,59 +390,28 @@ class PropostaController extends Controller
     }
 
 
-    public function fechar(Proposta $proposta)
+    public function fechar(Proposta $proposta, PropostaService $service)
     {
         $user = auth()->user();
         abort_unless($proposta->empresa_id === $user->empresa_id, 403);
 
-        if ($proposta->status === 'fechada') {
+        if (strtoupper((string) $proposta->status) === 'FECHADA') {
             return back()->with('ok','Proposta já está fechada.');
         }
 
-        return DB::transaction(function () use ($proposta, $user) {
+        try {
+            $service->fechar($proposta->id, $user->id);
 
-            // 1) muda status
-            $proposta->update(['status' => 'fechada']);
-
-            // 2) encerra tabela vigente do cliente (se existir)
-            ClienteTabelaPreco::where('empresa_id', $proposta->empresa_id)
-                ->where('cliente_id', $proposta->cliente_id)
-                ->where('ativa', true)
-                ->update([
-                    'ativa' => false,
-                    'vigencia_fim' => now(),
-                ]);
-
-            // 3) cria nova tabela vigente
-            $tabela = ClienteTabelaPreco::create([
-                'empresa_id' => $proposta->empresa_id,
-                'cliente_id' => $proposta->cliente_id,
-                'origem_proposta_id' => $proposta->id,
-                'vigencia_inicio' => now(),
-                'vigencia_fim' => null,
-                'ativa' => true,
-                'observacoes' => 'Gerada automaticamente ao fechar proposta '.$proposta->codigo,
-            ]);
-
-            // 4) copia itens da proposta (snapshot -> tabela cliente)
-            $proposta->load('itens');
-
-            foreach ($proposta->itens as $pi) {
-                ClienteTabelaPrecoItem::create([
-                    'cliente_tabela_preco_id' => $tabela->id,
-                    'servico_id' => $pi->servico_id,
-                    'tipo' => $pi->tipo,
-                    'codigo' => $pi->meta['codigo'] ?? null, // opcional
-                    'nome' => $pi->nome,
-                    'descricao' => $pi->descricao,
-                    'valor_unitario' => $pi->valor_unitario,
-                    'meta' => $pi->meta,
-                    'ativo' => true,
-                ]);
+            return redirect()
+                ->route('comercial.propostas.show', $proposta)
+                ->with('ok','Proposta fechada e contrato do cliente gerado.');
+        } catch (\Throwable $e) {
+            report($e);
+            $message = $e->getMessage() ?: 'Erro ao fechar proposta.';
+            if (method_exists($e, 'errors')) {
+                $message = collect($e->errors())->flatten()->first() ?? $message;
             }
-
-            return redirect()->route('comercial.propostas.show', $proposta)
-                ->with('ok','Proposta fechada e tabela de preço do cliente criada com vigência a partir de hoje.');
-        });
+            return back()->with('erro', $message);
+        }
     }
 }

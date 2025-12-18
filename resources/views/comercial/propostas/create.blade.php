@@ -346,7 +346,9 @@
                 };
 
                 const CSRF = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                const SERVICO_ESOCIAL_ID = @json(config('services.esocial_id'));
                 const SERVICO_TREINAMENTO_ID = @json(config('services.treinamento_id'));
+                const SERVICO_EXAME_ID = @json(config('services.exame_id'));
 
                 // =========================
                 // State
@@ -506,6 +508,35 @@
                             el.form.appendChild(input);
                         });
                     });
+
+                    // eSocial como item (quando existir serviço vinculado)
+                    if (state.esocial.enabled && Number(SERVICO_ESOCIAL_ID) > 0 && Number(state.esocial.valor || 0) > 0) {
+                        const idx = state.itens.length;
+                        const base = `itens[${idx}]`;
+                        const meta = { qtd_funcionarios: state.esocial.qtd || 0 };
+                        const pairs = [
+                            ['servico_id', Number(SERVICO_ESOCIAL_ID)],
+                            ['tipo', 'ESOCIAL'],
+                            ['nome', 'eSocial'],
+                            ['descricao', `eSocial (${state.esocial.qtd || 0} colaboradores)`],
+                            ['valor_unitario', Number(state.esocial.valor || 0).toFixed(2)],
+                            ['quantidade', 1],
+                            ['prazo', ''],
+                            ['acrescimo', Number(0).toFixed(2)],
+                            ['desconto', Number(0).toFixed(2)],
+                            ['valor_total', Number(state.esocial.valor || 0).toFixed(2)],
+                            ['meta', JSON.stringify(meta)],
+                        ];
+
+                        pairs.forEach(([k,v]) => {
+                            const input = document.createElement('input');
+                            input.type = 'hidden';
+                            input.name = `${base}[${k}]`;
+                            input.value = v;
+                            input.setAttribute('data-hidden-itens','1');
+                            el.form.appendChild(input);
+                        });
+                    }
 
                     // eSocial
                     el.esocialQtdHidden.value = state.esocial.enabled ? (state.esocial.qtd || 0) : '';
@@ -740,7 +771,7 @@
 
                     const item = {
                         id,
-                        servico_id: null,
+                        servico_id: SERVICO_EXAME_ID ? Number(SERVICO_EXAME_ID) : null,
                         tipo: 'PACOTE_EXAMES',
                         nome: nomePacote,
                         descricao,
@@ -761,7 +792,7 @@
                 function addExameAvulso(exame) {
                     const item = {
                         id: uid(),
-                        servico_id: null,
+                        servico_id: SERVICO_EXAME_ID ? Number(SERVICO_EXAME_ID) : null,
                         tipo: 'EXAME',
                         nome: exame.nome,
                         descricao: exame.descricao || null,
