@@ -140,8 +140,8 @@
                 <form method="POST" action="{{ route('login') }}" class="space-y-5">
                     @csrf
 
-                    {{-- redirect vindo da URL /login?redirect=xxx --}}
-                    <input type="hidden" name="redirect" value="{{ $redirect ?? 'master' }}">
+                    {{-- redirect vindo da query string /login?redirect=xxx --}}
+                    <input type="hidden" name="redirect" value="{{ request('redirect', 'master') }}">
 
                     <div class="space-y-1.5">
                         <label class="block text-xs font-medium text-slate-300">

@@ -43,13 +43,15 @@
                     </div>
 
                     <div class="mt-6">
-                        <span class="inline-flex items-center gap-1 text-xs md:text-sm font-medium text-sky-300/70 opacity-60 cursor-not-allowed">
-                            Em desenvolvimento
-                        </span>
+                        <a href="{{ route('comercial.dashboard') }}"
+                           class="inline-flex items-center gap-1 text-xs md:text-sm font-medium text-sky-300 hover:text-sky-200 transition">
+                            <span>Acessar painel</span>
+                            <span class="text-base md:text-lg">›</span>
+                        </a>
                     </div>
                 </div>
 
-                {{-- Cliente (desabilitado) --}}
+                {{-- Cliente (Habilitado) --}}
                 <div class="rounded-3xl bg-gradient-to-br from-slate-900/90 to-slate-800/90
             border border-white/5 shadow-xl shadow-slate-950/50 p-6
             flex flex-col justify-between
@@ -65,10 +67,23 @@
                         </p>
                     </div>
 
+
                     <div class="mt-6">
-                        <span class="inline-flex items-center gap-1 text-xs md:text-sm font-medium text-sky-300/70 opacity-60 cursor-not-allowed">
-                            Em desenvolvimento
-                        </span>
+                        @guest
+                            <a href="{{ route('login', ['redirect' => 'cliente']) }}"
+                               class="inline-flex items-center gap-1 text-xs md:text-sm font-medium text-sky-300 hover:text-sky-200 transition">
+                                <span>Acessar painel</span>
+                                <span class="text-base md:text-lg">›</span>
+                            </a>
+                        @else
+                            <a href="{{ route('cliente.dashboard') }}"
+                               class="inline-flex items-center gap-1 text-xs md:text-sm font-medium text-sky-300 hover:text-sky-200 transition">
+                                <span>Acessar painel</span>
+                                <span class="text-base md:text-lg">›</span>
+                            </a>
+                        @endguest
+
+
                     </div>
                 </div>
 

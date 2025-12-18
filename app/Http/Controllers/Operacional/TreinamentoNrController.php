@@ -36,11 +36,15 @@ class TreinamentoNrController extends Controller
         $unidades = UnidadeClinica::orderBy('nome')->get();
 
         return view('operacional.kanban.treinamentos-nr.create', [
-            'cliente' => $cliente,
+            'cliente'      => $cliente,
             'funcionarios' => $funcionarios,
-            'unidades' => $unidades,
-            'funcoes' => $funcoes,
-            'user' => $user,
+            'unidades'     => $unidades,
+            'funcoes'      => $funcoes,
+            'user'         => $user,
+            'tarefa'       => null,
+            'detalhes'     => null,
+            'selecionados' => [],
+            'isEdit'       => false,
         ]);
     }
 
@@ -110,6 +114,12 @@ class TreinamentoNrController extends Controller
             ]);
         });
 
+        if (method_exists($usuario, 'isCliente') && $usuario->isCliente()) {
+            return redirect()
+                ->route('cliente.dashboard')
+                ->with('ok', 'Solicitação de Treinamento de NRs criada com sucesso e enviada para análise.');
+        }
+
         return redirect()
             ->route('operacional.painel')
             ->with('ok', 'Tarefa de Treinamento de NRs criada com sucesso.');
@@ -143,6 +153,7 @@ class TreinamentoNrController extends Controller
             'funcionario' => [
                 'id' => $funcionario->id,
                 'nome' => $funcionario->nome,
+                'cpf'         => $funcionario->cpf,
                 'nascimento' => $funcionario->data_nascimento,
                 'funcao_nome' => optional($funcionario->funcao)->nome,
             ],

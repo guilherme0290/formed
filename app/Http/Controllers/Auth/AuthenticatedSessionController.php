@@ -16,9 +16,7 @@ class AuthenticatedSessionController extends Controller
      */
     public function create(Request $request): View
     {
-        // pega o redirect da URL, ex: /login?redirect=operacional
-        $redirect = $request->query('redirect', 'master'); // padrão master
-
+        $redirect = $request->query('redirect', 'master');
         return view('auth.login', compact('redirect'));
     }
 
@@ -30,20 +28,52 @@ class AuthenticatedSessionController extends Controller
         $request->authenticate();
         $request->session()->regenerate();
 
-        // se não vier nada, padrão = master
-        $destino = $request->input('redirect', 'master');
-        $user = $request->user();
-        $papelNome = optional($user->papel)->nome;
+        $destino   = $request->input('redirect', 'master');
+        $user      = $request->user();
+        $papelNome = strtoupper(optional($user->papel)->nome);
 
         // Se for operacional, SEMPRE vai pro operacional
         if (strtoupper($papelNome) === 'OPERACIONAL') {
             return redirect()->route('operacional.kanban');
         }
 
-        return match ($destino) {
-            'operacional' => redirect()->route('operacional.kanban'),
-            default       => redirect()->route('master.dashboard'),
-        };
+        // =========================
+        // MÓDULO CLIENTE
+        // =========================
+// MÓDULO CLIENTE
+// =========================
+        if ($destino === 'cliente') {
+
+            // se o usuário tiver cliente vinculado
+            if ($user->cliente_id) {
+
+                // salva o cliente escolhido na sessão do portal
+                $request->session()->put('portal_cliente_id', $user->cliente_id);
+
+                return redirect()->route('cliente.dashboard');
+            }
+
+            // 🚨 NÃO TEM cliente_id → desloga e volta pro login
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect()
+                ->route('login', ['redirect' => 'cliente'])
+                ->with('error', 'Seu usuário não está vinculado a nenhum cliente. Acesse com um usuário de cliente.');
+        }
+
+        // =========================
+        // MÓDULO OPERACIONAL
+        // =========================
+        if ($destino === 'operacional') {
+            return redirect()->route('operacional.kanban');
+        }
+
+        // =========================
+        // MASTER (padrão)
+        // =========================
+        return redirect()->route('master.dashboard');
     }
 
     /**

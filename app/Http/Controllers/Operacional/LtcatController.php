@@ -17,14 +17,13 @@ use Illuminate\Support\Facades\DB;
 class LtcatController extends Controller
 {
     // Tela "LTCAT - Selecione o Tipo"
-    public function tipo(Cliente $cliente, Request $request)
+    public function selecionarTipo(Cliente $cliente, Request $request)
     {
-        $user = $request->user();
-
-        abort_if($cliente->empresa_id !== $user->empresa_id, 403);
+        $origem = $request->query('origem');
 
         return view('operacional.kanban.ltcat.tipo', [
             'cliente' => $cliente,
+            'origem'  => $origem,
         ]);
     }
 
@@ -35,6 +34,8 @@ class LtcatController extends Controller
         $empresaId = $user->empresa_id;
 
         abort_if($cliente->empresa_id !== $empresaId, 403);
+
+        $origem = $request->query('origem');
 
         $tipo = $request->query('tipo'); // matriz | especifico
         abort_unless(in_array($tipo, ['matriz', 'especifico'], true), 404);
@@ -61,6 +62,8 @@ class LtcatController extends Controller
             'funcoesForm'  => $funcoesForm,
             'ltcat'        => null,
             'isEdit'       => false,
+            'origem'       => $origem,
+
         ]);
     }
 
@@ -187,9 +190,18 @@ class LtcatController extends Controller
             }
         });
 
+        $origem = $request->input('origem');
+
+        if ($origem === 'cliente') {
+            return redirect()
+                ->route('cliente.dashboard')
+                ->with('ok', 'LTCAT atualizado com sucesso!');
+        }
+
         return redirect()
             ->route('operacional.kanban')
             ->with('ok', 'LTCAT atualizado com sucesso!');
+
     }
 
 
@@ -321,6 +333,15 @@ class LtcatController extends Controller
                 'observacao' => 'Tarefa LTCAT criada pelo usuário.',
             ]);
         });
+
+
+        $origem = $request->input('origem');
+
+        if ($origem === 'cliente') {
+            return redirect()
+                ->route('cliente.dashboard')
+                ->with('ok', 'Solicitação de LTCAT criada com sucesso e enviada para análise.');
+        }
 
         return redirect()
             ->route('operacional.kanban')
