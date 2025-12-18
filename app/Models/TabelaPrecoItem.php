@@ -14,6 +14,7 @@ class TabelaPrecoItem extends Model
         'descricao',
         'preco',
         'ativo',
+        'tabela_preco_padrao_id'
     ];
 
     protected $casts = [
@@ -26,21 +27,40 @@ class TabelaPrecoItem extends Model
         return $this->belongsTo(Servico::class);
     }
 
-    public function historicos()
+    public function tabelaPadrao()
     {
-        return $this->hasMany(TabelaPrecoItemHistorico::class, 'item_id');
+        return $this->belongsTo(\App\Models\TabelaPrecoPadrao::class, 'tabela_preco_padrao_id');
     }
 
-    // aceita "R$ 1.234,56" ou "1.234,56" e converte para 1234.56
+
     public function setPrecoAttribute($value): void
     {
-        if (is_string($value)) {
-            // tira R$, pontos e espaços
-            $value = str_replace(['R$', ' ', '.'], '', $value);
-            // troca vírgula por ponto
-            $value = str_replace(',', '.', $value);
+        if ($value === null || $value === '') {
+            $this->attributes['preco'] = 0;
+            return;
         }
 
-        $this->attributes['preco'] = (float) $value;
+        if (is_numeric($value)) {
+            $this->attributes['preco'] = (float) $value;
+            return;
+        }
+
+        $s = trim((string) $value);
+        $s = str_replace(['R$', ' '], '', $s);
+
+        $temVirgula = str_contains($s, ',');
+        $temPonto   = str_contains($s, '.');
+
+        if ($temVirgula) {
+            // formato BR: 1.234,56  -> remove milhares '.' e troca ',' por '.'
+            $s = str_replace('.', '', $s);
+            $s = str_replace(',', '.', $s);
+        } else {
+            // formato US/normal: 1234.56 -> mantém o ponto decimal
+            // (se vier 1.234.567.89 errado, você pode tratar depois)
+            $s = preg_replace('/[^0-9.]/', '', $s);
+        }
+
+        $this->attributes['preco'] = (float) $s;
     }
 }

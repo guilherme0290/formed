@@ -1,11 +1,21 @@
-@extends('layouts.operacional')
+@extends(request()->query('origem') === 'cliente' ? 'layouts.cliente' : 'layouts.operacional')
+
 
 @section('pageTitle', "LTCAT - {$tipoLabel}")
 
 @section('content')
+
+    @php
+        $origem = $origem ?? request()->query('origem');
+
+        $rotaVoltar = $origem === 'cliente'
+            ? route('cliente.dashboard')
+            : route('operacional.ltcat.tipo', ['cliente' => $cliente->id, 'origem' => $origem]);
+    @endphp
+
     <div class="container mx-auto px-4 py-6">
         <div class="mb-4 flex items-center justify-between">
-            <a href="{{ route('operacional.ltcat.tipo', $cliente) }}"
+            <a href="{{ $rotaVoltar }}"
                class="inline-flex items-center gap-2 text-xs px-3 py-1.5 rounded-full border border-slate-200 bg-white hover:bg-slate-50">
                 ← Voltar
             </a>
@@ -34,6 +44,7 @@
                 @endif
 
                 <input type="hidden" name="tipo" value="{{ $tipo }}">
+                <input type="hidden" name="origem" value="{{ $origem ?? request()->query('origem') }}">
 
                 @if ($errors->any())
                     <div class="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-700">
@@ -215,7 +226,7 @@
 
                 {{-- Footer --}}
                 <div class="flex flex-col md:flex-row gap-3 pt-4 border-t border-slate-100 mt-4">
-                    <a href="{{ route('operacional.ltcat.tipo', $cliente) }}"
+                    <a href="{{ $rotaVoltar }}"
                        class="flex-1 inline-flex items-center justify-center px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm text-slate-700 hover:bg-slate-50">
                         Voltar
                     </a>

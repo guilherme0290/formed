@@ -30,6 +30,9 @@ class DatabaseSeeder extends Seeder
             UnidadesClinicasSeeder::class,
             ServicoSeeder::class,
             FuncaoSeeder::class,
+            ClientePortalSeeder::class,
+            TreinamentoNRsSeed::class,
+            TabelaPrecoPadraoFullSeeder::class,
         ]);
     }
 }

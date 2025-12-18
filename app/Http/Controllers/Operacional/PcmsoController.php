@@ -22,11 +22,16 @@ class PcmsoController extends Controller
      */
     public function selecionarTipo(Cliente $cliente, Request $request)
     {
-        $usuario = $request->user();
-        abort_if($cliente->empresa_id !== $usuario->empresa_id, 403);
+        $usuario   = $request->user();
+        $empresaId = $usuario->empresa_id;
+
+        abort_if($cliente->empresa_id !== $empresaId, 403);
+
+        $origem = $request->query('origem'); // 'cliente' ou null
 
         return view('operacional.kanban.pcmso.tipo', [
             'cliente' => $cliente,
+            'origem'  => $origem,
         ]);
     }
 
@@ -188,6 +193,12 @@ class PcmsoController extends Controller
                 'subpath'        => 'anexos-custom/' . $empresaId,
             ]);
         });
+
+        if ($usuario->isCliente()) {
+            return redirect()
+                ->route('cliente.dashboard')
+                ->with('ok', "Solicitação de PCMSO {$tipoLabel} criada com sucesso e enviada para análise.");
+        }
 
         return redirect()
             ->route('operacional.kanban')

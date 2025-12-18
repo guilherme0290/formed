@@ -37,7 +37,7 @@ class AcessosController extends Controller
         $papeis = Papel::orderBy('nome')->get();
 
         // pode ser fixo:
-        $tipos = ['master','operacional','comercial','financeiro','cliente'];
+        $tipos = ['master','operacional','comercial.blade.php','financeiro','cliente'];
 
 
         return view('master.acessos.index', compact(

@@ -17,7 +17,7 @@ return new class extends Migration {
 
         Schema::create('permissoes', function (Blueprint $t) {
             $t->id();
-            $t->string('chave')->unique(); // ex: comercial.propostas.view
+            $t->string('chave')->unique(); // ex: comercial.blade.php.propostas.view
             $t->string('nome');
             $t->string('escopo')->nullable(); // Comercial, Operacional, etc.
             $t->timestamps();

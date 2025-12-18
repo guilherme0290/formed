@@ -3,6 +3,9 @@
 use App\Http\Controllers\Api\ClientesApiController;
 use App\Http\Controllers\Api\ServicosApiController;
 use App\Http\Controllers\ClienteController;
+use App\Http\Controllers\Comercial\EsocialFaixaController;
+use App\Http\Controllers\Comercial\ExamesTabPrecoController;
+use App\Http\Controllers\Comercial\PropostaPrecoController;
 use App\Http\Controllers\Master\AcessosController;
 use App\Http\Controllers\Master\DashboardController;
 use App\Http\Controllers\Operacional\AsoController;
@@ -14,16 +17,23 @@ use App\Http\Controllers\Operacional\PgrController;
 use App\Http\Controllers\PapelController;
 use App\Http\Controllers\PermissaoController;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\TabelaPrecoController;
+use App\Http\Controllers\Comercial\TabelaPrecoController;
 use App\Http\Controllers\TabelaPrecoItemController;
 use App\Http\Controllers\Operacional\LtcatController;
 use App\Http\Controllers\Operacional\AprController;
 use App\Http\Controllers\Operacional\PaeController;
 use App\Http\Controllers\Operacional\TreinamentoNrController;
+use App\Http\Controllers\Comercial\TreinamentoNrController as ComercialTreinamentoNrController;
 use App\Http\Controllers\FuncaoController;
 use App\Http\Controllers\TarefaController;
 use App\Http\Controllers\AnexoController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Cliente\ClienteDashboardController;
+use App\Http\Controllers\Cliente\ClienteFuncionarioController;
+use Illuminate\Http\Request;
+use App\Models\Cliente;
+use \App\Http\Controllers\Comercial\PropostaController;
+
 
 // ==================== Controllers ====================
 
@@ -171,7 +181,7 @@ Route::middleware('auth')->group(function () {
         // ======================================================
 
         // Selecionar tipo (Matriz | Específico)
-        Route::get('clientes/{cliente}/ltcat/tipo', [LtcatController::class, 'tipo'])
+        Route::get('clientes/{cliente}/ltcat/tipo', [LtcatController::class, 'selecionarTipo'])
             ->name('ltcat.tipo');
 
         // Formulário (?tipo=matriz ou ?tipo=especifico)
@@ -280,10 +290,253 @@ Route::middleware('auth')->group(function () {
             ->name('anexos.destroy');
     });
 
-
     Route::get('operacional/tarefas/detalhes/ajax',
         [PainelController::class, 'detalhesAjax']
     )->name('operacional.tarefas.detalhes.ajax');
+
+    // ======================================================
+   //                  CLIENTE (PAINEL)
+   // ======================================================
+    Route::prefix('cliente')
+        ->name('cliente.')
+        ->group(function () {
+
+            Route::get('/', [ClienteDashboardController::class, 'index'])
+                ->name('dashboard');
+
+            Route::get('/funcionarios', [ClienteFuncionarioController::class, 'index'])
+                ->name('funcionarios.index');
+
+            Route::get('/funcionarios/novo', [ClienteFuncionarioController::class, 'create'])
+                ->name('funcionarios.create');
+
+            Route::post('/funcionarios', [ClienteFuncionarioController::class, 'store'])
+                ->name('funcionarios.store');
+
+            Route::get('/funcionarios/{funcionario}', [ClienteFuncionarioController::class, 'show'])
+                ->name('funcionarios.show');
+
+            // 🔁 Ativar / Inativar funcionário (portal do cliente)
+            Route::patch('/funcionarios/{funcionario}/toggle-status',
+                [ClienteFuncionarioController::class, 'toggleStatus']
+            )->name('funcionarios.toggle-status');
+
+            // SERVIÇOS
+
+
+            // ASO
+            Route::get('/servicos/aso', function (Request $request) {
+                $clienteId = session('portal_cliente_id');
+
+                $cliente = Cliente::findOrFail($clienteId);
+
+                // 🔹 Passa origem=cliente para a tela de ASO
+                return redirect()->route('operacional.kanban.aso.create', [
+                    'cliente' => $cliente,
+                    'origem'  => 'cliente',
+                ]);
+            })->name('servicos.aso');
+
+            //PGR
+
+            Route::get('/servicos/pgr', function (Request $request) {
+                $clienteId = session('portal_cliente_id');
+                $cliente   = Cliente::findOrFail($clienteId);
+
+                // adiciona ?origem=cliente na URL
+                return redirect()->route('operacional.kanban.pgr.tipo', [
+                    'cliente' => $cliente->id,
+                    'origem'  => 'cliente'
+                ]);
+            })->name('servicos.pgr');
+
+            //PCMSO
+
+            Route::get('/servicos/pcmso', function (Request $request) {
+                $clienteId = session('portal_cliente_id');
+                $cliente   = Cliente::findOrFail($clienteId);
+
+                return redirect()->route('operacional.pcmso.tipo', [
+                    'cliente' => $cliente,
+                    'origem'  => 'cliente',
+                ]);
+            })->name('servicos.pcmso');
+
+            //LTCAT
+
+
+            Route::get('/servicos/ltcat', function (Request $request) {
+                $clienteId = session('portal_cliente_id');
+                $cliente   = Cliente::findOrFail($clienteId);
+
+                return redirect()->route('operacional.ltcat.tipo', [
+                    'cliente' => $cliente->id,
+                    'origem'  => 'cliente',
+                ]);
+            })->name('servicos.ltcat');
+
+            //APR
+
+            Route::get('/servicos/apr', function (Request $request) {
+                $clienteId = session('portal_cliente_id');
+                $cliente   = Cliente::findOrFail($clienteId);
+
+                return redirect()->route('operacional.apr.create', [
+                    'cliente' => $cliente->id,
+                    'origem'  => 'cliente',
+                ]);
+            })->name('servicos.apr');
+
+            //servicos/treinamentos
+
+            Route::get('/servicos/treinamentos', function () {
+                $clienteId = session('portal_cliente_id');
+                $cliente   = \App\Models\Cliente::findOrFail($clienteId);
+
+                return redirect()->route('operacional.treinamentos-nr.create', [
+                    'cliente' => $cliente->id,
+                    'origem'  => 'cliente',
+                ]);
+            })->name('servicos.treinamentos');
+
+    });
+
+
+    Route::middleware(['auth'])
+        ->prefix('comercial')
+        ->name('comercial.')
+        ->group(function () {
+
+            // Painel Comercial
+            Route::get('/', [DashboardController::class, 'index'])
+                ->name('dashboard');
+
+            // Apresentação de Proposta
+            Route::get('/apresentacao', [\App\Http\Controllers\Comercial\ApresentacaoController::class, 'cliente'])
+                ->name('apresentacao.cliente');
+            Route::post('/apresentacao', [\App\Http\Controllers\Comercial\ApresentacaoController::class, 'clienteStore'])
+                ->name('apresentacao.cliente.store');
+            Route::get('/apresentacao/segmento', [\App\Http\Controllers\Comercial\ApresentacaoController::class, 'segmento'])
+                ->name('apresentacao.segmento');
+            Route::get('/apresentacao/{segmento}', [\App\Http\Controllers\Comercial\ApresentacaoController::class, 'show'])
+                ->name('apresentacao.show');
+            Route::get('/apresentacao-cancelar', [\App\Http\Controllers\Comercial\ApresentacaoController::class, 'cancelar'])
+                ->name('apresentacao.cancelar');
+
+            // Propostas
+            Route::get('/propostas', [PropostaController::class, 'index'])
+                ->name('propostas.index');
+
+            Route::get('/propostas/criar', [PropostaController::class, 'create'])
+                ->name('propostas.create');
+
+            Route::post('/propostas', [PropostaController::class, 'store'])
+                ->name('propostas.store');
+
+            Route::get('/propostas/{proposta}/editar', [PropostaController::class, 'edit'])
+                ->name('propostas.edit');
+
+            Route::put('/propostas/{proposta}', [PropostaController::class, 'update'])
+                ->name('propostas.update');
+
+            Route::delete('/propostas/{proposta}', [PropostaController::class, 'destroy'])
+                ->name('propostas.destroy');
+
+            Route::post('/propostas/{proposta}/enviar-whatsapp', [PropostaController::class, 'enviarWhatsapp'])
+                ->name('propostas.enviar-whatsapp');
+
+            Route::post('/propostas/{proposta}/enviar-email', [PropostaController::class, 'enviarEmail'])
+                ->name('propostas.enviar-email');
+
+            Route::post('/propostas/{proposta}/status', [PropostaController::class, 'alterarStatus'])
+                ->name('propostas.status');
+
+            Route::get('/propostas/{proposta}', [PropostaController::class, 'show'])
+                ->name('propostas.show');
+
+            Route::post('/propostas/{proposta}/fechar', [PropostaController::class, 'fechar'])
+                ->name('propostas.fechar');
+
+            // Contratos
+            Route::get('/contratos', [\App\Http\Controllers\Comercial\ContratoController::class, 'index'])
+                ->name('contratos.index');
+            Route::get('/contratos/{contrato}', [\App\Http\Controllers\Comercial\ContratoController::class, 'show'])
+                ->name('contratos.show');
+
+            // Kanban de Propostas (Acompanhamento)
+            Route::get('/pipeline', [\App\Http\Controllers\Comercial\PipelineController::class, 'index'])
+                ->name('pipeline.index');
+            Route::post('/pipeline/propostas/{proposta}/mover', [\App\Http\Controllers\Comercial\PipelineController::class, 'mover'])
+                ->name('pipeline.mover');
+
+            //tabela de preco
+            Route::get('/tabela-precos', [TabelaPrecoController::class, 'itensIndex'])
+                ->name('tabela-precos.index');
+
+            Route::post('/tabela-precos', [TabelaPrecoController::class, 'update'])
+                ->name('tabela-precos.update');
+
+            //tabela de preco ITENS
+
+            Route::get('/itens', [TabelaPrecoController::class, 'itensIndex'])->name('tabela-precos.itens.index');
+            Route::get('/itens/novo', [TabelaPrecoController::class, 'createItem'])->name('tabela-precos.itens.create');
+            Route::post('/itens', [TabelaPrecoController::class, 'storeItem'])->name('tabela-precos.itens.store');
+            Route::put('/itens/{item}', [TabelaPrecoController::class, 'updateItem'])->name('tabela-precos.itens.update');
+            Route::delete('/itens/{item}', [TabelaPrecoController::class, 'destroyItem'])->name('tabela-precos.itens.destroy');
+
+            //Esocial
+            Route::get('/esocial/faixas', [EsocialFaixaController::class, 'indexJson'])
+                ->name('esocial.faixas.json');
+
+            Route::post('/esocial/faixas', [EsocialFaixaController::class, 'store'])
+                ->name('esocial.faixas.store');
+
+            Route::put('/esocial/faixas/{faixa}', [EsocialFaixaController::class, 'update'])
+                ->name('esocial.faixas.update');
+
+            Route::delete('/esocial/faixas/{faixa}', [EsocialFaixaController::class, 'destroy'])
+                ->name('esocial.faixas.destroy');
+
+            Route::get('/propostas/preco-servico/{servico}', [PropostaPrecoController::class, 'precoServico'])
+                ->name('propostas.preco-servico');
+
+            Route::get('/propostas/preco-treinamento/{codigo}', [PropostaPrecoController::class, 'precoTreinamento'])
+                ->name('propostas.preco-treinamento');
+
+            Route::get('/propostas/esocial-preco', [PropostaPrecoController::class, 'esocialPreco'])
+                ->name('propostas.esocial-preco');
+
+            Route::get('/propostas/treinamentos-nrs.json', [PropostaPrecoController::class, 'treinamentosJson'])
+                ->name('propostas.treinamentos-nrs.json');
+
+            //Treinamento NRs
+
+            Route::get('/treinamentos-nrs.json', [ComercialTreinamentoNrController::class, 'indexJson'])
+                ->name('treinamentos-nrs.json');
+
+            Route::post('/treinamentos-nrs', [ComercialTreinamentoNrController::class, 'store'])
+                ->name('treinamentos-nrs.store');
+
+            Route::put('/treinamentos-nrs/{nr}', [ComercialTreinamentoNrController::class, 'update'])
+                ->name('treinamentos-nrs.update');
+
+            Route::delete('/treinamentos-nrs/{nr}', [ComercialTreinamentoNrController::class, 'destroy'])
+                ->name('treinamentos-nrs.destroy');
+
+            //Exames
+            Route::get('/exames', [ExamesTabPrecoController::class, 'indexJson'])
+                ->name('exames.indexJson');
+
+            Route::post('/exames', [ExamesTabPrecoController::class, 'store'])
+                ->name('exames.store');
+
+            Route::put('/exames/{exame}', [ExamesTabPrecoController::class, 'update'])
+                ->name('exames.update');
+
+            Route::delete('/exames/{exame}', [ExamesTabPrecoController::class, 'destroy'])
+                ->name('exames.destroy');
+        });
+
 
 
 
@@ -298,6 +551,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/{cliente}/edit', [ClienteController::class, 'edit'])->name('edit');
         Route::put('/{cliente}',      [ClienteController::class, 'update'])->name('update');
         Route::delete('/{cliente}',   [ClienteController::class, 'destroy'])->name('destroy');
+
+        // 👉 NOVA ROTA: selecionar cliente para o portal
+        Route::get('/{cliente}/portal', [ClienteController::class, 'selecionarParaPortal'])
+            ->name('portal');
 
         // Consulta CNPJ
         Route::get('/consulta-cnpj/{cnpj}', [ClienteController::class, 'consultaCnpj'])
@@ -337,8 +594,6 @@ Route::middleware('auth')->group(function () {
         Route::post('usuarios/{user}/reset',   [AcessosController::class, 'usuariosReset'])->name('usuarios.reset');
         Route::post('usuarios/{user}/password',[AcessosController::class, 'usuariosSetPassword'])->name('usuarios.password');
 
-        //
-
         // CRUD de Funções
         Route::get('funcoes',        [FuncaoController::class, 'index'])->name('funcoes.index');
         Route::post('funcoes',       [FuncaoController::class, 'store'])->name('funcoes.store');
@@ -349,14 +604,14 @@ Route::middleware('auth')->group(function () {
     // ======================================================
     //                TABELA DE PREÇOS
     // ======================================================
-    Route::prefix('master/tabela-precos')->name('tabela-precos.')->group(function () {
-        Route::get('/', [TabelaPrecoController::class,'index'])->name('index');
-
-        Route::post('/itens',                 [TabelaPrecoItemController::class,'store'])->name('items.store');
-        Route::put('/itens/{item}',           [TabelaPrecoItemController::class,'update'])->name('items.update');
-        Route::patch('/itens/{item}/toggle',  [TabelaPrecoItemController::class,'toggle'])->name('items.toggle');
-        Route::delete('/itens/{item}',        [TabelaPrecoItemController::class,'destroy'])->name('items.destroy');
-    });
+//    Route::prefix('master/tabela-precos')->name('tabela-precos.')->group(function () {
+//        Route::get('/', [TabelaPrecoController::class,'index'])->name('index');
+//
+//        Route::post('/itens',                 [TabelaPrecoItemController::class,'store'])->name('items.store');
+//        Route::put('/itens/{item}',           [TabelaPrecoItemController::class,'update'])->name('items.update');
+//        Route::patch('/itens/{item}/toggle',  [TabelaPrecoItemController::class,'toggle'])->name('items.toggle');
+//        Route::delete('/itens/{item}',        [TabelaPrecoItemController::class,'destroy'])->name('items.destroy');
+//    });
 
     // ======================================================
     //                    APIs internas

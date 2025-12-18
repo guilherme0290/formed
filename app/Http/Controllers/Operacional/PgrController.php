@@ -23,8 +23,11 @@ class PgrController extends Controller
 
         abort_if($cliente->empresa_id !== $empresaId, 403);
 
+        $origem = $request->query('origem'); // 'cliente' ou null
+
         return view('operacional.kanban.pgr.tipo', [
             'cliente' => $cliente,
+            'origem'  => $origem,
         ]);
     }
 
@@ -39,7 +42,8 @@ class PgrController extends Controller
 
         abort_if($cliente->empresa_id !== $empresaId, 403);
 
-        $tipo = $request->query('tipo','matriz');
+        $tipo   = $request->query('tipo', 'matriz');
+        $origem = $request->query('origem'); // 'cliente' ou null
 
         $funcoes = Funcao::where('empresa_id', $empresaId)
             ->orderBy('nome')
@@ -50,9 +54,7 @@ class PgrController extends Controller
         }
 
         $tipoLabel = $tipo === 'matriz' ? 'Matriz' : 'Específico';
-
-        // valor fixo de ART (se quiser depois pode vir de config/tabela)
-        $valorArt = 500.00;
+        $valorArt  = 500.00;
 
         return view('operacional.kanban.pgr.form', [
             'cliente'   => $cliente,
@@ -63,6 +65,7 @@ class PgrController extends Controller
             'tarefa'    => null,
             'pgr'       => null,
             'modo'      => 'create',
+            'origem'    => $origem,
         ]);
     }
 
@@ -426,6 +429,12 @@ class PgrController extends Controller
         $tarefa->update([
             'descricao' => $descricao,
         ]);
+
+        if ($usuario->isCliente()) {
+            return redirect()
+                ->route('cliente.dashboard')
+                ->with('ok', 'Solicitação de PGR criada com sucesso e enviada para análise.');
+        }
 
         return redirect()
             ->route('operacional.kanban')

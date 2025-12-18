@@ -3,11 +3,27 @@
 @section('title', 'Nova Tarefa - Selecionar Serviço')
 
 @section('content')
+    @php
+        // pega origem da query (?origem=cliente) se existir
+        $origem = request()->query('origem');
+
+        // se tiver portal_cliente_id ou origem=cliente,
+        // considera que está vindo do Portal do Cliente
+        $estaNoPortalCliente = session('portal_cliente_id') || $origem === 'cliente';
+
+        // rota de voltar:
+        // - se for cliente → painel do cliente
+        // - senão → painel operacional (Kanban)
+        $rotaVoltar = $estaNoPortalCliente
+            ? route('cliente.dashboard')
+            : route('operacional.kanban');
+    @endphp
+
     <div class="max-w-6xl mx-auto px-6 py-8">
 
-        {{-- Voltar para lista de clientes --}}
+        {{-- Voltar --}}
         <div class="mb-4">
-            <a href="{{ route('operacional.kanban.aso.clientes') }}"
+            <a href="{{ $rotaVoltar }}"
                class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 bg-white text-sm text-slate-700 hover:bg-slate-50">
                 <span>←</span>
                 <span>Voltar ao Painel</span>
@@ -17,7 +33,7 @@
         {{-- Card principal --}}
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
 
-            {{-- Cabeçalho azul --}}
+            {{-- Cabeçalho --}}
             <div class="rounded-3xl mb-5 px-5 md:px-6 py-4 md:py-5
             flex flex-col md:flex-row md:items-center justify-between gap-4
             bg-white border border-slate-200 shadow-sm">
@@ -57,9 +73,11 @@
             <div class="px-6 py-6">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 
-                    {{-- ASO (ativo) --}}
                     {{-- ASO --}}
-                    <a href="{{ route('operacional.kanban.aso.create', $cliente) }}"
+                    <a href="{{ route('operacional.kanban.aso.create', [
+                            'cliente' => $cliente,
+                            'origem'  => $origem,
+                        ]) }}"
                        class="group rounded-2xl border border-sky-200 bg-gradient-to-br from-sky-50 to-sky-100 p-4
           flex flex-col justify-between hover:from-sky-100 hover:to-sky-200 hover:border-sky-300 hover:shadow-md
           transition">
@@ -79,7 +97,10 @@
                     </a>
 
                     {{-- PGR --}}
-                    <a href="{{ route('operacional.kanban.pgr.tipo', $cliente) }}"
+                    <a href="{{ route('operacional.kanban.pgr.tipo', [
+                            'cliente' => $cliente,
+                            'origem'  => $origem,
+                        ]) }}"
                        class="group rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-emerald-100 p-4
           flex flex-col justify-between hover:from-emerald-100 hover:to-emerald-200 hover:border-emerald-300 hover:shadow-md
           transition">
@@ -99,7 +120,10 @@
                     </a>
 
                     {{-- PCMSO --}}
-                    <a href="{{ route('operacional.pcmso.tipo', $cliente) }}"
+                    <a href="{{ route('operacional.pcmso.tipo', [
+                            'cliente' => $cliente,
+                            'origem'  => $origem,
+                        ]) }}"
                        class="group rounded-2xl border border-purple-200 bg-gradient-to-br from-purple-50 to-purple-100 p-4
           flex flex-col justify-between hover:from-purple-100 hover:to-purple-200 hover:border-purple-300 hover:shadow-md
           transition">
@@ -118,7 +142,10 @@
                     </a>
 
                     {{-- LTCAT --}}
-                    <a href="{{ route('operacional.ltcat.tipo', $cliente) }}"
+                    <a href="{{ route('operacional.ltcat.tipo', [
+                            'cliente' => $cliente,
+                            'origem'  => $origem,
+                        ]) }}"
                        class="group rounded-2xl border border-orange-200 bg-gradient-to-br from-orange-50 to-orange-100 p-4
           flex flex-col justify-between hover:from-orange-100 hover:to-orange-200 hover:border-orange-300 hover:shadow-md
           transition">
@@ -138,7 +165,10 @@
                     </a>
 
                     {{-- LTIP --}}
-                    <a href="{{ route('operacional.ltip.create', $cliente) }}"
+                    <a href="{{ route('operacional.ltip.create', [
+                            'cliente' => $cliente,
+                            'origem'  => $origem,
+                        ]) }}"
                        class="group rounded-2xl border border-red-200 bg-gradient-to-br from-red-50 to-red-100 p-4
           flex flex-col justify-between hover:from-red-100 hover:to-red-200 hover:border-red-300 hover:shadow-md
           transition">
@@ -157,7 +187,10 @@
                     </a>
 
                     {{-- APR --}}
-                    <a href="{{ route('operacional.apr.create', $cliente) }}"
+                    <a href="{{ route('operacional.apr.create', [
+                            'cliente' => $cliente,
+                            'origem'  => $origem,
+                        ]) }}"
                        class="group rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-amber-100 p-4
           flex flex-col justify-between hover:from-amber-100 hover:to-amber-200 hover:border-amber-300 hover:shadow-md
           transition">
@@ -173,7 +206,10 @@
                     </a>
 
                     {{-- PAE --}}
-                    <a href="{{ route('operacional.pae.create', $cliente) }}"
+                    <a href="{{ route('operacional.pae.create', [
+                            'cliente' => $cliente,
+                            'origem'  => $origem,
+                        ]) }}"
                        class="group rounded-2xl border border-rose-200 bg-gradient-to-br from-rose-50 to-rose-100 p-4
           flex flex-col justify-between hover:from-rose-100 hover:to-rose-200 hover:border-rose-300 hover:shadow-md
           transition">
@@ -192,7 +228,10 @@
                     </a>
 
                     {{-- Treinamentos NRs --}}
-                    <a href="{{ route('operacional.treinamentos-nr.create', $cliente) }}"
+                    <a href="{{ route('operacional.treinamentos-nr.create', [
+                            'cliente' => $cliente,
+                            'origem'  => $origem,
+                        ]) }}"
                        class="group rounded-2xl border border-indigo-200 bg-gradient-to-br from-indigo-50 to-indigo-100 p-4
           flex flex-col justify-between hover:from-indigo-100 hover:to-indigo-200 hover:border-indigo-300 hover:shadow-md
           transition">
@@ -209,7 +248,6 @@
                             Clique para criar uma nova solicitação de Treinamento de NRs para este cliente.
                         </p>
                     </a>
-
 
                 </div>
             </div>
