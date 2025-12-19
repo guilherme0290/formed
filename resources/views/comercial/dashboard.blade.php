@@ -18,7 +18,7 @@
                 {{-- barra título --}}
                 <div class="px-5 md:px-8 py-3 border-b border-white/10 flex items-center justify-between">
                     <h2 class="text-sm md:text-base font-semibold text-white">
-                        🏅 Ranking de Vendedores – Outubro 2025
+                        🏅 Ranking de Vendedores – {{ $ranking['mesAtual'] ?? now()->translatedFormat('F Y') }}
                     </h2>
                     <span class="hidden md:inline text-xs text-blue-100">
                         Atualizado automaticamente conforme o faturamento do mês
@@ -27,52 +27,56 @@
 
                 {{-- cards do ranking --}}
                 <div class="px-4 md:px-6 py-4 md:py-5">
-                    <div class="grid gap-4 md:grid-cols-3">
-                        {{-- 1º lugar --}}
-                        <article class="bg-gradient-to-br from-yellow-400 via-amber-400 to-orange-300 rounded-xl shadow-md p-4 md:p-5 text-white flex flex-col justify-between">
-                            <div class="flex items-start justify-between gap-2">
-                                <div>
-                                    <p class="text-xs font-semibold uppercase tracking-wide">1º Lugar</p>
-                                    <p class="text-lg md:text-xl font-bold mt-1">Fernando</p>
-                                </div>
-                                <span class="text-3xl font-black opacity-60 leading-none">1º</span>
-                            </div>
-                            <div class="mt-4">
-                                <p class="text-xs uppercase tracking-wide text-white/80">Faturamento</p>
-                                <p class="text-2xl font-semibold leading-tight">R$ 50.000</p>
-                            </div>
-                        </article>
-
-                        {{-- 2º lugar --}}
-                        <article class="bg-gradient-to-br from-slate-200 via-slate-300 to-slate-400 rounded-xl shadow-md p-4 md:p-5 text-slate-800 flex flex-col justify-between">
-                            <div class="flex items-start justify-between gap-2">
-                                <div>
-                                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-700">2º Lugar</p>
-                                    <p class="text-lg md:text-xl font-bold mt-1">Wesley</p>
-                                </div>
-                                <span class="text-3xl font-black text-slate-500/70 leading-none">2º</span>
-                            </div>
-                            <div class="mt-4">
-                                <p class="text-xs uppercase tracking-wide text-slate-600">Faturamento</p>
-                                <p class="text-2xl font-semibold leading-tight">R$ 40.000</p>
-                            </div>
-                        </article>
-
-                        {{-- 3º lugar --}}
-                        <article class="bg-gradient-to-br from-orange-400 via-orange-500 to-amber-500 rounded-xl shadow-md p-4 md:p-5 text-white flex flex-col justify-between">
-                            <div class="flex items-start justify-between gap-2">
-                                <div>
-                                    <p class="text-xs font-semibold uppercase tracking-wide">3º Lugar</p>
-                                    <p class="text-lg md:text-xl font-bold mt-1">Geovany</p>
-                                </div>
-                                <span class="text-3xl font-black opacity-70 leading-none">3º</span>
-                            </div>
-                            <div class="mt-4">
-                                <p class="text-xs uppercase tracking-wide text-white/80">Faturamento</p>
-                                <p class="text-2xl font-semibold leading-tight">R$ 30.000</p>
-                            </div>
-                        </article>
-                    </div>
+                    @if(!empty($ranking['itens']))
+                        <div class="grid gap-4 md:grid-cols-3">
+                            @foreach($ranking['itens'] as $item)
+                                @php
+                                    $classes = [
+                                        1 => 'bg-gradient-to-br from-yellow-400 via-amber-400 to-orange-300 text-white',
+                                        2 => 'bg-gradient-to-br from-slate-200 via-slate-300 to-slate-400 text-slate-800',
+                                        3 => 'bg-gradient-to-br from-orange-400 via-orange-500 to-amber-500 text-white',
+                                    ];
+                                    $classe = $classes[$item['posicao']] ?? $classes[1];
+                                @endphp
+                                <article class="{{ $classe }} rounded-xl shadow-md p-4 md:p-5 flex flex-col justify-between">
+                                    <div class="flex items-start justify-between gap-2">
+                                        <div>
+                                            <p class="text-xs font-semibold uppercase tracking-wide">{{ $item['posicao'] }}º Lugar</p>
+                                            <p class="text-lg md:text-xl font-bold mt-1">{{ $item['nome'] }}</p>
+                                        </div>
+                                        <span class="text-3xl font-black opacity-70 leading-none">{{ $item['posicao'] }}º</span>
+                                    </div>
+                                    <div class="mt-4">
+                                        <p class="text-xs uppercase tracking-wide {{ $item['posicao'] === 2 ? 'text-slate-700' : 'text-white/80' }}">Faturamento</p>
+                                        <p class="text-2xl font-semibold leading-tight">
+                                            R$ {{ number_format($item['faturamento'], 2, ',', '.') }}
+                                        </p>
+                                    </div>
+                                </article>
+                            @endforeach
+                        </div>
+                    @else
+                        <div class="grid gap-4 md:grid-cols-3">
+                            @for($i=1; $i<=3; $i++)
+                                <article class="rounded-xl border border-white/10 bg-white/5 backdrop-blur text-white p-4 md:p-5 flex flex-col justify-between animate-pulse">
+                                    <div class="flex items-start justify-between gap-2">
+                                        <div class="space-y-2">
+                                            <div class="h-3 w-16 bg-white/30 rounded"></div>
+                                            <div class="h-4 w-24 bg-white/20 rounded"></div>
+                                        </div>
+                                        <span class="text-3xl font-black opacity-40 leading-none">{{ $i }}º</span>
+                                    </div>
+                                    <div class="mt-4 space-y-2">
+                                        <div class="h-3 w-20 bg-white/20 rounded"></div>
+                                        <div class="h-5 w-28 bg-white/30 rounded"></div>
+                                    </div>
+                                </article>
+                            @endfor
+                        </div>
+                        <div class="text-center text-white text-sm mt-4">
+                            Nenhuma venda registrada neste período. O ranking será exibido automaticamente assim que houver vendas no mês.
+                        </div>
+                    @endif
                 </div>
             </div>
         </section>
@@ -148,7 +152,7 @@
                     </a>
 
                     {{-- Minhas Comissões --}}
-                    <a href="#"
+                    <a href="{{ route('comercial.comissoes.index') }}"
                        class="group rounded-2xl border border-amber-100 bg-amber-50/80 hover:bg-amber-100 transition shadow-sm p-4 flex flex-col justify-between">
                         <div>
                             <div class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500 text-white mb-3">
@@ -181,7 +185,7 @@
                     </a>
 
                     {{-- Agenda --}}
-                    <a href="#"
+                    <a href="{{ route('comercial.agenda.index') }}"
                        class="group rounded-2xl border border-indigo-100 bg-indigo-50/80 hover:bg-indigo-100 transition shadow-sm p-4 flex flex-col justify-between">
                         <div>
                             <div class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-500 text-white mb-3">

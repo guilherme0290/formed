@@ -535,6 +535,37 @@ Route::middleware('auth')->group(function () {
 
             Route::delete('/exames/{exame}', [ExamesTabPrecoController::class, 'destroy'])
                 ->name('exames.destroy');
+
+            // Minhas Comissões (vendedor)
+            Route::prefix('minhas-comissoes')
+                ->name('comissoes.')
+                ->group(function () {
+                    Route::get('/', [\App\Http\Controllers\Comercial\MinhasComissoesController::class, 'index'])
+                        ->name('index');
+                    Route::get('/{ano}', [\App\Http\Controllers\Comercial\MinhasComissoesController::class, 'index'])
+                        ->whereNumber('ano')
+                        ->name('ano');
+                    Route::get('/{ano}/{mes}', [\App\Http\Controllers\Comercial\MinhasComissoesController::class, 'mes'])
+                        ->whereNumber('ano')->whereNumber('mes')
+                        ->name('mes');
+                    Route::get('/{ano}/{mes}/previsao', [\App\Http\Controllers\Comercial\MinhasComissoesController::class, 'previsao'])
+                        ->whereNumber('ano')->whereNumber('mes')
+                        ->name('previsao');
+                    Route::get('/{ano}/{mes}/efetivada', [\App\Http\Controllers\Comercial\MinhasComissoesController::class, 'efetivada'])
+                        ->whereNumber('ano')->whereNumber('mes')
+                        ->name('efetivada');
+                    Route::get('/{ano}/{mes}/inadimplentes', [\App\Http\Controllers\Comercial\MinhasComissoesController::class, 'inadimplentes'])
+                        ->whereNumber('ano')->whereNumber('mes')
+                        ->name('inadimplentes');
+                });
+
+            // Agenda Comercial
+            Route::prefix('agenda')->name('agenda.')->group(function () {
+                Route::get('/', [\App\Http\Controllers\Comercial\AgendaController::class, 'index'])->name('index');
+                Route::post('/', [\App\Http\Controllers\Comercial\AgendaController::class, 'store'])->name('store');
+                Route::patch('/{tarefa}/concluir', [\App\Http\Controllers\Comercial\AgendaController::class, 'concluir'])->name('concluir');
+                Route::delete('/{tarefa}', [\App\Http\Controllers\Comercial\AgendaController::class, 'destroy'])->name('destroy');
+            });
         });
 
 

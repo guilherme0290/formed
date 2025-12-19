@@ -30,30 +30,36 @@ class AuthenticatedSessionController extends Controller
 
         $destino   = $request->input('redirect', 'master');
         $user      = $request->user();
-        $papelNome = strtoupper(optional($user->papel)->nome);
+        $papelNome = mb_strtolower(optional($user->papel)->nome ?? '');
 
-        // Se for operacional, SEMPRE vai pro operacional
-        if (strtoupper($papelNome) === 'OPERACIONAL') {
+        // MASTER: pode ir a qualquer módulo exceto cliente
+        if ($papelNome === 'master') {
+            if ($destino === 'operacional') {
+                return redirect()->route('operacional.kanban');
+            }
+            if ($destino === 'comercial') {
+                return redirect()->route('comercial.dashboard');
+            }
+            return redirect()->route('master.dashboard');
+        }
+
+        // OPERACIONAL: sempre operacional
+        if ($papelNome === 'operacional') {
             return redirect()->route('operacional.kanban');
         }
 
-        // =========================
-        // MÓDULO CLIENTE
-        // =========================
-// MÓDULO CLIENTE
-// =========================
-        if ($destino === 'cliente') {
+        // COMERCIAL: sempre comercial
+        if ($papelNome === 'comercial') {
+            return redirect()->route('comercial.dashboard');
+        }
 
-            // se o usuário tiver cliente vinculado
+        // CLIENTE: somente portal do cliente
+        if ($papelNome === 'cliente') {
             if ($user->cliente_id) {
-
-                // salva o cliente escolhido na sessão do portal
                 $request->session()->put('portal_cliente_id', $user->cliente_id);
-
                 return redirect()->route('cliente.dashboard');
             }
 
-            // 🚨 NÃO TEM cliente_id → desloga e volta pro login
             Auth::logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
@@ -63,17 +69,13 @@ class AuthenticatedSessionController extends Controller
                 ->with('error', 'Seu usuário não está vinculado a nenhum cliente. Acesse com um usuário de cliente.');
         }
 
-        // =========================
-        // MÓDULO OPERACIONAL
-        // =========================
-        if ($destino === 'operacional') {
-            return redirect()->route('operacional.kanban');
-        }
+        // Perfil não reconhecido: desloga e exibe página informativa
+        Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
 
-        // =========================
-        // MASTER (padrão)
-        // =========================
-        return redirect()->route('master.dashboard');
+        return response()
+            ->view('errors.perfil-nao-suportado', ['papel' => $papelNome ?: 'desconhecido'], 403);
     }
 
     /**

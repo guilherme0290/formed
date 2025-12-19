@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Comissao extends Model
 {
@@ -28,4 +29,9 @@ class Comissao extends Model
         'valor_comissao' => 'decimal:2',
         'gerada_em' => 'datetime',
     ];
+
+    public function cliente(): BelongsTo
+    {
+        return $this->belongsTo(Cliente::class);
+    }
 }
