@@ -1,3 +1,5 @@
+@php($routePrefix = $routePrefix ?? 'comercial')
+
 <div id="modalExamesCrud" class="fixed inset-0 z-50 hidden bg-black/40">
     <div class="min-h-full w-full flex items-center justify-center p-4 md:p-6">
         <div class="bg-white w-full max-w-5xl rounded-2xl shadow-xl overflow-hidden max-h-[85vh] flex flex-col">
@@ -110,10 +112,10 @@
 
             const EXAMES = {
                 urls: {
-                    list:   @json(route('comercial.exames.indexJson')),
-                    store:  @json(route('comercial.exames.store')),
-                    update: (id) => @json(route('comercial.exames.update', ['exame' => '__ID__'])).replace('__ID__', id),
-                    destroy:(id) => @json(route('comercial.exames.destroy', ['exame' => '__ID__'])).replace('__ID__', id),
+                list:   @json(route($routePrefix.'.exames.indexJson')),
+                store:  @json(route($routePrefix.'.exames.store')),
+                update: (id) => @json(route($routePrefix.'.exames.update', ['exame' => '__ID__'])).replace('__ID__', id),
+                destroy:(id) => @json(route($routePrefix.'.exames.destroy', ['exame' => '__ID__'])).replace('__ID__', id),
                 },
                 state: { exames: [] },
                 dom: {

@@ -13,6 +13,7 @@ class ClienteContrato extends Model
     protected $fillable = [
         'empresa_id',
         'cliente_id',
+        'vendedor_id',
         'proposta_id_origem',
         'status',
         'vigencia_inicio',
@@ -35,6 +36,11 @@ class ClienteContrato extends Model
     public function cliente(): BelongsTo
     {
         return $this->belongsTo(Cliente::class);
+    }
+
+    public function vendedor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'vendedor_id');
     }
 
     public function empresa(): BelongsTo

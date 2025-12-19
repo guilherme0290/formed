@@ -1,8 +1,7 @@
-<x-app-layout>
-    <x-slot name="header">
-        <h1 class="text-2xl font-bold">Painel Master</h1>
-        <p class="text-sm text-slate-500 -mt-1">Visão administrativa completa do sistema</p>
-    </x-slot>
+@extends('layouts.master')
+@section('title', 'Painel Master')
+
+@section('content')
 
     {{-- Cards métricas --}}
     <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -52,11 +51,19 @@
             </div>
         </a>
 
-        <a href="{{ route('tabela-precos.index') }}" class="bg-white rounded-2xl shadow-sm border p-5 flex items-center gap-3 hover:shadow transition">
+        <a href="{{ route('master.tabela-precos.itens.index') }}" class="bg-white rounded-2xl shadow-sm border p-5 flex items-center gap-3 hover:shadow transition">
             <span class="h-10 w-10 rounded-xl bg-yellow-500/10 text-yellow-600 grid place-items-center text-xl">💰</span>
             <div>
                 <div class="font-semibold">Tabela de Preços</div>
                 <div class="text-sm text-slate-500">Cadastro e políticas de preço</div>
+            </div>
+        </a>
+
+        <a href="{{ route('master.comissoes.index') }}" class="bg-white rounded-2xl shadow-sm border p-5 flex items-center gap-3 hover:shadow transition">
+            <span class="h-10 w-10 rounded-xl bg-emerald-500/10 text-emerald-600 grid place-items-center text-xl">💸</span>
+            <div>
+                <div class="font-semibold">Comissões</div>
+                <div class="text-sm text-slate-500">Parametrize % por serviço e regras de vigência</div>
             </div>
         </a>
 
@@ -119,4 +126,4 @@
             </div>
         </div>
     </div>
-</x-app-layout>
+@endsection

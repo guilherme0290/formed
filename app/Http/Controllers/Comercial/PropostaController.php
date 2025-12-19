@@ -303,6 +303,12 @@ class PropostaController extends Controller
             ->exists();
         abort_if(!$clienteOk, 403);
 
+        // seta vendedor no cliente se estiver vazio
+        $cliente = Cliente::find($data['cliente_id']);
+        if ($cliente && !$cliente->vendedor_id) {
+            $cliente->update(['vendedor_id' => auth()->id()]);
+        }
+
         foreach ($data['itens'] as $it) {
             if (!empty($it['servico_id'])) {
                 $ok = Servico::where('id', $it['servico_id'])

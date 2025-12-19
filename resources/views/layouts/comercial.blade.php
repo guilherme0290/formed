@@ -61,16 +61,53 @@
                 <span data-sidebar-label>Painel Comercial</span>
             </a>
 
-            {{-- Exemplo de futuros itens --}}
-            {{--
-            <a href="{{ route('comercial.clientes.index') }}"
+            <a href="{{ route('comercial.comissoes.index') }}"
                class="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-200 hover:bg-slate-800 text-sm">
-                <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800">
-                    👥
+                <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500/20 text-orange-400">
+                    $
                 </span>
-                <span data-sidebar-label>Clientes</span>
+                <span data-sidebar-label>Minhas Comissões</span>
             </a>
-            --}}
+
+            <a href="{{ route('comercial.agenda.index') }}"
+               class="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-200 hover:bg-slate-800 text-sm">
+                <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-200">
+                    🗓️
+                </span>
+                <span data-sidebar-label>Agenda</span>
+            </a>
+
+            <a href="{{ route('comercial.propostas.index') }}"
+               class="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-200 hover:bg-slate-800 text-sm">
+                <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/20 text-blue-200">
+                    📄
+                </span>
+                <span data-sidebar-label>Propostas</span>
+            </a>
+
+            <a href="{{ route('comercial.pipeline.index') }}"
+               class="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-200 hover:bg-slate-800 text-sm">
+                <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-rose-500/20 text-rose-200">
+                    📈
+                </span>
+                <span data-sidebar-label>Acompanhamento</span>
+            </a>
+
+            <a href="{{ route('comercial.tabela-precos.index') }}"
+               class="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-200 hover:bg-slate-800 text-sm">
+                <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-green-500/20 text-green-200">
+                    💰
+                </span>
+                <span data-sidebar-label>Tabela de Preços</span>
+            </a>
+
+            <a href="{{ route('comercial.contratos.index') }}"
+               class="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-200 hover:bg-slate-800 text-sm">
+                <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-purple-500/20 text-purple-200">
+                    📑
+                </span>
+                <span data-sidebar-label>Contratos</span>
+            </a>
         </nav>
 
         <div class="px-4 py-4 border-t border-slate-800 space-y-2 text-sm">
