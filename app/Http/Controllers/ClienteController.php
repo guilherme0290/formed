@@ -21,6 +21,7 @@ class ClienteController extends Controller
         $empresaId = $r->user()->empresa_id ?? 1;
 
         $clientes = Cliente::query()
+            ->with('userCliente')
             ->where('empresa_id', $empresaId)
             ->when($q, function ($w) use ($q) {
                 $doc = preg_replace('/\D+/', '', $q);
@@ -132,6 +133,66 @@ class ClienteController extends Controller
         $this->authorizeCliente($cliente);
 
         return view('clientes.show', compact('cliente'));
+    }
+
+    public function acessoForm(Cliente $cliente)
+    {
+        $this->authorizeCliente($cliente);
+
+        $userExistente = \App\Models\User::where('cliente_id', $cliente->id)->first();
+        $senhaSugerida = \Illuminate\Support\Str::password(10);
+
+        return view('clientes.acesso', compact('cliente', 'userExistente', 'senhaSugerida'));
+    }
+
+    public function criarAcesso(Request $request, Cliente $cliente)
+    {
+        $email = $cliente->email;
+        if (!$email) {
+            return back()->with('erro', 'O cliente não possui e-mail cadastrado para criar o acesso.');
+        }
+
+        // evita duplicar usuário para o mesmo cliente
+        $userExistente = \App\Models\User::where('cliente_id', $cliente->id)->first();
+        if ($userExistente) {
+            return back()->with('erro', 'Já existe um usuário vinculado a este cliente.');
+        }
+
+        // evita conflito de e-mail
+        if (\App\Models\User::where('email', $request->input('email', $email))->exists()) {
+            return back()->with('erro', 'Já existe um usuário com este e-mail. Use outro e-mail.');
+        }
+
+        $papelCliente = \App\Models\Papel::whereRaw('lower(nome) = ?', ['cliente'])->first();
+        if (!$papelCliente) {
+            return back()->with('erro', 'Papel Cliente não encontrado. Cadastre o papel antes de criar o acesso.');
+        }
+
+        $data = $request->validate([
+            'email' => ['required','email'],
+            'password' => ['required','string','min:8'],
+        ]);
+
+        $senhaTemporaria = $data['password'];
+
+        $user = \App\Models\User::create([
+            'name'                 => $cliente->nome_fantasia ?: $cliente->razao_social ?: 'Cliente '.$cliente->id,
+            'email'                => $data['email'],
+            'password'             => $senhaTemporaria,
+            'papel_id'             => $papelCliente->id,
+            'empresa_id'           => $cliente->empresa_id,
+            'cliente_id'           => $cliente->id,
+            'must_change_password' => true,
+            'is_active'            => true,
+        ]);
+
+        return redirect()->route('clientes.show', $cliente)->with([
+            'ok' => 'Usuário do cliente criado com sucesso. Solicite a troca de senha no primeiro login.',
+            'acesso_cliente' => [
+                'email' => $user->email,
+                'senha' => $senhaTemporaria,
+            ],
+        ]);
     }
 
     /**

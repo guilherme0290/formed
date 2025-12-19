@@ -34,4 +34,9 @@ class Cliente extends Model
     {
         return $this->belongsTo(Cidade::class);
     }
+
+    public function userCliente()
+    {
+        return $this->hasOne(User::class, 'cliente_id');
+    }
 }

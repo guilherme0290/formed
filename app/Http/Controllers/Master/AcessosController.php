@@ -34,14 +34,15 @@ class AcessosController extends Controller
             ->paginate(12)
             ->withQueryString();
 
-        $papeis = Papel::orderBy('nome')->get();
+        $papeis = Papel::with('permissoes')->orderBy('nome')->get();
+        $permissoes = \App\Models\Permissao::orderBy('escopo')->orderBy('nome')->get()->groupBy('escopo');
 
         // pode ser fixo:
         $tipos = ['master','operacional','comercial.blade.php','financeiro','cliente'];
 
 
         return view('master.acessos.index', compact(
-            'tab','papeis','usuarios','q','papelId','status','tipos','tipo'
+            'tab','papeis','usuarios','q','papelId','status','tipos','tipo','permissoes'
         ));
     }
 

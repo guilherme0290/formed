@@ -22,7 +22,10 @@ class User extends Authenticatable
         'password',
         'papel_id',
         'empresa_id',
-        'ativo',            // ✅ para toggle de status
+        'cliente_id',
+        'is_active',
+        'ativo',            // ✅ para toggle de status (legado)
+        'must_change_password',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -34,6 +37,8 @@ class User extends Authenticatable
             'password'          => 'hashed',
             'ativo'             => 'boolean',   // ✅
             'last_login_at'     => 'datetime',  // ✅
+            'is_active'         => 'boolean',
+            'must_change_password' => 'boolean',
         ];
     }
 

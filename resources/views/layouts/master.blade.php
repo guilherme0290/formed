@@ -111,8 +111,8 @@
     {{-- Área principal --}}
     <div class="flex-1 flex flex-col bg-slate-50">
 
-        <header class="bg-indigo-700 text-white shadow-sm">
-            <div class="w-full px-4 md:px-6 h-14 flex items-center justify-between gap-3">
+        <header class="bg-indigo-700 text-white shadow-sm sticky top-0 z-20">
+            <div class="w-full px-4 md:px-6 h-16 flex items-center justify-between gap-3 py-2">
 
                 <div class="flex items-center gap-3">
                     {{-- Botão abrir/fechar sidebar (MOBILE) --}}

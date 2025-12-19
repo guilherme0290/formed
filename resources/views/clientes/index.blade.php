@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.master')
 
 @section('content')
 
@@ -69,6 +69,7 @@
                 <th class="px-4 py-2 text-left">CNPJ</th>
                 <th class="px-4 py-2 text-left">Endereço</th>
                 <th class="px-4 py-2 text-left">Contato</th>
+                <th class="px-4 py-2 text-center">Acesso</th>
                 <th class="px-4 py-2 text-center">Status</th>
                 <th class="px-4 py-2 text-center">Ações</th>
             </tr>
@@ -98,6 +99,18 @@
                     </td>
 
                     <td class="px-4 py-3 text-center">
+                        @if($cliente->userCliente)
+                            <span class="px-3 py-1 text-emerald-700 bg-emerald-100 rounded-full text-xs">
+                                Acesso criado
+                            </span>
+                        @else
+                            <span class="px-3 py-1 text-slate-600 bg-slate-100 rounded-full text-xs">
+                                Sem acesso
+                            </span>
+                        @endif
+                    </td>
+
+                    <td class="px-4 py-3 text-center">
                         @if($cliente->ativo)
                             <span class="px-3 py-1 text-green-700 bg-green-100 rounded-full text-xs">
                                 Ativo
@@ -110,22 +123,30 @@
                     </td>
 
                     <td class="px-4 py-3 text-center">
-                        <a href="{{ route('clientes.edit', $cliente) }}"
-                           class="px-3 py-1 text-blue-700 bg-blue-100 rounded-lg text-xs">
-                            Editar
-                        </a>
+                        <div class="flex flex-col items-center gap-2">
+                            <a href="{{ route('clientes.edit', $cliente) }}"
+                               class="px-3 py-1 text-blue-700 bg-blue-100 rounded-lg text-xs">
+                                Editar
+                            </a>
 
-                        <form action="{{ route('clientes.destroy', $cliente) }}"
-                              method="POST"
-                              class="inline"
-                              onsubmit="return confirm('Tem certeza que deseja excluir este cliente?')">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit"
-                                    class="px-3 py-1 text-red-700 bg-red-100 rounded-lg text-xs">
-                                Excluir
-                            </button>
-                        </form>
+                            <form action="{{ route('clientes.destroy', $cliente) }}"
+                                  method="POST"
+                                  class="inline"
+                                  onsubmit="return confirm('Tem certeza que deseja excluir este cliente?')">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit"
+                                        class="px-3 py-1 text-red-700 bg-red-100 rounded-lg text-xs">
+                                    Excluir
+                                </button>
+                            </form>
+
+                            <a href="{{ route('clientes.acesso.form', $cliente) }}"
+                               class="px-3 py-1 text-indigo-700 bg-indigo-100 rounded-lg text-xs {{ $cliente->email ? '' : 'opacity-50 cursor-not-allowed' }}"
+                               {{ $cliente->email ? '' : 'aria-disabled=true tabindex=-1' }}>
+                                🔑 Criar acesso
+                            </a>
+                        </div>
                     </td>
                 </tr>
             @empty
@@ -139,8 +160,7 @@
         </table>
 
         <div class="p-4">
-            {{-- se quiser paginação, é só descomentar --}}
-            {{-- {{ $clientes->links() }} --}}
+            {{ $clientes->links() }}
         </div>
     </div>
 

@@ -6,6 +6,8 @@
 
     if ($user && optional($user->papel)->nome === 'Operacional') {
         $layout = 'layouts.operacional';
+    }else if ($user && optional($user->papel)->nome === 'Master') {
+         $layout = 'layouts.master';
     }
 @endphp
 

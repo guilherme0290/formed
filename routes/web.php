@@ -579,9 +579,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/',               [ClienteController::class, 'index'])->name('index');
         Route::get('/create',         [ClienteController::class, 'create'])->name('create');
         Route::post('/',              [ClienteController::class, 'store'])->name('store');
+        Route::get('/{cliente}',      [ClienteController::class, 'show'])->name('show');
         Route::get('/{cliente}/edit', [ClienteController::class, 'edit'])->name('edit');
         Route::put('/{cliente}',      [ClienteController::class, 'update'])->name('update');
         Route::delete('/{cliente}',   [ClienteController::class, 'destroy'])->name('destroy');
+        Route::get('/{cliente}/acesso', [ClienteController::class, 'acessoForm'])->name('acesso.form');
+        Route::post('/{cliente}/acesso', [ClienteController::class, 'criarAcesso'])->name('acesso');
 
         // 👉 NOVA ROTA: selecionar cliente para o portal
         Route::get('/{cliente}/portal', [ClienteController::class, 'selecionarParaPortal'])
@@ -611,6 +614,9 @@ Route::middleware('auth')->group(function () {
         Route::resource('papeis', PapelController::class)
             ->parameters(['papeis' => 'papel'])
             ->only(['index','store','update','destroy']);
+
+        Route::post('papeis/{papel}/permissoes', [PapelController::class, 'syncPermissoes'])
+            ->name('papeis.permissoes.sync');
 
         // Permissões
         Route::resource('permissoes', PermissaoController::class)

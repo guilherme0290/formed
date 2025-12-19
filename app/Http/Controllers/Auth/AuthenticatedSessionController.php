@@ -32,6 +32,10 @@ class AuthenticatedSessionController extends Controller
         $user      = $request->user();
         $papelNome = mb_strtolower(optional($user->papel)->nome ?? '');
 
+        if ($user->must_change_password ?? false) {
+            return redirect()->route('password.force');
+        }
+
         // MASTER: pode ir a qualquer módulo exceto cliente
         if ($papelNome === 'master') {
             if ($destino === 'operacional') {

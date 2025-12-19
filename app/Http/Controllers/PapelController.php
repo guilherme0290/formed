@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Papel;
+use App\Models\Permissao;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -46,5 +47,17 @@ class PapelController extends Controller
     {
         $papel->delete();
         return back()->with('ok', 'Papel excluído.');
+    }
+
+    public function syncPermissoes(Request $r, Papel $papel)
+    {
+        $data = $r->validate([
+            'permissoes'   => ['array'],
+            'permissoes.*' => ['integer','exists:permissoes,id'],
+        ]);
+
+        $papel->permissoes()->sync($data['permissoes'] ?? []);
+
+        return back()->with('ok', 'Permissões atualizadas para o papel '.$papel->nome.'.');
     }
 }
