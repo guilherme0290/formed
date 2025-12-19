@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use App\Services\PrecificacaoService;
 use App\Services\VendaService;
+use App\Services\ComissaoService;
 
 class TarefaController extends Controller
 {
@@ -72,7 +73,7 @@ class TarefaController extends Controller
     }
 
 
-    public function finalizarComArquivo(Request $request, Tarefa $tarefa, PrecificacaoService $precificacaoService, VendaService $vendaService)
+    public function finalizarComArquivo(Request $request, Tarefa $tarefa, PrecificacaoService $precificacaoService, VendaService $vendaService, ComissaoService $comissaoService)
     {
         $data = $request->validate([
             'arquivo_cliente' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'],
@@ -116,7 +117,9 @@ class TarefaController extends Controller
             ]);
 
             if (isset($resultado)) {
-                $vendaService->criarVendaPorTarefa($tarefa, $resultado['contrato'], $resultado['item']);
+                $venda = $vendaService->criarVendaPorTarefa($tarefa, $resultado['contrato'], $resultado['item']);
+                $vendedorId = optional($tarefa->cliente)->vendedor_id;
+                $comissaoService->gerarPorVenda($venda, $resultado['item'], $vendedorId ?: auth()->id());
             }
 
             $log = TarefaLog::create([

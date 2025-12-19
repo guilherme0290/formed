@@ -1,4 +1,6 @@
 {{-- MODAL TREINAMENTOS (CRUD) --}}
+@php($routePrefix = $routePrefix ?? 'comercial')
+
 <div id="modalTreinamentosCrud" class="fixed inset-0 z-50 hidden bg-black/40">
     <div class="min-h-full w-full flex items-center justify-center p-4 md:p-6">
         <div class="bg-white w-full max-w-5xl rounded-2xl shadow-xl overflow-hidden max-h-[85vh] flex flex-col">
@@ -150,10 +152,10 @@
             const CSRF = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
             const URLS = {
-                list:   @json(route('comercial.treinamentos-nrs.json')),
-                store:  @json(route('comercial.treinamentos-nrs.store')),
-                update: (id) => @json(route('comercial.treinamentos-nrs.update', ['nr' => '__ID__'])).replace('__ID__', id),
-                destroy:(id) => @json(route('comercial.treinamentos-nrs.destroy', ['nr' => '__ID__'])).replace('__ID__', id),
+                list:   @json(route($routePrefix.'.treinamentos-nrs.json')),
+                store:  @json(route($routePrefix.'.treinamentos-nrs.store')),
+                update: (id) => @json(route($routePrefix.'.treinamentos-nrs.update', ['nr' => '__ID__'])).replace('__ID__', id),
+                destroy:(id) => @json(route($routePrefix.'.treinamentos-nrs.destroy', ['nr' => '__ID__'])).replace('__ID__', id),
             };
 
             const dom = {

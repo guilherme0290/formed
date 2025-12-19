@@ -7,7 +7,8 @@ use App\Http\Controllers\Comercial\EsocialFaixaController;
 use App\Http\Controllers\Comercial\ExamesTabPrecoController;
 use App\Http\Controllers\Comercial\PropostaPrecoController;
 use App\Http\Controllers\Master\AcessosController;
-use App\Http\Controllers\Master\DashboardController;
+use App\Http\Controllers\Master\DashboardController as DashboardMaster;
+use App\Http\Controllers\Comercial\DashboardController as DashboardComercial;
 use App\Http\Controllers\Operacional\AsoController;
 use App\Http\Controllers\Operacional\FuncionarioController;
 use App\Http\Controllers\Operacional\LtipController;
@@ -18,7 +19,6 @@ use App\Http\Controllers\PapelController;
 use App\Http\Controllers\PermissaoController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Comercial\TabelaPrecoController;
-use App\Http\Controllers\TabelaPrecoItemController;
 use App\Http\Controllers\Operacional\LtcatController;
 use App\Http\Controllers\Operacional\AprController;
 use App\Http\Controllers\Operacional\PaeController;
@@ -408,7 +408,7 @@ Route::middleware('auth')->group(function () {
         ->group(function () {
 
             // Painel Comercial
-            Route::get('/', [DashboardController::class, 'index'])
+            Route::get('/', [DashboardComercial::class, 'index'])
                 ->name('dashboard');
 
             // Apresentação de Proposta
@@ -571,7 +571,7 @@ Route::middleware('auth')->group(function () {
     Route::prefix('master')->name('master.')->group(function () {
 
         // Dashboard Master
-        Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+        Route::get('/', [DashboardMaster::class, 'index'])->name('dashboard');
 
         // Acessos
         Route::get('/acessos', [AcessosController::class, 'index'])->name('acessos');
@@ -599,6 +599,54 @@ Route::middleware('auth')->group(function () {
         Route::post('funcoes',       [FuncaoController::class, 'store'])->name('funcoes.store');
         Route::put('funcoes/{funcao}',   [FuncaoController::class, 'update'])->name('funcoes.update');
         Route::delete('funcoes/{funcao}',[FuncaoController::class, 'destroy'])->name('funcoes.destroy');
+
+        // Comissões (parametrização)
+        Route::get('comissoes', [\App\Http\Controllers\Master\ComissaoController::class, 'index'])->name('comissoes.index');
+        Route::post('comissoes', [\App\Http\Controllers\Master\ComissaoController::class, 'store'])->name('comissoes.store');
+        Route::put('comissoes/{servicoComissao}', [\App\Http\Controllers\Master\ComissaoController::class, 'update'])->name('comissoes.update');
+        Route::delete('comissoes/{servicoComissao}', [\App\Http\Controllers\Master\ComissaoController::class, 'destroy'])->name('comissoes.destroy');
+
+        // Tabela de Preços (master reutiliza o mesmo conteúdo da área comercial)
+        Route::prefix('tabela-precos')->name('tabela-precos.')->group(function () {
+            Route::get('/', [TabelaPrecoController::class, 'itensIndex'])->name('index');
+            Route::post('/', [TabelaPrecoController::class, 'update'])->name('update');
+
+            Route::get('/itens', [TabelaPrecoController::class, 'itensIndex'])->name('itens.index');
+            Route::get('/itens/novo', [TabelaPrecoController::class, 'createItem'])->name('itens.create');
+            Route::post('/itens', [TabelaPrecoController::class, 'storeItem'])->name('itens.store');
+            Route::put('/itens/{item}', [TabelaPrecoController::class, 'updateItem'])->name('itens.update');
+            Route::delete('/itens/{item}', [TabelaPrecoController::class, 'destroyItem'])->name('itens.destroy');
+        });
+
+        // eSocial (faixas)
+        Route::get('/esocial/faixas', [EsocialFaixaController::class, 'indexJson'])
+            ->name('esocial.faixas.json');
+        Route::post('/esocial/faixas', [EsocialFaixaController::class, 'store'])
+            ->name('esocial.faixas.store');
+        Route::put('/esocial/faixas/{faixa}', [EsocialFaixaController::class, 'update'])
+            ->name('esocial.faixas.update');
+        Route::delete('/esocial/faixas/{faixa}', [EsocialFaixaController::class, 'destroy'])
+            ->name('esocial.faixas.destroy');
+
+        // Treinamentos NRs
+        Route::get('/treinamentos-nrs.json', [ComercialTreinamentoNrController::class, 'indexJson'])
+            ->name('treinamentos-nrs.json');
+        Route::post('/treinamentos-nrs', [ComercialTreinamentoNrController::class, 'store'])
+            ->name('treinamentos-nrs.store');
+        Route::put('/treinamentos-nrs/{nr}', [ComercialTreinamentoNrController::class, 'update'])
+            ->name('treinamentos-nrs.update');
+        Route::delete('/treinamentos-nrs/{nr}', [ComercialTreinamentoNrController::class, 'destroy'])
+            ->name('treinamentos-nrs.destroy');
+
+        // Exames
+        Route::get('/exames', [ExamesTabPrecoController::class, 'indexJson'])
+            ->name('exames.indexJson');
+        Route::post('/exames', [ExamesTabPrecoController::class, 'store'])
+            ->name('exames.store');
+        Route::put('/exames/{exame}', [ExamesTabPrecoController::class, 'update'])
+            ->name('exames.update');
+        Route::delete('/exames/{exame}', [ExamesTabPrecoController::class, 'destroy'])
+            ->name('exames.destroy');
     });
 
     // ======================================================

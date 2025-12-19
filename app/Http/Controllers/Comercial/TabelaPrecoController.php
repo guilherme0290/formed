@@ -14,31 +14,12 @@ class TabelaPrecoController extends Controller
 {
     public function index()
     {
-        $empresaId = auth()->user()->empresa_id;
-
-        $padrao = TabelaPrecoPadrao::firstOrCreate(
-            ['empresa_id' => $empresaId, 'ativa' => true],
-            ['nome' => 'Tabela Padrão', 'ativa' => true]
-        );
-
-        $itens = $padrao->itens()
-            ->with('servico') // opcional
-            ->orderBy('descricao')
-            ->get();
-
-        return view('comercial.tabela-precos.itens.index', compact('padrao','itens'));
+        return view($this->viewPath(), $this->tabelaData());
     }
 
     public function createItem()
     {
-        $empresaId = auth()->user()->empresa_id;
-
-        $servicos = Servico::where('empresa_id', $empresaId)
-            ->where('ativo', true)
-            ->orderBy('nome')
-            ->get();
-
-        return view('comercial.tabela-precos.itens.index', compact('servicos'));
+        return view($this->viewPath(), $this->tabelaData());
     }
 
     public function storeItem(Request $request)
@@ -72,7 +53,7 @@ class TabelaPrecoController extends Controller
         TabelaPrecoItem::create($data);
 
         return redirect()
-            ->route('comercial.tabela-precos.itens.index')
+            ->route($this->routeName('itens.index'))
             ->with('ok', 'Item adicionado à tabela padrão.');
     }
 
@@ -109,7 +90,7 @@ class TabelaPrecoController extends Controller
         ]);
 
         return redirect()
-            ->route('comercial.tabela-precos.itens.index')
+            ->route($this->routeName('itens.index'))
             ->with('ok', 'Item atualizado com sucesso.');
     }
 
@@ -120,7 +101,7 @@ class TabelaPrecoController extends Controller
         $item->delete();
 
         return redirect()
-            ->route('comercial.tabela-precos.index')
+            ->route($this->routeName('index'))
             ->with('ok', 'Item removido da tabela padrão.');
     }
 
@@ -162,7 +143,7 @@ class TabelaPrecoController extends Controller
         });
 
         return redirect()
-            ->route('comercial.tabela-precos.index')
+            ->route($this->routeName('index'))
             ->with('ok', 'Tabela padrão atualizada.');
     }
 
@@ -176,26 +157,7 @@ class TabelaPrecoController extends Controller
 
     public function itensIndex()
     {
-        $empresaId = auth()->user()->empresa_id;
-
-        $padrao = TabelaPrecoPadrao::where('empresa_id', $empresaId)
-            ->where('ativa', true)
-
-            ->firstOrFail();
-
-        $esocialId = config('services.esocial_id');
-        $treinamentoId = config('services.treinamento_id');
-
-        $servicos = Servico::where('empresa_id', $empresaId)
-            ->where('ativo', true)
-            ->when($esocialId, fn($q) => $q->where('id', '!=', $esocialId))
-            ->when($treinamentoId, fn($q) => $q->orderByRaw('CASE WHEN id = ? THEN 1 ELSE 0 END', [(int) $treinamentoId]))
-            ->orderBy('nome')
-            ->get();
-
-        $itens = $padrao->itens()->with('servico')->orderBy('descricao')->get();
-
-        return view('comercial.tabela-precos.itens.index', compact('itens','servicos'));
+        return view($this->viewPath(), $this->tabelaData());
     }
 
     private function hasOverlap($empresaId, $inicio, $fim, $ignoreId = null)
@@ -213,5 +175,52 @@ class TabelaPrecoController extends Controller
             ->exists();
     }
 
+    private function tabelaData(): array
+    {
+        $empresaId = auth()->user()->empresa_id;
 
+        $padrao = TabelaPrecoPadrao::firstOrCreate(
+            ['empresa_id' => $empresaId, 'ativa' => true],
+            ['nome' => 'Tabela Padrão', 'ativa' => true]
+        );
+
+        $esocialId = config('services.esocial_id');
+        $treinamentoId = config('services.treinamento_id');
+
+        $servicos = Servico::where('empresa_id', $empresaId)
+            ->where('ativo', true)
+            ->when($esocialId, fn($q) => $q->where('id', '!=', $esocialId))
+            ->when($treinamentoId, fn($q) => $q->orderByRaw('CASE WHEN id = ? THEN 1 ELSE 0 END', [(int) $treinamentoId]))
+            ->orderBy('nome')
+            ->get();
+
+        $itens = $padrao->itens()
+            ->with('servico')
+            ->orderBy('descricao')
+            ->get();
+
+        $routePrefix = $this->contextPrefix();
+        $dashboardRoute = $routePrefix === 'master'
+            ? route('master.dashboard')
+            : route('comercial.dashboard');
+
+        return compact('padrao', 'servicos', 'itens', 'routePrefix', 'dashboardRoute');
+    }
+
+    private function viewPath(): string
+    {
+        return $this->contextPrefix() === 'master'
+            ? 'master.tabela-precos.index'
+            : 'comercial.tabela-precos.itens.index';
+    }
+
+    private function routeName(string $suffix): string
+    {
+        return $this->contextPrefix() . '.tabela-precos.' . $suffix;
+    }
+
+    private function contextPrefix(): string
+    {
+        return request()->routeIs('master.*') ? 'master' : 'comercial';
+    }
 }

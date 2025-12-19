@@ -1,3 +1,5 @@
+@php($routePrefix = $routePrefix ?? 'comercial')
+
 {{-- Modal eSocial --}}
 <div id="modalEsocial" class="fixed inset-0 z-50 hidden bg-black/40">
     <div class="min-h-full flex items-center justify-center p-4">
@@ -120,12 +122,12 @@
 
             if (!modal) return;
 
-            const ESOCIAL_STORE_URL = @json(route('comercial.esocial.faixas.store'));
-            const ESOCIAL_UPDATE_URL = @json(route('comercial.esocial.faixas.update', ['faixa' => '__ID__']));
-            const ESOCIAL_DESTROY_URL = @json(route('comercial.esocial.faixas.destroy', ['faixa' => '__ID__']));
+            const ESOCIAL_STORE_URL = @json(route($routePrefix.'.esocial.faixas.store'));
+            const ESOCIAL_UPDATE_URL = @json(route($routePrefix.'.esocial.faixas.update', ['faixa' => '__ID__']));
+            const ESOCIAL_DESTROY_URL = @json(route($routePrefix.'.esocial.faixas.destroy', ['faixa' => '__ID__']));
             const ESOCIAL = {
                 urls: {
-                    list:    @json(route('comercial.esocial.faixas.json')),
+                    list:    @json(route($routePrefix.'.esocial.faixas.json')),
                     store:   ESOCIAL_STORE_URL,
                     update:  (id) => ESOCIAL_UPDATE_URL.replace('__ID__', id),
                     destroy: (id) => ESOCIAL_DESTROY_URL.replace('__ID__', id),

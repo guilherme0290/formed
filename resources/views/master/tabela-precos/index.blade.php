@@ -1,7 +1,7 @@
-@extends('layouts.comercial')
-@section('title', 'Itens da Tabela de Preços')
+@extends('layouts.master')
+@section('title', 'Tabela de Preços')
 
 @section('content')
-    @php($routePrefix = 'comercial')
+    @php($routePrefix = 'master')
     @include('comercial.tabela-precos.itens._conteudo', compact('itens','servicos','routePrefix','dashboardRoute'))
 @endsection

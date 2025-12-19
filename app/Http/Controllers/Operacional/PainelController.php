@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\Schema;
 use Psy\Util\Str;
 use App\Services\PrecificacaoService;
 use App\Services\VendaService;
+use App\Services\ComissaoService;
 
 class PainelController extends Controller
 {
@@ -205,7 +206,7 @@ class PainelController extends Controller
     // ==========================
     // MOVER CARD NO KANBAN
     // ==========================
-    public function mover(Request $request, Tarefa $tarefa, PrecificacaoService $precificacaoService, VendaService $vendaService)
+    public function mover(Request $request, Tarefa $tarefa, PrecificacaoService $precificacaoService, VendaService $vendaService, ComissaoService $comissaoService)
     {
         $data = $request->validate([
             'coluna_id' => ['required', 'exists:kanban_colunas,id'],
@@ -228,7 +229,10 @@ class PainelController extends Controller
                     (int) $tarefa->servico_id,
                     (int) $tarefa->empresa_id
                 );
-                $vendaService->criarVendaPorTarefa($tarefa, $resultado['contrato'], $resultado['item']);
+                $venda = $vendaService->criarVendaPorTarefa($tarefa, $resultado['contrato'], $resultado['item']);
+
+                $vendedorId = optional($tarefa->cliente)->vendedor_id;
+                $comissaoService->gerarPorVenda($venda, $resultado['item'], $vendedorId ?: auth()->id());
             } catch (\Throwable $e) {
                 $mensagem = 'Não é possível concluir esta tarefa porque o cliente não possui preço definido para este serviço na proposta/contrato ativo. Solicite ao Comercial para ajustar a proposta e fechar novamente, ou cadastrar o valor do serviço no contrato do cliente.';
                 if (method_exists($e, 'errors')) {

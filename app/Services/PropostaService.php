@@ -53,6 +53,7 @@ class PropostaService
             $contrato = ClienteContrato::create([
                 'empresa_id' => $proposta->empresa_id,
                 'cliente_id' => $proposta->cliente_id,
+                'vendedor_id' => $proposta->cliente?->vendedor_id ?: $userId,
                 'proposta_id_origem' => $proposta->id,
                 'status' => 'ATIVO',
                 'vigencia_inicio' => $hoje,
