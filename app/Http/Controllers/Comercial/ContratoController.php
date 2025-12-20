@@ -4,7 +4,10 @@ namespace App\Http\Controllers\Comercial;
 
 use App\Http\Controllers\Controller;
 use App\Models\ClienteContrato;
+use App\Models\ClienteContratoVigencia;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class ContratoController extends Controller
 {
@@ -118,8 +121,102 @@ class ContratoController extends Controller
         $empresaId = auth()->user()->empresa_id;
         abort_unless($contrato->empresa_id === $empresaId, 403);
 
-        $contrato->load(['cliente', 'itens']);
+        $contrato->load([
+            'cliente',
+            'itens.servico',
+            'vigencias.itens.servico',
+        ]);
 
         return view('comercial.contratos.show', compact('contrato'));
+    }
+
+    public function novaVigencia(ClienteContrato $contrato)
+    {
+        $empresaId = auth()->user()->empresa_id;
+        abort_unless($contrato->empresa_id === $empresaId, 403);
+
+        $contrato->load(['cliente', 'itens.servico']);
+
+        return view('comercial.contratos.vigencia', compact('contrato'));
+    }
+
+    public function storeVigencia(Request $request, ClienteContrato $contrato)
+    {
+        $empresaId = $request->user()->empresa_id;
+        abort_unless($contrato->empresa_id === $empresaId, 403);
+
+        $contrato->load(['itens']);
+
+        $validated = $request->validate([
+            'vigencia_inicio' => ['required', 'date', 'after_or_equal:today'],
+            'vigencia_fim' => ['nullable', 'date', 'after:vigencia_inicio'],
+            'observacao' => ['nullable', 'string', 'max:255'],
+            'itens' => ['required', 'array'],
+            'itens.*.id' => ['required', Rule::exists('cliente_contrato_itens', 'id')->where('cliente_contrato_id', $contrato->id)],
+            'itens.*.preco_unitario_snapshot' => ['required', 'numeric', 'min:0'],
+        ]);
+
+        DB::transaction(function () use ($contrato, $validated, $request) {
+            $novoInicio = $validated['vigencia_inicio'];
+            $novoFim = $validated['vigencia_fim'] ?? null;
+
+            // 1) Salva snapshot da vigência atual (se houver)
+            if ($contrato->vigencia_inicio) {
+                $vigenciaAnterior = ClienteContratoVigencia::create([
+                    'cliente_contrato_id' => $contrato->id,
+                    'vigencia_inicio' => $contrato->vigencia_inicio,
+                    'vigencia_fim' => $novoInicio ? date('Y-m-d', strtotime($novoInicio . ' -1 day')) : $contrato->vigencia_fim,
+                    'criado_por' => $request->user()->id ?? null,
+                    'observacao' => 'Snapshot automático antes da nova vigência',
+                ]);
+
+                foreach ($contrato->itens as $item) {
+                    $vigenciaAnterior->itens()->create([
+                        'servico_id' => $item->servico_id,
+                        'descricao_snapshot' => $item->descricao_snapshot,
+                        'preco_unitario_snapshot' => $item->preco_unitario_snapshot,
+                        'unidade_cobranca' => $item->unidade_cobranca,
+                        'regras_snapshot' => $item->regras_snapshot,
+                    ]);
+                }
+            }
+
+            // 2) Atualiza contrato para nova vigência + novos preços
+            $contrato->update([
+                'vigencia_inicio' => $novoInicio,
+                'vigencia_fim' => $novoFim,
+            ]);
+
+            $precos = collect($validated['itens'])->keyBy('id');
+            foreach ($contrato->itens as $item) {
+                $novoPreco = $precos[$item->id]['preco_unitario_snapshot'] ?? $item->preco_unitario_snapshot;
+                $item->update([
+                    'preco_unitario_snapshot' => $novoPreco,
+                ]);
+            }
+
+            // 3) Guarda registro da nova vigência (histórico)
+            $vigenciaNova = ClienteContratoVigencia::create([
+                'cliente_contrato_id' => $contrato->id,
+                'vigencia_inicio' => $novoInicio,
+                'vigencia_fim' => $novoFim,
+                'criado_por' => $request->user()->id ?? null,
+                'observacao' => $validated['observacao'] ?? null,
+            ]);
+
+            foreach ($contrato->itens as $item) {
+                $vigenciaNova->itens()->create([
+                    'servico_id' => $item->servico_id,
+                    'descricao_snapshot' => $item->descricao_snapshot,
+                    'preco_unitario_snapshot' => $item->preco_unitario_snapshot,
+                    'unidade_cobranca' => $item->unidade_cobranca,
+                    'regras_snapshot' => $item->regras_snapshot,
+                ]);
+            }
+        });
+
+        return redirect()
+            ->route('comercial.contratos.show', $contrato)
+            ->with('ok', 'Nova vigência registrada e preços atualizados.');
     }
 }

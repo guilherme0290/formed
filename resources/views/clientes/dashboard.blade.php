@@ -7,6 +7,8 @@
     @php
         /** @var \App\Models\Cliente $cliente */
         /** @var \App\Models\User $user */
+        $temTabela = $temTabela ?? false;
+        $precos = $precos ?? [];
 
         // Usados apenas nos cards "Seu Comercial"
         $contatoNome     = $cliente->contato_nome ?? $user->name ?? 'Contato não informado';
@@ -68,31 +70,31 @@
                                 Fatura Atual
                             </p>
                             <p class="mt-1 text-lg md:text-2xl font-semibold">
-                                {{-- valor ainda estático; depois você troca pelos dados reais --}}
-                                R$ 14.320,00
+                                R$ {{ number_format($faturaTotal ?? 0, 2, ',', '.') }}
                             </p>
                             <p class="text-[11px] text-emerald-50/90 mt-1">
-                                Atualizado em tempo real
+                                Soma dos serviços finalizados (kanban)
                             </p>
                         </div>
                     </div>
 
                     {{-- Barra branca "Ver Detalhes" --}}
-                    <button
-                        type="button"
-                        class="w-full rounded-md bg-white text-xs md:text-[13px] font-semibold
-                               text-slate-900 px-3 py-2 mb-3 text-center shadow-sm">
+                    <a
+                        href="{{ route('cliente.faturas') }}"
+                        class="w-full inline-flex items-center justify-center rounded-md bg-white text-xs md:text-[13px] font-semibold
+                               text-slate-900 px-3 py-2 mb-3 text-center shadow-sm hover:bg-slate-50 transition">
                         Ver Detalhes
-                    </button>
+                    </a>
                 </div>
 
-                {{-- Botão amarelo "Realizar Pagamento" --}}
+                {{-- Botão amarelo "Realizar Pagamento" (desabilitado por ora) --}}
                 <button
                     type="button"
-                    class="w-full rounded-md bg-amber-400 hover:bg-amber-500 text-xs md:text-[13px] font-semibold
-                           text-slate-900 px-3 py-2 flex items-center justify-center gap-2 shadow-md shadow-amber-500/40">
+                    disabled
+                    class="w-full rounded-md bg-amber-300/70 text-xs md:text-[13px] font-semibold
+                           text-slate-600 px-3 py-2 flex items-center justify-center gap-2 shadow-inner shadow-amber-200/50 cursor-not-allowed">
                     <span class="text-sm">💳</span>
-                    Realizar Pagamento
+                    Realizar Pagamento (em breve)
                 </button>
             </div>
         </div>

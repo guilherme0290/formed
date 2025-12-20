@@ -53,6 +53,11 @@ class ClienteContrato extends Model
         return $this->belongsTo(Proposta::class, 'proposta_id_origem');
     }
 
+    public function vigencias(): HasMany
+    {
+        return $this->hasMany(ClienteContratoVigencia::class, 'cliente_contrato_id');
+    }
+
     public function getValorMensalAttribute(): float
     {
         if (array_key_exists('valor_mensal', $this->attributes)) {

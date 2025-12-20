@@ -24,12 +24,90 @@
             Portal do Cliente
         </div>
 
+        @php
+            $temTabelaSidebar = $temTabela ?? false;
+            $precosSidebar = $precos ?? [];
+            $linksRapidos = [
+                [
+                    'titulo' => 'Painel do Cliente',
+                    'icone' => '🏠',
+                    'rota' => route('cliente.dashboard'),
+                    'disabled' => false,
+                    'principal' => true,
+                ],
+                [
+                    'titulo' => 'Funcionários',
+                    'icone' => '👥',
+                    'rota' => route('cliente.funcionarios.index'),
+                    'disabled' => false,
+                ],
+                [
+                    'titulo' => 'Agendar ASO',
+                    'icone' => '📅',
+                    'rota' => route('cliente.servicos.aso'),
+                    'disabled' => !$temTabelaSidebar || !($precosSidebar['aso'] ?? null),
+                ],
+                [
+                    'titulo' => 'Solicitar PGR',
+                    'icone' => '📋',
+                    'rota' => route('cliente.servicos.pgr'),
+                    'disabled' => !$temTabelaSidebar || !($precosSidebar['pgr'] ?? null),
+                ],
+                [
+                    'titulo' => 'Solicitar PCMSO',
+                    'icone' => '📑',
+                    'rota' => route('cliente.servicos.pcmso'),
+                    'disabled' => !$temTabelaSidebar || !($precosSidebar['pcmso'] ?? null),
+                ],
+                [
+                    'titulo' => 'Solicitar LTCAT',
+                    'icone' => '📄',
+                    'rota' => route('cliente.servicos.ltcat'),
+                    'disabled' => !$temTabelaSidebar || !($precosSidebar['ltcat'] ?? null),
+                ],
+                [
+                    'titulo' => 'Solicitar APR',
+                    'icone' => '⚠️',
+                    'rota' => route('cliente.servicos.apr'),
+                    'disabled' => !$temTabelaSidebar || !($precosSidebar['apr'] ?? null),
+                ],
+                [
+                    'titulo' => 'Treinamentos',
+                    'icone' => '🎓',
+                    'rota' => route('cliente.servicos.treinamentos'),
+                    'disabled' => !$temTabelaSidebar || !($precosSidebar['treinamentos'] ?? null),
+                ],
+            ];
+        @endphp
+
         <nav class="flex-1 px-3 mt-4 space-y-1">
-            <a href="{{ route('cliente.dashboard') }}"
-               class="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800 text-slate-50 text-sm font-medium">
-                <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-700">🏠</span>
-                <span>Painel do Cliente</span>
-            </a>
+            @foreach($linksRapidos as $link)
+                @php
+                    $disabled = $link['disabled'] ?? false;
+                    $classes = $link['principal'] ?? false
+                        ? 'bg-slate-800 text-slate-50 font-medium'
+                        : 'text-slate-100 hover:bg-slate-800/80';
+                    $opacity = $disabled ? 'opacity-60 pointer-events-none cursor-not-allowed' : '';
+                @endphp
+                <a href="{{ $link['rota'] }}"
+                   class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition {{ $classes }} {{ $opacity }}">
+                    <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800">
+                        {{ $link['icone'] }}
+                    </span>
+                    <span>{{ $link['titulo'] }}</span>
+                </a>
+            @endforeach
+
+            <div class="mt-4 px-2">
+                <p class="text-[11px] uppercase tracking-[0.16em] text-slate-400 mb-2">Status</p>
+                <div class="rounded-lg bg-slate-900/50 border border-slate-800 px-3 py-2 text-[12px] text-slate-200">
+                    @if($temTabelaSidebar)
+                        Tabela de preços ativa para este cliente.
+                    @else
+                        Tabela de preços não definida — alguns serviços ficam indisponíveis.
+                    @endif
+                </div>
+            </div>
         </nav>
 
         <div class="px-4 py-4 border-t border-slate-800 space-y-2 text-sm">

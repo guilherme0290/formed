@@ -14,16 +14,6 @@
             <p class="text-sm md:text-base text-indigo-100 max-w-2xl">
                 Visão centralizada das principais áreas: acessos, clientes, preços e comissões. Tudo em um só lugar.
             </p>
-            <div class="flex flex-wrap justify-center gap-3">
-                <a href="{{ route('master.acessos') }}"
-                   class="px-4 py-2 rounded-xl bg-white text-indigo-700 text-sm font-semibold hover:bg-indigo-50 shadow-sm">
-                    Gerenciar Acessos
-                </a>
-                <a href="{{ route('master.tabela-precos.itens.index') }}"
-                   class="px-4 py-2 rounded-xl border border-white/30 text-white text-sm font-semibold hover:bg-white/10">
-                    Tabela de Preços
-                </a>
-            </div>
         </div>
 
         {{-- Cards métricas --}}
@@ -31,25 +21,33 @@
             <div class="bg-white rounded-2xl shadow-md border border-slate-100 p-5 text-center">
                 <div class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 mx-auto">👥</div>
                 <div class="mt-2 text-xs uppercase tracking-wide text-slate-500">Clientes Ativos</div>
-                <div class="text-3xl font-bold text-slate-900 mt-1">84</div>
-                <div class="text-emerald-600 text-xs mt-1">+ 8</div>
+                <div class="text-3xl font-bold text-slate-900 mt-1">
+                    {{ $visaoEmpresa['clientes_ativos'] ?? 0 }}
+                </div>
+                <div class="text-emerald-600 text-xs mt-1">Ativos</div>
             </div>
             <div class="bg-white rounded-2xl shadow-md border border-slate-100 p-5 text-center">
                 <div class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 mx-auto">💵</div>
                 <div class="mt-2 text-xs uppercase tracking-wide text-slate-500">Faturamento Global</div>
-                <div class="text-3xl font-bold text-slate-900 mt-1">R$ 125.430</div>
-                <div class="text-emerald-600 text-xs mt-1">+12.5%</div>
+                <div class="text-3xl font-bold text-slate-900 mt-1">
+                    R$ {{ number_format($visaoEmpresa['faturamento_global'] ?? 0, 2, ',', '.') }}
+                </div>
+                <div class="text-emerald-600 text-xs mt-1">Atualizado</div>
             </div>
             <div class="bg-white rounded-2xl shadow-md border border-slate-100 p-5 text-center">
                 <div class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 text-violet-600 mx-auto">⏱️</div>
                 <div class="mt-2 text-xs uppercase tracking-wide text-slate-500">Tempo Médio</div>
-                <div class="text-3xl font-bold text-slate-900 mt-1">48h</div>
+                <div class="text-3xl font-bold text-slate-900 mt-1">
+                    {{ $visaoEmpresa['tempo_medio'] ?? '—' }}
+                </div>
             </div>
             <div class="bg-white rounded-2xl shadow-md border border-slate-100 p-5 text-center">
                 <div class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-sky-50 text-sky-600 mx-auto">📈</div>
                 <div class="mt-2 text-xs uppercase tracking-wide text-slate-500">Serviços Consumidos</div>
-                <div class="text-3xl font-bold text-slate-900 mt-1">156</div>
-                <div class="text-emerald-600 text-xs mt-1">+23</div>
+                <div class="text-3xl font-bold text-slate-900 mt-1">
+                    {{ $visaoEmpresa['servicos_consumidos'] ?? 0 }}
+                </div>
+                <div class="text-emerald-600 text-xs mt-1">Total de itens</div>
             </div>
         </div>
 
@@ -113,9 +111,6 @@
                     <h3 class="text-lg font-semibold text-slate-900">Relatórios Avançados</h3>
                     <p class="text-sm text-slate-500">Insights operacionais e comerciais</p>
                 </div>
-                <button class="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm flex items-center gap-2 hover:bg-indigo-700 shadow-sm">
-                    📊 Gerar Relatório
-                </button>
             </div>
 
             <div class="grid md:grid-cols-2 gap-6">
@@ -123,13 +118,22 @@
                     <div class="text-xs font-semibold text-slate-500 mb-2">Métricas Operacionais</div>
                     <ul class="space-y-2">
                         <li class="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-2">
-                            <span>Taxa de Conclusão</span><span class="font-semibold text-emerald-600">94%</span>
+                            <span>Taxa de Conclusão</span>
+                            <span class="font-semibold text-emerald-600">
+                                {{ ($operacionais['taxa_conclusao'] ?? 0) }}%
+                            </span>
                         </li>
                         <li class="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-2">
-                            <span>Tarefas Atrasadas</span><span class="font-semibold text-rose-600">6</span>
+                            <span>Tarefas Atrasadas</span>
+                            <span class="font-semibold text-rose-600">
+                                {{ $operacionais['atrasadas'] ?? 0 }}
+                            </span>
                         </li>
                         <li class="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-2">
-                            <span>SLA Médio</span><span class="font-semibold text-indigo-600">96%</span>
+                            <span>SLA Médio</span>
+                            <span class="font-semibold text-indigo-600">
+                                {{ is_null($operacionais['sla_percentual'] ?? null) ? '—' : ($operacionais['sla_percentual'].'%') }}
+                            </span>
                         </li>
                     </ul>
                 </div>
@@ -138,13 +142,22 @@
                     <div class="text-xs font-semibold text-slate-500 mb-2">Métricas Comerciais</div>
                     <ul class="space-y-2">
                         <li class="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-2">
-                            <span>Ticket Médio</span><span class="font-semibold">R$ 9.800</span>
+                            <span>Ticket Médio</span>
+                            <span class="font-semibold">
+                                R$ {{ number_format($comerciais['ticket_medio'] ?? 0, 2, ',', '.') }}
+                            </span>
                         </li>
                         <li class="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-2">
-                            <span>Taxa de Conversão</span><span class="font-semibold text-emerald-600">75%</span>
+                            <span>Taxa de Conversão</span>
+                            <span class="font-semibold text-emerald-600">
+                                {{ ($comerciais['taxa_conversao'] ?? 0) }}%
+                            </span>
                         </li>
                         <li class="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-2">
-                            <span>Propostas em Aberto</span><span class="font-semibold">24</span>
+                            <span>Propostas em Aberto</span>
+                            <span class="font-semibold">
+                                {{ $comerciais['propostas_em_aberto'] ?? 0 }}
+                            </span>
                         </li>
                     </ul>
                 </div>

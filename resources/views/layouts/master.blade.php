@@ -51,46 +51,64 @@
             </button>
         </div>
 
+        @php
+            $navItems = [
+                [
+                    'label' => 'Painel Master',
+                    'icon' => '📊',
+                    'route' => route('master.dashboard'),
+                    'active' => request()->routeIs('master.dashboard'),
+                ],
+                [
+                    'label' => 'Acessos',
+                    'icon' => '🔐',
+                    'route' => route('master.acessos'),
+                    'active' => request()->routeIs('master.acessos*'),
+                ],
+                [
+                    'label' => 'Tabela de Preços',
+                    'icon' => '💰',
+                    'route' => route('master.tabela-precos.itens.index'),
+                    'active' => request()->routeIs('master.tabela-precos.*'),
+                ],
+                [
+                    'label' => 'Comissões',
+                    'icon' => '💸',
+                    'route' => route('master.comissoes.index'),
+                    'active' => request()->routeIs('master.comissoes*'),
+                ],
+                [
+                    'label' => 'Comissões (Vendedores)',
+                    'icon' => '📈',
+                    'route' => route('master.comissoes.vendedores'),
+                    'active' => request()->routeIs('master.comissoes.vendedores'),
+                ],
+                [
+                    'label' => 'Clientes',
+                    'icon' => '👤',
+                    'route' => route('clientes.index'),
+                    'active' => request()->routeIs('clientes.*'),
+                ],
+            ];
+        @endphp
+
         <nav class="flex-1 px-3 mt-4 space-y-1">
-            <a href="{{ route('master.dashboard') }}"
-               class="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800 text-slate-50 text-sm font-medium">
-                <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-700">
-                    📊
-                </span>
-                <span data-sidebar-label>Painel Master</span>
-            </a>
-
-            <a href="{{ route('master.acessos') }}"
-               class="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-200 hover:bg-slate-800 text-sm">
-                <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800">
-                    🔐
-                </span>
-                <span data-sidebar-label>Acessos</span>
-            </a>
-
-            <a href="{{ route('master.tabela-precos.itens.index') }}"
-               class="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-200 hover:bg-slate-800 text-sm">
-                <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800">
-                    💰
-                </span>
-                <span data-sidebar-label>Tabela de Preços</span>
-            </a>
-
-            <a href="{{ route('master.comissoes.index') }}"
-               class="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-200 hover:bg-slate-800 text-sm">
-                <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800">
-                    💸
-                </span>
-                <span data-sidebar-label>Comissões</span>
-            </a>
-
-            <a href="{{ route('clientes.index') }}"
-               class="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-200 hover:bg-slate-800 text-sm">
-                <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800">
-                    👤
-                </span>
-                <span data-sidebar-label>Clientes</span>
-            </a>
+            @foreach($navItems as $item)
+                @php
+                    $isActive = $item['active'];
+                    $baseClasses = 'flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition';
+                    $activeClasses = $isActive
+                        ? 'bg-slate-800 text-slate-50 font-semibold'
+                        : 'text-slate-200 hover:bg-slate-800';
+                @endphp
+                <a href="{{ $item['route'] }}"
+                   class="{{ $baseClasses }} {{ $activeClasses }}">
+                    <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800">
+                        {{ $item['icon'] }}
+                    </span>
+                    <span data-sidebar-label>{{ $item['label'] }}</span>
+                </a>
+            @endforeach
         </nav>
 
         <div class="px-4 py-4 border-t border-slate-800 space-y-2 text-sm">

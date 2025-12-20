@@ -8,6 +8,10 @@
                class="inline-flex items-center text-sm text-slate-600 hover:text-slate-800">
                 ← Voltar
             </a>
+            <a href="{{ route('comercial.contratos.vigencia', $contrato) }}"
+               class="ml-3 inline-flex items-center text-sm text-indigo-600 hover:text-indigo-800 font-semibold">
+                ➕ Nova vigência
+            </a>
         </div>
 
         <header class="flex items-center justify-between gap-3">
@@ -90,6 +94,89 @@
                     @endforelse
                     </tbody>
                 </table>
+            </div>
+        </section>
+
+        {{-- Timeline de vigências --}}
+        <section class="bg-white rounded-2xl shadow border border-slate-100 overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                <h2 class="text-sm font-semibold text-slate-800">Histórico de Vigências</h2>
+                <span class="text-xs text-slate-500">Atual + anteriores</span>
+            </div>
+
+            <div class="divide-y divide-slate-100">
+                {{-- Vigência atual (contrato) --}}
+                <div class="p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-3 bg-indigo-50/50">
+                    <div>
+                        <p class="text-xs text-slate-500 uppercase tracking-wide">Vigência Atual</p>
+                        <p class="text-sm font-semibold text-slate-900">
+                            {{ optional($contrato->vigencia_inicio)->format('d/m/Y') ?? '—' }}
+                            @if($contrato->vigencia_fim)
+                                até {{ optional($contrato->vigencia_fim)->format('d/m/Y') }}
+                            @else
+                                (em aberto)
+                            @endif
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-4 text-sm text-slate-700 flex-wrap">
+                        <span class="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
+                            Valor: R$ {{ number_format((float) $contrato->valor_mensal, 2, ',', '.') }}
+                        </span>
+                        <a href="{{ route('comercial.contratos.vigencia', $contrato) }}"
+                           class="text-indigo-600 font-semibold">Criar nova vigência</a>
+                    </div>
+                </div>
+
+                @forelse($contrato->vigencias->sortByDesc('vigencia_inicio') as $vigencia)
+                    <div class="p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                        <div>
+                            <p class="text-xs text-slate-500 uppercase tracking-wide">Vigência</p>
+                            <p class="text-sm font-semibold text-slate-900">
+                                {{ optional($vigencia->vigencia_inicio)->format('d/m/Y') ?? '—' }}
+                                @if($vigencia->vigencia_fim)
+                                    até {{ optional($vigencia->vigencia_fim)->format('d/m/Y') }}
+                                @else
+                                    (em aberto)
+                                @endif
+                            </p>
+                            @if($vigencia->observacao)
+                                <p class="text-xs text-slate-500 mt-1">{{ $vigencia->observacao }}</p>
+                            @endif
+                        </div>
+                        <div class="flex items-center gap-4 text-sm text-slate-700 flex-wrap">
+                            <span class="px-3 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                                Itens: {{ $vigencia->itens->count() }}
+                            </span>
+                            <div class="text-xs text-slate-500">
+                                Registrado em {{ optional($vigencia->created_at)->format('d/m/Y H:i') }}
+                            </div>
+                        </div>
+                    </div>
+
+                    @if($vigencia->itens->count())
+                        <div class="px-5 pb-5 text-sm text-slate-700">
+                            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                @foreach($vigencia->itens as $item)
+                                    <div class="rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2">
+                                        <div class="font-semibold text-slate-900 text-sm">
+                                            {{ $item->servico->nome ?? $item->descricao_snapshot ?? 'Serviço' }}
+                                        </div>
+                                        <div class="text-xs text-slate-600">
+                                            R$ {{ number_format((float) $item->preco_unitario_snapshot, 2, ',', '.') }}
+                                            @if($item->unidade_cobranca)
+                                                • {{ $item->unidade_cobranca }}
+                                            @endif
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+                @empty
+                    <div class="p-5 text-sm text-slate-500">
+                        Nenhuma vigência anterior registrada.
+                    </div>
+                @endforelse
             </div>
         </section>
     </div>

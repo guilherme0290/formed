@@ -7,6 +7,7 @@ use App\Models\Funcao;
 use App\Models\KanbanColuna;
 use App\Models\PgrSolicitacoes;
 use App\Models\Tarefa;
+use App\Models\ClienteContrato;
 use App\Models\Servico;
 use App\Models\Cliente;
 use App\Models\Funcionario;
@@ -292,11 +293,26 @@ class PainelController extends Controller
         $empresaId = $usuario->empresa_id;
         $q         = $request->query('q');
 
+        $hoje = now()->toDateString();
+
         $clientes = Cliente::where('empresa_id', $empresaId)
             ->when($q, fn($query) =>
             $query->where('razao_social', 'like', "%{$q}%")
                 ->orWhere('nome_fantasia', 'like', "%{$q}%")
             )
+            ->select('clientes.*')
+            ->addSelect(['tem_contrato_ativo' => ClienteContrato::selectRaw('1')
+                ->whereColumn('cliente_contratos.cliente_id', 'clientes.id')
+                ->where('cliente_contratos.empresa_id', $empresaId)
+                ->where('status', 'ATIVO')
+                ->where(function ($q) use ($hoje) {
+                    $q->whereNull('vigencia_inicio')->orWhereDate('vigencia_inicio', '<=', $hoje);
+                })
+                ->where(function ($q) use ($hoje) {
+                    $q->whereNull('vigencia_fim')->orWhereDate('vigencia_fim', '>=', $hoje);
+                })
+                ->limit(1)
+            ])
             ->orderBy('razao_social')
             ->paginate(12);
 
@@ -310,7 +326,51 @@ class PainelController extends Controller
 
         abort_if($cliente->empresa_id !== $empresaId, 403);
 
-        return view('operacional.kanban.servicos', compact('cliente'));
+        $hoje = now()->toDateString();
+
+        $contratoAtivo = ClienteContrato::query()
+            ->where('empresa_id', $empresaId)
+            ->where('cliente_id', $cliente->id)
+            ->where('status', 'ATIVO')
+            ->where(function ($q) use ($hoje) {
+                $q->whereNull('vigencia_inicio')->orWhereDate('vigencia_inicio', '<=', $hoje);
+            })
+            ->where(function ($q) use ($hoje) {
+                $q->whereNull('vigencia_fim')->orWhereDate('vigencia_fim', '>=', $hoje);
+            })
+            ->with('itens')
+            ->first();
+
+        $servicosContrato = $contratoAtivo
+            ? $contratoAtivo->itens->pluck('servico_id')->filter()->unique()->values()->all()
+            : [];
+
+        $tipos = [
+            'aso' => 'aso',
+            'pgr' => 'pgr',
+            'pcmso' => 'pcmso',
+            'ltcat' => 'ltcat',
+            'ltip' => 'ltip',
+            'apr' => 'apr',
+            'pae' => 'pae',
+            'treinamentos' => 'treinamento',
+        ];
+
+        $servicosIds = [];
+        foreach ($tipos as $slug => $tipo) {
+            $id = Servico::query()
+                ->where('empresa_id', $empresaId)
+                ->whereRaw('LOWER(tipo) = ?', [mb_strtolower($tipo)])
+                ->value('id');
+            $servicosIds[$slug] = $id;
+        }
+
+        return view('operacional.kanban.servicos', [
+            'cliente' => $cliente,
+            'contratoAtivo' => $contratoAtivo,
+            'servicosContrato' => $servicosContrato,
+            'servicosIds' => $servicosIds,
+        ]);
     }
 
 

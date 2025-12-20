@@ -34,4 +34,9 @@ class Comissao extends Model
     {
         return $this->belongsTo(Cliente::class);
     }
+
+    public function vendedor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'vendedor_id');
+    }
 }

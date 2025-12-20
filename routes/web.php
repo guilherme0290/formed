@@ -304,6 +304,9 @@ Route::middleware('auth')->group(function () {
             Route::get('/', [ClienteDashboardController::class, 'index'])
                 ->name('dashboard');
 
+            Route::get('/faturas', [ClienteDashboardController::class, 'faturas'])
+                ->name('faturas');
+
             Route::get('/funcionarios', [ClienteFuncionarioController::class, 'index'])
                 ->name('funcionarios.index');
 
@@ -320,6 +323,10 @@ Route::middleware('auth')->group(function () {
             Route::patch('/funcionarios/{funcionario}/toggle-status',
                 [ClienteFuncionarioController::class, 'toggleStatus']
             )->name('funcionarios.toggle-status');
+
+            // Meus Arquivos
+            Route::get('/arquivos', [\App\Http\Controllers\Cliente\ArquivoController::class, 'index'])
+                ->name('arquivos.index');
 
             // SERVIÇOS
 
@@ -462,6 +469,10 @@ Route::middleware('auth')->group(function () {
                 ->name('contratos.index');
             Route::get('/contratos/{contrato}', [\App\Http\Controllers\Comercial\ContratoController::class, 'show'])
                 ->name('contratos.show');
+            Route::get('/contratos/{contrato}/vigencia', [\App\Http\Controllers\Comercial\ContratoController::class, 'novaVigencia'])
+                ->name('contratos.vigencia');
+            Route::post('/contratos/{contrato}/vigencia', [\App\Http\Controllers\Comercial\ContratoController::class, 'storeVigencia'])
+                ->name('contratos.vigencia.store');
 
             // Kanban de Propostas (Acompanhamento)
             Route::get('/pipeline', [\App\Http\Controllers\Comercial\PipelineController::class, 'index'])
@@ -568,8 +579,18 @@ Route::middleware('auth')->group(function () {
             });
         });
 
-
-
+    // Financeiro (somente view/UI)
+    Route::middleware(['auth'])
+        ->prefix('financeiro')
+        ->name('financeiro.')
+        ->group(function () {
+            Route::get('/', [\App\Http\Controllers\Financeiro\DashboardController::class, 'index'])
+                ->name('dashboard');
+            Route::get('/contratos', [\App\Http\Controllers\Financeiro\ContratoController::class, 'index'])
+                ->name('contratos');
+            Route::get('/contratos/{contrato}', [\App\Http\Controllers\Financeiro\ContratoController::class, 'show'])
+                ->name('contratos.show');
+        });
 
 
     // ======================================================
@@ -642,6 +663,8 @@ Route::middleware('auth')->group(function () {
         Route::post('comissoes', [\App\Http\Controllers\Master\ComissaoController::class, 'store'])->name('comissoes.store');
         Route::put('comissoes/{servicoComissao}', [\App\Http\Controllers\Master\ComissaoController::class, 'update'])->name('comissoes.update');
         Route::delete('comissoes/{servicoComissao}', [\App\Http\Controllers\Master\ComissaoController::class, 'destroy'])->name('comissoes.destroy');
+        Route::get('comissoes/vendedores', [\App\Http\Controllers\Master\ComissoesVendedoresController::class, 'index'])
+            ->name('comissoes.vendedores');
 
         // Tabela de Preços (master reutiliza o mesmo conteúdo da área comercial)
         Route::prefix('tabela-precos')->name('tabela-precos.')->group(function () {

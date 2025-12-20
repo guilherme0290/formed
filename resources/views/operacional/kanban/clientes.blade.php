@@ -24,12 +24,6 @@
                         Nova Tarefa - Selecione a Empresa
                     </h1>
                 </div>
-
-                {{-- Novo Cliente (ajuste a rota se necessário) --}}
-                <a href="{{ route('clientes.create') }}"
-                   class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-xs md:text-sm font-medium text-white shadow-sm">
-                    <span>+ Novo Cliente</span>
-                </a>
             </div>
 
             {{-- Conteúdo --}}
@@ -51,8 +45,10 @@
                 {{-- Grid de empresas --}}
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                     @forelse($clientes as $cliente)
-                        <a href="{{ route('operacional.kanban.servicos', $cliente) }}"
-                           class="group flex items-center justify-between px-4 py-3 rounded-xl border border-slate-200 bg-white hover:bg-sky-50 hover:border-sky-300 transition">
+                        @php
+                            $temContrato = (bool) ($cliente->tem_contrato_ativo ?? false);
+                        @endphp
+                        <div class="group flex items-center justify-between px-4 py-3 rounded-xl border border-slate-200 bg-white {{ $temContrato ? 'hover:bg-sky-50 hover:border-sky-300' : 'opacity-60' }} transition">
                             <div class="flex items-center gap-3">
                                 <div class="flex items-center justify-center w-9 h-9 rounded-xl bg-sky-50 text-sky-600 text-lg">
                                     🏢
@@ -73,14 +69,24 @@
                                             {{ $cliente->cidade->nome }} - {{ $cliente->cidade->uf }}
                                         </p>
                                     @endif
+                                    @unless($temContrato)
+                                        <p class="text-[11px] text-amber-600">
+                                            Sem contrato ativo — acione o Comercial.
+                                        </p>
+                                    @endunless
                                 </div>
                             </div>
 
-                            <div class="flex items-center gap-1 text-xs font-medium text-sky-600 group-hover:text-sky-700">
-                                <span>Selecionar</span>
-                                <span>›</span>
-                            </div>
-                        </a>
+                            @if($temContrato)
+                                <a href="{{ route('operacional.kanban.servicos', $cliente) }}"
+                                   class="flex items-center gap-1 text-xs font-medium text-sky-600 group-hover:text-sky-700">
+                                    <span>Selecionar</span>
+                                    <span>›</span>
+                                </a>
+                            @else
+                                <span class="text-[11px] text-slate-400">Bloqueado</span>
+                            @endif
+                        </div>
                     @empty
                         <p class="text-sm text-slate-500">Nenhum cliente encontrado.</p>
                     @endforelse

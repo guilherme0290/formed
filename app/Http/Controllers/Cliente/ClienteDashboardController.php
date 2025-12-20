@@ -4,31 +4,86 @@ namespace App\Http\Controllers\Cliente;
 
 use App\Http\Controllers\Controller;
 use App\Models\Cliente;
+use App\Models\ClienteTabelaPreco;
+use App\Models\ClienteTabelaPrecoItem;
+use App\Models\Servico;
+use App\Models\Venda;
 use Illuminate\Http\Request;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 
 class ClienteDashboardController extends Controller
 {
     /**
-     * Tela inicial do Portal do Cliente
+     * Tela inicial do Portal do Cliente.
      */
     public function index(Request $request)
     {
-        // 1) Se NÃO tiver usuário autenticado -> manda pro login
+        $contexto = $this->resolverCliente($request);
+        if ($contexto instanceof RedirectResponse) {
+            return $contexto;
+        }
+
+        [$user, $cliente] = $contexto;
+
+        $tabela = $this->tabelaAtiva($cliente);
+        $precos = $this->precosPorServico($cliente, $tabela);
+        $temTabela = (bool) $tabela;
+        $faturaTotal = $this->faturaTotal($cliente);
+
+        return view('clientes.dashboard', [
+            'user'         => $user,
+            'cliente'      => $cliente,
+            'temTabela'    => $temTabela,
+            'precos'       => $precos,
+            'faturaTotal'  => $faturaTotal,
+        ]);
+    }
+
+    /**
+     * Tela de detalhes de faturas/serviços faturados.
+     */
+    public function faturas(Request $request)
+    {
+        $contexto = $this->resolverCliente($request);
+        if ($contexto instanceof RedirectResponse) {
+            return $contexto;
+        }
+
+        [$user, $cliente] = $contexto;
+
+        $tabela = $this->tabelaAtiva($cliente);
+        $precos = $this->precosPorServico($cliente, $tabela);
+        $temTabela = (bool) $tabela;
+        $faturaTotal = $this->faturaTotal($cliente);
+        $vendas = $this->vendasFaturadas($cliente);
+
+        return view('clientes.faturas.index', [
+            'user'         => $user,
+            'cliente'      => $cliente,
+            'temTabela'    => $temTabela,
+            'precos'       => $precos,
+            'faturaTotal'  => $faturaTotal,
+            'vendas'       => $vendas,
+        ]);
+    }
+
+    /**
+     * Resolve o cliente do portal com base na sessão; redireciona pro login em caso de falha.
+     */
+    private function resolverCliente(Request $request): RedirectResponse|array
+    {
         $user = $request->user();
 
-        if (!$user || !$user->id) { // cobre null, falso, etc.
+        if (!$user || !$user->id) {
             return redirect()
                 ->route('login', ['redirect' => 'cliente']);
         }
 
-        // 2) Recupera o ID do cliente guardado na sessão
         $clienteId = (int) $request->session()->get('portal_cliente_id');
 
-        // Se for null, vazio, 0 ou não numérico -> força novo login
         if ($clienteId <= 0) {
-
-            // opcional: deslogar de vez
             Auth::logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
@@ -38,11 +93,9 @@ class ClienteDashboardController extends Controller
                 ->with('error', 'Nenhum cliente selecionado. Faça login novamente pelo portal do cliente.');
         }
 
-        // 3) Verifica se o cliente realmente existe
         $cliente = Cliente::find($clienteId);
 
         if (!$cliente) {
-            // limpa ID inválido e manda pro login de novo
             Auth::logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
@@ -52,10 +105,81 @@ class ClienteDashboardController extends Controller
                 ->with('error', 'Cliente inválido. Acesse novamente pelo portal do cliente.');
         }
 
-        // 4) Tudo certo -> mostra o dashboard
-        return view('clientes.dashboard', [
-            'user'    => $user,
-            'cliente' => $cliente,
-        ]);
+        return [$user, $cliente];
+    }
+
+    private function tabelaAtiva(Cliente $cliente): ?ClienteTabelaPreco
+    {
+        return ClienteTabelaPreco::query()
+            ->where('empresa_id', $cliente->empresa_id)
+            ->where('cliente_id', $cliente->id)
+            ->where('ativa', true)
+            ->orderByDesc('vigencia_inicio')
+            ->first();
+    }
+
+    private function servicoIdPorTipo(Cliente $cliente, string $tipo): ?int
+    {
+        return Servico::query()
+            ->where('empresa_id', $cliente->empresa_id)
+            ->whereRaw('LOWER(tipo) = ?', [mb_strtolower($tipo)])
+            ->value('id');
+    }
+
+    private function precoDoServico(?ClienteTabelaPreco $tabela, ?int $servicoId): ?float
+    {
+        if (!$tabela || !$servicoId) {
+            return null;
+        }
+
+        $item = ClienteTabelaPrecoItem::query()
+            ->where('cliente_tabela_preco_id', $tabela->id)
+            ->where('servico_id', $servicoId)
+            ->where('ativo', true)
+            ->orderBy('descricao')
+            ->first();
+
+        return $item?->valor_unitario ? (float) $item->valor_unitario : null;
+    }
+
+    private function precosPorServico(Cliente $cliente, ?ClienteTabelaPreco $tabela): array
+    {
+        $servicos = [
+            'aso'          => $this->servicoIdPorTipo($cliente, 'aso'),
+            'pgr'          => $this->servicoIdPorTipo($cliente, 'pgr'),
+            'pcmso'        => $this->servicoIdPorTipo($cliente, 'pcmso'),
+            'ltcat'        => $this->servicoIdPorTipo($cliente, 'ltcat'),
+            'apr'          => $this->servicoIdPorTipo($cliente, 'apr'),
+            'treinamentos' => $this->servicoIdPorTipo($cliente, 'treinamento'),
+        ];
+
+        $precos = [];
+        foreach ($servicos as $slug => $servicoId) {
+            $precos[$slug] = $this->precoDoServico($tabela, $servicoId);
+        }
+
+        return $precos;
+    }
+
+    private function faturaTotal(Cliente $cliente): float
+    {
+        return (float) Venda::query()
+            ->where('cliente_id', $cliente->id)
+            ->whereHas('tarefa.coluna', function ($q) {
+                $q->where('finaliza', true);
+            })
+            ->sum('total');
+    }
+
+    private function vendasFaturadas(Cliente $cliente): LengthAwarePaginator
+    {
+        return Venda::query()
+            ->with(['itens.servico', 'tarefa.coluna'])
+            ->where('cliente_id', $cliente->id)
+            ->whereHas('tarefa.coluna', function ($q) {
+                $q->where('finaliza', true);
+            })
+            ->orderByDesc('created_at')
+            ->paginate(10);
     }
 }

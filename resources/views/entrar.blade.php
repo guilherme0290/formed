@@ -120,14 +120,14 @@
                     </div>
                 </div>
 
-                {{-- Financeiro (desabilitado) --}}
+                {{-- Financeiro --}}
                 <div class="rounded-3xl bg-gradient-to-br from-slate-900/90 to-slate-800/90
             border border-white/5 shadow-xl shadow-slate-950/50 p-6
             flex flex-col justify-between
             transition-transform transition-shadow duration-200 ease-out
             hover:-translate-y-1 hover:shadow-2xl hover:shadow-sky-900/60 hover:border-sky-400/40">
                     <div>
-                        <div class="inline-flex items-center justify-center h-10 w-10 rounded-2xl bg-fuchsia-500/15 text-fuchsia-300 mb-4 text-xl">
+                        <div class="inline-flex items-center justify-center h-10 w-10 rounded-2xl bg-gradient-to-br from-fuchsia-500/40 to-indigo-400/30 text-pink-100 mb-4 text-xl">
                             💰
                         </div>
                         <h2 class="text-lg md:text-xl font-semibold text-white mb-1">Financeiro</h2>
@@ -137,9 +137,21 @@
                     </div>
 
                     <div class="mt-6">
-                        <span class="inline-flex items-center gap-1 text-xs md:text-sm font-medium text-sky-300/70 opacity-60 cursor-not-allowed">
-                            Em desenvolvimento
-                        </span>
+                        @php
+                            $user = auth()->user();
+                            $podeFinanceiro = $user && ($user->hasPapel('Master') || $user->hasPapel('Financeiro'));
+                        @endphp
+                        @if($podeFinanceiro)
+                            <a href="{{ route('financeiro.dashboard') }}"
+                               class="inline-flex items-center gap-1 text-xs md:text-sm font-medium text-pink-100 hover:text-white transition">
+                                <span>Acessar painel</span>
+                                <span class="text-base md:text-lg">›</span>
+                            </a>
+                        @else
+                            <span class="inline-flex items-center gap-1 text-xs md:text-sm font-medium text-sky-300/70 opacity-60 cursor-not-allowed">
+                                Acesso restrito
+                            </span>
+                        @endif
                     </div>
                 </div>
 
