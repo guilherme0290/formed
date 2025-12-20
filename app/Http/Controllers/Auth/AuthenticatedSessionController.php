@@ -52,6 +52,12 @@ class AuthenticatedSessionController extends Controller
             return redirect()->route('operacional.kanban');
         }
 
+        if ($papelNome === 'financeiro') {
+            return redirect()->route('financeiro.dashboard');
+        }
+
+
+
         // COMERCIAL: sempre comercial
         if ($papelNome === 'comercial') {
             return redirect()->route('comercial.dashboard');

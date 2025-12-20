@@ -141,7 +141,7 @@
                             $user = auth()->user();
                             $podeFinanceiro = $user && ($user->hasPapel('Master') || $user->hasPapel('Financeiro'));
                         @endphp
-                        @if($podeFinanceiro)
+                        @if($podeFinanceiro || !$user)
                             <a href="{{ route('financeiro.dashboard') }}"
                                class="inline-flex items-center gap-1 text-xs md:text-sm font-medium text-pink-100 hover:text-white transition">
                                 <span>Acessar painel</span>
