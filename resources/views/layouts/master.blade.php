@@ -220,5 +220,8 @@
         });
     });
 </script>
+<script src="https://unpkg.com/currency.js@2.0.4/dist/currency.min.js"></script>
+
+@stack('scripts')
 </body>
 </html>

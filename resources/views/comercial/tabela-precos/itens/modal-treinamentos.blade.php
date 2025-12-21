@@ -381,6 +381,7 @@
 
             // expõe global
             window.openTreinamentosCrudModal = openCrud;
+            window.openNovoTreinamentoItemModal = openCrud;
             window.closeTreinamentosCrudModal = closeCrud;
             window.openTreinamentoFormModal = openForm;
             window.closeTreinamentoFormModal = closeForm;

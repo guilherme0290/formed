@@ -53,7 +53,7 @@
                 <span>Exames</span>
             </button>
             <button type="button"
-                    onclick="openNovoTreinamentoItemModal()"
+                    onclick="openTreinamentosCrudModal()"
                     class="inline-flex items-center justify-center gap-2 rounded-2xl
                bg-white hover:bg-emerald-50 active:bg-emerald-100
                text-emerald-700 px-4 py-2 text-sm font-semibold shadow-sm
