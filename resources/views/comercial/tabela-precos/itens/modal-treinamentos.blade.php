@@ -84,8 +84,23 @@
             </div>
 
             <form id="trn_form" class="flex-1 flex flex-col">
-                <div class="px-6 py-5 space-y-4 overflow-y-auto">
-                    <input type="hidden" id="trn_id">
+                    <div class="px-6 py-5 space-y-4 overflow-y-auto">
+                        <input type="hidden" id="trn_id">
+
+                        <div class="flex items-center gap-3">
+                            <div class="relative inline-block w-11 h-5">
+                                <input id="trn_ativo" type="checkbox" value="1"
+                                       class="peer appearance-none w-11 h-5 rounded-full cursor-pointer transition-colors duration-300
+                                              bg-red-600 checked:bg-green-600" checked>
+                                <label for="trn_ativo"
+                                       class="absolute top-0 left-0 w-5 h-5 bg-white rounded-full border shadow-sm cursor-pointer
+                                                  transition-transform duration-300 border-red-600 peer-checked:border-green-600
+                                                  peer-checked:translate-x-6"></label>
+                            </div>
+
+                            <span id="trn_ativo_label" class="text-sm font-medium text-slate-700">Ativo</span>
+                        </div>
+
 
                     <div>
                         <label class="text-xs font-semibold text-slate-600">Código (ex: NR-10) *</label>
@@ -101,33 +116,11 @@
                                placeholder="Elétrica">
                     </div>
 
-                    <div class="grid grid-cols-12 gap-3 items-center">
-                        <div class="col-span-6">
-                            <label class="text-xs font-semibold text-slate-600">Ordem</label>
-                            <input id="trn_ordem" type="number" min="0"
-                                   class="mt-1 w-full rounded-xl border border-slate-200 text-sm px-3 py-2"
-                                   placeholder="0">
-                        </div>
 
-                        <div class="col-span-6 flex items-center gap-3 mt-6">
-                            <div class="relative inline-block w-11 h-5">
-                                <input id="trn_ativo" type="checkbox" value="1"
-                                       class="peer appearance-none w-11 h-5 rounded-full cursor-pointer transition-colors duration-300
-                                              bg-red-600 checked:bg-green-600" checked>
-                                <label for="trn_ativo"
-                                       class="absolute top-0 left-0 w-5 h-5 bg-white rounded-full border shadow-sm cursor-pointer
-                                              transition-transform duration-300 border-red-600 peer-checked:border-green-600
-                                              peer-checked:translate-x-6"></label>
-                            </div>
-
-                            <span id="trn_ativo_label" class="text-sm font-medium text-slate-700">Ativo</span>
-                        </div>
-                    </div>
 
                     <p class="text-xs text-slate-500">
                         * O preço do treinamento é cadastrado na Tabela de Preços (Itens), usando o serviço “Treinamentos NRs” e o código NR (ex: NR-10).
                     </p>
-                </div>
 
                 <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
                     <button type="button"
@@ -141,6 +134,7 @@
                         Salvar
                     </button>
                 </div>
+                    </div>
             </form>
         </div>
     </div>
@@ -171,7 +165,6 @@
                 id: document.getElementById('trn_id'),
                 codigo: document.getElementById('trn_codigo'),
                 titulo: document.getElementById('trn_titulo'),
-                ordem: document.getElementById('trn_ordem'),
                 ativo: document.getElementById('trn_ativo'),
                 ativoLabel: document.getElementById('trn_ativo_label'),
             };
@@ -277,7 +270,6 @@
                 dom.id.value = nr?.id || '';
                 dom.codigo.value = nr?.codigo || '';
                 dom.titulo.value = nr?.titulo || '';
-                dom.ordem.value = (nr?.ordem ?? 0);
                 dom.ativo.checked = nr ? !!nr.ativo : true;
                 syncAtivoLabel();
                 dom.modalForm.classList.remove('hidden');
@@ -294,7 +286,6 @@
                 const payload = {
                     codigo: (dom.codigo.value || '').trim(),
                     titulo: (dom.titulo.value || '').trim(),
-                    ordem: Number(dom.ordem.value || 0),
                     ativo: dom.ativo.checked ? 1 : 0,
                 };
 

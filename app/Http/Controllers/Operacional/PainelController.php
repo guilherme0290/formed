@@ -346,21 +346,27 @@ class PainelController extends Controller
             : [];
 
         $tipos = [
-            'aso' => 'aso',
-            'pgr' => 'pgr',
-            'pcmso' => 'pcmso',
-            'ltcat' => 'ltcat',
-            'ltip' => 'ltip',
-            'apr' => 'apr',
-            'pae' => 'pae',
-            'treinamentos' => 'treinamento',
+            'aso' => ['aso', 'aso'],
+            'pgr' => ['pgr', 'pgr'],
+            'pcmso' => ['pcmso', 'pcmso'],
+            'ltcat' => ['ltcat', 'ltcat'],
+            'ltip' => ['ltip', 'ltip'],
+            'apr' => ['apr', 'apr'],
+            'pae' => ['pae', 'pae'],
+            'treinamentos' => ['treinamento', 'treinamentos nrs'],
         ];
 
         $servicosIds = [];
-        foreach ($tipos as $slug => $tipo) {
+        foreach ($tipos as $slug => $variants) {
+            $variants = array_map(fn ($v) => mb_strtolower($v), $variants);
             $id = Servico::query()
                 ->where('empresa_id', $empresaId)
-                ->whereRaw('LOWER(tipo) = ?', [mb_strtolower($tipo)])
+                ->where(function ($q) use ($variants) {
+                    foreach ($variants as $v) {
+                        $q->orWhereRaw('LOWER(tipo) = ?', [$v])
+                          ->orWhereRaw('LOWER(nome) = ?', [$v]);
+                    }
+                })
                 ->value('id');
             $servicosIds[$slug] = $id;
         }

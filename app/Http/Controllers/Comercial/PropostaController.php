@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Comercial;
 
 use App\Http\Controllers\Controller;
 use App\Models\Cliente;
+use App\Models\ClienteContratoItem;
+use App\Models\ClienteContratoLog;
 use App\Models\Proposta;
 use App\Models\PropostaItens;
 use App\Models\Servico;
@@ -351,7 +353,14 @@ class PropostaController extends Controller
                 'valor_total' => $valorTotal,
             ];
 
+            $contratoParaAtualizar = null;
             if ($proposta) {
+                $contratoParaAtualizar = \App\Models\ClienteContrato::query()
+                    ->where('empresa_id', $empresaId)
+                    ->where('proposta_id_origem', $proposta->id)
+                    ->latest('id')
+                    ->first();
+
                 $proposta->update($payload);
                 $proposta->itens()->delete();
             } else {
@@ -375,6 +384,121 @@ class PropostaController extends Controller
                     'valor_total' => $it['valor_total'],
                     'meta' => $it['meta'] ?? null,
                 ]);
+            }
+
+            if ($contratoParaAtualizar) {
+                $contratoParaAtualizar->load(['itens.servico', 'cliente']);
+
+                $usuarioNome = auth()->user()?->name ?? 'Sistema';
+                $clienteNome = $contratoParaAtualizar->cliente?->razao_social ?? 'Cliente';
+
+                $oldMap = [];
+                foreach ($contratoParaAtualizar->itens as $item) {
+                    $key = $item->servico_id
+                        ? 'id:' . $item->servico_id
+                        : 'nome:' . strtolower((string) ($item->descricao_snapshot ?? $item->servico?->nome ?? ''));
+                    $oldMap[$key] = [
+                        'preco' => (float) $item->preco_unitario_snapshot,
+                        'servico_id' => $item->servico_id,
+                        'servico_nome' => $item->servico?->nome ?? $item->descricao_snapshot ?? 'Serviço',
+                    ];
+                }
+
+                $newMap = [];
+                foreach ($data['itens'] as $it) {
+                    $key = !empty($it['servico_id'])
+                        ? 'id:' . $it['servico_id']
+                        : 'nome:' . strtolower((string) ($it['nome'] ?? ''));
+                    $newMap[$key] = [
+                        'preco' => (float) ($it['valor_total'] ?? $it['valor_unitario'] ?? 0),
+                        'servico_id' => $it['servico_id'] ?? null,
+                        'servico_nome' => $it['nome'] ?? $it['descricao'] ?? 'Serviço',
+                    ];
+                }
+
+                $contratoParaAtualizar->itens()->delete();
+                foreach ($data['itens'] as $it) {
+                    ClienteContratoItem::create([
+                        'cliente_contrato_id' => $contratoParaAtualizar->id,
+                        'servico_id' => $it['servico_id'] ?? null,
+                        'descricao_snapshot' => $it['descricao'] ?? $it['nome'],
+                        'preco_unitario_snapshot' => $it['valor_total'] ?? $it['valor_unitario'],
+                        'unidade_cobranca' => 'unidade',
+                        'regras_snapshot' => null,
+                        'ativo' => true,
+                    ]);
+                }
+
+                ClienteContratoLog::create([
+                    'cliente_contrato_id' => $contratoParaAtualizar->id,
+                    'user_id' => auth()->id(),
+                    'acao' => 'ATUALIZACAO_ITENS',
+                    'descricao' => sprintf(
+                        'USUARIO: %s ATUALIZOU os itens do contrato da empresa %s via proposta #%s.',
+                        $usuarioNome,
+                        $clienteNome,
+                        $proposta->id
+                    ),
+                ]);
+
+                foreach ($oldMap as $key => $oldItem) {
+                    if (!array_key_exists($key, $newMap)) {
+                        ClienteContratoLog::create([
+                            'cliente_contrato_id' => $contratoParaAtualizar->id,
+                            'user_id' => auth()->id(),
+                            'servico_id' => $oldItem['servico_id'],
+                            'acao' => 'SERVICO_REMOVIDO',
+                            'descricao' => sprintf(
+                                'USUARIO: %s REMOVEU o serviço %s do contrato da empresa %s.',
+                                $usuarioNome,
+                                $oldItem['servico_nome'],
+                                $clienteNome
+                            ),
+                            'valor_anterior' => $oldItem['preco'],
+                        ]);
+                    }
+                }
+
+                foreach ($newMap as $key => $newItem) {
+                    if (!array_key_exists($key, $oldMap)) {
+                        ClienteContratoLog::create([
+                            'cliente_contrato_id' => $contratoParaAtualizar->id,
+                            'user_id' => auth()->id(),
+                            'servico_id' => $newItem['servico_id'],
+                            'acao' => 'SERVICO_CRIADO',
+                            'descricao' => sprintf(
+                                'USUARIO: %s ADICIONOU o serviço %s ao contrato da empresa %s. Valor: R$ %s.',
+                                $usuarioNome,
+                                $newItem['servico_nome'],
+                                $clienteNome,
+                                number_format($newItem['preco'], 2, ',', '.')
+                            ),
+                            'valor_novo' => $newItem['preco'],
+                        ]);
+                        continue;
+                    }
+
+                    $oldPreco = (float) ($oldMap[$key]['preco'] ?? 0);
+                    $novoPreco = (float) ($newItem['preco'] ?? 0);
+                    if (abs($oldPreco - $novoPreco) >= 0.01) {
+                        ClienteContratoLog::create([
+                            'cliente_contrato_id' => $contratoParaAtualizar->id,
+                            'user_id' => auth()->id(),
+                            'servico_id' => $newItem['servico_id'] ?? $oldMap[$key]['servico_id'],
+                            'acao' => 'ALTERACAO',
+                            'descricao' => sprintf(
+                                'USUARIO: %s ALTEROU o contrato da empresa %s. SERVICO %s. Valor antigo: R$ %s. Novo valor: R$ %s.',
+                                $usuarioNome,
+                                $clienteNome,
+                                $newItem['servico_nome'],
+                                number_format($oldPreco, 2, ',', '.'),
+                                number_format($novoPreco, 2, ',', '.')
+                            ),
+                            'valor_anterior' => $oldPreco,
+                            'valor_novo' => $novoPreco,
+                        ]);
+                    }
+                }
             }
 
             return redirect()

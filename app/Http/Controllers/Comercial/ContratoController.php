@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Comercial;
 
 use App\Http\Controllers\Controller;
 use App\Models\ClienteContrato;
+use App\Models\ClienteContratoLog;
 use App\Models\ClienteContratoVigencia;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -125,6 +126,8 @@ class ContratoController extends Controller
             'cliente',
             'itens.servico',
             'vigencias.itens.servico',
+            'logs.user',
+            'logs.servico',
         ]);
 
         return view('comercial.contratos.show', compact('contrato'));
@@ -145,7 +148,7 @@ class ContratoController extends Controller
         $empresaId = $request->user()->empresa_id;
         abort_unless($contrato->empresa_id === $empresaId, 403);
 
-        $contrato->load(['itens']);
+        $contrato->load(['cliente', 'itens.servico']);
 
         $validated = $request->validate([
             'vigencia_inicio' => ['required', 'date', 'after_or_equal:today'],
@@ -159,6 +162,16 @@ class ContratoController extends Controller
         DB::transaction(function () use ($contrato, $validated, $request) {
             $novoInicio = $validated['vigencia_inicio'];
             $novoFim = $validated['vigencia_fim'] ?? null;
+            $usuarioNome = $request->user()?->name ?? 'Sistema';
+            $clienteNome = $contrato->cliente?->razao_social ?? 'Cliente';
+            $motivo = $validated['observacao'] ?? null;
+            $precosAntigos = $contrato->itens->mapWithKeys(function ($item) {
+                return [$item->id => [
+                    'preco' => (float) $item->preco_unitario_snapshot,
+                    'servico_id' => $item->servico_id,
+                    'servico_nome' => $item->servico?->nome ?? $item->descricao_snapshot ?? 'Serviço',
+                ]];
+            });
 
             // 1) Salva snapshot da vigência atual (se houver)
             if ($contrato->vigencia_inicio) {
@@ -192,6 +205,48 @@ class ContratoController extends Controller
                 $novoPreco = $precos[$item->id]['preco_unitario_snapshot'] ?? $item->preco_unitario_snapshot;
                 $item->update([
                     'preco_unitario_snapshot' => $novoPreco,
+                ]);
+            }
+
+            ClienteContratoLog::create([
+                'cliente_contrato_id' => $contrato->id,
+                'user_id' => $request->user()?->id,
+                'acao' => 'VIGENCIA',
+                'motivo' => $motivo,
+                'descricao' => sprintf(
+                    'USUARIO: %s ALTEROU a vigência do contrato da empresa %s. Início: %s. Fim: %s.',
+                    $usuarioNome,
+                    $clienteNome,
+                    $novoInicio,
+                    $novoFim ?: 'em aberto'
+                ),
+            ]);
+
+            foreach ($contrato->itens as $item) {
+                $anterior = $precosAntigos[$item->id]['preco'] ?? null;
+                $novoValor = (float) $item->preco_unitario_snapshot;
+                if ($anterior === null || abs($anterior - $novoValor) < 0.01) {
+                    continue;
+                }
+
+                $servicoNome = $precosAntigos[$item->id]['servico_nome'] ?? 'Serviço';
+
+                ClienteContratoLog::create([
+                    'cliente_contrato_id' => $contrato->id,
+                    'user_id' => $request->user()?->id,
+                    'servico_id' => $precosAntigos[$item->id]['servico_id'] ?? $item->servico_id,
+                    'acao' => 'ALTERACAO',
+                    'motivo' => $motivo,
+                    'descricao' => sprintf(
+                        'USUARIO: %s ALTEROU o contrato da empresa %s. SERVICO %s. Valor antigo: R$ %s. Novo valor: R$ %s.',
+                        $usuarioNome,
+                        $clienteNome,
+                        $servicoNome,
+                        number_format($anterior, 2, ',', '.'),
+                        number_format($novoValor, 2, ',', '.')
+                    ),
+                    'valor_anterior' => $anterior,
+                    'valor_novo' => $novoValor,
                 ]);
             }
 

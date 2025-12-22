@@ -4,8 +4,10 @@ namespace App\Services;
 
 use App\Models\ClienteContrato;
 use App\Models\ClienteContratoItem;
+use App\Models\ClienteContratoLog;
 use App\Models\Proposta;
 use App\Models\PropostaItens;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -18,6 +20,7 @@ class PropostaService
     public function fechar(int $propostaId, int $userId): Proposta
     {
         $proposta = Proposta::with('itens')->findOrFail($propostaId);
+        $proposta->loadMissing('cliente');
 
         if (strtoupper((string) $proposta->status) === 'FECHADA') {
             return $proposta;
@@ -40,6 +43,10 @@ class PropostaService
         $hoje = Carbon::now()->startOfDay();
 
         return DB::transaction(function () use ($proposta, $hoje, $userId) {
+            $usuario = User::find($userId);
+            $usuarioNome = $usuario?->name ?? 'Sistema';
+            $clienteNome = $proposta->cliente?->razao_social ?? 'Cliente';
+
             // Inativa contrato ativo anterior
             ClienteContrato::where('cliente_id', $proposta->cliente_id)
                 ->where('empresa_id', $proposta->empresa_id)
@@ -61,6 +68,18 @@ class PropostaService
                 'created_by' => $userId,
             ]);
 
+            ClienteContratoLog::create([
+                'cliente_contrato_id' => $contrato->id,
+                'user_id' => $userId,
+                'acao' => 'CRIACAO',
+                'descricao' => sprintf(
+                    'USUARIO: %s CRIOU o contrato da empresa %s a partir da proposta #%s.',
+                    $usuarioNome,
+                    $clienteNome,
+                    $proposta->id
+                ),
+            ]);
+
             // Copia itens
             foreach ($proposta->itens as $it) {
                 ClienteContratoItem::create([
@@ -71,6 +90,24 @@ class PropostaService
                     'unidade_cobranca' => 'unidade',
                     'regras_snapshot' => null,
                     'ativo' => true,
+                ]);
+
+                $servicoNome = $it->nome ?? $it->descricao ?? 'Serviço';
+                $valorNovo = (float) ($it->valor_total ?? $it->valor_unitario);
+
+                ClienteContratoLog::create([
+                    'cliente_contrato_id' => $contrato->id,
+                    'user_id' => $userId,
+                    'servico_id' => $it->servico_id,
+                    'acao' => 'SERVICO_CRIADO',
+                    'descricao' => sprintf(
+                        'USUARIO: %s DEFINIU o serviço %s para a empresa %s. Valor: R$ %s.',
+                        $usuarioNome,
+                        $servicoNome,
+                        $clienteNome,
+                        number_format($valorNovo, 2, ',', '.')
+                    ),
+                    'valor_novo' => $valorNovo,
                 ]);
             }
 

@@ -179,5 +179,54 @@
                 @endforelse
             </div>
         </section>
+
+        {{-- Timeline de alterações --}}
+        <section class="bg-white rounded-2xl shadow border border-slate-100 overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                <h2 class="text-sm font-semibold text-slate-800">Histórico de Alterações</h2>
+                <span class="text-xs text-slate-500">Criações e ajustes do contrato</span>
+            </div>
+
+            @if($contrato->logs->isEmpty())
+                <div class="p-5 text-sm text-slate-500">Nenhuma alteração registrada.</div>
+            @else
+                <div class="p-5 space-y-4">
+                    @foreach($contrato->logs->sortByDesc('created_at') as $log)
+                        <div class="flex gap-4">
+                            <div class="flex flex-col items-center">
+                                <span class="h-3 w-3 rounded-full bg-indigo-500 mt-1"></span>
+                                <span class="flex-1 w-px bg-slate-200"></span>
+                            </div>
+                            <div class="flex-1 bg-slate-50/70 border border-slate-100 rounded-xl px-4 py-3">
+                                <div class="flex flex-wrap items-center justify-between gap-2">
+                                    <div class="text-sm font-semibold text-slate-800">
+                                        {{ $log->acao }}
+                                        @if($log->servico)
+                                            • {{ $log->servico->nome }}
+                                        @endif
+                                    </div>
+                                    <div class="text-xs text-slate-500">
+                                        {{ optional($log->created_at)->format('d/m/Y H:i') }}
+                                    </div>
+                                </div>
+                                <p class="text-sm text-slate-700 mt-2">{{ $log->descricao }}</p>
+                                <div class="mt-2 flex flex-wrap items-center gap-3 text-xs text-slate-600">
+                                    <span>Usuário: {{ $log->user->name ?? 'Sistema' }}</span>
+                                    @if($log->motivo)
+                                        <span>Motivo: {{ $log->motivo }}</span>
+                                    @endif
+                                    @if($log->valor_anterior !== null || $log->valor_novo !== null)
+                                        <span>
+                                            Valor: {{ $log->valor_anterior !== null ? 'R$ ' . number_format((float) $log->valor_anterior, 2, ',', '.') : '—' }}
+                                            → {{ $log->valor_novo !== null ? 'R$ ' . number_format((float) $log->valor_novo, 2, ',', '.') : '—' }}
+                                        </span>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            @endif
+        </section>
     </div>
 @endsection
