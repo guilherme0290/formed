@@ -217,15 +217,23 @@ class PropostaPrecoController extends Controller
 
     public function treinamentosJson()
     {
-        // Se você já tem endpoint pronto, pode reaproveitar.
-        // Aqui fica compatível com seu protótipo e com o que você já listou na tabela.
         $empresaId = auth()->user()->empresa_id;
 
-        $rows = \DB::table('treinamentos_nrs')
-            ->where('empresa_id', $empresaId)
-            ->where('ativo', 1)
-            ->orderBy('ordem')
-            ->get(['id', 'codigo', 'titulo']);
+        $treinamentoId = $this->treinamentoServicoId($empresaId);
+        if (!$treinamentoId) {
+            return response()->json(['data' => []]);
+        }
+
+        $padrao = $this->tabelaAtiva($empresaId);
+
+        $rows = TabelaPrecoItem::query()
+            ->where('tabela_preco_padrao_id', $padrao->id)
+            ->where('servico_id', $treinamentoId)
+            ->where('ativo', true)
+            ->whereNotNull('codigo')
+            ->orderBy('codigo')
+            ->selectRaw('id, codigo, descricao as titulo')
+            ->get();
 
         return response()->json(['data' => $rows]);
     }

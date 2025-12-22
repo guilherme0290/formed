@@ -13,17 +13,21 @@
 </head>
 <body class="bg-slate-900">
 <div class="min-h-screen flex relative">
+    @php $isMaster = auth()->user()?->isMaster(); @endphp
 
-    {{-- BACKDROP (mobile) --}}
-    <div id="comercial-sidebar-backdrop"
-         class="fixed inset-0 bg-black/40 z-20 opacity-0 pointer-events-none transition-opacity duration-200 md:hidden"></div>
+    @if($isMaster)
+        @include('layouts.partials.master-sidebar')
+    @else
+        {{-- BACKDROP (mobile) --}}
+        <div id="comercial-sidebar-backdrop"
+             class="fixed inset-0 bg-black/40 z-20 opacity-0 pointer-events-none transition-opacity duration-200 md:hidden"></div>
 
-    {{-- Sidebar esquerda --}}
-    <aside id="comercial-sidebar"
-           class="fixed inset-y-0 left-0 z-30 w-64 bg-slate-950 text-slate-100
-                  transform -translate-x-full transition-transform duration-200 ease-in-out
-                  flex flex-col relative overflow-hidden
-                  md:static md:translate-x-0">
+        {{-- Sidebar esquerda --}}
+        <aside id="comercial-sidebar"
+               class="fixed inset-y-0 left-0 z-30 w-64 bg-slate-950 text-slate-100
+                      transform -translate-x-full transition-transform duration-200 ease-in-out
+                      flex flex-col relative overflow-hidden
+                      md:static md:translate-x-0">
 
         <div class="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.06]">
             <img src="{{ asset('storage/logo.svg') }}" alt="FORMED" class="w-40">
@@ -135,7 +139,8 @@
                 </button>
             </form>
         </div>
-    </aside>
+        </aside>
+    @endif
 
     {{-- Área principal --}}
     <div class="flex-1 flex flex-col bg-slate-50">
@@ -196,8 +201,11 @@
     document.addEventListener('DOMContentLoaded', function () {
         const MOBILE_BREAKPOINT = 768;
 
-        const sidebar       = document.getElementById('comercial-sidebar');
-        const backdrop      = document.getElementById('comercial-sidebar-backdrop');
+        const sidebarId = @json($isMaster ? 'master-sidebar' : 'comercial-sidebar');
+        const backdropId = @json($isMaster ? 'master-sidebar-backdrop' : 'comercial-sidebar-backdrop');
+
+        const sidebar       = document.getElementById(sidebarId);
+        const backdrop      = document.getElementById(backdropId);
         const btnToggleMob  = document.querySelector('[data-sidebar-toggle]');
         const btnCloses     = document.querySelectorAll('[data-sidebar-close]');
         const btnCollapse   = document.querySelector('[data-sidebar-collapse]');
