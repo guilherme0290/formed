@@ -63,6 +63,10 @@ class AuthenticatedSessionController extends Controller
             return redirect()->route('comercial.dashboard');
         }
 
+        if ($papelNome === 'financeiro') {
+            return redirect()->route('financeiro.dashboard');
+        }
+
         // CLIENTE: somente portal do cliente
         if ($papelNome === 'cliente') {
             if ($user->cliente_id) {
