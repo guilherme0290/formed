@@ -2,15 +2,16 @@
 <div class="bg-white rounded-2xl shadow p-5">
     <div class="text-xl font-semibold mb-4">Perfis</div>
 
-    <div class="flex flex-wrap items-center gap-2 mb-4 opacity-60 cursor-not-allowed select-none">
-        <input name="nome" class="rounded border-gray-200 px-3 py-2 bg-slate-100" placeholder="Nome do perfil *" disabled>
-        <input name="descricao" class="rounded border-gray-200 px-3 py-2 bg-slate-100" placeholder="Descrição (opcional)" disabled>
-        <label class="inline-flex items-center gap-2 text-sm text-slate-500">
-            <input type="checkbox" name="ativo" value="1" checked disabled>
+    <form method="POST" action="{{ route('master.papeis.store') }}" class="flex flex-wrap items-center gap-2 mb-4">
+        @csrf
+        <input name="nome" class="rounded border-gray-200 px-3 py-2" placeholder="Nome do perfil *" required>
+        <input name="descricao" class="rounded border-gray-200 px-3 py-2" placeholder="Descrição (opcional)">
+        <label class="inline-flex items-center gap-2 text-sm text-slate-600">
+            <input type="checkbox" name="ativo" value="1" checked>
             ativo
         </label>
-        <button type="button" class="px-4 py-2 bg-slate-200 text-slate-500 rounded" disabled title="Indisponível no momento">+ Novo Perfil</button>
-    </div>
+        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">+ Novo Perfil</button>
+    </form>
 
     <table class="w-full text-sm">
         <thead>
