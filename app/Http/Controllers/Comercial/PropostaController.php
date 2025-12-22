@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use App\Services\PropostaService;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class PropostaController extends Controller
 {
@@ -384,8 +385,12 @@ class PropostaController extends Controller
 
     public function show(Proposta $proposta)
     {
+        $user = auth()->user();
+        abort_unless($proposta->empresa_id === $user->empresa_id, 403);
 
-        $unidades = UnidadeClinica::where('ativo',true)->get();
+        $unidades = UnidadeClinica::where('empresa_id', $user->empresa_id)
+            ->where('ativo', true)
+            ->get();
         $proposta->load(['cliente', 'empresa', 'vendedor', 'itens']);
         $proposta['unidades'] =$unidades;
 
@@ -393,6 +398,58 @@ class PropostaController extends Controller
         return view('comercial.propostas.show', [
             'proposta' => $proposta,
         ]);
+    }
+
+    public function pdf(Proposta $proposta)
+    {
+        $user = auth()->user();
+        abort_unless($proposta->empresa_id === $user->empresa_id, 403);
+
+        $unidades = UnidadeClinica::where('empresa_id', $user->empresa_id)
+            ->where('ativo', true)
+            ->get();
+        $proposta->load(['cliente', 'empresa', 'vendedor', 'itens']);
+        $proposta['unidades'] = $unidades;
+
+        $logoPath = public_path('storage/logo.svg');
+        $logoData = is_file($logoPath)
+            ? 'data:image/svg+xml;base64,' . base64_encode(file_get_contents($logoPath))
+            : null;
+
+        $pdf = Pdf::loadView('comercial.propostas.pdf', [
+            'proposta' => $proposta,
+            'logoData' => $logoData,
+        ])->setPaper('a4');
+
+        $filename = 'proposta-' . ($proposta->codigo ?? $proposta->id) . '.pdf';
+
+        return $pdf->download($filename);
+    }
+
+    public function print(Proposta $proposta)
+    {
+        $user = auth()->user();
+        abort_unless($proposta->empresa_id === $user->empresa_id, 403);
+
+        $unidades = UnidadeClinica::where('empresa_id', $user->empresa_id)
+            ->where('ativo', true)
+            ->get();
+        $proposta->load(['cliente', 'empresa', 'vendedor', 'itens']);
+        $proposta['unidades'] = $unidades;
+
+        $logoPath = public_path('storage/logo.svg');
+        $logoData = is_file($logoPath)
+            ? 'data:image/svg+xml;base64,' . base64_encode(file_get_contents($logoPath))
+            : null;
+
+        $pdf = Pdf::loadView('comercial.propostas.pdf', [
+            'proposta' => $proposta,
+            'logoData' => $logoData,
+        ])->setPaper('a4');
+
+        $filename = 'proposta-' . ($proposta->codigo ?? $proposta->id) . '.pdf';
+
+        return $pdf->stream($filename);
     }
 
 

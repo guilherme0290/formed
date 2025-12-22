@@ -155,7 +155,7 @@
                     btnBuscar.textContent = 'Buscando...';
 
                     try {
-                        const url = @json(route('clientes.consulta-cnpj', ['cnpj' => '__CNPJ__'])).replace('__CNPJ__', encodeURIComponent(digits));
+                        const url = @json(route('comercial.clientes.consulta-cnpj', ['cnpj' => '__CNPJ__'])).replace('__CNPJ__', encodeURIComponent(digits));
                         const res = await fetch(url, { headers: { 'Accept': 'application/json' }});
                         const json = await res.json().catch(() => ({}));
 
@@ -177,4 +177,3 @@
         </script>
     @endpush
 @endsection
-

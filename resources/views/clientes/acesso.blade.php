@@ -1,4 +1,17 @@
-@extends('layouts.master')
+@php
+    $user = auth()->user();
+    $layout = 'layouts.app';
+
+    if ($user && optional($user->papel)->nome === 'Operacional') {
+        $layout = 'layouts.operacional';
+    } else if ($user && optional($user->papel)->nome === 'Master') {
+        $layout = 'layouts.master';
+    } else if ($user && optional($user->papel)->nome === 'Comercial') {
+        $layout = 'layouts.comercial';
+    }
+@endphp
+
+@extends($layout)
 @section('title', 'Criar acesso do cliente')
 
 @php
@@ -8,6 +21,7 @@
 @endphp
 
 @section('content')
+    @php($routePrefix = $routePrefix ?? 'clientes')
     <div class="max-w-2xl mx-auto px-4 py-6 space-y-6">
         <div class="bg-white rounded-2xl shadow border p-6 space-y-4">
             <div class="flex items-center justify-between">
@@ -15,7 +29,7 @@
                     <h1 class="text-xl font-semibold text-slate-900">Criar acesso para {{ $cliente->razao_social }}</h1>
                     <p class="text-sm text-slate-500">O usuário deverá trocar a senha no primeiro login.</p>
                 </div>
-                <a href="{{ route('clientes.show', $cliente) }}" class="text-sm text-slate-600 hover:text-slate-800">← Voltar</a>
+                <a href="{{ route($routePrefix.'.show', $cliente) }}" class="text-sm text-slate-600 hover:text-slate-800">← Voltar</a>
             </div>
 
             @if($userExistente)
@@ -24,7 +38,7 @@
                 </div>
             @endif
 
-            <form id="acessoForm" method="POST" action="{{ route('clientes.acesso', $cliente) }}" class="space-y-4">
+            <form id="acessoForm" method="POST" action="{{ route($routePrefix.'.acesso', $cliente) }}" class="space-y-4">
                 @csrf
                 <div class="space-y-1">
                     <label class="text-sm font-semibold text-slate-700">E-mail (login)</label>

@@ -271,6 +271,16 @@
 
                 {{-- Body com scroll interno --}}
                 <div class="px-6 py-5 space-y-4 overflow-y-auto">
+                    @if ($errors->any())
+                        <div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                            <div class="font-semibold mb-1">Verifique os campos</div>
+                            <ul class="list-disc ml-5 space-y-1">
+                                @foreach ($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
 
 
                     <div class="flex items-center gap-3">

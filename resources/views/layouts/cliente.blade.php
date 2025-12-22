@@ -19,8 +19,11 @@
 <div class="min-h-screen flex">
 
     {{-- SIDEBAR DO CLIENTE (vai até o topo) --}}
-    <aside class="hidden md:flex flex-col w-56 bg-slate-950 text-slate-100">
-        <div class="h-16 flex items-center px-6 text-lg font-semibold">
+    <aside class="hidden md:flex flex-col w-56 bg-slate-950 text-slate-100 relative overflow-hidden">
+        <div class="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.06]">
+            <img src="{{ asset('storage/logo.svg') }}" alt="FORMED" class="w-36">
+        </div>
+        <div class="relative z-10 h-16 flex items-center px-6 text-lg font-semibold">
             Portal do Cliente
         </div>
 
@@ -80,7 +83,7 @@
             ];
         @endphp
 
-        <nav class="flex-1 px-3 mt-4 space-y-1">
+        <nav class="relative z-10 flex-1 px-3 mt-4 space-y-1">
             @foreach($linksRapidos as $link)
                 @php
                     $disabled = $link['disabled'] ?? false;
@@ -110,7 +113,7 @@
             </div>
         </nav>
 
-        <div class="px-4 py-4 border-t border-slate-800 space-y-2 text-sm">
+        <div class="relative z-10 px-4 py-4 border-t border-slate-800 space-y-2 text-sm">
             {{-- AQUI: Voltar ao Início -> Clientes Dashboard --}}
             <a href="{{ route('cliente.dashboard') }}"
                class="flex items-center gap-2 text-slate-300 hover:text-white">

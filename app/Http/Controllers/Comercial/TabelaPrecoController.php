@@ -9,6 +9,7 @@ use App\Models\TabelaPrecoPadrao;
 use App\Models\TabelaPrecoItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class TabelaPrecoController extends Controller
 {
@@ -26,13 +27,26 @@ class TabelaPrecoController extends Controller
     {
         $empresaId = auth()->user()->empresa_id;
 
+        $padrao = TabelaPrecoPadrao::where('empresa_id', $empresaId)
+            ->where('ativa', true)
+            ->firstOrFail();
+
         $data = $request->validate([
             'servico_id' => ['nullable','integer','exists:servicos,id'],
-            'codigo'     => ['nullable','string','max:50'],
+            'codigo'     => [
+                'nullable',
+                'string',
+                'max:50',
+                Rule::unique('tabela_preco_items', 'codigo')
+                    ->where('tabela_preco_padrao_id', $padrao->id)
+                    ->where('servico_id', $request->input('servico_id')),
+            ],
 //            'nome'       => ['required','string','max:255'],
             'descricao'  => ['nullable','string'],
             'preco'      => ['required','numeric','min:0'],
             'ativo'      => ['nullable','boolean'],
+        ], [
+            'codigo.unique' => 'Já existe um item com este código para esse serviço nesta tabela.',
         ]);
 
         // garante que servico_id (se veio) é da empresa
@@ -42,10 +56,6 @@ class TabelaPrecoController extends Controller
                 ->exists();
             abort_if(!$ok, 403);
         }
-
-        $padrao = TabelaPrecoPadrao::where('empresa_id', $empresaId)
-            ->where('ativa', true)
-            ->firstOrFail();
 
         $data['tabela_preco_padrao_id'] = $padrao->id;
         $data['ativo'] = $data['ativo'] ?? true;
@@ -66,11 +76,21 @@ class TabelaPrecoController extends Controller
 
         $data = $request->validate([
             'servico_id' => ['nullable','integer','exists:servicos,id'],
-            'codigo'     => ['nullable','string','max:50'],
+            'codigo'     => [
+                'nullable',
+                'string',
+                'max:50',
+                Rule::unique('tabela_preco_items', 'codigo')
+                    ->where('tabela_preco_padrao_id', $item->tabela_preco_padrao_id)
+                    ->where('servico_id', $request->input('servico_id'))
+                    ->ignore($item->id),
+            ],
 //            'nome'       => ['required','string','max:255'],
             'descricao'  => ['nullable','string'],
             'preco'      => ['required','numeric','min:0'],
             'ativo'      => ['nullable','boolean'],
+        ], [
+            'codigo.unique' => 'Já existe um item com este código para esse serviço nesta tabela.',
         ]);
 
         if (!empty($data['servico_id'])) {

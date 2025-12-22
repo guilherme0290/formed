@@ -464,6 +464,11 @@ Route::middleware('auth')->group(function () {
             Route::post('/propostas/{proposta}/fechar', [PropostaController::class, 'fechar'])
                 ->name('propostas.fechar');
 
+            Route::get('/propostas/{proposta}/pdf', [PropostaController::class, 'pdf'])
+                ->name('propostas.pdf');
+            Route::get('/propostas/{proposta}/imprimir', [PropostaController::class, 'print'])
+                ->name('propostas.print');
+
             // Contratos
             Route::get('/contratos', [\App\Http\Controllers\Comercial\ContratoController::class, 'index'])
                 ->name('contratos.index');
@@ -473,6 +478,23 @@ Route::middleware('auth')->group(function () {
                 ->name('contratos.vigencia');
             Route::post('/contratos/{contrato}/vigencia', [\App\Http\Controllers\Comercial\ContratoController::class, 'storeVigencia'])
                 ->name('contratos.vigencia.store');
+
+            // Clientes (acesso comercial)
+            Route::prefix('clientes')->name('clientes.')->group(function () {
+                Route::get('/',               [ClienteController::class, 'index'])->name('index');
+                Route::get('/create',         [ClienteController::class, 'create'])->name('create');
+                Route::post('/',              [ClienteController::class, 'store'])->name('store');
+                Route::get('/{cliente}',      [ClienteController::class, 'show'])->name('show');
+                Route::get('/{cliente}/edit', [ClienteController::class, 'edit'])->name('edit');
+                Route::put('/{cliente}',      [ClienteController::class, 'update'])->name('update');
+                Route::delete('/{cliente}',   [ClienteController::class, 'destroy'])->name('destroy');
+                Route::get('/{cliente}/acesso', [ClienteController::class, 'acessoForm'])->name('acesso.form');
+                Route::post('/{cliente}/acesso', [ClienteController::class, 'criarAcesso'])->name('acesso');
+
+                // Consulta CNPJ
+                Route::get('/consulta-cnpj/{cnpj}', [ClienteController::class, 'consultaCnpj'])
+                    ->name('consulta-cnpj');
+            });
 
             // Kanban de Propostas (Acompanhamento)
             Route::get('/pipeline', [\App\Http\Controllers\Comercial\PipelineController::class, 'index'])
@@ -627,6 +649,20 @@ Route::middleware('auth')->group(function () {
 
         // Dashboard Master
         Route::get('/', [DashboardMaster::class, 'index'])->name('dashboard');
+
+        // Empresa (dados cadastrais)
+        Route::get('/empresa', [\App\Http\Controllers\Master\EmpresaController::class, 'edit'])->name('empresa.edit');
+        Route::put('/empresa', [\App\Http\Controllers\Master\EmpresaController::class, 'update'])->name('empresa.update');
+        Route::post('/empresa/unidades', [\App\Http\Controllers\Master\UnidadeClinicaController::class, 'store'])
+            ->name('empresa.unidades.store');
+        Route::get('/empresa/unidades/novo', [\App\Http\Controllers\Master\UnidadeClinicaController::class, 'create'])
+            ->name('empresa.unidades.create');
+        Route::get('/empresa/unidades/{unidade}/editar', [\App\Http\Controllers\Master\UnidadeClinicaController::class, 'edit'])
+            ->name('empresa.unidades.edit');
+        Route::put('/empresa/unidades/{unidade}', [\App\Http\Controllers\Master\UnidadeClinicaController::class, 'update'])
+            ->name('empresa.unidades.update');
+        Route::delete('/empresa/unidades/{unidade}', [\App\Http\Controllers\Master\UnidadeClinicaController::class, 'destroy'])
+            ->name('empresa.unidades.destroy');
 
         // Acessos
         Route::get('/acessos', [AcessosController::class, 'index'])->name('acessos');

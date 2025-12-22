@@ -1,6 +1,20 @@
-@extends('layouts.master')
+@php
+    $user = auth()->user();
+    $layout = 'layouts.app';
+
+    if ($user && optional($user->papel)->nome === 'Operacional') {
+        $layout = 'layouts.operacional';
+    } else if ($user && optional($user->papel)->nome === 'Master') {
+        $layout = 'layouts.master';
+    } else if ($user && optional($user->papel)->nome === 'Comercial') {
+        $layout = 'layouts.comercial';
+    }
+@endphp
+
+@extends($layout)
 
 @section('content')
+    @php($routePrefix = $routePrefix ?? 'clientes')
     <div class="max-w-3xl mx-auto px-4 py-6">
 
         @if (session('ok'))
@@ -52,7 +66,7 @@
                     <p><strong>E-mail sugerido:</strong> {{ $cliente->email ?? '—' }}</p>
                     <p class="text-xs text-slate-500">Uma senha temporária será gerada e o usuário deve trocar no primeiro login.</p>
                 </div>
-                <form method="POST" action="{{ route('clientes.acesso', $cliente) }}" onsubmit="return confirm('Criar acesso para este cliente?')">
+                <form method="POST" action="{{ route($routePrefix.'.acesso', $cliente) }}" onsubmit="return confirm('Criar acesso para este cliente?')">
                     @csrf
                     <button class="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 {{ $cliente->email ? '' : 'opacity-50 cursor-not-allowed' }}" {{ $cliente->email ? '' : 'disabled' }}>
                         🔑 Criar usuário do cliente
@@ -61,11 +75,11 @@
             </div>
 
             <div class="flex flex-col md:flex-row justify-end md:items-start gap-2">
-                <a href="{{ route('clientes.edit',$cliente) }}"
+                <a href="{{ route($routePrefix.'.edit',$cliente) }}"
                    class="bg-yellow-500 text-white px-4 py-2 rounded-lg text-center">
                     Editar
                 </a>
-                <a href="{{ route('clientes.index') }}"
+                <a href="{{ route($routePrefix.'.index') }}"
                    class="bg-gray-500 text-white px-4 py-2 rounded-lg text-center">
                     Voltar
                 </a>

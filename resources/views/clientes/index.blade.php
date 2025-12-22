@@ -1,6 +1,20 @@
-@extends('layouts.master')
+@php
+    $user = auth()->user();
+    $layout = 'layouts.app';
+
+    if ($user && optional($user->papel)->nome === 'Operacional') {
+        $layout = 'layouts.operacional';
+    } else if ($user && optional($user->papel)->nome === 'Master') {
+        $layout = 'layouts.master';
+    } else if ($user && optional($user->papel)->nome === 'Comercial') {
+        $layout = 'layouts.comercial';
+    }
+@endphp
+
+@extends($layout)
 
 @section('content')
+    @php($routePrefix = $routePrefix ?? 'clientes')
     <div class="max-w-6xl mx-auto px-4 md:px-8 py-6 space-y-6">
 
         {{-- MENSAGENS --}}
@@ -22,7 +36,7 @@
                 <p class="text-sm text-gray-500">Gerencie os clientes da sua empresa.</p>
             </div>
 
-            <a href="{{ route('clientes.create') }}"
+            <a href="{{ route($routePrefix.'.create') }}"
                class="px-4 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700">
                 Novo Cliente
             </a>
@@ -33,9 +47,9 @@
             <form method="GET" class="grid md:grid-cols-4 gap-4 items-end">
 
                 <div class="md:col-span-2">
-                    <label class="block text-sm font-medium mb-1 text-slate-700">Busca</label>
+                    <label class="block text-sm font-medium mb-1 text-slate-700">Busca (nome, CNPJ ou e-mail)</label>
                     <input type="text" name="q" value="{{ $q }}"
-                           placeholder="Buscar por nome, CNPJ, e-mail..."
+                           placeholder="Ex: 12.345.678/0001-00, contato@empresa.com, Razão Social"
                            class="w-full rounded-lg border-slate-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                 </div>
 
@@ -52,7 +66,7 @@
                     <button class="px-4 py-2 bg-blue-600 text-white rounded-lg shadow">
                         Filtrar
                     </button>
-                    <a href="{{ route('clientes.index') }}"
+                    <a href="{{ route($routePrefix.'.index') }}"
                        class="px-4 py-2 bg-gray-200 rounded-lg">
                         Limpar
                     </a>
@@ -117,13 +131,13 @@
 
                         <td class="px-4 py-3 text-center">
                             <div class="flex items-center justify-center gap-2 flex-wrap">
-                                <a href="{{ route('clientes.edit', $cliente) }}"
+                                <a href="{{ route($routePrefix.'.edit', $cliente) }}"
                                    class="px-3 py-2 text-blue-700 bg-blue-100 rounded-lg text-xs whitespace-nowrap"
                                    title="Editar">
                                     ✏️
                                 </a>
 
-                                <form action="{{ route('clientes.destroy', $cliente) }}"
+                                <form action="{{ route($routePrefix.'.destroy', $cliente) }}"
                                       method="POST"
                                       class="inline"
                                       onsubmit="return confirm('Tem certeza que deseja excluir este cliente?')">
@@ -136,7 +150,7 @@
                                     </button>
                                 </form>
 
-                                <a href="{{ route('clientes.acesso.form', $cliente) }}"
+                                <a href="{{ route($routePrefix.'.acesso.form', $cliente) }}"
                                    class="px-3 py-1 text-indigo-700 bg-indigo-100 rounded-lg text-xs whitespace-nowrap {{ $cliente->email ? '' : 'opacity-50 cursor-not-allowed' }}"
                                    {{ $cliente->email ? '' : 'aria-disabled=true tabindex=-1' }}>
                                     🔑 Criar acesso

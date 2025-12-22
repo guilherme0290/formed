@@ -54,6 +54,23 @@
                 @method('PUT')
             @endif
 
+            <div class="fixed top-20 left-4 right-4 sm:left-auto sm:right-6 z-40">
+                <div id="itemToast" class="hidden pointer-events-auto rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 shadow-lg flex items-start gap-3 transition-all duration-200 opacity-0 translate-y-2">
+                    <div class="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-600 text-white text-xs font-semibold">
+                        ✓
+                    </div>
+                    <div class="min-w-0">
+                        <div class="font-semibold">Item adicionado</div>
+                        <div id="itemToastText" class="text-xs text-emerald-700 truncate"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="fixed top-20 left-4 right-4 sm:left-auto sm:right-6 z-40 mt-16">
+                <div id="itemAlert" class="hidden pointer-events-auto rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 shadow-lg transition-all duration-200 opacity-0 translate-y-2">
+                    <span id="itemAlertText"></span>
+                </div>
+            </div>
+
             <div class="bg-white rounded-2xl shadow border border-slate-200 overflow-hidden">
                 <div class="px-6 py-4 border-b bg-blue-600 text-white">
                     <h1 class="text-lg font-semibold">
@@ -368,6 +385,10 @@
                     lista: document.getElementById('lista-itens'),
                     total: document.getElementById('valor-total-display'),
                     clienteSelect: document.querySelector('select[name="cliente_id"]'),
+                    itemToast: document.getElementById('itemToast'),
+                    itemToastText: document.getElementById('itemToastText'),
+                    itemAlert: document.getElementById('itemAlert'),
+                    itemAlertText: document.getElementById('itemAlertText'),
 
                     chkEsocial: document.getElementById('chkEsocial'),
                     esocialBox: document.getElementById('esocialBox'),
@@ -550,23 +571,38 @@
                     el.lista.innerHTML = '';
 
                     state.itens.forEach(item => {
+                        const hasZeroPrice = Number(item.valor_unitario || 0) <= 0;
                         const card = document.createElement('div');
-                        card.className = 'rounded-xl border border-slate-200 bg-white px-4 py-3';
+                        card.className = hasZeroPrice
+                            ? 'rounded-xl border border-amber-300 bg-amber-50/60 px-4 py-3'
+                            : 'rounded-xl border border-slate-200 bg-white px-4 py-3';
 
                         card.innerHTML = `
                 <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0">
                         <div class="font-semibold text-slate-800 text-sm">${escapeHtml(item.nome)}</div>
                         ${item.descricao ? `<div class="text-xs text-slate-500 mt-0.5">${escapeHtml(item.descricao)}</div>` : ``}
+                        ${hasZeroPrice ? `<div class="mt-1 flex flex-wrap items-center gap-2 text-[11px]">
+                            <span class="inline-flex items-center font-semibold text-amber-700 bg-amber-100/70 px-2 py-0.5 rounded-full">Sem preço definido</span>
+                            <a href="{{ route('comercial.tabela-precos.itens.index') }}" target="_blank" rel="noopener"
+                               class="text-amber-800 underline decoration-dotted hover:text-amber-900">
+                                Abrir tabela de preços
+                            </a>
+                        </div>` : ``}
                     </div>
 
-	                        <div class="flex items-center gap-3">
-	                        <button type="button" class="text-red-600 hover:bg-red-50 rounded-lg px-2 py-1 text-sm" data-act="remove">×</button>
-	                        <span data-el="valor_total" class="inline-flex items-center rounded-full bg-emerald-600 text-white text-xs font-semibold px-3 py-1">
-	                            ${brl(item.valor_total)}
-	                        </span>
-	                    </div>
-	                </div>
+                        <div class="flex items-center gap-3">
+                            <button type="button"
+                                    class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 text-lg leading-none"
+                                    data-act="remove"
+                                    aria-label="Remover item">
+                                ×
+                            </button>
+                            <span data-el="valor_total" class="inline-flex items-center rounded-full bg-emerald-600 text-white text-xs font-semibold px-3 py-1">
+                                ${brl(item.valor_total)}
+                            </span>
+                        </div>
+                    </div>
 
                 <div class="mt-3 grid grid-cols-12 gap-3 items-end">
                     <div class="col-span-12 md:col-span-4">
@@ -577,8 +613,8 @@
 
                     <div class="col-span-12 md:col-span-4">
                         <label class="text-[11px] font-semibold text-slate-600">Prazo</label>
-                        <input type="text" class="w-full mt-1 rounded-lg border border-slate-200 text-sm px-3 py-2"
-                               data-act="prazo" value="${escapeHtml(item.prazo || '')}" placeholder="Ex: 15 dias">
+                        <input type="text"  class="w-full mt-1 rounded-lg border border-slate-200 text-sm px-3 py-2"
+                               data-act="prazo"  placeholder="Ex: 15 dias">
                     </div>
 
                     <div class="col-span-12 md:col-span-4">
@@ -677,6 +713,38 @@
                         .replaceAll("'", "&#039;");
                 }
 
+                let toastTimer = null;
+                function showItemToast(message) {
+                    if (!el.itemToast || !el.itemToastText) return;
+                    el.itemToastText.textContent = message || '';
+                    el.itemToast.classList.remove('hidden', 'opacity-0', 'translate-y-2');
+                    el.itemToast.classList.add('opacity-100', 'translate-y-0');
+                    if (toastTimer) clearTimeout(toastTimer);
+                    toastTimer = setTimeout(() => {
+                        el.itemToast.classList.add('opacity-0', 'translate-y-2');
+                        setTimeout(() => el.itemToast.classList.add('hidden'), 200);
+                    }, 2000);
+                }
+
+                let alertTimer = null;
+                function showItemAlert(message, tone = 'warn') {
+                    if (!el.itemAlert || !el.itemAlertText) return;
+                    el.itemAlertText.textContent = message || '';
+                    el.itemAlert.classList.remove('hidden', 'opacity-0', 'translate-y-2');
+                    el.itemAlert.classList.add('opacity-100', 'translate-y-0');
+                    el.itemAlert.classList.toggle('border-rose-200', tone === 'error');
+                    el.itemAlert.classList.toggle('bg-rose-50', tone === 'error');
+                    el.itemAlert.classList.toggle('text-rose-700', tone === 'error');
+                    el.itemAlert.classList.toggle('border-amber-200', tone !== 'error');
+                    el.itemAlert.classList.toggle('bg-amber-50', tone !== 'error');
+                    el.itemAlert.classList.toggle('text-amber-800', tone !== 'error');
+                    if (alertTimer) clearTimeout(alertTimer);
+                    alertTimer = setTimeout(() => {
+                        el.itemAlert.classList.add('opacity-0', 'translate-y-2');
+                        setTimeout(() => el.itemAlert.classList.add('hidden'), 200);
+                    }, 2600);
+                }
+
                 // =========================
                 // Actions
                 // =========================
@@ -711,6 +779,10 @@
                     recalcItemTotal(item);
                     state.itens.push(item);
                     render();
+                    showItemToast(`Serviço: ${servicoNome}`);
+                    if (Number(item.valor_unitario || 0) <= 0) {
+                        showItemAlert(`Item ${servicoNome} sem preço definido na tabela de preço.`);
+                    }
                 }
 
                 async function addTreinamentoNR(nr) {
@@ -743,6 +815,10 @@
                     recalcItemTotal(item);
                     state.itens.push(item);
                     render();
+                    showItemToast(`Treinamento: ${nome}`);
+                    if (Number(item.valor_unitario || 0) <= 0) {
+                        showItemAlert(`Item ${nr.codigo} sem preço definido na tabela de preço.`);
+                    }
                 }
 
                 function buildPacoteDescricao(prefix, nomes, maxLen = 255) {
@@ -787,6 +863,10 @@
                     recalcItemTotal(item);
                     state.itens.push(item);
                     render();
+                    showItemToast(`Pacote de exames: ${nomePacote}`);
+                    if (Number(item.valor_unitario || 0) <= 0) {
+                        showItemAlert(`Pacote ${nomePacote} sem preço definido.`);
+                    }
                 }
 
                 function addExameAvulso(exame) {
@@ -808,6 +888,10 @@
                     recalcItemTotal(item);
                     state.itens.push(item);
                     render();
+                    showItemToast(`Exame: ${exame.nome}`);
+                    if (Number(item.valor_unitario || 0) <= 0) {
+                        showItemAlert(`Item ${exame.nome} sem preço definido na tabela de preço.`);
+                    }
                 }
 
                 function updateQtd(itemId, delta) {
@@ -1100,6 +1184,10 @@
 
                     closePacoteTreinamentosModal();
                     render();
+                    showItemToast(`Pacote de treinamentos: ${nomePacote}`);
+                    if (Number(item.valor_unitario || 0) <= 0) {
+                        showItemAlert(`Pacote ${nomePacote} sem preço definido.`);
+                    }
                 };
 
                 const modalPkg = document.getElementById('modalPacoteTreinamentos');
@@ -1151,11 +1239,14 @@
                 // =========================
                 // Submit: garantir meta JSON -> array (backend aceita array)
                 // =========================
-                el.form.addEventListener('submit', () => {
-                    // meta está como object no state, mas hidden input manda string JSON.
-                    // O backend valida meta como array. Então aqui trocamos pra array serializado por campo:
-                    // -> vamos manter como JSON string e você pode ajustar validação se quiser.
-                    // Se preferir array real: trocar estratégia e enviar via fetch JSON.
+                el.form.addEventListener('submit', (e) => {
+                    const zeroItems = state.itens.filter(it => Number(it.valor_unitario || 0) <= 0);
+                    if (zeroItems.length) {
+                        e.preventDefault();
+                        const names = zeroItems.map(it => it.nome).slice(0, 3).join(', ');
+                        const extra = zeroItems.length > 3 ? ` e mais ${zeroItems.length - 3}` : '';
+                        showItemAlert(`Existem itens com preço zerado: ${names}${extra}.`, 'error');
+                    }
                 });
 
                 // =========================

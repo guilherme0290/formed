@@ -8,12 +8,15 @@
         $layout = 'layouts.operacional';
     }else if ($user && optional($user->papel)->nome === 'Master') {
          $layout = 'layouts.master';
+    }else if ($user && optional($user->papel)->nome === 'Comercial') {
+         $layout = 'layouts.comercial';
     }
 @endphp
 
 @extends($layout)
 
 @section('content')
+    @php($routePrefix = $routePrefix ?? 'clientes')
 
     {{-- MENSAGENS --}}
     @if (session('ok'))
@@ -36,7 +39,7 @@
         </div>
 
         <form method="POST"
-              action="{{ $cliente->exists ? route('clientes.update', $cliente) : route('clientes.store') }}"
+              action="{{ $cliente->exists ? route($routePrefix.'.update', $cliente) : route($routePrefix.'.store') }}"
               class="bg-white rounded-xl shadow border p-6 space-y-6">
 
             @csrf
@@ -197,7 +200,7 @@
 
             {{-- BOTÕES --}}
             <div class="flex justify-end gap-3">
-                <a href="{{ route('clientes.index') }}"
+                <a href="{{ route($routePrefix.'.index') }}"
                    class="px-4 py-2 bg-gray-200 rounded-lg">Cancelar</a>
 
                 <button class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
@@ -248,8 +251,8 @@
 
             cidadeSelect.innerHTML = '<option value="">Carregando...</option>';
 
-            const urlBase = "{{ url('master/estados') }}";
-            const resp = await fetch(`${urlBase}/${uf}/cidades`);
+            const urlBase = @json(route('estados.cidades', ['uf' => '__UF__']));
+            const resp = await fetch(urlBase.replace('__UF__', uf));
             const json = await resp.json();
 
             cidadeSelect.innerHTML = '<option value="">Selecione...</option>';
@@ -326,7 +329,7 @@
             }
 
             // Monta URL da rota (substitui o placeholder pelo CNPJ limpo)
-            let url = "{{ route('clientes.consulta-cnpj', ['cnpj' => 'CNPJ_PLACEHOLDER']) }}";
+            let url = "{{ route($routePrefix.'.consulta-cnpj', ['cnpj' => 'CNPJ_PLACEHOLDER']) }}";
             url = url.replace('CNPJ_PLACEHOLDER', cnpjLimpo);
 
             const razaoInput      = document.querySelector('input[name="razao_social"]');

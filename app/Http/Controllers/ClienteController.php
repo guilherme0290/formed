@@ -43,7 +43,9 @@ class ClienteController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        return view('clientes.index', compact('clientes', 'q', 'status'));
+        $routePrefix = $this->routePrefix();
+
+        return view('clientes.index', compact('clientes', 'q', 'status', 'routePrefix'));
     }
 
     /**
@@ -88,12 +90,15 @@ class ClienteController extends Controller
         // se sua tabela tiver "uf", pode ajustar; aqui uso "sigla"
         $estados = Estado::orderBy('uf')->get(['uf', 'nome']);
 
+        $routePrefix = $this->routePrefix();
+
         return view('clientes.edit', [
             'cliente'         => $cliente,
             'estados'         => $estados,
             'cidadesDoEstado' => collect(),
             'ufSelecionada'   => null,
             'modo'            => 'create',
+            'routePrefix'     => $routePrefix,
         ]);
     }
 
@@ -114,7 +119,7 @@ class ClienteController extends Controller
             Cliente::create($data);
 
             return redirect()
-                ->route('clientes.index')
+                ->route($this->routeName('index'))
                 ->with('ok', 'Cliente cadastrado com sucesso!');
         } catch (\Throwable $e) {
             report($e);
@@ -132,7 +137,9 @@ class ClienteController extends Controller
     {
         $this->authorizeCliente($cliente);
 
-        return view('clientes.show', compact('cliente'));
+        $routePrefix = $this->routePrefix();
+
+        return view('clientes.show', compact('cliente', 'routePrefix'));
     }
 
     public function acessoForm(Cliente $cliente)
@@ -142,7 +149,9 @@ class ClienteController extends Controller
         $userExistente = \App\Models\User::where('cliente_id', $cliente->id)->first();
         $senhaSugerida = \Illuminate\Support\Str::password(10);
 
-        return view('clientes.acesso', compact('cliente', 'userExistente', 'senhaSugerida'));
+        $routePrefix = $this->routePrefix();
+
+        return view('clientes.acesso', compact('cliente', 'userExistente', 'senhaSugerida', 'routePrefix'));
     }
 
     public function criarAcesso(Request $request, Cliente $cliente)
@@ -186,7 +195,7 @@ class ClienteController extends Controller
             'is_active'            => true,
         ]);
 
-        return redirect()->route('clientes.show', $cliente)->with([
+        return redirect()->route($this->routeName('show'), $cliente)->with([
             'ok' => 'Usuário do cliente criado com sucesso. Solicite a troca de senha no primeiro login.',
             'acesso_cliente' => [
                 'email' => $user->email,
@@ -216,12 +225,15 @@ class ClienteController extends Controller
             $cidadesDoEstado = collect();
         }
 
+        $routePrefix = $this->routePrefix();
+
         return view('clientes.edit', [
             'cliente'         => $cliente,
             'estados'         => $estados,
             'cidadesDoEstado' => $cidadesDoEstado,
             'ufSelecionada'   => $ufSelecionada,
             'modo'            => 'edit',
+            'routePrefix'     => $routePrefix,
         ]);
     }
 
@@ -243,7 +255,7 @@ class ClienteController extends Controller
             $cliente->update($data);
 
             return redirect()
-                ->route('clientes.index')
+                ->route($this->routeName('index'))
                 ->with('ok', 'Cliente atualizado com sucesso!');
         } catch (\Throwable $e) {
             report($e);
@@ -265,7 +277,7 @@ class ClienteController extends Controller
             $cliente->delete();
 
             return redirect()
-                ->route('clientes.index')
+                ->route($this->routeName('index'))
                 ->with('ok', 'Cliente excluído com sucesso!');
         } catch (\Throwable $e) {
             report($e);
@@ -315,6 +327,18 @@ class ClienteController extends Controller
         if ($cliente->empresa_id != $empresaId) {
             abort(403);
         }
+    }
+
+    private function routePrefix(): string
+    {
+        return request()->routeIs('comercial.clientes.*')
+            ? 'comercial.clientes'
+            : 'clientes';
+    }
+
+    private function routeName(string $suffix): string
+    {
+        return $this->routePrefix() . '.' . $suffix;
     }
 
     /**

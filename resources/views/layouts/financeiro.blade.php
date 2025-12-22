@@ -14,11 +14,14 @@
 <body class="bg-slate-950 text-slate-50">
 <div class="min-h-screen flex relative">
     {{-- Sidebar --}}
-    <aside class="hidden md:flex flex-col w-60 bg-slate-950 text-slate-100 border-r border-slate-900">
-        <div class="h-16 flex items-center px-5 text-lg font-semibold border-b border-slate-900">
+    <aside class="hidden md:flex flex-col w-60 bg-slate-950 text-slate-100 border-r border-slate-900 relative overflow-hidden">
+        <div class="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.06]">
+            <img src="{{ asset('storage/logo.svg') }}" alt="FORMED" class="w-36">
+        </div>
+        <div class="relative z-10 h-16 flex items-center px-5 text-lg font-semibold border-b border-slate-900">
             Financeiro
         </div>
-        <nav class="flex-1 px-3 mt-4 space-y-1">
+        <nav class="relative z-10 flex-1 px-3 mt-4 space-y-1">
             @php
                 $links = [
                     ['label' => 'Dashboard', 'icon' => '📊', 'route' => route('financeiro.dashboard'), 'active' => request()->routeIs('financeiro.dashboard')],
@@ -33,7 +36,7 @@
                 </a>
             @endforeach
         </nav>
-        <div class="px-4 py-4 border-t border-slate-900 space-y-2 text-sm">
+        <div class="relative z-10 px-4 py-4 border-t border-slate-900 space-y-2 text-sm">
             <a href="{{ url('/') }}" class="flex items-center gap-2 text-slate-300 hover:text-white">
                 <span>⏪</span><span>Voltar</span>
             </a>

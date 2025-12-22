@@ -22,10 +22,14 @@
     <aside id="operacional-sidebar"
            class="fixed inset-y-0 left-0 z-30 w-64 bg-slate-950 text-slate-100
                   transform -translate-x-full transition-transform duration-200 ease-in-out
-                  flex flex-col
+                  flex flex-col relative overflow-hidden
                   md:static md:translate-x-0">
 
-        <div class="h-16 flex items-center justify-between px-4 text-lg font-semibold border-b border-slate-800">
+        <div class="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.06]">
+            <img src="{{ asset('storage/logo.svg') }}" alt="FORMED" class="w-40">
+        </div>
+
+        <div class="relative z-10 h-16 flex items-center justify-between px-4 text-lg font-semibold border-b border-slate-800">
 
             <div class="flex items-center gap-2">
                 {{-- Botão de colapse (DESKTOP) --}}
@@ -52,7 +56,7 @@
             </button>
         </div>
 
-        <nav class="flex-1 px-3 mt-4 space-y-1">
+        <nav class="relative z-10 flex-1 px-3 mt-4 space-y-1">
             <a href="{{ route('operacional.kanban') }}"
                class="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800 text-slate-50 text-sm font-medium">
                 <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-700">
@@ -62,7 +66,7 @@
             </a>
         </nav>
 
-        <div class="px-4 py-4 border-t border-slate-800 space-y-2 text-sm">
+        <div class="relative z-10 px-4 py-4 border-t border-slate-800 space-y-2 text-sm">
             <a href="{{ url('/') }}" class="flex items-center gap-2 text-slate-300 hover:text-white">
                 <span>⏪</span>
                 <span data-sidebar-label>Voltar ao Início</span>

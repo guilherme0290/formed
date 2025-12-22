@@ -22,10 +22,14 @@
     <aside id="master-sidebar"
            class="fixed inset-y-0 left-0 z-30 w-64 bg-slate-950 text-slate-100
                   transform -translate-x-full transition-transform duration-200 ease-in-out
-                  flex flex-col
+                  flex flex-col relative overflow-hidden
                   md:static md:translate-x-0">
 
-        <div class="h-16 flex items-center justify-between px-4 text-lg font-semibold border-b border-slate-800">
+        <div class="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.06]">
+            <img src="{{ asset('storage/logo.svg') }}" alt="FORMED" class="w-40">
+        </div>
+
+        <div class="relative z-10 h-16 flex items-center justify-between px-4 text-lg font-semibold border-b border-slate-800">
 
             <div class="flex items-center gap-2">
                 {{-- Botão de colapse (DESKTOP) --}}
@@ -60,6 +64,30 @@
                     'active' => request()->routeIs('master.dashboard'),
                 ],
                 [
+                    'label' => 'Dados da Empresa',
+                    'icon' => '🏢',
+                    'route' => route('master.empresa.edit'),
+                    'active' => request()->routeIs('master.empresa.*'),
+                ],
+                [
+                    'label' => 'Comercial',
+                    'icon' => '🧭',
+                    'route' => route('comercial.dashboard'),
+                    'active' => request()->routeIs('comercial.*'),
+                ],
+                [
+                    'label' => 'Operacional',
+                    'icon' => '🛠️',
+                    'route' => route('operacional.kanban'),
+                    'active' => request()->routeIs('operacional.*'),
+                ],
+                [
+                    'label' => 'Financeiro',
+                    'icon' => '💳',
+                    'route' => route('financeiro.dashboard'),
+                    'active' => request()->routeIs('financeiro.*'),
+                ],
+                [
                     'label' => 'Acessos',
                     'icon' => '🔐',
                     'route' => route('master.acessos'),
@@ -92,7 +120,7 @@
             ];
         @endphp
 
-        <nav class="flex-1 px-3 mt-4 space-y-1">
+        <nav class="relative z-10 flex-1 px-3 mt-4 space-y-1">
             @foreach($navItems as $item)
                 @php
                     $isActive = $item['active'];
@@ -111,7 +139,7 @@
             @endforeach
         </nav>
 
-        <div class="px-4 py-4 border-t border-slate-800 space-y-2 text-sm">
+        <div class="relative z-10 px-4 py-4 border-t border-slate-800 space-y-2 text-sm">
             <a href="{{ url('/') }}" class="flex items-center gap-2 text-slate-300 hover:text-white">
                 <span>⏪</span>
                 <span data-sidebar-label>Voltar ao Início</span>

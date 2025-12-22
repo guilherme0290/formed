@@ -68,9 +68,9 @@
                            placeholder="Buscar por cliente">
                 </div>
 
-                <div class="md:col-span-3">
+                <div class="md:col-span-2">
                     <label class="text-xs font-semibold text-slate-600">Status</label>
-                    <select name="status[]" multiple size="6"
+                    <select name="status"
                             class="mt-1 w-full rounded-xl border border-slate-200 text-sm px-3 py-2">
                         @php
                             $opts = ['TODOS','ATIVO','PENDENTE','EM_ABERTO','FECHADO','CANCELADO','SUBSTITUIDO'];
@@ -79,7 +79,6 @@
                             <option value="{{ $opt }}" @selected(in_array($opt, $statusFiltro))>{{ str_replace('_',' ', $opt) }}</option>
                         @endforeach
                     </select>
-                    <p class="text-[11px] text-slate-500 mt-1">Sem seleção: mostra Ativo/Pendente. Selecionar "Todos" ignora filtro de status.</p>
                 </div>
 
                 <div class="md:col-span-2">
