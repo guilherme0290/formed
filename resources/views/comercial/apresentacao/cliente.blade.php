@@ -164,6 +164,7 @@
                         }
 
                         if (razao && json?.razao_social) razao.value = json.razao_social;
+                        if (telefone && json?.telefone) telefone.value = json.telefone;
                         setMsg('ok', 'Dados preenchidos com sucesso.');
                     } catch (e) {
                         console.error(e);

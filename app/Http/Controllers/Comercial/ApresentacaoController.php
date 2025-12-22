@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Comercial;
 use App\Http\Controllers\Controller;
 use App\Models\Proposta;
 use Illuminate\Http\Request;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class ApresentacaoController extends Controller
 {
@@ -96,10 +97,33 @@ class ApresentacaoController extends Controller
         ]);
     }
 
+    public function pdf(Request $request, string $segmento)
+    {
+        $cliente = $request->session()->get(self::SESSION_KEY . '.cliente');
+        if (!$cliente) {
+            return redirect()->route('comercial.apresentacao.cliente');
+        }
+
+        abort_unless(array_key_exists($segmento, self::SEGMENTOS), 404);
+
+        $logoPath = public_path('storage/logo.svg');
+        $logoData = is_file($logoPath)
+            ? 'data:image/svg+xml;base64,' . base64_encode(file_get_contents($logoPath))
+            : null;
+
+        $pdf = Pdf::loadView('comercial.apresentacao.pdf', [
+            'cliente' => $cliente,
+            'segmento' => $segmento,
+            'segmentoNome' => self::SEGMENTOS[$segmento],
+            'logoData' => $logoData,
+        ])->setPaper('a4');
+
+        return $pdf->stream('apresentacao-' . $segmento . '.pdf');
+    }
+
     public function cancelar(Request $request)
     {
         $request->session()->forget(self::SESSION_KEY);
         return redirect()->route('comercial.dashboard');
     }
 }
-

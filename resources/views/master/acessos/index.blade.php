@@ -3,7 +3,7 @@
 @section('header')
     <div class="flex items-center justify-between">
         <h1 class="text-2xl font-semibold">Acessos & Usuários</h1>
-        <div class="text-sm text-gray-500">Gerencie papéis, permissões e usuários</div>
+        <div class="text-sm text-gray-500">Gerencie perfis, permissões e usuários</div>
     </div>
 @endsection
 
@@ -19,7 +19,7 @@
             </a>
             <a href="{{ route('master.acessos',['tab'=>'papeis']) }}"
                class="px-3 py-1.5 rounded-lg border {{ $tab==='papeis' ? 'bg-indigo-600 text-white' : 'bg-white hover:bg-gray-50' }}">
-                Papéis
+                Perfis
             </a>
             <a href="{{ route('master.acessos',['tab'=>'permissoes']) }}"
                class="px-3 py-1.5 rounded-lg border {{ $tab==='permissoes' ? 'bg-indigo-600 text-white' : 'bg-white hover:bg-gray-50' }}">

@@ -11,7 +11,7 @@
             <input name="q" value="{{ request('q') }}" placeholder="Buscar por nome ou e-mail..."
                    class="w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:border-indigo-400 focus:ring-indigo-400 px-3 py-2 sm:w-64">
             <select name="papel_id" class="w-full rounded-xl border-gray-200 bg-gray-50 px-3 py-2 pr-10 sm:w-52">
-                <option value="">Todos os papéis</option>
+                <option value="">Todos os perfis</option>
                 @foreach($papeis as $p)
                     <option value="{{ $p->id }}" @selected(request('papel_id') == $p->id)>{{ $p->nome }}</option>
                 @endforeach
@@ -36,7 +36,7 @@
             <tr>
                 <th class="text-left py-3 px-4">Nome</th>
                 <th class="text-left py-3 px-4">E-mail</th>
-                <th class="text-left py-3 px-4">Papel</th>
+                <th class="text-left py-3 px-4">Perfil</th>
                 <th class="text-left py-3 px-4">Status</th>
                 <th class="text-left py-3 px-4">Último Acesso</th>
                 <th class="py-3 px-4 text-right w-40">Ações</th>
@@ -124,7 +124,7 @@
                 </div>
                 <input name="telefone" class="w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:border-indigo-400 focus:ring-indigo-400 px-3 py-2" placeholder="Telefone (opcional)">
                 <select name="papel_id" class="w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:border-indigo-400 focus:ring-indigo-400 px-3 py-2" required>
-                    <option value="">Selecione o papel</option>
+                    <option value="">Selecione o perfil</option>
                     @foreach($papeis as $p)
                         <option value="{{ $p->id }}">{{ $p->nome }}</option>
                     @endforeach

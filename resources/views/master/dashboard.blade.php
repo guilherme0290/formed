@@ -65,7 +65,7 @@
                     <span class="h-10 w-10 rounded-xl bg-slate-900/5 text-slate-900 grid place-items-center text-xl">🧑‍💼</span>
                     <div>
                         <div class="font-semibold text-slate-900">Acessos & Usuários</div>
-                        <div class="text-sm text-slate-500">Papéis, permissões e senhas</div>
+                        <div class="text-sm text-slate-500">Perfis, permissões e senhas</div>
                     </div>
                 </a>
 

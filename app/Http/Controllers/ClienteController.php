@@ -71,6 +71,8 @@ class ClienteController extends Controller
         return response()->json([
             'razao_social'  => $dados['nome'] ?? null,
             'nome_fantasia' => $dados['fantasia'] ?? null,
+            'contato'       => $dados['fantasia'] ?? null,
+            'telefone'      => $dados['telefone'] ?? $dados['telefone1'] ?? $dados['telefone2'] ?? null,
             'cep'           => $dados['cep'] ?? null,
             'endereco'      => $dados['logradouro'] ?? null,
             'bairro'        => $dados['bairro'] ?? null,

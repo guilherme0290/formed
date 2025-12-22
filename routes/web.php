@@ -427,6 +427,8 @@ Route::middleware('auth')->group(function () {
                 ->name('apresentacao.segmento');
             Route::get('/apresentacao/{segmento}', [\App\Http\Controllers\Comercial\ApresentacaoController::class, 'show'])
                 ->name('apresentacao.show');
+            Route::get('/apresentacao/{segmento}/pdf', [\App\Http\Controllers\Comercial\ApresentacaoController::class, 'pdf'])
+                ->name('apresentacao.pdf');
             Route::get('/apresentacao-cancelar', [\App\Http\Controllers\Comercial\ApresentacaoController::class, 'cancelar'])
                 ->name('apresentacao.cancelar');
 

@@ -6,8 +6,8 @@
 <div class="bg-white rounded-2xl shadow p-5 space-y-4">
     <div class="flex items-center justify-between flex-wrap gap-3">
         <div>
-            <h2 class="text-xl font-semibold text-slate-900">Permissões por Papel</h2>
-            <p class="text-sm text-slate-500">Marque as permissões que cada papel pode acessar. Salva imediatamente.</p>
+            <h2 class="text-xl font-semibold text-slate-900">Permissões por Perfil</h2>
+            <p class="text-sm text-slate-500">Marque as permissões que cada perfil pode acessar. Salva imediatamente.</p>
         </div>
     </div>
 
@@ -89,7 +89,7 @@
                     </form>
             </div>
         @empty
-            <div class="text-sm text-slate-500">Cadastre papéis antes de configurar permissões.</div>
+            <div class="text-sm text-slate-500">Cadastre perfis antes de configurar permissões.</div>
         @endforelse
     </div>
 </div>
