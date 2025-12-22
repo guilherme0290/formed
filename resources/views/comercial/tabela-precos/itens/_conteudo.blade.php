@@ -419,6 +419,7 @@
             // CONFIG / ELEMENTOS (ITENS)
             // ============================
             const storeUrl = @json(route($routePrefix.'.tabela-precos.itens.store'));
+            const treinamentosUrl = @json(route($routePrefix.'.treinamentos-nrs.json'));
             const SERVICO_TREINAMENTO_ID = {{ config('services.treinamento_id') ?? 'null' }};
 
             const el = {
@@ -447,12 +448,67 @@
             // Se algo essencial não existir, não quebra a página
             if (!el.form || !el.modalItem) return;
 
+            const state = {
+                treinamentos: [],
+                treinamentosLoaded: false,
+            };
+
             // ============================
             // TOGGLE ATIVO
             // ============================
             function syncAtivoLabel() {
                 if (!el.ativo || !el.ativoLabel) return;
                 el.ativoLabel.textContent = el.ativo.checked ? 'Ativo' : 'Inativo';
+            }
+
+            // ============================
+            // TREINAMENTOS (NRs) - CHIPS
+            // ============================
+            async function loadTreinamentos(force = false) {
+                if (!force && state.treinamentosLoaded) return state.treinamentos;
+
+                try {
+                    const res = await fetch(treinamentosUrl, { headers: { 'Accept':'application/json' } });
+                    const json = await res.json();
+                    const list = (json?.data || [])
+                        .filter(x => x && (x.ativo === true || x.ativo === 1))
+                        .map(x => ({
+                            id: Number(x.id),
+                            codigo: String(x.codigo || ''),
+                            titulo: String(x.titulo || ''),
+                        }))
+                        .filter(x => x.id && x.codigo);
+
+                    state.treinamentos = list;
+                    state.treinamentosLoaded = true;
+                    return list;
+                } catch (e) {
+                    state.treinamentos = [];
+                    state.treinamentosLoaded = true;
+                    return [];
+                }
+            }
+
+            function renderTreinamentosChips() {
+                if (!el.nrWrap) return;
+                el.nrWrap.innerHTML = '';
+
+                if (!state.treinamentos.length) {
+                    el.nrWrap.innerHTML = '<div class="text-sm text-slate-500">Nenhum treinamento ativo cadastrado.</div>';
+                    return;
+                }
+
+                state.treinamentos.forEach(nr => {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'px-3 py-1.5 rounded-full border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-blue-50';
+                    btn.textContent = nr.codigo;
+                    btn.addEventListener('click', () => {
+                        if (el.codigo) el.codigo.value = nr.codigo;
+                        if (el.descricao && !el.descricao.value) el.descricao.value = nr.titulo;
+                    });
+                    el.nrWrap.appendChild(btn);
+                });
             }
 
             // ============================
@@ -563,6 +619,12 @@
                 if (!el.nrContainer || !el.servico) return;
                 const isTreinamento = Number(el.servico.value || 0) === Number(SERVICO_TREINAMENTO_ID);
                 el.nrContainer.classList.toggle('hidden', !isTreinamento);
+                if (isTreinamento) {
+                    if (el.nrWrap) {
+                        el.nrWrap.innerHTML = '<div class="text-sm text-slate-500">Carregando...</div>';
+                    }
+                    loadTreinamentos().then(() => renderTreinamentosChips());
+                }
             }
 
             // ============================
@@ -574,6 +636,15 @@
 
             el.ativo?.addEventListener('change', syncAtivoLabel);
             el.servico?.addEventListener('change', toggleNrChips);
+            window.addEventListener('treinamentos-nrs:changed', () => {
+                state.treinamentosLoaded = false;
+                if (!el.nrContainer?.classList.contains('hidden')) {
+                    if (el.nrWrap) {
+                        el.nrWrap.innerHTML = '<div class="text-sm text-slate-500">Carregando...</div>';
+                    }
+                    loadTreinamentos(true).then(() => renderTreinamentosChips());
+                }
+            });
         })();
     </script>
 @endpush
