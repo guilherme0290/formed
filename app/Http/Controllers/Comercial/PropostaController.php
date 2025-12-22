@@ -9,7 +9,8 @@ use App\Models\ClienteContratoLog;
 use App\Models\Proposta;
 use App\Models\PropostaItens;
 use App\Models\Servico;
-use App\Models\TreinamentoNrsTabPreco;
+use App\Models\TabelaPrecoItem;
+use App\Models\TabelaPrecoPadrao;
 use App\Models\UnidadeClinica;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -70,12 +71,21 @@ class PropostaController extends Controller
             ->orderBy('nome')
             ->get();
 
-        $treinamentos = TreinamentoNrsTabPreco::query()
-            ->where('empresa_id', $empresaId)
-            ->where('ativo', true)
-            ->orderBy('ordem')
-            ->orderBy('codigo')
-            ->get(['id','codigo','titulo']);
+        $treinamentos = collect();
+        $treinamentoId = (int) (config('services.treinamento_id') ?? 0);
+        $padrao = TabelaPrecoPadrao::where('empresa_id', $empresaId)
+            ->where('ativa', true)
+            ->first();
+        if ($padrao && $treinamentoId > 0) {
+            $treinamentos = TabelaPrecoItem::query()
+                ->where('tabela_preco_padrao_id', $padrao->id)
+                ->where('servico_id', $treinamentoId)
+                ->where('ativo', true)
+                ->whereNotNull('codigo')
+                ->orderBy('codigo')
+                ->selectRaw('id, codigo, descricao as titulo')
+                ->get();
+        }
 
         $formasPagamento = [
             'Pix',
@@ -106,12 +116,21 @@ class PropostaController extends Controller
             ->orderBy('nome')
             ->get();
 
-        $treinamentos = TreinamentoNrsTabPreco::query()
-            ->where('empresa_id', $empresaId)
-            ->where('ativo', true)
-            ->orderBy('ordem')
-            ->orderBy('codigo')
-            ->get(['id','codigo','titulo']);
+        $treinamentos = collect();
+        $treinamentoId = (int) (config('services.treinamento_id') ?? 0);
+        $padrao = TabelaPrecoPadrao::where('empresa_id', $empresaId)
+            ->where('ativa', true)
+            ->first();
+        if ($padrao && $treinamentoId > 0) {
+            $treinamentos = TabelaPrecoItem::query()
+                ->where('tabela_preco_padrao_id', $padrao->id)
+                ->where('servico_id', $treinamentoId)
+                ->where('ativo', true)
+                ->whereNotNull('codigo')
+                ->orderBy('codigo')
+                ->selectRaw('id, codigo, descricao as titulo')
+                ->get();
+        }
 
         $formasPagamento = [
             'Pix',
