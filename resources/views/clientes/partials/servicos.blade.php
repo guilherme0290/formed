@@ -15,6 +15,20 @@
     @php
         $temTabela = $temTabela ?? false;
         $precos = $precos ?? [];
+        $contratoAtivo = $contratoAtivo ?? null;
+        $servicosContrato = $servicosContrato ?? [];
+        $servicosIds = $servicosIds ?? [];
+        $temContratoAtivo = (bool) $contratoAtivo;
+
+        $permitidos = [
+            'aso' => $temContratoAtivo && in_array($servicosIds['aso'] ?? null, $servicosContrato),
+            'pgr' => $temContratoAtivo && in_array($servicosIds['pgr'] ?? null, $servicosContrato),
+            'pcmso' => $temContratoAtivo && in_array($servicosIds['pcmso'] ?? null, $servicosContrato),
+            'ltcat' => $temContratoAtivo && in_array($servicosIds['ltcat'] ?? null, $servicosContrato),
+            'apr' => $temContratoAtivo && in_array($servicosIds['apr'] ?? null, $servicosContrato),
+            'treinamentos' => $temContratoAtivo && in_array($servicosIds['treinamentos'] ?? null, $servicosContrato),
+        ];
+
         $cards = [
             [
                 'slug' => 'funcionarios',
@@ -32,7 +46,7 @@
                 'icone' => '📅',
                 'preco' => $precos['aso'] ?? null,
                 'rota' => route('cliente.servicos.aso'),
-                'disabled' => !$temTabela || !($precos['aso'] ?? null),
+                'disabled' => !$temTabela || !($precos['aso'] ?? null) || !($permitidos['aso'] ?? false),
             ],
             [
                 'slug' => 'pgr',
@@ -41,7 +55,7 @@
                 'icone' => '📋',
                 'preco' => $precos['pgr'] ?? null,
                 'rota' => route('cliente.servicos.pgr'),
-                'disabled' => !$temTabela || !($precos['pgr'] ?? null),
+                'disabled' => !$temTabela || !($precos['pgr'] ?? null) || !($permitidos['pgr'] ?? false),
             ],
             [
                 'slug' => 'pcmso',
@@ -50,7 +64,7 @@
                 'icone' => '📑',
                 'preco' => $precos['pcmso'] ?? null,
                 'rota' => route('cliente.servicos.pcmso'),
-                'disabled' => !$temTabela || !($precos['pcmso'] ?? null),
+                'disabled' => !$temTabela || !($precos['pcmso'] ?? null) || !($permitidos['pcmso'] ?? false),
             ],
             [
                 'slug' => 'ltcat',
@@ -59,7 +73,7 @@
                 'icone' => '📄',
                 'preco' => $precos['ltcat'] ?? null,
                 'rota' => route('cliente.servicos.ltcat'),
-                'disabled' => !$temTabela || !($precos['ltcat'] ?? null),
+                'disabled' => !$temTabela || !($precos['ltcat'] ?? null) || !($permitidos['ltcat'] ?? false),
             ],
             [
                 'slug' => 'apr',
@@ -68,7 +82,7 @@
                 'icone' => '⚠️',
                 'preco' => $precos['apr'] ?? null,
                 'rota' => route('cliente.servicos.apr'),
-                'disabled' => !$temTabela || !($precos['apr'] ?? null),
+                'disabled' => !$temTabela || !($precos['apr'] ?? null) || !($permitidos['apr'] ?? false),
             ],
             [
                 'slug' => 'treinamentos',
@@ -77,7 +91,7 @@
                 'icone' => '🎓',
                 'preco' => $precos['treinamentos'] ?? null,
                 'rota' => route('cliente.servicos.treinamentos'),
-                'disabled' => !$temTabela || !($precos['treinamentos'] ?? null),
+                'disabled' => !$temTabela || !($precos['treinamentos'] ?? null) || !($permitidos['treinamentos'] ?? false),
             ],
             [
                 'slug' => 'arquivos',

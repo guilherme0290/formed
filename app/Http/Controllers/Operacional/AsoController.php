@@ -12,10 +12,13 @@ use App\Models\KanbanColuna;
 use App\Models\Servico;
 use App\Models\Tarefa;
 use App\Models\TarefaLog;
+use App\Models\TabelaPrecoItem;
+use App\Models\TabelaPrecoPadrao;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class AsoController extends Controller
 {
@@ -25,6 +28,11 @@ class AsoController extends Controller
         $empresaId = $usuario->empresa_id;
 
         abort_if($cliente->empresa_id !== $empresaId, 403);
+
+        $this->normalizeTreinamentosInput($request);
+
+        $treinamentosDisponiveis = $this->getTreinamentosDisponiveis($empresaId);
+        $treinamentosCodigos = array_keys($treinamentosDisponiveis);
 
         $data = $request->validate([
             'funcionario_id' => ['nullable', 'exists:funcionarios,id'],
@@ -38,7 +46,7 @@ class AsoController extends Controller
             'unidade_id' => ['required', 'exists:unidades_clinicas,id'],
             'vai_fazer_treinamento' => ['nullable', 'boolean'],
             'treinamentos' => ['array'],
-            'treinamentos.*' => ['string'],
+            'treinamentos.*' => ['string', Rule::in($treinamentosCodigos)],
             'email_aso' => ['nullable', 'email'],
         ]);
 
@@ -96,7 +104,11 @@ class AsoController extends Controller
             }
 
             if (!empty($data['vai_fazer_treinamento']) && !empty($data['treinamentos'])) {
-                $descricao .= ' | Treinamentos: ' . implode(', ', $data['treinamentos']);
+                $labels = [];
+                foreach ($data['treinamentos'] as $codigo) {
+                    $labels[] = $treinamentosDisponiveis[$codigo] ?? $codigo;
+                }
+                $descricao .= ' | Treinamentos: ' . implode(', ', $labels);
             }
 
             // 4) Cria a tarefa
@@ -191,17 +203,7 @@ class AsoController extends Controller
             ->orderBy('nome')
             ->get();
 
-        $treinamentosDisponiveis = [
-            'nr_35' => 'NR-35 - Trabalho em Altura',
-            'nr_18' => 'NR-18 - Integração',
-            'nr_12' => 'NR-12 - Máquinas e Equipamentos',
-            'nr_06' => 'NR-06 - EPI',
-            'nr_05' => 'NR-05 - CIPA Designada',
-            'nr_01' => 'NR-01 - Ordem de Serviço',
-            'nr_33' => 'NR-33 - Espaço Confinado',
-            'nr_11' => 'NR-11 - Movimentação de Carga',
-            'nr_10' => 'NR-10 - Elétrica'
-        ];
+        $treinamentosDisponiveis = $this->getTreinamentosDisponiveis($empresaId);
 
         $aso = $tarefa->asoSolicitacao; // pode ser null para tarefas antigas
 
@@ -239,6 +241,8 @@ class AsoController extends Controller
             }
         }
 
+        $treinamentosSelecionados = $this->normalizeTreinamentosValues($treinamentosSelecionados);
+
         // VAI FAZER TREINAMENTO
         $vaiFazerTreinamento = (int)old(
             'vai_fazer_treinamento',
@@ -271,6 +275,11 @@ class AsoController extends Controller
         $empresaId = auth()->user()->empresa_id;
         $cliente = $tarefa->cliente;
 
+        $this->normalizeTreinamentosInput($request);
+
+        $treinamentosDisponiveis = $this->getTreinamentosDisponiveis($empresaId);
+        $treinamentosCodigos = array_keys($treinamentosDisponiveis);
+
         $data = $request->validate([
             'funcionario_id' => ['nullable', 'exists:funcionarios,id'],
             'nome' => ['nullable', 'string', 'max:255'],
@@ -283,7 +292,7 @@ class AsoController extends Controller
             'unidade_id' => ['required', 'exists:unidades_clinicas,id'],
             'vai_fazer_treinamento' => ['nullable', 'boolean'],
             'treinamentos' => ['array'],
-            'treinamentos.*' => ['string'],
+            'treinamentos.*' => ['string', Rule::in($treinamentosCodigos)],
             'email_aso' => ['nullable', 'email'],
         ]);
 
@@ -337,7 +346,11 @@ class AsoController extends Controller
             }
 
             if (!empty($data['vai_fazer_treinamento']) && !empty($treinamentos)) {
-                $descricao .= ' | Treinamentos: ' . implode(', ', $treinamentos);
+                $labels = [];
+                foreach ($treinamentos as $codigo) {
+                    $labels[] = $treinamentosDisponiveis[$codigo] ?? $codigo;
+                }
+                $descricao .= ' | Treinamentos: ' . implode(', ', $labels);
             }
 
             // atualiza tarefa
@@ -426,17 +439,7 @@ class AsoController extends Controller
         ];
 
         // Treinamentos disponíveis
-        $treinamentosDisponiveis = [
-            'nr_35' => 'NR-35 - Trabalho em Altura',
-            'nr_18' => 'NR-18 - Integração',
-            'nr_12' => 'NR-12 - Máquinas e Equipamentos',
-            'nr_06' => 'NR-06 - EPI',
-            'nr_05' => 'NR-05 - CIPA Designada',
-            'nr_01' => 'NR-01 - Ordem de Serviço',
-            'nr_33' => 'NR-33 - Espaço Confinado',
-            'nr_11' => 'NR-11 - Movimentação de Carga',
-            'nr_10' => 'NR-10 - Elétrica'
-        ];
+        $treinamentosDisponiveis = $this->getTreinamentosDisponiveis($empresaId);
 
         // Valores default para a view em modo "create"
         $treinamentosSelecionados = [];
@@ -458,6 +461,73 @@ class AsoController extends Controller
             'unidadeSelecionada'       => $unidadeSelecionada,
             'anexos'                   => collect(),
         ]);
+    }
+
+    private function normalizeTreinamentosInput(Request $request): void
+    {
+        if (!$request->has('treinamentos')) {
+            return;
+        }
+
+        $treinamentos = (array) $request->input('treinamentos', []);
+        $request->merge([
+            'treinamentos' => $this->normalizeTreinamentosValues($treinamentos),
+        ]);
+    }
+
+    private function normalizeTreinamentosValues(array $treinamentos): array
+    {
+        $normalized = [];
+        foreach ($treinamentos as $value) {
+            $value = trim((string) $value);
+            if ($value === '') {
+                continue;
+            }
+
+            if (preg_match('/^nr[_-]?(\\d+)$/i', $value, $m)) {
+                $numero = str_pad($m[1], 2, '0', STR_PAD_LEFT);
+                $normalized[] = 'NR-' . $numero;
+                continue;
+            }
+
+            $normalized[] = $value;
+        }
+
+        return array_values(array_unique($normalized));
+    }
+
+    private function getTreinamentosDisponiveis(int $empresaId): array
+    {
+        $treinamentoServicoId = (int) (config('services.treinamento_id') ?? 0);
+        if ($treinamentoServicoId <= 0) {
+            $treinamentoServicoId = (int) Servico::where('empresa_id', $empresaId)
+                ->where('nome', 'Treinamentos NRs')
+                ->value('id');
+        }
+
+        if ($treinamentoServicoId <= 0) {
+            return [];
+        }
+
+        $padrao = TabelaPrecoPadrao::where('empresa_id', $empresaId)
+            ->where('ativa', true)
+            ->first();
+
+        if (!$padrao) {
+            return [];
+        }
+
+        return TabelaPrecoItem::query()
+            ->where('tabela_preco_padrao_id', $padrao->id)
+            ->where('servico_id', $treinamentoServicoId)
+            ->where('ativo', true)
+            ->orderBy('codigo')
+            ->get()
+            ->mapWithKeys(function ($item) {
+                $label = trim(($item->codigo ?? '') . ' - ' . ($item->descricao ?? ''));
+                return [$item->codigo => $label ?: $item->codigo];
+            })
+            ->all();
     }
 
 

@@ -225,15 +225,27 @@ class PainelController extends Controller
 
         if ($finalizando) {
             try {
-                $resultado = $precificacaoService->validarServicoNoContrato(
-                    (int) $tarefa->cliente_id,
-                    (int) $tarefa->servico_id,
-                    (int) $tarefa->empresa_id
-                );
-                $venda = $vendaService->criarVendaPorTarefa($tarefa, $resultado['contrato'], $resultado['item']);
+                $servicoAsoId = (int) Servico::where('empresa_id', $tarefa->empresa_id)
+                    ->where('nome', 'ASO')
+                    ->value('id');
 
-                $vendedorId = optional($tarefa->cliente)->vendedor_id;
-                $comissaoService->gerarPorVenda($venda, $resultado['item'], $vendedorId ?: auth()->id());
+                if ($servicoAsoId && (int) $tarefa->servico_id === $servicoAsoId) {
+                    $resultado = $precificacaoService->precificarAso($tarefa);
+                    $venda = $vendaService->criarVendaPorTarefaItens($tarefa, $resultado['contrato'], $resultado['itensVenda']);
+
+                    $vendedorId = optional($tarefa->cliente)->vendedor_id;
+                    $comissaoService->gerarPorVenda($venda, $resultado['itemContrato'], $vendedorId ?: auth()->id());
+                } else {
+                    $resultado = $precificacaoService->validarServicoNoContrato(
+                        (int) $tarefa->cliente_id,
+                        (int) $tarefa->servico_id,
+                        (int) $tarefa->empresa_id
+                    );
+                    $venda = $vendaService->criarVendaPorTarefa($tarefa, $resultado['contrato'], $resultado['item']);
+
+                    $vendedorId = optional($tarefa->cliente)->vendedor_id;
+                    $comissaoService->gerarPorVenda($venda, $resultado['item'], $vendedorId ?: auth()->id());
+                }
             } catch (\Throwable $e) {
                 $mensagem = 'Não é possível concluir esta tarefa porque o cliente não possui preço definido para este serviço na proposta/contrato ativo. Solicite ao Comercial para ajustar a proposta e fechar novamente, ou cadastrar o valor do serviço no contrato do cliente.';
                 if (method_exists($e, 'errors')) {

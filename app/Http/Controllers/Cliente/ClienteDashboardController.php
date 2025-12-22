@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Cliente;
 
 use App\Http\Controllers\Controller;
 use App\Models\Cliente;
+use App\Models\ClienteContrato;
 use App\Models\ClienteTabelaPreco;
 use App\Models\ClienteTabelaPrecoItem;
 use App\Models\Servico;
@@ -27,8 +28,13 @@ class ClienteDashboardController extends Controller
 
         [$user, $cliente] = $contexto;
 
+        [$contratoAtivo, $servicosContrato, $servicosIds] = $this->servicosLiberadosPorContrato($cliente);
+
+        $precos = $this->precosPorContrato($contratoAtivo, $servicosIds);
         $tabela = $this->tabelaAtiva($cliente);
-        $precos = $this->precosPorServico($cliente, $tabela);
+        if (empty(array_filter($precos))) {
+            $precos = $this->precosPorServico($cliente, $tabela);
+        }
         $temTabela = (bool) $tabela;
         $faturaTotal = $this->faturaTotal($cliente);
 
@@ -38,6 +44,9 @@ class ClienteDashboardController extends Controller
             'temTabela'    => $temTabela,
             'precos'       => $precos,
             'faturaTotal'  => $faturaTotal,
+            'contratoAtivo' => $contratoAtivo,
+            'servicosContrato' => $servicosContrato,
+            'servicosIds' => $servicosIds,
         ]);
     }
 
@@ -108,12 +117,12 @@ class ClienteDashboardController extends Controller
         return [$user, $cliente];
     }
 
-    private function tabelaAtiva(Cliente $cliente): ?ClienteTabelaPreco
+    private function tabelaAtiva(Cliente $cliente): ?ClienteContrato
     {
-        return ClienteTabelaPreco::query()
+        return ClienteContrato::query()
             ->where('empresa_id', $cliente->empresa_id)
             ->where('cliente_id', $cliente->id)
-            ->where('ativa', true)
+            ->where('status', 'ATIVO')
             ->orderByDesc('vigencia_inicio')
             ->first();
     }
@@ -181,5 +190,130 @@ class ClienteDashboardController extends Controller
             })
             ->orderByDesc('created_at')
             ->paginate(10);
+    }
+
+    private function contratoAtivo(Cliente $cliente): ?ClienteContrato
+    {
+        $hoje = now()->toDateString();
+
+        return ClienteContrato::query()
+            ->where('empresa_id', $cliente->empresa_id)
+            ->where('cliente_id', $cliente->id)
+            ->where('status', 'ATIVO')
+            ->where(function ($q) use ($hoje) {
+                $q->whereNull('vigencia_inicio')->orWhereDate('vigencia_inicio', '<=', $hoje);
+            })
+            ->where(function ($q) use ($hoje) {
+                $q->whereNull('vigencia_fim')->orWhereDate('vigencia_fim', '>=', $hoje);
+            })
+            ->with('itens')
+            ->first();
+    }
+
+    private function servicosIdsContrato(Cliente $cliente): array
+    {
+        $tipos = [
+            'aso' => ['aso', 'aso'],
+            'pgr' => ['pgr', 'pgr'],
+            'pcmso' => ['pcmso', 'pcmso'],
+            'ltcat' => ['ltcat', 'ltcat'],
+            'apr' => ['apr', 'apr'],
+            'treinamentos' => ['treinamento', 'treinamentos nrs'],
+        ];
+
+        $servicosIds = [];
+        foreach ($tipos as $slug => $variants) {
+            $variants = array_map(fn ($v) => mb_strtolower($v), $variants);
+            $id = Servico::query()
+                ->where('empresa_id', $cliente->empresa_id)
+                ->where(function ($q) use ($variants) {
+                    foreach ($variants as $v) {
+                        $q->orWhereRaw('LOWER(tipo) = ?', [$v])
+                          ->orWhereRaw('LOWER(nome) = ?', [$v]);
+                    }
+                })
+                ->value('id');
+            $servicosIds[$slug] = $id;
+        }
+
+        return $servicosIds;
+    }
+
+    private function servicosLiberadosPorContrato(Cliente $cliente): array
+    {
+        $hoje = now()->toDateString();
+
+        $contratoAtivo = ClienteContrato::query()
+            ->where('empresa_id', $cliente->empresa_id)
+            ->where('cliente_id', $cliente->id)
+            ->where('status', 'ATIVO')
+            ->where(function ($q) use ($hoje) {
+                $q->whereNull('vigencia_inicio')->orWhereDate('vigencia_inicio', '<=', $hoje);
+            })
+            ->where(function ($q) use ($hoje) {
+                $q->whereNull('vigencia_fim')->orWhereDate('vigencia_fim', '>=', $hoje);
+            })
+            ->with('itens')
+            ->first();
+
+        $servicosContrato = $contratoAtivo
+            ? $contratoAtivo->itens->pluck('servico_id')->filter()->unique()->values()->all()
+            : [];
+
+        $tipos = [
+            'aso' => ['aso', 'aso'],
+            'pgr' => ['pgr', 'pgr'],
+            'pcmso' => ['pcmso', 'pcmso'],
+            'ltcat' => ['ltcat', 'ltcat'],
+            'ltip' => ['ltip', 'ltip'],
+            'apr' => ['apr', 'apr'],
+            'pae' => ['pae', 'pae'],
+            'treinamentos' => ['treinamento', 'treinamentos nrs'],
+        ];
+
+        $servicosIds = [];
+        foreach ($tipos as $slug => $variants) {
+            $variants = array_map(fn ($v) => mb_strtolower($v), $variants);
+            $id = Servico::query()
+                ->where('empresa_id', $cliente->empresa_id)
+                ->where(function ($q) use ($variants) {
+                    foreach ($variants as $v) {
+                        $q->orWhereRaw('LOWER(tipo) = ?', [$v])
+                          ->orWhereRaw('LOWER(nome) = ?', [$v]);
+                    }
+                })
+                ->value('id');
+            $servicosIds[$slug] = $id;
+        }
+
+        return [$contratoAtivo, $servicosContrato, $servicosIds];
+    }
+
+    private function precosPorContrato(?ClienteContrato $contrato, array $servicosIds): array
+    {
+        $precos = [];
+        if (!$contrato) {
+            foreach (array_keys($servicosIds) as $slug) {
+                $precos[$slug] = null;
+            }
+            return $precos;
+        }
+
+        foreach ($servicosIds as $slug => $servicoId) {
+            if (!$servicoId) {
+                $precos[$slug] = null;
+                continue;
+            }
+
+            $item = $contrato->itens()
+                ->where('servico_id', $servicoId)
+                ->where('ativo', true)
+                ->orderBy('descricao_snapshot')
+                ->first();
+
+            $precos[$slug] = $item?->preco_unitario_snapshot ? (float) $item->preco_unitario_snapshot : null;
+        }
+
+        return $precos;
     }
 }
