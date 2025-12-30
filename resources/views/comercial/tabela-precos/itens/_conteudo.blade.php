@@ -60,6 +60,22 @@
                ring-1 ring-emerald-200 hover:ring-emerald-300 transition">
                 <span>Treinamentos</span>
             </button>
+            <button type="button"
+                    onclick="openProtocolosModal()"
+                    class="inline-flex items-center justify-center gap-2 rounded-2xl
+               bg-white hover:bg-slate-50 active:bg-slate-100
+               text-slate-700 px-4 py-2 text-sm font-semibold shadow-sm
+               ring-1 ring-slate-200 hover:ring-slate-300 transition">
+                <span>Protocolos</span>
+            </button>
+            <button type="button"
+                    onclick="openGheModal()"
+                    class="inline-flex items-center justify-center gap-2 rounded-2xl
+               bg-white hover:bg-amber-50 active:bg-amber-100
+               text-amber-700 px-4 py-2 text-sm font-semibold shadow-sm
+               ring-1 ring-amber-200 hover:ring-amber-300 transition">
+                <span>GHE do Cliente</span>
+            </button>
         </div>
     </header>
 
@@ -237,6 +253,12 @@
 
 </div>
 
+@include('comercial.tabela-precos.itens.modal-protocolos', ['routePrefix' => $routePrefix])
+@include('comercial.tabela-precos.itens.modal-ghes', [
+    'routePrefix' => $routePrefix,
+    'clientes' => $clientes ?? collect(),
+    'funcoes' => $funcoes ?? collect(),
+])
 
 {{-- MODAL NOVO ITEM --}}
 @php($storeRoute = $routePrefix.'.tabela-precos.itens.store')

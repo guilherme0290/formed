@@ -8,6 +8,8 @@ use App\Models\ClienteContratoLog;
 use App\Models\Proposta;
 use App\Models\PropostaItens;
 use App\Models\User;
+use App\Models\Servico;
+use App\Services\AsoGheService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -21,6 +23,7 @@ class PropostaService
     {
         $proposta = Proposta::with('itens')->findOrFail($propostaId);
         $proposta->loadMissing('cliente');
+        $proposta->loadMissing('itens.servico');
 
         if (strtoupper((string) $proposta->status) === 'FECHADA') {
             return $proposta;
@@ -34,10 +37,20 @@ class PropostaService
             throw ValidationException::withMessages(['itens' => 'Proposta sem itens.']);
         }
 
+        $asoServicoId = (int) Servico::where('empresa_id', $proposta->empresa_id)
+            ->where('nome', 'ASO')
+            ->value('id');
+
         foreach ($proposta->itens as $it) {
-            if ($it->valor_unitario <= 0) {
-                throw ValidationException::withMessages(['itens' => 'Itens precisam de serviço e valor válido.']);
+            if ($it->valor_unitario > 0) {
+                continue;
             }
+
+            if ($asoServicoId > 0 && (int) $it->servico_id === $asoServicoId) {
+                continue;
+            }
+
+            throw ValidationException::withMessages(['itens' => 'Itens precisam de serviço e valor válido.']);
         }
 
         $hoje = Carbon::now()->startOfDay();
@@ -81,14 +94,31 @@ class PropostaService
             ]);
 
             // Copia itens
+            $asoSnapshot = null;
+            if ($asoServicoId > 0 && $proposta->itens->contains('servico_id', $asoServicoId)) {
+                $asoSnapshot = app(AsoGheService::class)
+                    ->buildSnapshotForCliente($proposta->cliente_id, $proposta->empresa_id);
+
+                if (empty($asoSnapshot['ghes'])) {
+                    throw ValidationException::withMessages([
+                        'itens' => 'ASO sem GHEs definidos para o cliente. Cadastre o GHE do cliente antes de fechar a proposta.',
+                    ]);
+                }
+            }
+
             foreach ($proposta->itens as $it) {
+                $regrasSnapshot = null;
+                if ($asoServicoId > 0 && (int) $it->servico_id === $asoServicoId) {
+                    $regrasSnapshot = $asoSnapshot;
+                }
+
                 ClienteContratoItem::create([
                     'cliente_contrato_id' => $contrato->id,
                     'servico_id' => $it->servico_id,
                     'descricao_snapshot' => $it->descricao ?? $it->nome,
                     'preco_unitario_snapshot' => $it->valor_total ?? $it->valor_unitario,
                     'unidade_cobranca' => 'unidade',
-                    'regras_snapshot' => null,
+                    'regras_snapshot' => $regrasSnapshot,
                     'ativo' => true,
                 ]);
 

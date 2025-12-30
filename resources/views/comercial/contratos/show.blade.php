@@ -97,6 +97,47 @@
             </div>
         </section>
 
+        @php
+            $asoItem = $contrato->itens->first(fn ($item) => !empty($item->regras_snapshot['ghes']));
+            $asoSnapshot = $asoItem?->regras_snapshot ?? null;
+        @endphp
+
+        @if(!empty($asoSnapshot['ghes']))
+            <section class="bg-white rounded-2xl shadow border border-slate-100 overflow-hidden">
+                <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                    <h2 class="text-sm font-semibold text-slate-800">ASO por GHE</h2>
+                    <p class="text-xs text-slate-500">Composição por exames</p>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-sm">
+                        <thead class="bg-slate-50">
+                        <tr class="text-left text-slate-600">
+                            <th class="px-5 py-3 font-semibold">GHE</th>
+                            <th class="px-5 py-3 font-semibold">Protocolo</th>
+                            <th class="px-5 py-3 font-semibold">Total Exames</th>
+                            <th class="px-5 py-3 font-semibold">Admissional</th>
+                            <th class="px-5 py-3 font-semibold">Periódico</th>
+                            <th class="px-5 py-3 font-semibold">Demissional</th>
+                        </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                        @foreach($asoSnapshot['ghes'] as $ghe)
+                            <tr>
+                                <td class="px-5 py-3 font-semibold text-slate-800">{{ $ghe['nome'] ?? '—' }}</td>
+                                <td class="px-5 py-3 text-slate-700">{{ $ghe['protocolo']['titulo'] ?? '—' }}</td>
+                                <td class="px-5 py-3 font-semibold text-slate-800">R$ {{ number_format((float) ($ghe['total_exames'] ?? 0), 2, ',', '.') }}</td>
+                                <td class="px-5 py-3 text-slate-700">R$ {{ number_format((float) ($ghe['total_por_tipo']['admissional'] ?? 0), 2, ',', '.') }}</td>
+                                <td class="px-5 py-3 text-slate-700">R$ {{ number_format((float) ($ghe['total_por_tipo']['periodico'] ?? 0), 2, ',', '.') }}</td>
+                                <td class="px-5 py-3 text-slate-700">R$ {{ number_format((float) ($ghe['total_por_tipo']['demissional'] ?? 0), 2, ',', '.') }}</td>
+                            </tr>
+                        @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        @endif
+
         {{-- Timeline de vigências --}}
         <section class="bg-white rounded-2xl shadow border border-slate-100 overflow-hidden">
             <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">

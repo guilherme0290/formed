@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Cliente;
 use App\Models\ClienteContratoItem;
 use App\Models\ClienteContratoLog;
+use App\Models\Funcao;
 use App\Models\Proposta;
 use App\Models\PropostaItens;
 use App\Models\Servico;
@@ -70,6 +71,10 @@ class PropostaController extends Controller
             ->when($esocialId, fn($q) => $q->where('id', '!=', $esocialId))
             ->orderBy('nome')
             ->get();
+        $asoServicoId = (int) Servico::where('empresa_id', $empresaId)
+            ->where('nome', 'ASO')
+            ->value('id');
+        $funcoes = Funcao::where('empresa_id', $empresaId)->orderBy('nome')->get(['id', 'nome']);
 
         $treinamentos = collect();
         $treinamentoId = (int) (config('services.treinamento_id') ?? 0);
@@ -97,7 +102,7 @@ class PropostaController extends Controller
 
         $user = auth()->user();
 
-        return view('comercial.propostas.create', compact('clientes','servicos','formasPagamento','user','treinamentos'));
+        return view('comercial.propostas.create', compact('clientes','servicos','formasPagamento','user','treinamentos','asoServicoId','funcoes'));
     }
 
     public function edit(Proposta $proposta)
@@ -115,6 +120,10 @@ class PropostaController extends Controller
             ->when($esocialId, fn($q) => $q->where('id', '!=', $esocialId))
             ->orderBy('nome')
             ->get();
+        $asoServicoId = (int) Servico::where('empresa_id', $empresaId)
+            ->where('nome', 'ASO')
+            ->value('id');
+        $funcoes = Funcao::where('empresa_id', $empresaId)->orderBy('nome')->get(['id', 'nome']);
 
         $treinamentos = collect();
         $treinamentoId = (int) (config('services.treinamento_id') ?? 0);
@@ -142,7 +151,7 @@ class PropostaController extends Controller
 
         $proposta->load('itens');
 
-        return view('comercial.propostas.create', compact('clientes','servicos','formasPagamento','user','treinamentos','proposta'));
+        return view('comercial.propostas.create', compact('clientes','servicos','formasPagamento','user','treinamentos','proposta','asoServicoId','funcoes'));
     }
 
     public function store(Request $request)

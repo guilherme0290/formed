@@ -5,6 +5,8 @@ use App\Http\Controllers\Api\ServicosApiController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\Comercial\EsocialFaixaController;
 use App\Http\Controllers\Comercial\ExamesTabPrecoController;
+use App\Http\Controllers\Comercial\ClienteGheController;
+use App\Http\Controllers\Comercial\ProtocolosExamesController;
 use App\Http\Controllers\Comercial\PropostaPrecoController;
 use App\Http\Controllers\Master\AcessosController;
 use App\Http\Controllers\Master\DashboardController as DashboardMaster;
@@ -571,6 +573,26 @@ Route::middleware('auth')->group(function () {
             Route::delete('/exames/{exame}', [ExamesTabPrecoController::class, 'destroy'])
                 ->name('exames.destroy');
 
+            // Protocolos de Exames
+            Route::get('/protocolos-exames', [ProtocolosExamesController::class, 'indexJson'])
+                ->name('protocolos-exames.indexJson');
+            Route::post('/protocolos-exames', [ProtocolosExamesController::class, 'store'])
+                ->name('protocolos-exames.store');
+            Route::put('/protocolos-exames/{protocolo}', [ProtocolosExamesController::class, 'update'])
+                ->name('protocolos-exames.update');
+            Route::delete('/protocolos-exames/{protocolo}', [ProtocolosExamesController::class, 'destroy'])
+                ->name('protocolos-exames.destroy');
+
+            // GHE do Cliente
+            Route::get('/clientes-ghes', [ClienteGheController::class, 'indexJson'])
+                ->name('clientes-ghes.indexJson');
+            Route::post('/clientes-ghes', [ClienteGheController::class, 'store'])
+                ->name('clientes-ghes.store');
+            Route::put('/clientes-ghes/{ghe}', [ClienteGheController::class, 'update'])
+                ->name('clientes-ghes.update');
+            Route::delete('/clientes-ghes/{ghe}', [ClienteGheController::class, 'destroy'])
+                ->name('clientes-ghes.destroy');
+
             // Minhas Comissões (vendedor)
             Route::prefix('minhas-comissoes')
                 ->name('comissoes.')
@@ -745,6 +767,26 @@ Route::middleware('auth')->group(function () {
             ->name('exames.update');
         Route::delete('/exames/{exame}', [ExamesTabPrecoController::class, 'destroy'])
             ->name('exames.destroy');
+
+        // Protocolos de Exames
+        Route::get('/protocolos-exames', [ProtocolosExamesController::class, 'indexJson'])
+            ->name('protocolos-exames.indexJson');
+        Route::post('/protocolos-exames', [ProtocolosExamesController::class, 'store'])
+            ->name('protocolos-exames.store');
+        Route::put('/protocolos-exames/{protocolo}', [ProtocolosExamesController::class, 'update'])
+            ->name('protocolos-exames.update');
+        Route::delete('/protocolos-exames/{protocolo}', [ProtocolosExamesController::class, 'destroy'])
+            ->name('protocolos-exames.destroy');
+
+        // GHE do Cliente
+        Route::get('/clientes-ghes', [ClienteGheController::class, 'indexJson'])
+            ->name('clientes-ghes.indexJson');
+        Route::post('/clientes-ghes', [ClienteGheController::class, 'store'])
+            ->name('clientes-ghes.store');
+        Route::put('/clientes-ghes/{ghe}', [ClienteGheController::class, 'update'])
+            ->name('clientes-ghes.update');
+        Route::delete('/clientes-ghes/{ghe}', [ClienteGheController::class, 'destroy'])
+            ->name('clientes-ghes.destroy');
     });
 
     // ======================================================

@@ -8,6 +8,7 @@ use App\Models\TabelaPrecoItem;
 use App\Models\TabelaPrecoPadrao;
 use App\Models\Tarefa;
 use App\Models\Servico;
+use App\Models\Funcionario;
 use Carbon\Carbon;
 use Illuminate\Validation\ValidationException;
 
@@ -77,6 +78,64 @@ class PrecificacaoService
             throw ValidationException::withMessages([
                 'contrato' => 'Não foi possível localizar os dados do ASO para precificar esta tarefa.',
             ]);
+        }
+
+        if (!empty($itemContrato->regras_snapshot['ghes'])) {
+            $funcionario = $tarefa->funcionario ?: Funcionario::find($tarefa->funcionario_id);
+            $funcaoId = $funcionario?->funcao_id;
+
+            if (!$funcaoId) {
+                throw ValidationException::withMessages([
+                    'contrato' => 'Funcionário sem função definida para precificação do ASO.',
+                ]);
+            }
+
+            $map = $itemContrato->regras_snapshot['funcao_ghe_map'] ?? [];
+            $gheId = $map[(string) $funcaoId] ?? null;
+            $ghes = $itemContrato->regras_snapshot['ghes'] ?? [];
+
+            $gheSnapshot = null;
+            foreach ($ghes as $ghe) {
+                if ((int) ($ghe['id'] ?? 0) === (int) $gheId) {
+                    $gheSnapshot = $ghe;
+                    break;
+                }
+            }
+
+            if (!$gheSnapshot) {
+                throw ValidationException::withMessages([
+                    'contrato' => 'GHE não definido para a função do funcionário.',
+                ]);
+            }
+
+            $tipoAso = $aso->tipo_aso;
+            $totalPorTipo = $gheSnapshot['total_por_tipo'] ?? [];
+            $basePorTipo = $gheSnapshot['base'] ?? [];
+            $totalExames = (float) ($gheSnapshot['total_exames'] ?? 0);
+
+            $preco = $totalPorTipo[$tipoAso] ?? (($basePorTipo[$tipoAso] ?? 0) + $totalExames);
+
+            $tipoAsoLabel = match ($tipoAso) {
+                'admissional' => 'Admissional',
+                'periodico' => 'Periódico',
+                'demissional' => 'Demissional',
+                'mudanca_funcao' => 'Mudança de Função',
+                'retorno_trabalho' => 'Retorno ao Trabalho',
+                default => 'ASO',
+            };
+
+            $descricao = trim('ASO ' . $tipoAsoLabel . ' - ' . ($gheSnapshot['nome'] ?? 'GHE'));
+
+            return [
+                'contrato' => $contrato,
+                'itemContrato' => $itemContrato,
+                'itensVenda' => [[
+                    'servico_id' => $tarefa->servico_id,
+                    'descricao_snapshot' => $descricao,
+                    'preco_unitario_snapshot' => (float) $preco,
+                    'quantidade' => 1,
+                ]],
+            ];
         }
 
         $codigoAso = match ($aso->tipo_aso) {

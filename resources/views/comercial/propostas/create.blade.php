@@ -140,7 +140,8 @@
                             </div>
                         </div>
 
-                        {{-- BLOCO: Exames --}}
+                        {{--
+                        BLOCO: Exames
                         <div class="rounded-2xl border border-slate-200 p-4">
                             <div class="flex items-center justify-between mb-3">
                                 <div class="text-sm font-semibold text-slate-800">Exames</div>
@@ -152,11 +153,28 @@
                                 </button>
                             </div>
 
-                            <p class="text-xs text-slate-500">Selecione exames avulsos ou crie um “Pacote de Exames”.</p>
+                            <p class="text-xs text-slate-500">Selecione exames avulsos ou crie um "Pacote de Exames".</p>
 
                             <div id="examesAvulsos" class="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                                 <div class="text-sm text-slate-500">Carregando exames...</div>
                             </div>
+                        </div>
+                        --}}
+
+                        {{-- BLOCO: GHE do Cliente --}}
+                        <div class="rounded-2xl border border-slate-200 p-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="text-sm font-semibold text-slate-800">GHE do Cliente</div>
+                                <button type="button"
+                                        class="px-3 py-2 rounded-xl border border-amber-200 text-sm bg-amber-50 hover:bg-amber-100 text-amber-800 font-semibold"
+                                        id="btnGheCliente">
+                                    Gerenciar GHE
+                                </button>
+                            </div>
+
+                            <p class="text-xs text-slate-500">
+                                Defina GHEs, funções e protocolos de exames para este cliente.
+                            </p>
                         </div>
 
                         {{-- BLOCO: Treinamentos --}}
@@ -283,7 +301,13 @@
         </div>
     </div>
 
-    {{-- MODAL PACOTE EXAMES (dinâmico) --}}
+    @include('comercial.tabela-precos.itens.modal-ghes', [
+        'routePrefix' => 'comercial',
+        'clientes' => $clientes ?? collect(),
+        'funcoes' => $funcoes ?? collect(),
+    ])
+    {{--
+    MODAL PACOTE EXAMES (dinamico)
     <div id="modalExames" class="fixed inset-0 z-50 hidden bg-black/40">
         <div class="min-h-full flex items-center justify-center p-4">
             <div class="bg-white w-full max-w-2xl rounded-2xl shadow-xl overflow-hidden">
@@ -306,7 +330,7 @@
                         </label>
 
                         <div id="pkgExamesList" class="space-y-2 max-h-[45vh] overflow-auto pr-1">
-                            {{-- carregado via fetch --}}
+                            -- carregado via fetch --
                         </div>
                     </div>
 
@@ -330,8 +354,7 @@
             </div>
         </div>
     </div>
-
-
+    --}}
     @include('comercial.propostas.modal-treinamentos')
     {{-- MODAL eSOCIAL (seu include existente) --}}
     @include('comercial.tabela-precos.itens.modal-esocial')
@@ -366,6 +389,7 @@
                 const SERVICO_ESOCIAL_ID = @json(config('services.esocial_id'));
                 const SERVICO_TREINAMENTO_ID = @json(config('services.treinamento_id'));
                 const SERVICO_EXAME_ID = @json(config('services.exame_id'));
+                const SERVICO_ASO_ID = @json($asoServicoId ?? null);
 
                 // =========================
                 // State
@@ -400,7 +424,6 @@
 
                     modalTrein: document.getElementById('modalTreinamentos'),
                     nrChips: document.getElementById('nrChips'),
-
                     modalExames: document.getElementById('modalExames'),
                     examesList: document.getElementById('pkgExamesList'),
                     examesAvulsos: document.getElementById('examesAvulsos'),
@@ -408,7 +431,6 @@
                     pkgExamesNome: document.getElementById('pkgExamesNome'),
                     pkgExamesValorView: document.getElementById('pkgExamesValorView'),
                     pkgExamesValorHidden: document.getElementById('pkgExamesValorHidden'),
-
                     form: document.getElementById('propostaForm'),
                 };
 
@@ -780,8 +802,11 @@
                     state.itens.push(item);
                     render();
                     showItemToast(`Serviço: ${servicoNome}`);
-                    if (Number(item.valor_unitario || 0) <= 0) {
+                    if (Number(item.valor_unitario || 0) <= 0 && Number(servicoId) !== Number(SERVICO_ASO_ID)) {
                         showItemAlert(`Item ${servicoNome} sem preço definido na tabela de preço.`);
+                    }
+                    if (Number(servicoId) === Number(SERVICO_ASO_ID)) {
+                        showItemAlert('ASO usa precificação por GHE. Verifique o cadastro de GHE do cliente.');
                     }
                 }
 
@@ -990,6 +1015,7 @@
                 }
 
                 async function openExamesModal() {
+                    if (!el.modalExames) return;
                     el.modalExames.classList.remove('hidden');
                     el.examesList.innerHTML = '<div class="text-sm text-slate-500">Carregando exames...</div>';
                     if (el.pkgExamesNome) el.pkgExamesNome.value = '';
@@ -1032,6 +1058,7 @@
                 }
 
                 window.closeExamesModal = function() {
+                    if (!el.modalExames) return;
                     el.modalExames.classList.add('hidden');
                 }
 
@@ -1139,6 +1166,18 @@
                     }
                 })();
 
+                document.getElementById('btnGheCliente')?.addEventListener('click', () => {
+                    const sel = el.clienteSelect?.value || '';
+                    const modalSel = document.getElementById('gheClienteSelect');
+                    if (modalSel && sel) {
+                        modalSel.value = sel;
+                        modalSel.dispatchEvent(new Event('change'));
+                    }
+                    if (typeof openGheModal === 'function') {
+                        openGheModal();
+                    }
+                });
+
                 // B) Botão “Pacote de Treinamentos”
                 document.querySelectorAll('[data-action="add-treinamento"]').forEach(btn => {
                     btn.addEventListener('click', () => {
@@ -1240,7 +1279,11 @@
                 // Submit: garantir meta JSON -> array (backend aceita array)
                 // =========================
                 el.form.addEventListener('submit', (e) => {
-                    const zeroItems = state.itens.filter(it => Number(it.valor_unitario || 0) <= 0);
+                    const zeroItems = state.itens.filter(it => {
+                        if (Number(it.valor_unitario || 0) > 0) return false;
+                        if (Number(it.servico_id || 0) === Number(SERVICO_ASO_ID)) return false;
+                        return true;
+                    });
                     if (zeroItems.length) {
                         e.preventDefault();
                         const names = zeroItems.map(it => it.nome).slice(0, 3).join(', ');
