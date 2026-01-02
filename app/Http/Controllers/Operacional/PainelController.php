@@ -225,12 +225,36 @@ class PainelController extends Controller
 
         if ($finalizando) {
             try {
-                $servicoAsoId = (int) Servico::where('empresa_id', $tarefa->empresa_id)
-                    ->where('nome', 'ASO')
+                $dataRef = now()->startOfDay();
+                $contratoAtivo = ClienteContrato::query()
+                    ->where('empresa_id', $tarefa->empresa_id)
+                    ->where('cliente_id', $tarefa->cliente_id)
+                    ->where('status', 'ATIVO')
+                    ->where(function ($q) use ($dataRef) {
+                        $q->whereNull('vigencia_inicio')->orWhere('vigencia_inicio', '<=', $dataRef);
+                    })
+                    ->where(function ($q) use ($dataRef) {
+                        $q->whereNull('vigencia_fim')->orWhere('vigencia_fim', '>=', $dataRef);
+                    })
+                    ->with('itens')
+                    ->latest('vigencia_inicio')
+                    ->first();
+                $contratoItem = $contratoAtivo?->itens
+                    ->firstWhere('servico_id', (int) $tarefa->servico_id);
+                $isAso = !empty($contratoItem?->regras_snapshot['ghes']);
+
+                $servicoTreinamentoId = (int) Servico::where('empresa_id', $tarefa->empresa_id)
+                    ->where('nome', 'Treinamentos NRs')
                     ->value('id');
 
-                if ($servicoAsoId && (int) $tarefa->servico_id === $servicoAsoId) {
+                if ($isAso) {
                     $resultado = $precificacaoService->precificarAso($tarefa);
+                    $venda = $vendaService->criarVendaPorTarefaItens($tarefa, $resultado['contrato'], $resultado['itensVenda']);
+
+                    $vendedorId = optional($tarefa->cliente)->vendedor_id;
+                    $comissaoService->gerarPorVenda($venda, $resultado['itemContrato'], $vendedorId ?: auth()->id());
+                } elseif ($servicoTreinamentoId && (int) $tarefa->servico_id === $servicoTreinamentoId) {
+                    $resultado = $precificacaoService->precificarTreinamentosNr($tarefa);
                     $venda = $vendaService->criarVendaPorTarefaItens($tarefa, $resultado['contrato'], $resultado['itensVenda']);
 
                     $vendedorId = optional($tarefa->cliente)->vendedor_id;
@@ -357,8 +381,11 @@ class PainelController extends Controller
             ? $contratoAtivo->itens->pluck('servico_id')->filter()->unique()->values()->all()
             : [];
 
+        $asoServicoId = $contratoAtivo?->itens
+            ->first(fn ($item) => !empty($item->regras_snapshot['ghes']))
+            ?->servico_id;
+
         $tipos = [
-            'aso' => ['aso', 'aso'],
             'pgr' => ['pgr', 'pgr'],
             'pcmso' => ['pcmso', 'pcmso'],
             'ltcat' => ['ltcat', 'ltcat'],
@@ -368,7 +395,9 @@ class PainelController extends Controller
             'treinamentos' => ['treinamento', 'treinamentos nrs'],
         ];
 
-        $servicosIds = [];
+        $servicosIds = [
+            'aso' => $asoServicoId ? (int) $asoServicoId : null,
+        ];
         foreach ($tipos as $slug => $variants) {
             $variants = array_map(fn ($v) => mb_strtolower($v), $variants);
             $id = Servico::query()

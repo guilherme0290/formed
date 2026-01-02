@@ -83,9 +83,6 @@ class TabelaPrecoPadraoFullSeeder extends Seeder
     {
         $itens = [
             // formato: [servicoKey, codigo, descricao, preco, ativo]
-            ['aso',   'ASO-ADM',  'ASO Admissional',                 85.00,  true],
-            ['aso',   'ASO-DEM',  'ASO Demissional',                 85.00,  true],
-            ['aso',   'ASO-PER',  'ASO Periódico',                   75.00,  true],
             ['pgr',   'PGR',      'PGR (Plano completo)',           450.00,  true],
             ['pcmso', 'PCMSO',    'PCMSO (Plano anual)',            390.00,  true],
             ['ltcat', 'LTCAT',    'LTCAT (Laudo técnico)',          800.00,  true],
@@ -94,7 +91,6 @@ class TabelaPrecoPadraoFullSeeder extends Seeder
             ['pae',   'PAE',      'PAE (Plano de emergência)',      280.00,  true],
 
             // casos de teste
-            ['aso',   'ASO-OLD',  'ASO (Item inativo p/ teste)',     60.00,  false],
             ['pgr',   null,       'PGR (sem código p/ teste)',      420.00,  true],
             ['pcmso', 'PCMSO-0',  'PCMSO (preço zero p/ teste)',      0.00,  true],
         ];

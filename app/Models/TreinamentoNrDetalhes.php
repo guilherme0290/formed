@@ -13,6 +13,11 @@ class TreinamentoNrDetalhes extends Model
         'tarefa_id',
         'local_tipo',
         'unidade_id',
+        'treinamentos',
+    ];
+
+    protected $casts = [
+        'treinamentos' => 'array',
     ];
 
     public function tarefa(): BelongsTo

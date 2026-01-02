@@ -305,8 +305,10 @@
                                             $asoTreinamentosLista = implode(', ', $labelsTrein);
                                         }
 
+                                        $isAsoTask = (bool) $aso;
+
                                         $editUrl = null;
-                                        if ($servicoNome === 'ASO') {
+                                        if ($isAsoTask) {
                                             $editUrl = route('operacional.kanban.aso.editar', $tarefa);
                                         }
                                         if ($servicoNome === 'PGR') {
@@ -390,6 +392,7 @@
                                     data-aso-treinamento="{{ $asoTreinamentoFlag }}"
                                     data-aso-treinamentos="{{ $asoTreinamentosLista }}"
                                     data-aso-email="{{ $asoEmail }}"
+                                    data-is-aso="{{ $isAsoTask ? '1' : '0' }}"
 
                                     data-observacao-interna="{{ e($tarefa->observacao_interna) }}"
                                     data-observacao-url="{{ route('operacional.tarefas.observacao', $tarefa) }}"
@@ -488,7 +491,7 @@
                                         $subtituloCard = $clienteNome;      // default
 
                                         // -------- ASO --------
-                                        if ($servicoNome === 'ASO') {
+                                        if ($isAsoTask) {
                                             $nomeFunc = $funcionarioNome
                                                 ?? optional($tarefa->funcionario)->nome
                                                 ?? 'Sem funcionário';
@@ -1336,7 +1339,7 @@
 
                 // === REGRAS POR TIPO DE SERVIÇO ===
                 const tipoServico = (card.dataset.servico || '').toLowerCase();
-                const isAso = tipoServico.includes('aso');
+                const isAso = card.dataset.isAso === '1';
                 const isPgr = tipoServico.includes('pgr');
 
                 // ASO

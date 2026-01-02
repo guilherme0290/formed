@@ -6,6 +6,7 @@ use App\Models\ClienteContratoItem;
 use App\Models\Comissao;
 use App\Models\ServicoComissao;
 use App\Models\Venda;
+use App\Models\VendaItem;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
@@ -48,13 +49,21 @@ class ComissaoService
 
         $percentual = $this->percentualVigente($empresaId, $servicoId, $data);
 
-        $valorBase = (float) $contratoItem->preco_unitario_snapshot;
+        $vendaItem = VendaItem::where('venda_id', $venda->id)
+            ->where('servico_id', $servicoId)
+            ->first();
+
+        $isAso = !empty($contratoItem->regras_snapshot['ghes']);
+
+        $valorBase = $isAso && $vendaItem
+            ? (float) $vendaItem->preco_unitario_snapshot
+            : (float) $contratoItem->preco_unitario_snapshot;
         $valorComissao = round($valorBase * ($percentual / 100), 2);
 
         return Comissao::create([
             'empresa_id' => $empresaId,
             'venda_id' => $venda->id,
-            'venda_item_id' => $venda->itens()->value('id'),
+            'venda_item_id' => $vendaItem?->id ?? $venda->itens()->value('id'),
             'vendedor_id' => $vendedorId,
             'cliente_id' => $clienteId,
             'servico_id' => $servicoId,

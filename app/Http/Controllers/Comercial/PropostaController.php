@@ -13,6 +13,7 @@ use App\Models\Servico;
 use App\Models\TabelaPrecoItem;
 use App\Models\TabelaPrecoPadrao;
 use App\Models\UnidadeClinica;
+use App\Services\AsoGheService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -71,9 +72,6 @@ class PropostaController extends Controller
             ->when($esocialId, fn($q) => $q->where('id', '!=', $esocialId))
             ->orderBy('nome')
             ->get();
-        $asoServicoId = (int) Servico::where('empresa_id', $empresaId)
-            ->where('nome', 'ASO')
-            ->value('id');
         $funcoes = Funcao::where('empresa_id', $empresaId)->orderBy('nome')->get(['id', 'nome']);
 
         $treinamentos = collect();
@@ -102,7 +100,7 @@ class PropostaController extends Controller
 
         $user = auth()->user();
 
-        return view('comercial.propostas.create', compact('clientes','servicos','formasPagamento','user','treinamentos','asoServicoId','funcoes'));
+        return view('comercial.propostas.create', compact('clientes','servicos','formasPagamento','user','treinamentos','funcoes'));
     }
 
     public function edit(Proposta $proposta)
@@ -120,9 +118,6 @@ class PropostaController extends Controller
             ->when($esocialId, fn($q) => $q->where('id', '!=', $esocialId))
             ->orderBy('nome')
             ->get();
-        $asoServicoId = (int) Servico::where('empresa_id', $empresaId)
-            ->where('nome', 'ASO')
-            ->value('id');
         $funcoes = Funcao::where('empresa_id', $empresaId)->orderBy('nome')->get(['id', 'nome']);
 
         $treinamentos = collect();
@@ -151,7 +146,7 @@ class PropostaController extends Controller
 
         $proposta->load('itens');
 
-        return view('comercial.propostas.create', compact('clientes','servicos','formasPagamento','user','treinamentos','proposta','asoServicoId','funcoes'));
+        return view('comercial.propostas.create', compact('clientes','servicos','formasPagamento','user','treinamentos','proposta','funcoes'));
     }
 
     public function store(Request $request)
@@ -197,9 +192,12 @@ class PropostaController extends Controller
             return back()->with('erro', 'Telefone inválido.');
         }
 
+        $publicLink = $this->ensurePublicLink($proposta);
+        $mensagem = $this->appendPublicLink($data['mensagem'], $publicLink);
+
         $proposta->update(['status' => 'ENVIADA']);
 
-        $url = 'https://wa.me/' . $digits . '?text=' . urlencode($data['mensagem']);
+        $url = 'https://wa.me/' . $digits . '?text=' . urlencode($mensagem);
         return redirect()->away($url);
     }
 
@@ -215,7 +213,10 @@ class PropostaController extends Controller
         ]);
 
         try {
-            Mail::raw($data['mensagem'], function ($m) use ($data) {
+            $publicLink = $this->ensurePublicLink($proposta);
+            $mensagem = $this->appendPublicLink($data['mensagem'], $publicLink);
+
+            Mail::raw($mensagem, function ($m) use ($data) {
                 $m->to($data['email'])->subject($data['assunto']);
             });
 
@@ -234,14 +235,14 @@ class PropostaController extends Controller
         abort_unless($proposta->empresa_id === $user->empresa_id, 403);
 
         $data = $request->validate([
-            'status' => ['required', 'string', 'in:RASCUNHO,ENVIADA,FECHADA,CANCELADA'],
+            'status' => ['required', 'string', 'in:PENDENTE,ENVIADA,FECHADA,CANCELADA'],
         ]);
 
         $atual = strtoupper($proposta->status ?? '');
         $novo = strtoupper($data['status']);
 
         $permitido = match ($atual) {
-            'RASCUNHO' => in_array($novo, ['RASCUNHO','ENVIADA']),
+            'PENDENTE' => in_array($novo, ['PENDENTE','ENVIADA','CANCELADA']),
             'ENVIADA'  => in_array($novo, ['ENVIADA','FECHADA','CANCELADA']),
             default    => false,
         };
@@ -351,6 +352,57 @@ class PropostaController extends Controller
 
         $incluirEsocial = !empty($data['incluir_esocial']);
 
+        $isAsoItem = function (array $it): bool {
+            $nomeBase = strtoupper((string) ($it['nome'] ?? $it['descricao'] ?? ''));
+            return $nomeBase !== '' && str_contains($nomeBase, 'ASO');
+        };
+        $asoIndexes = [];
+        foreach ($data['itens'] as $idx => $it) {
+            if ($isAsoItem($it)) {
+                $asoIndexes[] = $idx;
+            }
+        }
+
+        $gheTotal = 0.0;
+        if (!empty($data['cliente_id'])) {
+            $gheSnapshot = app(AsoGheService::class)
+                ->buildSnapshotForCliente((int) $data['cliente_id'], $empresaId);
+            foreach (($gheSnapshot['ghes'] ?? []) as $ghe) {
+                $gheTotal += (float) ($ghe['total_exames'] ?? 0);
+            }
+        }
+
+        if ($gheTotal > 0 && empty($asoIndexes)) {
+            $asoServicoId = (int) (config('services.aso_id') ?? 0);
+            $data['itens'][] = [
+                'servico_id' => $asoServicoId ?: null,
+                'tipo' => 'SERVICO',
+                'nome' => 'ASO',
+                'descricao' => 'ASO por GHE',
+                'valor_unitario' => $gheTotal,
+                'quantidade' => 1,
+                'prazo' => null,
+                'acrescimo' => 0,
+                'desconto' => 0,
+                'valor_total' => $gheTotal,
+                'meta' => null,
+            ];
+            $asoIndexes[] = count($data['itens']) - 1;
+        }
+
+        if ($gheTotal > 0 && !empty($asoIndexes)) {
+            $totalAsoAtual = 0.0;
+            foreach ($asoIndexes as $idx) {
+                $totalAsoAtual += (float) ($data['itens'][$idx]['valor_total'] ?? 0);
+            }
+            if ($totalAsoAtual <= 0) {
+                $idx = $asoIndexes[0];
+                $qtd = max(1, (int) ($data['itens'][$idx]['quantidade'] ?? 1));
+                $data['itens'][$idx]['valor_unitario'] = $gheTotal / $qtd;
+                $data['itens'][$idx]['valor_total'] = $gheTotal;
+            }
+        }
+
         $valorItens = 0.0;
         $temItemEsocial = false;
         foreach ($data['itens'] as $it) {
@@ -392,7 +444,7 @@ class PropostaController extends Controller
                 $proposta->update($payload);
                 $proposta->itens()->delete();
             } else {
-                $payload['status'] = 'RASCUNHO';
+                $payload['status'] = 'PENDENTE';
                 $payload['pipeline_status'] = 'CONTATO_INICIAL';
                 $proposta = Proposta::create($payload);
             }
@@ -444,15 +496,41 @@ class PropostaController extends Controller
                     ];
                 }
 
+                $asoServicoId = app(AsoGheService::class)
+                    ->resolveServicoAsoIdFromContrato($contratoParaAtualizar);
+                $isAsoItem = function (array $it) use ($asoServicoId): bool {
+                    if ($asoServicoId && (int) ($it['servico_id'] ?? 0) === (int) $asoServicoId) {
+                        return true;
+                    }
+
+                    $nomeBase = strtoupper((string) ($it['nome'] ?? $it['descricao'] ?? ''));
+                    return $nomeBase !== '' && str_contains($nomeBase, 'ASO');
+                };
+
+                $temAso = collect($data['itens'])->contains(fn ($it) => $isAsoItem($it));
+                $asoSnapshot = null;
+                if ($temAso) {
+                    $asoSnapshot = app(AsoGheService::class)
+                        ->buildSnapshotForCliente((int) $data['cliente_id'], $empresaId);
+                    if (empty($asoSnapshot['ghes'])) {
+                        $asoSnapshot = null;
+                    }
+                }
+
                 $contratoParaAtualizar->itens()->delete();
                 foreach ($data['itens'] as $it) {
+                    $regrasSnapshot = null;
+                    if ($isAsoItem($it)) {
+                        $regrasSnapshot = $asoSnapshot;
+                    }
+
                     ClienteContratoItem::create([
                         'cliente_contrato_id' => $contratoParaAtualizar->id,
                         'servico_id' => $it['servico_id'] ?? null,
                         'descricao_snapshot' => $it['descricao'] ?? $it['nome'],
                         'preco_unitario_snapshot' => $it['valor_total'] ?? $it['valor_unitario'],
                         'unidade_cobranca' => 'unidade',
-                        'regras_snapshot' => null,
+                        'regras_snapshot' => $regrasSnapshot,
                         'ativo' => true,
                     ]);
                 }
@@ -540,15 +618,24 @@ class PropostaController extends Controller
         $user = auth()->user();
         abort_unless($proposta->empresa_id === $user->empresa_id, 403);
 
+        $proposta->load(['cliente', 'empresa', 'vendedor', 'itens']);
         $unidades = UnidadeClinica::where('empresa_id', $user->empresa_id)
             ->where('ativo', true)
             ->get();
-        $proposta->load(['cliente', 'empresa', 'vendedor', 'itens']);
-        $proposta['unidades'] =$unidades;
+        $gheSnapshot = [];
+        if ($proposta->cliente_id) {
+            $gheSnapshot = app(AsoGheService::class)
+                ->buildSnapshotForCliente($proposta->cliente_id, $user->empresa_id);
+        }
 
+
+        $publicLink = $this->ensurePublicLink($proposta);
 
         return view('comercial.propostas.show', [
             'proposta' => $proposta,
+            'publicLink' => $publicLink,
+            'unidades' => $unidades,
+            'gheSnapshot' => $gheSnapshot,
         ]);
     }
 
@@ -562,6 +649,11 @@ class PropostaController extends Controller
             ->get();
         $proposta->load(['cliente', 'empresa', 'vendedor', 'itens']);
         $proposta['unidades'] = $unidades;
+        $gheSnapshot = [];
+        if ($proposta->cliente_id) {
+            $gheSnapshot = app(AsoGheService::class)
+                ->buildSnapshotForCliente($proposta->cliente_id, $user->empresa_id);
+        }
 
         $logoPath = public_path('storage/logo.svg');
         $logoData = is_file($logoPath)
@@ -571,6 +663,7 @@ class PropostaController extends Controller
         $pdf = Pdf::loadView('comercial.propostas.pdf', [
             'proposta' => $proposta,
             'logoData' => $logoData,
+            'gheSnapshot' => $gheSnapshot,
         ])->setPaper('a4');
 
         $filename = 'proposta-' . ($proposta->codigo ?? $proposta->id) . '.pdf';
@@ -588,6 +681,11 @@ class PropostaController extends Controller
             ->get();
         $proposta->load(['cliente', 'empresa', 'vendedor', 'itens']);
         $proposta['unidades'] = $unidades;
+        $gheSnapshot = [];
+        if ($proposta->cliente_id) {
+            $gheSnapshot = app(AsoGheService::class)
+                ->buildSnapshotForCliente($proposta->cliente_id, $user->empresa_id);
+        }
 
         $logoPath = public_path('storage/logo.svg');
         $logoData = is_file($logoPath)
@@ -597,6 +695,7 @@ class PropostaController extends Controller
         $pdf = Pdf::loadView('comercial.propostas.pdf', [
             'proposta' => $proposta,
             'logoData' => $logoData,
+            'gheSnapshot' => $gheSnapshot,
         ])->setPaper('a4');
 
         $filename = 'proposta-' . ($proposta->codigo ?? $proposta->id) . '.pdf';
@@ -628,5 +727,24 @@ class PropostaController extends Controller
             }
             return back()->with('erro', $message);
         }
+    }
+
+    private function ensurePublicLink(Proposta $proposta): string
+    {
+        if (!$proposta->public_token) {
+            $proposta->public_token = Str::random(40);
+            $proposta->save();
+        }
+
+        return route('propostas.public.show', $proposta->public_token);
+    }
+
+    private function appendPublicLink(string $mensagem, string $link): string
+    {
+        if (str_contains($mensagem, $link)) {
+            return $mensagem;
+        }
+
+        return trim($mensagem) . "\n\nAcesse e responda a proposta: {$link}";
     }
 }

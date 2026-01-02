@@ -21,12 +21,10 @@
                 <div class="flex flex-wrap items-center justify-between gap-3">
                     <div class="flex items-center gap-3">
                         <label class="text-sm font-semibold text-slate-700">Cliente</label>
-                        <select id="gheClienteSelect" class="rounded-xl border border-slate-200 text-sm px-3 py-2 min-w-[240px]">
-                            <option value="">Selecione...</option>
-                            @foreach($clientes as $cliente)
-                                <option value="{{ $cliente->id }}">{{ $cliente->razao_social }}</option>
-                            @endforeach
-                        </select>
+                        <input type="hidden" id="gheClienteId" value="">
+                        <input id="gheClienteNome" type="text" readonly
+                               class="rounded-xl border border-slate-200 text-sm px-3 py-2 min-w-[240px] bg-slate-100 cursor-not-allowed"
+                               placeholder="Cliente não selecionado">
                     </div>
 
                     <button type="button"
@@ -74,17 +72,28 @@
                             <option value="">Selecione...</option>
                         </select>
                         <div class="text-xs text-slate-500 mt-1" id="gheProtocoloResumo">—</div>
+                        <div id="gheProtocoloExames" class="mt-2 text-xs text-slate-600 space-y-1"></div>
                     </div>
                 </div>
 
                 <div class="grid md:grid-cols-2 gap-4">
                     <div>
                         <label class="text-xs font-semibold text-slate-600">Funções do GHE</label>
+                        <input id="gheFuncoesFilter" type="text"
+                               class="mt-1 w-full rounded-xl border-slate-200 text-sm px-3 py-2"
+                               placeholder="Buscar função por nome ou descrição">
                         <div id="gheFuncoesList" class="mt-1 max-h-48 overflow-y-auto border border-slate-200 rounded-xl p-3 space-y-2 text-sm">
                             @forelse($funcoes as $funcao)
-                                <label class="flex items-center gap-2">
+                                @php($descricao = trim((string) ($funcao->descricao ?? '')))
+                                @php($search = mb_strtolower(trim($funcao->nome . ' ' . $descricao)))
+                                <label class="flex items-start gap-2" data-search="{{ e($search) }}">
                                     <input type="checkbox" value="{{ $funcao->id }}">
-                                    <span>{{ $funcao->nome }}</span>
+                                    <span>
+                                        <span class="block">{{ $funcao->nome }}</span>
+                                        @if($descricao)
+                                            <span class="block text-xs text-slate-500">{{ $descricao }}</span>
+                                        @endif
+                                    </span>
                                 </label>
                             @empty
                                 <div class="text-sm text-slate-500">Nenhuma função cadastrada.</div>
@@ -179,8 +188,7 @@
     <script>
         (function () {
             const CSRF = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-            const CLIENTES = @json($clientes->map(fn ($c) => ['id' => $c->id, 'nome' => $c->razao_social]));
-            const FUNCOES = @json($funcoes->map(fn ($f) => ['id' => $f->id, 'nome' => $f->nome]));
+            const FUNCOES = @json($funcoes->map(fn ($f) => ['id' => $f->id, 'nome' => $f->nome, 'descricao' => $f->descricao]));
 
             const GHE = {
                 urls: {
@@ -195,7 +203,8 @@
                     modal: document.getElementById('modalGhe'),
                     list: document.getElementById('gheList'),
                     alert: document.getElementById('gheAlert'),
-                    cliente: document.getElementById('gheClienteSelect'),
+                    clienteId: document.getElementById('gheClienteId'),
+                    clienteNome: document.getElementById('gheClienteNome'),
                     modalForm: document.getElementById('modalGheForm'),
                     form: document.getElementById('formGhe'),
                     title: document.getElementById('gheFormTitle'),
@@ -203,7 +212,9 @@
                     nome: document.getElementById('ghe_nome'),
                     protocolo: document.getElementById('ghe_protocolo'),
                     protocoloResumo: document.getElementById('gheProtocoloResumo'),
+                    protocoloExames: document.getElementById('gheProtocoloExames'),
                     funcoesList: document.getElementById('gheFuncoesList'),
+                    funcoesFilter: document.getElementById('gheFuncoesFilter'),
                     baseAdm: document.getElementById('ghe_base_adm'),
                     basePer: document.getElementById('ghe_base_per'),
                     baseDem: document.getElementById('ghe_base_dem'),
@@ -277,10 +288,27 @@
                 const protocolo = protocoloId ? getProtocoloById(protocoloId) : null;
                 if (!protocolo) {
                     GHE.dom.protocoloResumo.textContent = '—';
+                    if (GHE.dom.protocoloExames) {
+                        GHE.dom.protocoloExames.innerHTML = '<div class="text-slate-500">Nenhum exame selecionado.</div>';
+                    }
                     refreshPreviewTotals(0);
                     return;
                 }
                 GHE.dom.protocoloResumo.textContent = `${protocolo.exames.length} exame(s) • ${brl(protocolo.total || 0)}`;
+                if (GHE.dom.protocoloExames) {
+                    if (protocolo.exames?.length) {
+                        GHE.dom.protocoloExames.innerHTML = protocolo.exames.map(ex => {
+                            const titulo = escapeHtml(ex.titulo || 'Exame');
+                            const preco = brl(ex.preco || 0);
+                            return `<div class="flex items-center justify-between gap-2">
+                                <span class="truncate">${titulo}</span>
+                                <span class="text-slate-700 font-semibold">${preco}</span>
+                            </div>`;
+                        }).join('');
+                    } else {
+                        GHE.dom.protocoloExames.innerHTML = '<div class="text-slate-500">Nenhum exame neste protocolo.</div>';
+                    }
+                }
                 refreshPreviewTotals(Number(protocolo.total || 0));
             }
 
@@ -306,10 +334,11 @@
             }
 
             async function loadGhes(){
-                const clienteId = GHE.dom.cliente.value;
+                const clienteId = GHE.dom.clienteId?.value;
                 if(!clienteId) {
                     GHE.state.ghes = [];
                     renderGhes();
+                    notifyGheUpdated();
                     return;
                 }
                 try{
@@ -318,6 +347,7 @@
                     const json = await res.json();
                     GHE.state.ghes = json.data || [];
                     renderGhes();
+                    notifyGheUpdated();
                 } catch(e){
                     console.error(e);
                     alertBox('err','Falha ao carregar GHEs.');
@@ -371,9 +401,24 @@
                 });
             }
 
+            function notifyGheUpdated() {
+                const total = (GHE.state.ghes || []).reduce((sum, ghe) => sum + Number(ghe.total_exames || 0), 0);
+                const hasGhe = (GHE.state.ghes || []).length > 0;
+                window.dispatchEvent(new CustomEvent('ghe:updated', { detail: { hasGhe, total } }));
+            }
+
+            function applyFuncoesFilter(){
+                const query = (GHE.dom.funcoesFilter?.value || '').trim().toLowerCase();
+                const labels = GHE.dom.funcoesList?.querySelectorAll('label[data-search]') || [];
+                labels.forEach(label => {
+                    const hay = label.dataset.search || '';
+                    label.classList.toggle('hidden', query !== '' && !hay.includes(query));
+                });
+            }
+
             async function saveGhe(e){
                 e.preventDefault();
-                const clienteId = GHE.dom.cliente.value;
+                const clienteId = GHE.dom.clienteId?.value;
                 if(!clienteId) return alertBox('err','Selecione um cliente.');
 
                 const payload = {
@@ -443,6 +488,15 @@
                 await loadProtocolos();
                 await loadGhes();
             };
+            window.setGheCliente = function(clienteId, clienteNome){
+                if (GHE.dom.clienteId) {
+                    GHE.dom.clienteId.value = clienteId || '';
+                }
+                if (GHE.dom.clienteNome) {
+                    GHE.dom.clienteNome.value = clienteNome || '';
+                }
+                loadGhes();
+            };
             window.closeGheModal = () => GHE.dom.modal?.classList.add('hidden');
 
             window.openGheForm = async function(ghe){
@@ -463,13 +517,17 @@
                 GHE.dom.fechadoDem.value = ghe?.preco_fechado?.demissional ?? '';
                 GHE.dom.fechadoFun.value = ghe?.preco_fechado?.mudanca_funcao ?? '';
                 GHE.dom.fechadoRet.value = ghe?.preco_fechado?.retorno_trabalho ?? '';
+                if (GHE.dom.funcoesFilter) {
+                    GHE.dom.funcoesFilter.value = '';
+                    applyFuncoesFilter();
+                }
                 updateProtocoloResumo();
             };
             window.closeGheForm = () => GHE.dom.modalForm?.classList.add('hidden');
 
             GHE.dom.form?.addEventListener('submit', saveGhe);
-            GHE.dom.cliente?.addEventListener('change', loadGhes);
             GHE.dom.protocolo?.addEventListener('change', updateProtocoloResumo);
+            GHE.dom.funcoesFilter?.addEventListener('input', applyFuncoesFilter);
             [GHE.dom.baseAdm, GHE.dom.basePer, GHE.dom.baseDem, GHE.dom.baseFun, GHE.dom.baseRet,
              GHE.dom.fechadoAdm, GHE.dom.fechadoPer, GHE.dom.fechadoDem, GHE.dom.fechadoFun, GHE.dom.fechadoRet]
                 .forEach(el => el?.addEventListener('input', () => updateProtocoloResumo()));

@@ -2,11 +2,58 @@
 
 namespace App\Services;
 
+use App\Models\ClienteContrato;
 use App\Models\ClienteGhe;
 use Illuminate\Support\Carbon;
 
 class AsoGheService
 {
+    public function resolveServicoAsoId(int $clienteId, int $empresaId): ?int
+    {
+        $contrato = ClienteContrato::query()
+            ->where('empresa_id', $empresaId)
+            ->where('cliente_id', $clienteId)
+            ->where('status', 'ATIVO')
+            ->with('itens')
+            ->orderByDesc('vigencia_inicio')
+            ->first();
+
+        return $this->resolveServicoAsoIdFromContrato($contrato);
+    }
+
+    public function resolveServicoAsoIdFromContrato(?ClienteContrato $contrato): ?int
+    {
+        if (!$contrato) {
+            return null;
+        }
+
+        $itens = $contrato->relationLoaded('itens') ? $contrato->itens : $contrato->itens()->get();
+        $asoItem = $itens->first(fn ($item) => !empty($item->regras_snapshot['ghes']));
+        if ($asoItem?->servico_id) {
+            return (int) $asoItem->servico_id;
+        }
+
+        if (!$contrato->cliente_id) {
+            return null;
+        }
+
+        $temGhe = ClienteGhe::query()
+            ->where('empresa_id', $contrato->empresa_id)
+            ->where('cliente_id', $contrato->cliente_id)
+            ->where('ativo', true)
+            ->exists();
+        if (!$temGhe) {
+            return null;
+        }
+
+        $asoItem = $itens->first(function ($item) {
+            $descricao = strtoupper((string) ($item->descricao_snapshot ?? ''));
+            return $descricao !== '' && str_contains($descricao, 'ASO');
+        });
+
+        return $asoItem?->servico_id ? (int) $asoItem->servico_id : null;
+    }
+
     public function buildSnapshotForCliente(int $clienteId, int $empresaId): array
     {
         $ghes = ClienteGhe::query()

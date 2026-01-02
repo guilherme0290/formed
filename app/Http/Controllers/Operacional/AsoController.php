@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Anexos;
 use App\Models\AsoSolicitacoes;
 use App\Models\Cliente;
+use App\Models\ClienteGhe;
 use App\Models\Funcao;
 use App\Models\Funcionario;
 use App\Models\KanbanColuna;
@@ -14,11 +15,13 @@ use App\Models\Tarefa;
 use App\Models\TarefaLog;
 use App\Models\TabelaPrecoItem;
 use App\Models\TabelaPrecoPadrao;
+use App\Services\AsoGheService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class AsoController extends Controller
 {
@@ -76,7 +79,12 @@ class AsoController extends Controller
                 ->first()
                 ?? KanbanColuna::where('empresa_id', $empresaId)->orderBy('ordem')->first();
 
-            $servicoAsoId = Servico::where('nome', 'ASO')->value('id');
+            $servicoAsoId = app(AsoGheService::class)->resolveServicoAsoId($cliente->id, $empresaId);
+            if (!$servicoAsoId) {
+                throw ValidationException::withMessages([
+                    'contrato' => 'Não é possível criar a solicitação de ASO porque o contrato ativo não possui serviço vinculado ao GHE.',
+                ]);
+            }
 
             // 3) Monta título e descrição "humana" (mas agora só pra exibir)
             $tipoAsoLabel = match ($data['tipo_aso']) {
@@ -102,6 +110,8 @@ class AsoController extends Controller
                 $funcaoNovaNome = Funcao::find($data['funcao_id'])->nome ?? 'Não informada';
                 $descricao .= " | Mudança de função: {$funcaoAnteriorNome} → {$funcaoNovaNome}";
             }
+
+            $this->assertGheParaFuncao($empresaId, $cliente->id, $funcionario->funcao_id);
 
             if (!empty($data['vai_fazer_treinamento']) && !empty($data['treinamentos'])) {
                 $labels = [];
@@ -345,6 +355,8 @@ class AsoController extends Controller
                 $descricao .= " | Mudança de função: {$funcaoAnteriorNome} → {$funcaoNovaNome}";
             }
 
+            $this->assertGheParaFuncao($empresaId, $cliente->id, $funcionario->funcao_id);
+
             if (!empty($data['vai_fazer_treinamento']) && !empty($treinamentos)) {
                 $labels = [];
                 foreach ($treinamentos as $codigo) {
@@ -461,6 +473,42 @@ class AsoController extends Controller
             'unidadeSelecionada'       => $unidadeSelecionada,
             'anexos'                   => collect(),
         ]);
+    }
+
+    private function assertGheParaFuncao(int $empresaId, int $clienteId, ?int $funcaoId): void
+    {
+        $temGhe = ClienteGhe::query()
+            ->where('empresa_id', $empresaId)
+            ->where('cliente_id', $clienteId)
+            ->where('ativo', true)
+            ->exists();
+
+        if (!$temGhe) {
+            throw ValidationException::withMessages([
+                'ghe' => 'Não é possível criar a solicitação de ASO porque o cliente não possui GHE cadastrado. Cadastre o GHE do cliente e tente novamente.',
+            ]);
+        }
+
+        if (!$funcaoId) {
+            throw ValidationException::withMessages([
+                'funcao_id' => 'Informe a função do colaborador para precificação do ASO via GHE.',
+            ]);
+        }
+
+        $temGheFuncao = ClienteGhe::query()
+            ->where('empresa_id', $empresaId)
+            ->where('cliente_id', $clienteId)
+            ->where('ativo', true)
+            ->whereHas('funcoes', function ($q) use ($funcaoId) {
+                $q->where('funcao_id', $funcaoId);
+            })
+            ->exists();
+
+        if (!$temGheFuncao) {
+            throw ValidationException::withMessages([
+                'ghe' => 'Não existe GHE precificado para a função informada. Ajuste o GHE do cliente antes de criar a solicitação.',
+            ]);
+        }
     }
 
     private function normalizeTreinamentosInput(Request $request): void

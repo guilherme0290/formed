@@ -174,7 +174,7 @@ class PropostaPrecoController extends Controller
     public function esocialPreco(Request $request)
     {
         $empresaId = auth()->user()->empresa_id;
-        $qtd = (int)$request->query('qtd', 0);
+        $qtd = (int)($request->route('qtd') ?? $request->query('qtd', 0));
 
         if ($qtd <= 0) {
             return response()->json(['data' => ['qtd' => $qtd, 'preco' => 0, 'faixa' => null]]);

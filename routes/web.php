@@ -27,6 +27,7 @@ use App\Http\Controllers\Operacional\PaeController;
 use App\Http\Controllers\Operacional\TreinamentoNrController;
 use App\Http\Controllers\Comercial\TreinamentoNrController as ComercialTreinamentoNrController;
 use App\Http\Controllers\FuncaoController;
+use App\Http\Controllers\PropostaPublicController;
 use App\Http\Controllers\TarefaController;
 use App\Http\Controllers\AnexoController;
 use Illuminate\Support\Facades\Route;
@@ -44,6 +45,12 @@ use \App\Http\Controllers\Comercial\PropostaController;
 Route::get('/entrar', function () {
     return view('entrar');
 })->name('entrar');
+
+// Proposta pública (sem login)
+Route::get('/proposta/{token}', [PropostaPublicController::class, 'show'])
+    ->name('propostas.public.show');
+Route::post('/proposta/{token}/responder', [PropostaPublicController::class, 'responder'])
+    ->name('propostas.public.responder');
 
 // ==================== Raiz -> Master ====================
 Route::redirect('/', '/entrar');
@@ -299,6 +306,43 @@ Route::middleware('auth')->group(function () {
     // ======================================================
    //                  CLIENTE (PAINEL)
    // ======================================================
+    $portalServicoPermitido = function (int $clienteId, string $servicoNome): bool {
+        $cliente = \App\Models\Cliente::find($clienteId);
+        if (!$cliente) {
+            return false;
+        }
+
+        $servicoId = \App\Models\Servico::where('empresa_id', $cliente->empresa_id)
+            ->where('nome', $servicoNome)
+            ->value('id');
+
+        if (!$servicoId) {
+            return false;
+        }
+
+        $hoje = now()->toDateString();
+        $contrato = \App\Models\ClienteContrato::query()
+            ->where('empresa_id', $cliente->empresa_id)
+            ->where('cliente_id', $cliente->id)
+            ->where('status', 'ATIVO')
+            ->where(function ($q) use ($hoje) {
+                $q->whereNull('vigencia_inicio')->orWhereDate('vigencia_inicio', '<=', $hoje);
+            })
+            ->where(function ($q) use ($hoje) {
+                $q->whereNull('vigencia_fim')->orWhereDate('vigencia_fim', '>=', $hoje);
+            })
+            ->first();
+
+        if (!$contrato) {
+            return false;
+        }
+
+        return $contrato->itens()
+            ->where('servico_id', $servicoId)
+            ->where('ativo', true)
+            ->where('preco_unitario_snapshot', '>', 0)
+            ->exists();
+    };
     Route::prefix('cliente')
         ->name('cliente.')
         ->group(function () {
@@ -339,6 +383,12 @@ Route::middleware('auth')->group(function () {
 
                 $cliente = Cliente::findOrFail($clienteId);
 
+                if (!$portalServicoPermitido($clienteId, 'ASO')) {
+                    return redirect()
+                        ->route('cliente.dashboard')
+                        ->with('error', 'Serviço ASO não disponível no contrato ativo.');
+                }
+
                 // 🔹 Passa origem=cliente para a tela de ASO
                 return redirect()->route('operacional.kanban.aso.create', [
                     'cliente' => $cliente,
@@ -351,6 +401,12 @@ Route::middleware('auth')->group(function () {
             Route::get('/servicos/pgr', function (Request $request) {
                 $clienteId = session('portal_cliente_id');
                 $cliente   = Cliente::findOrFail($clienteId);
+
+                if (!$portalServicoPermitido($clienteId, 'PGR')) {
+                    return redirect()
+                        ->route('cliente.dashboard')
+                        ->with('error', 'Serviço PGR não disponível no contrato ativo.');
+                }
 
                 // adiciona ?origem=cliente na URL
                 return redirect()->route('operacional.kanban.pgr.tipo', [
@@ -365,6 +421,12 @@ Route::middleware('auth')->group(function () {
                 $clienteId = session('portal_cliente_id');
                 $cliente   = Cliente::findOrFail($clienteId);
 
+                if (!$portalServicoPermitido($clienteId, 'PCMSO')) {
+                    return redirect()
+                        ->route('cliente.dashboard')
+                        ->with('error', 'Serviço PCMSO não disponível no contrato ativo.');
+                }
+
                 return redirect()->route('operacional.pcmso.tipo', [
                     'cliente' => $cliente,
                     'origem'  => 'cliente',
@@ -378,6 +440,12 @@ Route::middleware('auth')->group(function () {
                 $clienteId = session('portal_cliente_id');
                 $cliente   = Cliente::findOrFail($clienteId);
 
+                if (!$portalServicoPermitido($clienteId, 'LTCAT')) {
+                    return redirect()
+                        ->route('cliente.dashboard')
+                        ->with('error', 'Serviço LTCAT não disponível no contrato ativo.');
+                }
+
                 return redirect()->route('operacional.ltcat.tipo', [
                     'cliente' => $cliente->id,
                     'origem'  => 'cliente',
@@ -390,6 +458,12 @@ Route::middleware('auth')->group(function () {
                 $clienteId = session('portal_cliente_id');
                 $cliente   = Cliente::findOrFail($clienteId);
 
+                if (!$portalServicoPermitido($clienteId, 'APR')) {
+                    return redirect()
+                        ->route('cliente.dashboard')
+                        ->with('error', 'Serviço APR não disponível no contrato ativo.');
+                }
+
                 return redirect()->route('operacional.apr.create', [
                     'cliente' => $cliente->id,
                     'origem'  => 'cliente',
@@ -401,6 +475,12 @@ Route::middleware('auth')->group(function () {
             Route::get('/servicos/treinamentos', function () {
                 $clienteId = session('portal_cliente_id');
                 $cliente   = \App\Models\Cliente::findOrFail($clienteId);
+
+                if (!$portalServicoPermitido($clienteId, 'Treinamentos NRs')) {
+                    return redirect()
+                        ->route('cliente.dashboard')
+                        ->with('error', 'Serviço Treinamentos NRs não disponível no contrato ativo.');
+                }
 
                 return redirect()->route('operacional.treinamentos-nr.create', [
                     'cliente' => $cliente->id,
@@ -540,8 +620,10 @@ Route::middleware('auth')->group(function () {
             Route::get('/propostas/preco-treinamento/{codigo}', [PropostaPrecoController::class, 'precoTreinamento'])
                 ->name('propostas.preco-treinamento');
 
-            Route::get('/propostas/esocial-preco', [PropostaPrecoController::class, 'esocialPreco'])
+            Route::get('/propostas/esocial-preco/{qtd}', [PropostaPrecoController::class, 'esocialPreco'])
                 ->name('propostas.esocial-preco');
+
+
 
             Route::get('/propostas/treinamentos-nrs.json', [PropostaPrecoController::class, 'treinamentosJson'])
                 ->name('propostas.treinamentos-nrs.json');

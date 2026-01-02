@@ -129,6 +129,11 @@ class ClienteDashboardController extends Controller
 
     private function servicoIdPorTipo(Cliente $cliente, string $tipo): ?int
     {
+        if (mb_strtolower($tipo) === 'aso') {
+            return app(\App\Services\AsoGheService::class)
+                ->resolveServicoAsoId($cliente->id, $cliente->empresa_id);
+        }
+
         return Servico::query()
             ->where('empresa_id', $cliente->empresa_id)
             ->whereRaw('LOWER(tipo) = ?', [mb_strtolower($tipo)])
@@ -212,8 +217,12 @@ class ClienteDashboardController extends Controller
 
     private function servicosIdsContrato(Cliente $cliente): array
     {
+        $servicosIds = [
+            'aso' => app(\App\Services\AsoGheService::class)
+                ->resolveServicoAsoId($cliente->id, $cliente->empresa_id),
+        ];
+
         $tipos = [
-            'aso' => ['aso', 'aso'],
             'pgr' => ['pgr', 'pgr'],
             'pcmso' => ['pcmso', 'pcmso'],
             'ltcat' => ['ltcat', 'ltcat'],
@@ -221,7 +230,6 @@ class ClienteDashboardController extends Controller
             'treinamentos' => ['treinamento', 'treinamentos nrs'],
         ];
 
-        $servicosIds = [];
         foreach ($tipos as $slug => $variants) {
             $variants = array_map(fn ($v) => mb_strtolower($v), $variants);
             $id = Servico::query()
@@ -260,8 +268,11 @@ class ClienteDashboardController extends Controller
             ? $contratoAtivo->itens->pluck('servico_id')->filter()->unique()->values()->all()
             : [];
 
+        $asoServicoId = $contratoAtivo?->itens
+            ->first(fn ($item) => !empty($item->regras_snapshot['ghes']))
+            ?->servico_id;
+
         $tipos = [
-            'aso' => ['aso', 'aso'],
             'pgr' => ['pgr', 'pgr'],
             'pcmso' => ['pcmso', 'pcmso'],
             'ltcat' => ['ltcat', 'ltcat'],
@@ -271,7 +282,9 @@ class ClienteDashboardController extends Controller
             'treinamentos' => ['treinamento', 'treinamentos nrs'],
         ];
 
-        $servicosIds = [];
+        $servicosIds = [
+            'aso' => $asoServicoId ? (int) $asoServicoId : null,
+        ];
         foreach ($tipos as $slug => $variants) {
             $variants = array_map(fn ($v) => mb_strtolower($v), $variants);
             $id = Servico::query()

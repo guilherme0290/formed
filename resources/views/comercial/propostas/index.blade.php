@@ -58,13 +58,10 @@
                                 $statusAtual = strtoupper((string) request('status', 'TODOS'));
                             @endphp
                             <option value="TODOS" @selected($statusAtual === 'TODOS')>Todos</option>
-                            <option value="RASCUNHO" @selected($statusAtual === 'RASCUNHO')>Rascunho</option>
+                            <option value="PENDENTE" @selected($statusAtual === 'PENDENTE')>Pendente</option>
                             <option value="ENVIADA" @selected($statusAtual === 'ENVIADA')>Enviada</option>
                             <option value="FECHADA" @selected($statusAtual === 'FECHADA')>Fechada</option>
                             <option value="CANCELADA" @selected($statusAtual === 'CANCELADA')>Cancelada</option>
-                            <option value="APROVADA" @selected($statusAtual === 'APROVADA')>Aprovada</option>
-                            <option value="RECUSADA" @selected($statusAtual === 'RECUSADA')>Recusada</option>
-                            <option value="EXPIRADA" @selected($statusAtual === 'EXPIRADA')>Expirada</option>
                         </select>
                     </div>
 
@@ -100,13 +97,10 @@
                             $status = strtoupper((string) ($proposta->status ?? ''));
 
                             $badgeByStatus = [
-                                'RASCUNHO' => 'bg-slate-100 text-slate-700 border-slate-200',
+                                'PENDENTE' => 'bg-amber-50 text-amber-800 border-amber-200',
                                 'ENVIADA'  => 'bg-blue-50 text-blue-700 border-blue-200',
-                                'APROVADA' => 'bg-emerald-50 text-emerald-700 border-emerald-200',
                                 'FECHADA'  => 'bg-emerald-50 text-emerald-800 border-emerald-200',
-                                'RECUSADA' => 'bg-red-50 text-red-700 border-red-200',
                                 'CANCELADA' => 'bg-red-50 text-red-700 border-red-200',
-                                'EXPIRADA' => 'bg-amber-50 text-amber-800 border-amber-200',
                             ];
                             $badge = $badgeByStatus[$status] ?? 'bg-slate-100 text-slate-700 border-slate-200';
                         @endphp
@@ -409,30 +403,24 @@
                 const statusHelp = document.getElementById('statusHelp');
                 const statusSubmit = document.getElementById('statusSubmit');
                 const statusTransitions = {
-                    'RASCUNHO': ['RASCUNHO', 'ENVIADA'],
+                    'PENDENTE': ['PENDENTE', 'ENVIADA', 'CANCELADA'],
                     'ENVIADA': ['ENVIADA', 'FECHADA', 'CANCELADA'],
                 };
                 const badgeClassByStatus = {
-                    'RASCUNHO': 'bg-slate-100 text-slate-700 border-slate-200',
+                    'PENDENTE': 'bg-amber-50 text-amber-800 border-amber-200',
                     'ENVIADA': 'bg-blue-50 text-blue-700 border-blue-200',
                     'FECHADA': 'bg-emerald-50 text-emerald-800 border-emerald-200',
-                    'APROVADA': 'bg-emerald-50 text-emerald-700 border-emerald-200',
-                    'RECUSADA': 'bg-red-50 text-red-700 border-red-200',
                     'CANCELADA': 'bg-red-50 text-red-700 border-red-200',
-                    'EXPIRADA': 'bg-amber-50 text-amber-800 border-amber-200',
                 };
                 const badgeBaseClass = 'inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold border hover:shadow-sm transition';
                 let statusTrigger = null;
 
                 function formatStatusLabel(status) {
                     const map = {
-                        'RASCUNHO': 'Rascunho',
+                        'PENDENTE': 'Pendente',
                         'ENVIADA': 'Enviada',
                         'FECHADA': 'Fechada',
-                        'APROVADA': 'Aprovada',
-                        'RECUSADA': 'Recusada',
                         'CANCELADA': 'Cancelada',
-                        'EXPIRADA': 'Expirada',
                     };
                     return map[status] || status || '—';
                 }
@@ -520,7 +508,7 @@
                         if (statusTrigger) {
                             statusTrigger.dataset.status = novoStatus;
                             statusTrigger.textContent = novoStatus || '—';
-                            const cls = badgeClassByStatus[novoStatus] || badgeClassByStatus['RASCUNHO'];
+                            const cls = badgeClassByStatus[novoStatus] || badgeClassByStatus['PENDENTE'];
                             statusTrigger.className = `${badgeBaseClass} ${cls}`;
                         }
 

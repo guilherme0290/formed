@@ -27,7 +27,7 @@
 </head>
 <body>
     @php
-        $status = strtoupper((string) ($proposta->status ?? 'RASCUNHO'));
+        $status = strtoupper((string) ($proposta->status ?? 'PENDENTE'));
     @endphp
 
     <div class="header">
@@ -91,6 +91,32 @@
                     <td class="right">R$ {{ number_format($item->valor_total, 2, ',', '.') }}</td>
                 </tr>
             @endforeach
+{{--            @if(!empty($gheSnapshot['ghes']))--}}
+{{--                @foreach($gheSnapshot['ghes'] as $ghe)--}}
+{{--                    @php--}}
+{{--                        $totais = $ghe['total_por_tipo'] ?? [];--}}
+{{--                    @endphp--}}
+{{--                    <tr>--}}
+{{--                        <td>--}}
+{{--                            <div style="font-weight: bold;">GHE - {{ $ghe['nome'] ?? '—' }}</div>--}}
+{{--                            <div style="color: #6b7280; font-size: 10px;">{{ $ghe['protocolo']['titulo'] ?? 'Sem protocolo' }}</div>--}}
+{{--                            <div style="color: #6b7280; font-size: 10px;">--}}
+{{--                                Admissional: R$ {{ number_format((float) ($totais['admissional'] ?? 0), 2, ',', '.') }} ·--}}
+{{--                                Periódico: R$ {{ number_format((float) ($totais['periodico'] ?? 0), 2, ',', '.') }} ·--}}
+{{--                                Demissional: R$ {{ number_format((float) ($totais['demissional'] ?? 0), 2, ',', '.') }}--}}
+{{--                            </div>--}}
+{{--                            <div style="color: #6b7280; font-size: 10px;">--}}
+{{--                                Mudança: R$ {{ number_format((float) ($totais['mudanca_funcao'] ?? 0), 2, ',', '.') }} ·--}}
+{{--                                Retorno: R$ {{ number_format((float) ($totais['retorno_trabalho'] ?? 0), 2, ',', '.') }}--}}
+{{--                            </div>--}}
+{{--                        </td>--}}
+{{--                        <td>—</td>--}}
+{{--                        <td class="right">1</td>--}}
+{{--                        <td class="right">R$ {{ number_format((float) ($ghe['total_exames'] ?? 0), 2, ',', '.') }}</td>--}}
+{{--                        <td class="right">R$ {{ number_format((float) ($ghe['total_exames'] ?? 0), 2, ',', '.') }}</td>--}}
+{{--                    </tr>--}}
+{{--                @endforeach--}}
+{{--            @endif--}}
             </tbody>
         </table>
     </div>

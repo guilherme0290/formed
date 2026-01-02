@@ -11,12 +11,14 @@ class Proposta extends Model
         'cliente_id',
         'vendedor_id',
         'codigo',
+        'public_token',
         'forma_pagamento',
         'incluir_esocial',
         'esocial_qtd_funcionarios',
         'esocial_valor_mensal',
         'valor_total',
         'status',
+        'public_responded_at',
         'pipeline_status',
         'pipeline_updated_at',
         'pipeline_updated_by',
@@ -30,6 +32,7 @@ class Proposta extends Model
         'esocial_valor_mensal'  => 'decimal:2',
         'valor_total'           => 'decimal:2',
         'pipeline_updated_at'   => 'datetime',
+        'public_responded_at'   => 'datetime',
     ];
 
     public function empresa()

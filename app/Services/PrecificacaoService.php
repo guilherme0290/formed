@@ -4,11 +4,11 @@ namespace App\Services;
 
 use App\Models\ClienteContrato;
 use App\Models\ClienteContratoItem;
+use App\Models\Tarefa;
+use App\Models\Funcionario;
 use App\Models\TabelaPrecoItem;
 use App\Models\TabelaPrecoPadrao;
-use App\Models\Tarefa;
-use App\Models\Servico;
-use App\Models\Funcionario;
+use App\Models\TreinamentoNrDetalhes;
 use Carbon\Carbon;
 use Illuminate\Validation\ValidationException;
 
@@ -44,6 +44,12 @@ class PrecificacaoService
             ]);
         }
 
+        if ((float) $item->preco_unitario_snapshot <= 0) {
+            throw ValidationException::withMessages([
+                'contrato' => 'Não é possível concluir esta tarefa porque o serviço não possui valor válido no contrato ativo.',
+            ]);
+        }
+
         return ['contrato' => $contrato, 'item' => $item];
     }
 
@@ -73,6 +79,12 @@ class PrecificacaoService
             ]);
         }
 
+        if ((float) $itemContrato->preco_unitario_snapshot <= 0) {
+            throw ValidationException::withMessages([
+                'contrato' => 'Não é possível concluir esta tarefa porque o serviço não possui valor válido no contrato ativo.',
+            ]);
+        }
+
         $aso = $tarefa->asoSolicitacao;
         if (!$aso) {
             throw ValidationException::withMessages([
@@ -80,76 +92,107 @@ class PrecificacaoService
             ]);
         }
 
-        if (!empty($itemContrato->regras_snapshot['ghes'])) {
-            $funcionario = $tarefa->funcionario ?: Funcionario::find($tarefa->funcionario_id);
-            $funcaoId = $funcionario?->funcao_id;
-
-            if (!$funcaoId) {
-                throw ValidationException::withMessages([
-                    'contrato' => 'Funcionário sem função definida para precificação do ASO.',
-                ]);
-            }
-
-            $map = $itemContrato->regras_snapshot['funcao_ghe_map'] ?? [];
-            $gheId = $map[(string) $funcaoId] ?? null;
-            $ghes = $itemContrato->regras_snapshot['ghes'] ?? [];
-
-            $gheSnapshot = null;
-            foreach ($ghes as $ghe) {
-                if ((int) ($ghe['id'] ?? 0) === (int) $gheId) {
-                    $gheSnapshot = $ghe;
-                    break;
-                }
-            }
-
-            if (!$gheSnapshot) {
-                throw ValidationException::withMessages([
-                    'contrato' => 'GHE não definido para a função do funcionário.',
-                ]);
-            }
-
-            $tipoAso = $aso->tipo_aso;
-            $totalPorTipo = $gheSnapshot['total_por_tipo'] ?? [];
-            $basePorTipo = $gheSnapshot['base'] ?? [];
-            $totalExames = (float) ($gheSnapshot['total_exames'] ?? 0);
-
-            $preco = $totalPorTipo[$tipoAso] ?? (($basePorTipo[$tipoAso] ?? 0) + $totalExames);
-
-            $tipoAsoLabel = match ($tipoAso) {
-                'admissional' => 'Admissional',
-                'periodico' => 'Periódico',
-                'demissional' => 'Demissional',
-                'mudanca_funcao' => 'Mudança de Função',
-                'retorno_trabalho' => 'Retorno ao Trabalho',
-                default => 'ASO',
-            };
-
-            $descricao = trim('ASO ' . $tipoAsoLabel . ' - ' . ($gheSnapshot['nome'] ?? 'GHE'));
-
-            return [
-                'contrato' => $contrato,
-                'itemContrato' => $itemContrato,
-                'itensVenda' => [[
-                    'servico_id' => $tarefa->servico_id,
-                    'descricao_snapshot' => $descricao,
-                    'preco_unitario_snapshot' => (float) $preco,
-                    'quantidade' => 1,
-                ]],
-            ];
+        if (empty($itemContrato->regras_snapshot['ghes'])) {
+            throw ValidationException::withMessages([
+                'contrato' => 'Não é possível precificar o ASO porque o contrato não possui GHE definido. Cadastre o GHE do cliente e atualize o contrato.',
+            ]);
         }
 
-        $codigoAso = match ($aso->tipo_aso) {
-            'admissional' => 'ASO-ADM',
-            'demissional' => 'ASO-DEM',
-            'periodico' => 'ASO-PER',
-            'mudanca_funcao' => 'ASO-FUN',
-            'retorno_trabalho' => 'ASO-TRA',
-            default => null,
+        $funcionario = $tarefa->funcionario ?: Funcionario::find($tarefa->funcionario_id);
+        $funcaoId = $funcionario?->funcao_id;
+
+        if (!$funcaoId) {
+            throw ValidationException::withMessages([
+                'contrato' => 'Funcionário sem função definida para precificação do ASO por GHE.',
+            ]);
+        }
+
+        $map = $itemContrato->regras_snapshot['funcao_ghe_map'] ?? [];
+        $gheId = $map[(string) $funcaoId] ?? null;
+        $ghes = $itemContrato->regras_snapshot['ghes'] ?? [];
+
+        $gheSnapshot = null;
+        foreach ($ghes as $ghe) {
+            if ((int) ($ghe['id'] ?? 0) === (int) $gheId) {
+                $gheSnapshot = $ghe;
+                break;
+            }
+        }
+
+        if (!$gheSnapshot) {
+            throw ValidationException::withMessages([
+                'contrato' => 'Não existe GHE precificado para a função do funcionário. Ajuste o GHE do cliente e atualize o contrato.',
+            ]);
+        }
+
+        $tipoAso = $aso->tipo_aso;
+        $totalPorTipo = $gheSnapshot['total_por_tipo'] ?? [];
+        $basePorTipo = $gheSnapshot['base'] ?? [];
+        $totalExames = (float) ($gheSnapshot['total_exames'] ?? 0);
+
+        $preco = $totalPorTipo[$tipoAso] ?? (($basePorTipo[$tipoAso] ?? 0) + $totalExames);
+
+        $tipoAsoLabel = match ($tipoAso) {
+            'admissional' => 'Admissional',
+            'periodico' => 'Periódico',
+            'demissional' => 'Demissional',
+            'mudanca_funcao' => 'Mudança de Função',
+            'retorno_trabalho' => 'Retorno ao Trabalho',
+            default => 'ASO',
         };
 
-        if (!$codigoAso) {
+        $descricao = trim('ASO ' . $tipoAsoLabel . ' - ' . ($gheSnapshot['nome'] ?? 'GHE'));
+
+        return [
+            'contrato' => $contrato,
+            'itemContrato' => $itemContrato,
+            'itensVenda' => [[
+                'servico_id' => $tarefa->servico_id,
+                'descricao_snapshot' => $descricao,
+                'preco_unitario_snapshot' => (float) $preco,
+                'quantidade' => 1,
+            ]],
+        ];
+    }
+
+    /**
+     * Precifica Treinamentos NRs usando tabela_preco_items por código.
+     *
+     * @return array{contrato: ClienteContrato, itemContrato: ClienteContratoItem, itensVenda: array<int, array<string, mixed>>}
+     */
+    public function precificarTreinamentosNr(Tarefa $tarefa): array
+    {
+        $contrato = $this->contratoClienteService->getContratoAtivo($tarefa->cliente_id, $tarefa->empresa_id, null);
+
+        if (!$contrato) {
             throw ValidationException::withMessages([
-                'contrato' => 'Tipo de ASO inválido para precificação.',
+                'contrato' => 'Não é possível concluir esta tarefa porque o cliente não possui contrato ativo.',
+            ]);
+        }
+
+        $itemContrato = $contrato->itens()
+            ->where('servico_id', $tarefa->servico_id)
+            ->where('ativo', true)
+            ->first();
+
+        if (!$itemContrato) {
+            throw ValidationException::withMessages([
+                'contrato' => 'Não é possível concluir esta tarefa porque o cliente não possui preço definido para este serviço na proposta/contrato ativo. Solicite ao Comercial para ajustar a proposta e fechar novamente, ou cadastrar o valor do serviço no contrato do cliente.',
+            ]);
+        }
+
+        if ((float) $itemContrato->preco_unitario_snapshot <= 0) {
+            throw ValidationException::withMessages([
+                'contrato' => 'Não é possível concluir esta tarefa porque o serviço não possui valor válido no contrato ativo.',
+            ]);
+        }
+
+        $detalhes = TreinamentoNrDetalhes::where('tarefa_id', $tarefa->id)->first();
+        $treinamentos = array_values($detalhes?->treinamentos ?? []);
+
+        if (empty($treinamentos)) {
+            throw ValidationException::withMessages([
+                'contrato' => 'Treinamento sem NRs informadas para precificação.',
             ]);
         }
 
@@ -163,66 +206,37 @@ class PrecificacaoService
             ]);
         }
 
-        $itemAso = TabelaPrecoItem::query()
+        $itensTreinamentos = TabelaPrecoItem::query()
             ->where('tabela_preco_padrao_id', $padrao->id)
             ->where('servico_id', $tarefa->servico_id)
-            ->where('codigo', $codigoAso)
+            ->whereIn('codigo', $treinamentos)
             ->where('ativo', true)
-            ->first();
+            ->get();
 
-        if (!$itemAso) {
+        $encontrados = $itensTreinamentos->pluck('codigo')->all();
+        $faltantes = array_values(array_diff($treinamentos, $encontrados));
+
+        if (!empty($faltantes)) {
             throw ValidationException::withMessages([
-                'contrato' => 'Preço do ASO não encontrado na tabela de preços. Verifique o código ' . $codigoAso . '.',
+                'contrato' => 'Treinamento(s) sem preço definido na tabela: ' . implode(', ', $faltantes) . '.',
             ]);
         }
 
-        $itensVenda = [[
-            'servico_id' => $tarefa->servico_id,
-            'descricao_snapshot' => $itemAso->descricao ?? $codigoAso,
-            'preco_unitario_snapshot' => (float) $itemAso->preco,
-            'quantidade' => 1,
-        ]];
-
-        $treinamentos = array_values($aso->treinamentos ?? []);
-        if (!empty($treinamentos)) {
-            $treinamentoServicoId = (int) (config('services.treinamento_id') ?? 0);
-            if ($treinamentoServicoId <= 0) {
-                $treinamentoServicoId = (int) Servico::where('empresa_id', $tarefa->empresa_id)
-                    ->where('nome', 'Treinamentos NRs')
-                    ->value('id');
-            }
-
-            if ($treinamentoServicoId <= 0) {
+        $itensVenda = [];
+        foreach ($itensTreinamentos as $item) {
+            if ((float) $item->preco <= 0) {
                 throw ValidationException::withMessages([
-                    'contrato' => 'Serviço de Treinamentos NRs não configurado para esta empresa.',
+                    'contrato' => 'Treinamento sem preço válido na tabela: ' . ($item->codigo ?? 'NR') . '.',
                 ]);
             }
 
-            $itensTreinamentos = TabelaPrecoItem::query()
-                ->where('tabela_preco_padrao_id', $padrao->id)
-                ->where('servico_id', $treinamentoServicoId)
-                ->whereIn('codigo', $treinamentos)
-                ->where('ativo', true)
-                ->get();
-
-            $encontrados = $itensTreinamentos->pluck('codigo')->all();
-            $faltantes = array_values(array_diff($treinamentos, $encontrados));
-
-            if (!empty($faltantes)) {
-                throw ValidationException::withMessages([
-                    'contrato' => 'Treinamento(s) sem preço definido na tabela: ' . implode(', ', $faltantes) . '.',
-                ]);
-            }
-
-            foreach ($itensTreinamentos as $item) {
-                $descricao = trim(($item->codigo ?? '') . ' - ' . ($item->descricao ?? ''));
-                $itensVenda[] = [
-                    'servico_id' => $treinamentoServicoId,
-                    'descricao_snapshot' => $descricao ?: ($item->codigo ?? 'Treinamento'),
-                    'preco_unitario_snapshot' => (float) $item->preco,
-                    'quantidade' => 1,
-                ];
-            }
+            $descricao = trim(($item->codigo ?? '') . ' - ' . ($item->descricao ?? ''));
+            $itensVenda[] = [
+                'servico_id' => $tarefa->servico_id,
+                'descricao_snapshot' => $descricao ?: ($item->codigo ?? 'Treinamento'),
+                'preco_unitario_snapshot' => (float) $item->preco,
+                'quantidade' => 1,
+            ];
         }
 
         return [

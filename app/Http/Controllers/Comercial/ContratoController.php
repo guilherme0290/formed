@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ClienteContrato;
 use App\Models\ClienteContratoLog;
 use App\Models\ClienteContratoVigencia;
+use App\Services\AsoGheService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -206,6 +207,19 @@ class ContratoController extends Controller
                 $item->update([
                     'preco_unitario_snapshot' => $novoPreco,
                 ]);
+            }
+
+            $asoServicoId = app(AsoGheService::class)->resolveServicoAsoIdFromContrato($contrato);
+            if ($asoServicoId) {
+                $asoItem = $contrato->itens()->where('servico_id', $asoServicoId)->first();
+                if ($asoItem) {
+                    $asoSnapshot = app(AsoGheService::class)
+                        ->buildSnapshotForCliente($contrato->cliente_id, $empresaId);
+                    if (empty($asoSnapshot['ghes'])) {
+                        $asoSnapshot = null;
+                    }
+                    $asoItem->update(['regras_snapshot' => $asoSnapshot]);
+                }
             }
 
             ClienteContratoLog::create([
