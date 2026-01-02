@@ -108,6 +108,8 @@
                                     name="nf_funcao_id"
                                     field-id="nf_funcao_id"
                                     label="Função"
+                                    help-text="Funções listadas por GHE, pré-configuradas pelo vendedor/comercial."
+                                    :allowCreate="false"
                                     :funcoes="$funcoes"
                                     :selected="null"
                                 />

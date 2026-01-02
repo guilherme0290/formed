@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Operacional;
 
 use App\Http\Controllers\Controller;
 use App\Models\Cliente;
-use App\Models\Funcao;
+use App\Services\AsoGheService;
 use App\Models\Funcionario;
 use App\Models\KanbanColuna;
 use App\Models\Servico;
@@ -32,9 +32,8 @@ class TreinamentoNrController extends Controller
             ->orderBy('nome')
             ->get();
 
-        $funcoes = Funcao::where('empresa_id', $empresaId)
-            ->orderBy('nome')
-            ->get();
+        $funcoes = app(AsoGheService::class)
+            ->funcoesDisponiveisParaCliente($empresaId, $cliente->id);
 
         // Unidades da FORMED (ou o que fizer sentido aí)
         $unidades = UnidadeClinica::where('empresa_id', $empresaId)->orderBy('nome')->get();
@@ -203,9 +202,8 @@ class TreinamentoNrController extends Controller
             ->orderBy('nome')
             ->get();
 
-        $funcoes = Funcao::where('empresa_id', $empresaId)
-            ->orderBy('nome')
-            ->get();
+        $funcoes = app(AsoGheService::class)
+            ->funcoesDisponiveisParaCliente($empresaId, $cliente->id);
 
         $unidades = UnidadeClinica::where('empresa_id', $empresaId)->orderBy('nome')->get();
 

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\ClientesApiController;
 use App\Http\Controllers\Api\ServicosApiController;
+use App\Http\Controllers\Cliente\ArquivoController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\Comercial\EsocialFaixaController;
 use App\Http\Controllers\Comercial\ExamesTabPrecoController;
@@ -11,6 +12,7 @@ use App\Http\Controllers\Comercial\PropostaPrecoController;
 use App\Http\Controllers\Master\AcessosController;
 use App\Http\Controllers\Master\DashboardController as DashboardMaster;
 use App\Http\Controllers\Comercial\DashboardController as DashboardComercial;
+use App\Http\Controllers\Comercial\FuncoesController as ComercialFuncoesController;
 use App\Http\Controllers\Operacional\AsoController;
 use App\Http\Controllers\Operacional\FuncionarioController;
 use App\Http\Controllers\Operacional\LtipController;
@@ -30,6 +32,7 @@ use App\Http\Controllers\FuncaoController;
 use App\Http\Controllers\PropostaPublicController;
 use App\Http\Controllers\TarefaController;
 use App\Http\Controllers\AnexoController;
+use App\Models\Servico;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Cliente\ClienteDashboardController;
 use App\Http\Controllers\Cliente\ClienteFuncionarioController;
@@ -64,8 +67,8 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     // ======================================================
-//                  OPERACIONAL
-// ======================================================
+    //                  OPERACIONAL
+    // ======================================================
     Route::prefix('operacional')->name('operacional.')->group(function () {
 
         // ======================================================
@@ -80,22 +83,40 @@ Route::middleware('auth')->group(function () {
         Route::post('/funcoes/store-ajax', [FuncaoController::class, 'storeAjax'])
             ->name('funcoes.store-ajax');
 
-        // Drag & Drop Kanban
-        Route::post('/tarefas/{tarefa}/mover', [PainelController::class, 'mover'])
-            ->name('tarefas.mover');
+        Route::prefix('tarefas')->name('tarefas.')->group(function () {
+            // Drag & Drop Kanban
+            Route::post('{tarefa}/mover', [PainelController::class, 'mover'])
+                ->name('mover');
 
-        Route::post('/tarefas/{tarefa}/observacao', [
-            PainelController::class,
-            'salvarObservacao'
-        ])->name('tarefas.observacao');
+            Route::post('{tarefa}/observacao', [
+                PainelController::class,
+                'salvarObservacao'
+            ])->name('observacao');
 
-        Route::delete('/tarefas/{tarefa}', [PainelController::class, 'destroy'])
-            ->name('operacional.tarefas.destroy');
+            Route::delete('{tarefa}', [PainelController::class, 'destroy'])
+                ->name('destroy');
 
+            Route::post('{tarefa}/finalizar-com-arquivo',
+                [TarefaController::class, 'finalizarComArquivo']
+            )->name('finalizar-com-arquivo');
 
-        Route::post('/tarefas/{tarefa}/finalizar-com-arquivo',
-            [TarefaController::class, 'finalizarComArquivo']
-        )->name('tarefas.finalizar-com-arquivo');
+            Route::post('{tarefa}/anexos', [AnexoController::class, 'store'])
+                ->name('anexos.store');
+
+            Route::get('detalhes/ajax', [PainelController::class, 'detalhesAjax'])
+                ->name('detalhes.ajax');
+        });
+
+        Route::prefix('anexos')->name('anexos.')->group(function () {
+            Route::get('{anexo}/view', [AnexoController::class, 'view'])
+                ->name('view');
+
+            Route::get('{anexo}/download', [AnexoController::class, 'download'])
+                ->name('download');
+
+            Route::delete('{anexo}', [AnexoController::class, 'destroy'])
+                ->name('destroy');
+        });
 
 
         // ======================================================
@@ -107,61 +128,66 @@ Route::middleware('auth')->group(function () {
         Route::post('clientes/{cliente}/funcionarios', [FuncionarioController::class, 'store'])
             ->name('clientes.funcionarios.store');
 
-        // ======================================================
-        //  ASO
-        // ======================================================
-        Route::get('/kanban/aso/clientes', [PainelController::class, 'asoSelecionarCliente'])
-            ->name('kanban.aso.clientes');
+        Route::prefix('kanban')->name('kanban.')->group(function () {
+            // ======================================================
+            //  ASO
+            // ======================================================
+            Route::get('/aso/clientes', [PainelController::class, 'asoSelecionarCliente'])
+                ->name('aso.clientes');
 
-        Route::get('/kanban/clientes/{cliente}/servicos', [PainelController::class, 'selecionarServico'])
-            ->name('kanban.servicos');
+            Route::get('/clientes/{cliente}/servicos', [PainelController::class, 'selecionarServico'])
+                ->name('servicos');
 
-        Route::get('/kanban/aso/clientes/{cliente}/novo', [AsoController::class, 'asoCreate'])
-            ->name('kanban.aso.create');
+            Route::get('/aso/clientes/{cliente}/novo', [AsoController::class, 'asoCreate'])
+                ->name('aso.create');
 
-        Route::post('/kanban/aso/clientes/{cliente}', [AsoController::class, 'asoStore'])
-            ->name('kanban.aso.store');
+            Route::post('/aso/clientes/{cliente}', [AsoController::class, 'asoStore'])
+                ->name('aso.store');
+
+            Route::put('/aso/{tarefa}', [AsoController::class, 'update'])->name('aso.update');
+
+            // ======================================================
+            //  PGR
+            // ======================================================
+
+            // Selecionar tipo (Matriz / Específico)
+            Route::get('/pgr/clientes/{cliente}/tipo', [PgrController::class, 'pgrTipo'])
+                ->name('pgr.tipo');
+
+            // Formulário (recebe ?tipo=matriz ou ?tipo=especifico)
+            Route::get('/pgr/clientes/{cliente}/create', [PgrController::class, 'pgrCreate'])
+                ->name('pgr.create');
+
+            // Salvar formulário (cria a tarefa e o registro em pgr_solicitacoes)
+            Route::post('/pgr/clientes/{cliente}', [PgrController::class, 'pgrStore'])
+                ->name('pgr.store');
+
+            // Pergunta "Precisa de PCMSO?"
+            Route::get('/pgr/{tarefa}/pcmso', [PgrController::class, 'pgrPcmso'])
+                ->name('pgr.pcmso');
+
+            // Salvar resposta PCMSO
+            Route::post('/pgr/{tarefa}/pcmso', [PgrController::class, 'pgrPcmsoStore'])
+                ->name('pgr.pcmso.store');
+
+            Route::get('/pgr/{tarefa}/editar', [PgrController::class, 'pgrEdit'])
+                ->name('pgr.editar');
+
+            Route::put('/pgr/{tarefa}', [PgrController::class, 'pgrUpdate'])
+                ->name('pgr.update');
+
+            // ======================================================
+            //  PCMSO
+            // ======================================================
+            Route::get('/pcmso/{tarefa}/editar', [PcmsoController::class, 'edit'])
+                ->name('pcmso.edit');
+
+            Route::put('/pcmso/{tarefa}', [PcmsoController::class, 'update'])
+                ->name('pcmso.update');
+        });
 
         Route::get('/tarefas/{tarefa}/editar', [AsoController::class, 'edit'])
             ->name('kanban.aso.editar');
-
-        Route::put('/kanban/aso/{tarefa}', [AsoController::class, 'update'])->name('kanban.aso.update');
-
-        // ======================================================
-        //  PGR
-        // ======================================================
-
-        // Selecionar tipo (Matriz / Específico)
-        Route::get('/kanban/pgr/clientes/{cliente}/tipo', [PgrController::class, 'pgrTipo'])
-            ->name('kanban.pgr.tipo');
-
-        // Formulário (recebe ?tipo=matriz ou ?tipo=especifico)
-        Route::get('/kanban/pgr/clientes/{cliente}/create', [PgrController::class, 'pgrCreate'])
-            ->name('kanban.pgr.create');
-
-        // Salvar formulário (cria a tarefa e o registro em pgr_solicitacoes)
-        Route::post('/kanban/pgr/clientes/{cliente}', [PgrController::class, 'pgrStore'])
-            ->name('kanban.pgr.store');
-
-        // Pergunta "Precisa de PCMSO?"
-        Route::get('/kanban/pgr/{tarefa}/pcmso', [PgrController::class, 'pgrPcmso'])
-            ->name('kanban.pgr.pcmso');
-
-        // Salvar resposta PCMSO
-        Route::post('/kanban/pgr/{tarefa}/pcmso', [PgrController::class, 'pgrPcmsoStore'])
-            ->name('kanban.pgr.pcmso.store');
-
-        Route::get('/kanban/pgr/{tarefa}/editar', [PgrController::class, 'pgrEdit'])
-            ->name('kanban.pgr.editar');
-
-        Route::put('/kanban/pgr/{tarefa}', [PgrController::class, 'pgrUpdate'])
-            ->name('kanban.pgr.update');
-
-
-
-        // ======================================================
-        //  PCMSO
-        // ======================================================
 
         // Selecionar tipo (Matriz / Específico)
         Route::get('clientes/{cliente}/pcmso/tipo', [PcmsoController::class, 'selecionarTipo'])
@@ -178,12 +204,6 @@ Route::middleware('auth')->group(function () {
         // Salvar PCMSO com PGR anexado
         Route::post('clientes/{cliente}/pcmso/{tipo}/inserir-pgr', [PcmsoController::class, 'storeComPgr'])
             ->name('pcmso.store-com-pgr');
-
-        Route::get('kanban/pcmso/{tarefa}/editar', [PcmsoController::class, 'edit'])
-            ->name('kanban.pcmso.edit');
-
-        Route::put('kanban/pcmso/{tarefa}', [PcmsoController::class, 'update'])
-            ->name('kanban.pcmso.update');
 
         // ======================================================
         //  LTCAT
@@ -285,34 +305,18 @@ Route::middleware('auth')->group(function () {
 
         Route::post('funcoes', [FuncaoController::class, 'storefast'])
             ->name('funcoes.store-ajax');
-
-        Route::post('tarefas/{tarefa}/anexos', [AnexoController::class, 'store'])
-            ->name('tarefas.anexos.store');
-
-        Route::get('/anexos/{anexo}/view', [AnexoController::class, 'view'])
-            ->name('anexos.view');
-
-        Route::get('anexos/{anexo}/download', [AnexoController::class, 'download'])
-            ->name('anexos.download');
-
-        Route::delete('anexos/{anexo}', [AnexoController::class, 'destroy'])
-            ->name('anexos.destroy');
     });
 
-    Route::get('operacional/tarefas/detalhes/ajax',
-        [PainelController::class, 'detalhesAjax']
-    )->name('operacional.tarefas.detalhes.ajax');
-
     // ======================================================
-   //                  CLIENTE (PAINEL)
-   // ======================================================
+    //                  CLIENTE (PAINEL)
+    // ======================================================
     $portalServicoPermitido = function (int $clienteId, string $servicoNome): bool {
-        $cliente = \App\Models\Cliente::find($clienteId);
+        $cliente = Cliente::find($clienteId);
         if (!$cliente) {
             return false;
         }
 
-        $servicoId = \App\Models\Servico::where('empresa_id', $cliente->empresa_id)
+        $servicoId = Servico::where('empresa_id', $cliente->empresa_id)
             ->where('nome', $servicoNome)
             ->value('id');
 
@@ -343,9 +347,13 @@ Route::middleware('auth')->group(function () {
             ->where('preco_unitario_snapshot', '>', 0)
             ->exists();
     };
+    $portalClienteAtual = function (): Cliente {
+        $clienteId = (int) session('portal_cliente_id');
+        return Cliente::findOrFail($clienteId);
+    };
     Route::prefix('cliente')
         ->name('cliente.')
-        ->group(function () {
+        ->group(function () use ($portalServicoPermitido, $portalClienteAtual) {
 
             Route::get('/', [ClienteDashboardController::class, 'index'])
                 ->name('dashboard');
@@ -353,140 +361,128 @@ Route::middleware('auth')->group(function () {
             Route::get('/faturas', [ClienteDashboardController::class, 'faturas'])
                 ->name('faturas');
 
-            Route::get('/funcionarios', [ClienteFuncionarioController::class, 'index'])
-                ->name('funcionarios.index');
+            Route::prefix('funcionarios')->name('funcionarios.')->group(function () {
+                Route::get('/', [ClienteFuncionarioController::class, 'index'])
+                    ->name('index');
 
-            Route::get('/funcionarios/novo', [ClienteFuncionarioController::class, 'create'])
-                ->name('funcionarios.create');
+                Route::get('/novo', [ClienteFuncionarioController::class, 'create'])
+                    ->name('create');
 
-            Route::post('/funcionarios', [ClienteFuncionarioController::class, 'store'])
-                ->name('funcionarios.store');
+                Route::post('/', [ClienteFuncionarioController::class, 'store'])
+                    ->name('store');
 
-            Route::get('/funcionarios/{funcionario}', [ClienteFuncionarioController::class, 'show'])
-                ->name('funcionarios.show');
+                Route::get('/{funcionario}/editar', [ClienteFuncionarioController::class, 'edit'])
+                    ->name('edit');
 
-            // 🔁 Ativar / Inativar funcionário (portal do cliente)
-            Route::patch('/funcionarios/{funcionario}/toggle-status',
-                [ClienteFuncionarioController::class, 'toggleStatus']
-            )->name('funcionarios.toggle-status');
+                Route::put('/{funcionario}', [ClienteFuncionarioController::class, 'update'])
+                    ->name('update');
+
+                Route::get('/{funcionario}', [ClienteFuncionarioController::class, 'show'])
+                    ->name('show');
+
+                // 🔁 Ativar / Inativar funcionário (portal do cliente)
+                Route::patch('/{funcionario}/toggle-status',
+                    [ClienteFuncionarioController::class, 'toggleStatus']
+                )->name('toggle-status');
+            });
 
             // Meus Arquivos
-            Route::get('/arquivos', [\App\Http\Controllers\Cliente\ArquivoController::class, 'index'])
+            Route::get('/arquivos', [ArquivoController::class, 'index'])
                 ->name('arquivos.index');
 
-            // SERVIÇOS
+            Route::prefix('servicos')
+                ->name('servicos.')
+                ->group(function () use ($portalServicoPermitido, $portalClienteAtual) {
+                    Route::get('/aso', function () use ($portalServicoPermitido, $portalClienteAtual) {
+                        $cliente = $portalClienteAtual();
 
+                        if (!$portalServicoPermitido($cliente->id, 'ASO')) {
+                            return redirect()
+                                ->route('cliente.dashboard')
+                                ->with('error', 'Serviço ASO não disponível no contrato ativo.');
+                        }
 
-            // ASO
-            Route::get('/servicos/aso', function (Request $request) {
-                $clienteId = session('portal_cliente_id');
+                        return redirect()->route('operacional.kanban.aso.create', [
+                            'cliente' => $cliente,
+                            'origem'  => 'cliente',
+                        ]);
+                    })->name('aso');
 
-                $cliente = Cliente::findOrFail($clienteId);
+                    Route::get('/pgr', function () use ($portalServicoPermitido, $portalClienteAtual) {
+                        $cliente = $portalClienteAtual();
 
-                if (!$portalServicoPermitido($clienteId, 'ASO')) {
-                    return redirect()
-                        ->route('cliente.dashboard')
-                        ->with('error', 'Serviço ASO não disponível no contrato ativo.');
-                }
+                        if (!$portalServicoPermitido($cliente->id, 'PGR')) {
+                            return redirect()
+                                ->route('cliente.dashboard')
+                                ->with('error', 'Serviço PGR não disponível no contrato ativo.');
+                        }
 
-                // 🔹 Passa origem=cliente para a tela de ASO
-                return redirect()->route('operacional.kanban.aso.create', [
-                    'cliente' => $cliente,
-                    'origem'  => 'cliente',
-                ]);
-            })->name('servicos.aso');
+                        return redirect()->route('operacional.kanban.pgr.tipo', [
+                            'cliente' => $cliente->id,
+                            'origem'  => 'cliente'
+                        ]);
+                    })->name('pgr');
 
-            //PGR
+                    Route::get('/pcmso', function () use ($portalServicoPermitido, $portalClienteAtual) {
+                        $cliente = $portalClienteAtual();
 
-            Route::get('/servicos/pgr', function (Request $request) {
-                $clienteId = session('portal_cliente_id');
-                $cliente   = Cliente::findOrFail($clienteId);
+                        if (!$portalServicoPermitido($cliente->id, 'PCMSO')) {
+                            return redirect()
+                                ->route('cliente.dashboard')
+                                ->with('error', 'Serviço PCMSO não disponível no contrato ativo.');
+                        }
 
-                if (!$portalServicoPermitido($clienteId, 'PGR')) {
-                    return redirect()
-                        ->route('cliente.dashboard')
-                        ->with('error', 'Serviço PGR não disponível no contrato ativo.');
-                }
+                        return redirect()->route('operacional.pcmso.tipo', [
+                            'cliente' => $cliente,
+                            'origem'  => 'cliente',
+                        ]);
+                    })->name('pcmso');
 
-                // adiciona ?origem=cliente na URL
-                return redirect()->route('operacional.kanban.pgr.tipo', [
-                    'cliente' => $cliente->id,
-                    'origem'  => 'cliente'
-                ]);
-            })->name('servicos.pgr');
+                    Route::get('/ltcat', function () use ($portalServicoPermitido, $portalClienteAtual) {
+                        $cliente = $portalClienteAtual();
 
-            //PCMSO
+                        if (!$portalServicoPermitido($cliente->id, 'LTCAT')) {
+                            return redirect()
+                                ->route('cliente.dashboard')
+                                ->with('error', 'Serviço LTCAT não disponível no contrato ativo.');
+                        }
 
-            Route::get('/servicos/pcmso', function (Request $request) {
-                $clienteId = session('portal_cliente_id');
-                $cliente   = Cliente::findOrFail($clienteId);
+                        return redirect()->route('operacional.ltcat.tipo', [
+                            'cliente' => $cliente->id,
+                            'origem'  => 'cliente',
+                        ]);
+                    })->name('ltcat');
 
-                if (!$portalServicoPermitido($clienteId, 'PCMSO')) {
-                    return redirect()
-                        ->route('cliente.dashboard')
-                        ->with('error', 'Serviço PCMSO não disponível no contrato ativo.');
-                }
+                    Route::get('/apr', function () use ($portalServicoPermitido, $portalClienteAtual) {
+                        $cliente = $portalClienteAtual();
 
-                return redirect()->route('operacional.pcmso.tipo', [
-                    'cliente' => $cliente,
-                    'origem'  => 'cliente',
-                ]);
-            })->name('servicos.pcmso');
+                        if (!$portalServicoPermitido($cliente->id, 'APR')) {
+                            return redirect()
+                                ->route('cliente.dashboard')
+                                ->with('error', 'Serviço APR não disponível no contrato ativo.');
+                        }
 
-            //LTCAT
+                        return redirect()->route('operacional.apr.create', [
+                            'cliente' => $cliente->id,
+                            'origem'  => 'cliente',
+                        ]);
+                    })->name('apr');
 
+                    Route::get('/treinamentos', function () use ($portalServicoPermitido, $portalClienteAtual) {
+                        $cliente = $portalClienteAtual();
 
-            Route::get('/servicos/ltcat', function (Request $request) {
-                $clienteId = session('portal_cliente_id');
-                $cliente   = Cliente::findOrFail($clienteId);
+                        if (!$portalServicoPermitido($cliente->id, 'Treinamentos NRs')) {
+                            return redirect()
+                                ->route('cliente.dashboard')
+                                ->with('error', 'Serviço Treinamentos NRs não disponível no contrato ativo.');
+                        }
 
-                if (!$portalServicoPermitido($clienteId, 'LTCAT')) {
-                    return redirect()
-                        ->route('cliente.dashboard')
-                        ->with('error', 'Serviço LTCAT não disponível no contrato ativo.');
-                }
-
-                return redirect()->route('operacional.ltcat.tipo', [
-                    'cliente' => $cliente->id,
-                    'origem'  => 'cliente',
-                ]);
-            })->name('servicos.ltcat');
-
-            //APR
-
-            Route::get('/servicos/apr', function (Request $request) {
-                $clienteId = session('portal_cliente_id');
-                $cliente   = Cliente::findOrFail($clienteId);
-
-                if (!$portalServicoPermitido($clienteId, 'APR')) {
-                    return redirect()
-                        ->route('cliente.dashboard')
-                        ->with('error', 'Serviço APR não disponível no contrato ativo.');
-                }
-
-                return redirect()->route('operacional.apr.create', [
-                    'cliente' => $cliente->id,
-                    'origem'  => 'cliente',
-                ]);
-            })->name('servicos.apr');
-
-            //servicos/treinamentos
-
-            Route::get('/servicos/treinamentos', function () {
-                $clienteId = session('portal_cliente_id');
-                $cliente   = \App\Models\Cliente::findOrFail($clienteId);
-
-                if (!$portalServicoPermitido($clienteId, 'Treinamentos NRs')) {
-                    return redirect()
-                        ->route('cliente.dashboard')
-                        ->with('error', 'Serviço Treinamentos NRs não disponível no contrato ativo.');
-                }
-
-                return redirect()->route('operacional.treinamentos-nr.create', [
-                    'cliente' => $cliente->id,
-                    'origem'  => 'cliente',
-                ]);
-            })->name('servicos.treinamentos');
+                        return redirect()->route('operacional.treinamentos-nr.create', [
+                            'cliente' => $cliente->id,
+                            'origem'  => 'cliente',
+                        ]);
+                    })->name('treinamentos');
+                });
 
     });
 
@@ -515,53 +511,69 @@ Route::middleware('auth')->group(function () {
                 ->name('apresentacao.cancelar');
 
             // Propostas
-            Route::get('/propostas', [PropostaController::class, 'index'])
-                ->name('propostas.index');
+            Route::prefix('propostas')->name('propostas.')->group(function () {
+                Route::get('/', [PropostaController::class, 'index'])
+                    ->name('index');
 
-            Route::get('/propostas/criar', [PropostaController::class, 'create'])
-                ->name('propostas.create');
+                Route::get('/criar', [PropostaController::class, 'create'])
+                    ->name('create');
 
-            Route::post('/propostas', [PropostaController::class, 'store'])
-                ->name('propostas.store');
+                Route::post('/', [PropostaController::class, 'store'])
+                    ->name('store');
 
-            Route::get('/propostas/{proposta}/editar', [PropostaController::class, 'edit'])
-                ->name('propostas.edit');
+                Route::get('/preco-servico/{servico}', [PropostaPrecoController::class, 'precoServico'])
+                    ->name('preco-servico');
 
-            Route::put('/propostas/{proposta}', [PropostaController::class, 'update'])
-                ->name('propostas.update');
+                Route::get('/preco-treinamento/{codigo}', [PropostaPrecoController::class, 'precoTreinamento'])
+                    ->name('preco-treinamento');
 
-            Route::delete('/propostas/{proposta}', [PropostaController::class, 'destroy'])
-                ->name('propostas.destroy');
+                Route::get('/esocial-preco/{qtd}', [PropostaPrecoController::class, 'esocialPreco'])
+                    ->name('esocial-preco');
 
-            Route::post('/propostas/{proposta}/enviar-whatsapp', [PropostaController::class, 'enviarWhatsapp'])
-                ->name('propostas.enviar-whatsapp');
+                Route::get('/treinamentos-nrs.json', [PropostaPrecoController::class, 'treinamentosJson'])
+                    ->name('treinamentos-nrs.json');
 
-            Route::post('/propostas/{proposta}/enviar-email', [PropostaController::class, 'enviarEmail'])
-                ->name('propostas.enviar-email');
+                Route::post('/{proposta}/enviar-whatsapp', [PropostaController::class, 'enviarWhatsapp'])
+                    ->name('enviar-whatsapp');
 
-            Route::post('/propostas/{proposta}/status', [PropostaController::class, 'alterarStatus'])
-                ->name('propostas.status');
+                Route::post('/{proposta}/enviar-email', [PropostaController::class, 'enviarEmail'])
+                    ->name('enviar-email');
 
-            Route::get('/propostas/{proposta}', [PropostaController::class, 'show'])
-                ->name('propostas.show');
+                Route::post('/{proposta}/status', [PropostaController::class, 'alterarStatus'])
+                    ->name('status');
 
-            Route::post('/propostas/{proposta}/fechar', [PropostaController::class, 'fechar'])
-                ->name('propostas.fechar');
+                Route::post('/{proposta}/fechar', [PropostaController::class, 'fechar'])
+                    ->name('fechar');
 
-            Route::get('/propostas/{proposta}/pdf', [PropostaController::class, 'pdf'])
-                ->name('propostas.pdf');
-            Route::get('/propostas/{proposta}/imprimir', [PropostaController::class, 'print'])
-                ->name('propostas.print');
+                Route::get('/{proposta}/editar', [PropostaController::class, 'edit'])
+                    ->name('edit');
+
+                Route::put('/{proposta}', [PropostaController::class, 'update'])
+                    ->name('update');
+
+                Route::delete('/{proposta}', [PropostaController::class, 'destroy'])
+                    ->name('destroy');
+
+                Route::get('/{proposta}/pdf', [PropostaController::class, 'pdf'])
+                    ->name('pdf');
+                Route::get('/{proposta}/imprimir', [PropostaController::class, 'print'])
+                    ->name('print');
+
+                Route::get('/{proposta}', [PropostaController::class, 'show'])
+                    ->name('show');
+            });
 
             // Contratos
-            Route::get('/contratos', [\App\Http\Controllers\Comercial\ContratoController::class, 'index'])
-                ->name('contratos.index');
-            Route::get('/contratos/{contrato}', [\App\Http\Controllers\Comercial\ContratoController::class, 'show'])
-                ->name('contratos.show');
-            Route::get('/contratos/{contrato}/vigencia', [\App\Http\Controllers\Comercial\ContratoController::class, 'novaVigencia'])
-                ->name('contratos.vigencia');
-            Route::post('/contratos/{contrato}/vigencia', [\App\Http\Controllers\Comercial\ContratoController::class, 'storeVigencia'])
-                ->name('contratos.vigencia.store');
+            Route::prefix('contratos')->name('contratos.')->group(function () {
+                Route::get('/', [\App\Http\Controllers\Comercial\ContratoController::class, 'index'])
+                    ->name('index');
+                Route::get('/{contrato}', [\App\Http\Controllers\Comercial\ContratoController::class, 'show'])
+                    ->name('show');
+                Route::get('/{contrato}/vigencia', [\App\Http\Controllers\Comercial\ContratoController::class, 'novaVigencia'])
+                    ->name('vigencia');
+                Route::post('/{contrato}/vigencia', [\App\Http\Controllers\Comercial\ContratoController::class, 'storeVigencia'])
+                    ->name('vigencia.store');
+            });
 
             // Clientes (acesso comercial)
             Route::prefix('clientes')->name('clientes.')->group(function () {
@@ -580,100 +592,103 @@ Route::middleware('auth')->group(function () {
                     ->name('consulta-cnpj');
             });
 
+            // Funções (CRUD Comercial)
+            Route::prefix('funcoes')->name('funcoes.')->group(function () {
+                Route::get('/', [ComercialFuncoesController::class, 'index'])
+                    ->name('index');
+                Route::post('/', [ComercialFuncoesController::class, 'store'])
+                    ->name('store');
+                Route::put('/{funcao}', [ComercialFuncoesController::class, 'update'])
+                    ->name('update');
+                Route::delete('/{funcao}', [ComercialFuncoesController::class, 'destroy'])
+                    ->name('destroy');
+            });
+
             // Kanban de Propostas (Acompanhamento)
-            Route::get('/pipeline', [\App\Http\Controllers\Comercial\PipelineController::class, 'index'])
-                ->name('pipeline.index');
-            Route::post('/pipeline/propostas/{proposta}/mover', [\App\Http\Controllers\Comercial\PipelineController::class, 'mover'])
-                ->name('pipeline.mover');
+            Route::prefix('pipeline')->name('pipeline.')->group(function () {
+                Route::get('/', [\App\Http\Controllers\Comercial\PipelineController::class, 'index'])
+                    ->name('index');
+                Route::post('/propostas/{proposta}/mover', [\App\Http\Controllers\Comercial\PipelineController::class, 'mover'])
+                    ->name('mover');
+            });
 
             //tabela de preco
-            Route::get('/tabela-precos', [TabelaPrecoController::class, 'itensIndex'])
-                ->name('tabela-precos.index');
+            Route::name('tabela-precos.')->group(function () {
+                Route::get('/tabela-precos', [TabelaPrecoController::class, 'itensIndex'])
+                    ->name('index');
 
-            Route::post('/tabela-precos', [TabelaPrecoController::class, 'update'])
-                ->name('tabela-precos.update');
+                Route::post('/tabela-precos', [TabelaPrecoController::class, 'update'])
+                    ->name('update');
 
-            //tabela de preco ITENS
-
-            Route::get('/itens', [TabelaPrecoController::class, 'itensIndex'])->name('tabela-precos.itens.index');
-            Route::get('/itens/novo', [TabelaPrecoController::class, 'createItem'])->name('tabela-precos.itens.create');
-            Route::post('/itens', [TabelaPrecoController::class, 'storeItem'])->name('tabela-precos.itens.store');
-            Route::put('/itens/{item}', [TabelaPrecoController::class, 'updateItem'])->name('tabela-precos.itens.update');
-            Route::delete('/itens/{item}', [TabelaPrecoController::class, 'destroyItem'])->name('tabela-precos.itens.destroy');
+                //tabela de preco ITENS
+                Route::prefix('itens')->name('itens.')->group(function () {
+                    Route::get('/', [TabelaPrecoController::class, 'itensIndex'])->name('index');
+                    Route::get('/novo', [TabelaPrecoController::class, 'createItem'])->name('create');
+                    Route::post('/', [TabelaPrecoController::class, 'storeItem'])->name('store');
+                    Route::put('/{item}', [TabelaPrecoController::class, 'updateItem'])->name('update');
+                    Route::delete('/{item}', [TabelaPrecoController::class, 'destroyItem'])->name('destroy');
+                });
+            });
 
             //Esocial
-            Route::get('/esocial/faixas', [EsocialFaixaController::class, 'indexJson'])
-                ->name('esocial.faixas.json');
-
-            Route::post('/esocial/faixas', [EsocialFaixaController::class, 'store'])
-                ->name('esocial.faixas.store');
-
-            Route::put('/esocial/faixas/{faixa}', [EsocialFaixaController::class, 'update'])
-                ->name('esocial.faixas.update');
-
-            Route::delete('/esocial/faixas/{faixa}', [EsocialFaixaController::class, 'destroy'])
-                ->name('esocial.faixas.destroy');
-
-            Route::get('/propostas/preco-servico/{servico}', [PropostaPrecoController::class, 'precoServico'])
-                ->name('propostas.preco-servico');
-
-            Route::get('/propostas/preco-treinamento/{codigo}', [PropostaPrecoController::class, 'precoTreinamento'])
-                ->name('propostas.preco-treinamento');
-
-            Route::get('/propostas/esocial-preco/{qtd}', [PropostaPrecoController::class, 'esocialPreco'])
-                ->name('propostas.esocial-preco');
-
-
-
-            Route::get('/propostas/treinamentos-nrs.json', [PropostaPrecoController::class, 'treinamentosJson'])
-                ->name('propostas.treinamentos-nrs.json');
+            Route::prefix('esocial/faixas')->name('esocial.faixas.')->group(function () {
+                Route::get('/', [EsocialFaixaController::class, 'indexJson'])
+                    ->name('json');
+                Route::post('/', [EsocialFaixaController::class, 'store'])
+                    ->name('store');
+                Route::put('/{faixa}', [EsocialFaixaController::class, 'update'])
+                    ->name('update');
+                Route::delete('/{faixa}', [EsocialFaixaController::class, 'destroy'])
+                    ->name('destroy');
+            });
 
             //Treinamento NRs
-
-            Route::get('/treinamentos-nrs.json', [ComercialTreinamentoNrController::class, 'indexJson'])
-                ->name('treinamentos-nrs.json');
-
-            Route::post('/treinamentos-nrs', [ComercialTreinamentoNrController::class, 'store'])
-                ->name('treinamentos-nrs.store');
-
-            Route::put('/treinamentos-nrs/{nr}', [ComercialTreinamentoNrController::class, 'update'])
-                ->name('treinamentos-nrs.update');
-
-            Route::delete('/treinamentos-nrs/{nr}', [ComercialTreinamentoNrController::class, 'destroy'])
-                ->name('treinamentos-nrs.destroy');
+            Route::name('treinamentos-nrs.')->group(function () {
+                Route::get('/treinamentos-nrs.json', [ComercialTreinamentoNrController::class, 'indexJson'])
+                    ->name('json');
+                Route::post('/treinamentos-nrs', [ComercialTreinamentoNrController::class, 'store'])
+                    ->name('store');
+                Route::put('/treinamentos-nrs/{nr}', [ComercialTreinamentoNrController::class, 'update'])
+                    ->name('update');
+                Route::delete('/treinamentos-nrs/{nr}', [ComercialTreinamentoNrController::class, 'destroy'])
+                    ->name('destroy');
+            });
 
             //Exames
-            Route::get('/exames', [ExamesTabPrecoController::class, 'indexJson'])
-                ->name('exames.indexJson');
-
-            Route::post('/exames', [ExamesTabPrecoController::class, 'store'])
-                ->name('exames.store');
-
-            Route::put('/exames/{exame}', [ExamesTabPrecoController::class, 'update'])
-                ->name('exames.update');
-
-            Route::delete('/exames/{exame}', [ExamesTabPrecoController::class, 'destroy'])
-                ->name('exames.destroy');
+            Route::prefix('exames')->name('exames.')->group(function () {
+                Route::get('/', [ExamesTabPrecoController::class, 'indexJson'])
+                    ->name('indexJson');
+                Route::post('/', [ExamesTabPrecoController::class, 'store'])
+                    ->name('store');
+                Route::put('/{exame}', [ExamesTabPrecoController::class, 'update'])
+                    ->name('update');
+                Route::delete('/{exame}', [ExamesTabPrecoController::class, 'destroy'])
+                    ->name('destroy');
+            });
 
             // Protocolos de Exames
-            Route::get('/protocolos-exames', [ProtocolosExamesController::class, 'indexJson'])
-                ->name('protocolos-exames.indexJson');
-            Route::post('/protocolos-exames', [ProtocolosExamesController::class, 'store'])
-                ->name('protocolos-exames.store');
-            Route::put('/protocolos-exames/{protocolo}', [ProtocolosExamesController::class, 'update'])
-                ->name('protocolos-exames.update');
-            Route::delete('/protocolos-exames/{protocolo}', [ProtocolosExamesController::class, 'destroy'])
-                ->name('protocolos-exames.destroy');
+            Route::prefix('protocolos-exames')->name('protocolos-exames.')->group(function () {
+                Route::get('/', [ProtocolosExamesController::class, 'indexJson'])
+                    ->name('indexJson');
+                Route::post('/', [ProtocolosExamesController::class, 'store'])
+                    ->name('store');
+                Route::put('/{protocolo}', [ProtocolosExamesController::class, 'update'])
+                    ->name('update');
+                Route::delete('/{protocolo}', [ProtocolosExamesController::class, 'destroy'])
+                    ->name('destroy');
+            });
 
             // GHE do Cliente
-            Route::get('/clientes-ghes', [ClienteGheController::class, 'indexJson'])
-                ->name('clientes-ghes.indexJson');
-            Route::post('/clientes-ghes', [ClienteGheController::class, 'store'])
-                ->name('clientes-ghes.store');
-            Route::put('/clientes-ghes/{ghe}', [ClienteGheController::class, 'update'])
-                ->name('clientes-ghes.update');
-            Route::delete('/clientes-ghes/{ghe}', [ClienteGheController::class, 'destroy'])
-                ->name('clientes-ghes.destroy');
+            Route::prefix('clientes-ghes')->name('clientes-ghes.')->group(function () {
+                Route::get('/', [ClienteGheController::class, 'indexJson'])
+                    ->name('indexJson');
+                Route::post('/', [ClienteGheController::class, 'store'])
+                    ->name('store');
+                Route::put('/{ghe}', [ClienteGheController::class, 'update'])
+                    ->name('update');
+                Route::delete('/{ghe}', [ClienteGheController::class, 'destroy'])
+                    ->name('destroy');
+            });
 
             // Minhas Comissões (vendedor)
             Route::prefix('minhas-comissoes')
@@ -757,18 +772,25 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [DashboardMaster::class, 'index'])->name('dashboard');
 
         // Empresa (dados cadastrais)
-        Route::get('/empresa', [\App\Http\Controllers\Master\EmpresaController::class, 'edit'])->name('empresa.edit');
-        Route::put('/empresa', [\App\Http\Controllers\Master\EmpresaController::class, 'update'])->name('empresa.update');
-        Route::post('/empresa/unidades', [\App\Http\Controllers\Master\UnidadeClinicaController::class, 'store'])
-            ->name('empresa.unidades.store');
-        Route::get('/empresa/unidades/novo', [\App\Http\Controllers\Master\UnidadeClinicaController::class, 'create'])
-            ->name('empresa.unidades.create');
-        Route::get('/empresa/unidades/{unidade}/editar', [\App\Http\Controllers\Master\UnidadeClinicaController::class, 'edit'])
-            ->name('empresa.unidades.edit');
-        Route::put('/empresa/unidades/{unidade}', [\App\Http\Controllers\Master\UnidadeClinicaController::class, 'update'])
-            ->name('empresa.unidades.update');
-        Route::delete('/empresa/unidades/{unidade}', [\App\Http\Controllers\Master\UnidadeClinicaController::class, 'destroy'])
-            ->name('empresa.unidades.destroy');
+        Route::prefix('empresa')->name('empresa.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Master\EmpresaController::class, 'edit'])
+                ->name('edit');
+            Route::put('/', [\App\Http\Controllers\Master\EmpresaController::class, 'update'])
+                ->name('update');
+
+            Route::prefix('unidades')->name('unidades.')->group(function () {
+                Route::post('/', [\App\Http\Controllers\Master\UnidadeClinicaController::class, 'store'])
+                    ->name('store');
+                Route::get('/novo', [\App\Http\Controllers\Master\UnidadeClinicaController::class, 'create'])
+                    ->name('create');
+                Route::get('/{unidade}/editar', [\App\Http\Controllers\Master\UnidadeClinicaController::class, 'edit'])
+                    ->name('edit');
+                Route::put('/{unidade}', [\App\Http\Controllers\Master\UnidadeClinicaController::class, 'update'])
+                    ->name('update');
+                Route::delete('/{unidade}', [\App\Http\Controllers\Master\UnidadeClinicaController::class, 'destroy'])
+                    ->name('destroy');
+            });
+        });
 
         // Acessos
         Route::get('/acessos', [AcessosController::class, 'index'])->name('acessos');
@@ -787,26 +809,36 @@ Route::middleware('auth')->group(function () {
             ->only(['index','store','update','destroy']);
 
         // Usuários
-        Route::post('usuarios',                [AcessosController::class, 'usuariosStore'])->name('usuarios.store');
-        Route::patch('usuarios/{user}',        [AcessosController::class, 'usuariosUpdate'])->name('usuarios.update');
-        Route::delete('usuarios/{user}',       [AcessosController::class, 'usuariosDestroy'])->name('usuarios.destroy');
-        Route::post('usuarios/{user}/toggle',  [AcessosController::class, 'usuariosToggle'])->name('usuarios.toggle');
-        Route::post('usuarios/{user}/reset',   [AcessosController::class, 'usuariosReset'])->name('usuarios.reset');
-        Route::post('usuarios/{user}/password',[AcessosController::class, 'usuariosSetPassword'])->name('usuarios.password');
+        Route::prefix('usuarios')->name('usuarios.')->group(function () {
+            Route::post('/', [AcessosController::class, 'usuariosStore'])->name('store');
+            Route::patch('/{user}', [AcessosController::class, 'usuariosUpdate'])->name('update');
+            Route::delete('/{user}', [AcessosController::class, 'usuariosDestroy'])->name('destroy');
+            Route::post('/{user}/toggle', [AcessosController::class, 'usuariosToggle'])->name('toggle');
+            Route::post('/{user}/reset', [AcessosController::class, 'usuariosReset'])->name('reset');
+            Route::post('/{user}/password', [AcessosController::class, 'usuariosSetPassword'])->name('password');
+        });
 
         // CRUD de Funções
-        Route::get('funcoes',        [FuncaoController::class, 'index'])->name('funcoes.index');
-        Route::post('funcoes',       [FuncaoController::class, 'store'])->name('funcoes.store');
-        Route::put('funcoes/{funcao}',   [FuncaoController::class, 'update'])->name('funcoes.update');
-        Route::delete('funcoes/{funcao}',[FuncaoController::class, 'destroy'])->name('funcoes.destroy');
+        Route::prefix('funcoes')->name('funcoes.')->group(function () {
+            Route::get('/', [FuncaoController::class, 'index'])->name('index');
+            Route::post('/', [FuncaoController::class, 'store'])->name('store');
+            Route::put('/{funcao}', [FuncaoController::class, 'update'])->name('update');
+            Route::delete('/{funcao}', [FuncaoController::class, 'destroy'])->name('destroy');
+        });
 
         // Comissões (parametrização)
-        Route::get('comissoes', [\App\Http\Controllers\Master\ComissaoController::class, 'index'])->name('comissoes.index');
-        Route::post('comissoes', [\App\Http\Controllers\Master\ComissaoController::class, 'store'])->name('comissoes.store');
-        Route::put('comissoes/{servicoComissao}', [\App\Http\Controllers\Master\ComissaoController::class, 'update'])->name('comissoes.update');
-        Route::delete('comissoes/{servicoComissao}', [\App\Http\Controllers\Master\ComissaoController::class, 'destroy'])->name('comissoes.destroy');
-        Route::get('comissoes/vendedores', [\App\Http\Controllers\Master\ComissoesVendedoresController::class, 'index'])
-            ->name('comissoes.vendedores');
+        Route::prefix('comissoes')->name('comissoes.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Master\ComissaoController::class, 'index'])
+                ->name('index');
+            Route::post('/', [\App\Http\Controllers\Master\ComissaoController::class, 'store'])
+                ->name('store');
+            Route::put('/{servicoComissao}', [\App\Http\Controllers\Master\ComissaoController::class, 'update'])
+                ->name('update');
+            Route::delete('/{servicoComissao}', [\App\Http\Controllers\Master\ComissaoController::class, 'destroy'])
+                ->name('destroy');
+            Route::get('/vendedores', [\App\Http\Controllers\Master\ComissoesVendedoresController::class, 'index'])
+                ->name('vendedores');
+        });
 
         // Tabela de Preços (master reutiliza o mesmo conteúdo da área comercial)
         Route::prefix('tabela-precos')->name('tabela-precos.')->group(function () {
@@ -821,54 +853,64 @@ Route::middleware('auth')->group(function () {
         });
 
         // eSocial (faixas)
-        Route::get('/esocial/faixas', [EsocialFaixaController::class, 'indexJson'])
-            ->name('esocial.faixas.json');
-        Route::post('/esocial/faixas', [EsocialFaixaController::class, 'store'])
-            ->name('esocial.faixas.store');
-        Route::put('/esocial/faixas/{faixa}', [EsocialFaixaController::class, 'update'])
-            ->name('esocial.faixas.update');
-        Route::delete('/esocial/faixas/{faixa}', [EsocialFaixaController::class, 'destroy'])
-            ->name('esocial.faixas.destroy');
+        Route::prefix('esocial/faixas')->name('esocial.faixas.')->group(function () {
+            Route::get('/', [EsocialFaixaController::class, 'indexJson'])
+                ->name('json');
+            Route::post('/', [EsocialFaixaController::class, 'store'])
+                ->name('store');
+            Route::put('/{faixa}', [EsocialFaixaController::class, 'update'])
+                ->name('update');
+            Route::delete('/{faixa}', [EsocialFaixaController::class, 'destroy'])
+                ->name('destroy');
+        });
 
         // Treinamentos NRs
-        Route::get('/treinamentos-nrs.json', [ComercialTreinamentoNrController::class, 'indexJson'])
-            ->name('treinamentos-nrs.json');
-        Route::post('/treinamentos-nrs', [ComercialTreinamentoNrController::class, 'store'])
-            ->name('treinamentos-nrs.store');
-        Route::put('/treinamentos-nrs/{nr}', [ComercialTreinamentoNrController::class, 'update'])
-            ->name('treinamentos-nrs.update');
-        Route::delete('/treinamentos-nrs/{nr}', [ComercialTreinamentoNrController::class, 'destroy'])
-            ->name('treinamentos-nrs.destroy');
+        Route::name('treinamentos-nrs.')->group(function () {
+            Route::get('/treinamentos-nrs.json', [ComercialTreinamentoNrController::class, 'indexJson'])
+                ->name('json');
+            Route::post('/treinamentos-nrs', [ComercialTreinamentoNrController::class, 'store'])
+                ->name('store');
+            Route::put('/treinamentos-nrs/{nr}', [ComercialTreinamentoNrController::class, 'update'])
+                ->name('update');
+            Route::delete('/treinamentos-nrs/{nr}', [ComercialTreinamentoNrController::class, 'destroy'])
+                ->name('destroy');
+        });
 
         // Exames
-        Route::get('/exames', [ExamesTabPrecoController::class, 'indexJson'])
-            ->name('exames.indexJson');
-        Route::post('/exames', [ExamesTabPrecoController::class, 'store'])
-            ->name('exames.store');
-        Route::put('/exames/{exame}', [ExamesTabPrecoController::class, 'update'])
-            ->name('exames.update');
-        Route::delete('/exames/{exame}', [ExamesTabPrecoController::class, 'destroy'])
-            ->name('exames.destroy');
+        Route::prefix('exames')->name('exames.')->group(function () {
+            Route::get('/', [ExamesTabPrecoController::class, 'indexJson'])
+                ->name('indexJson');
+            Route::post('/', [ExamesTabPrecoController::class, 'store'])
+                ->name('store');
+            Route::put('/{exame}', [ExamesTabPrecoController::class, 'update'])
+                ->name('update');
+            Route::delete('/{exame}', [ExamesTabPrecoController::class, 'destroy'])
+                ->name('destroy');
+        });
 
         // Protocolos de Exames
-        Route::get('/protocolos-exames', [ProtocolosExamesController::class, 'indexJson'])
-            ->name('protocolos-exames.indexJson');
-        Route::post('/protocolos-exames', [ProtocolosExamesController::class, 'store'])
-            ->name('protocolos-exames.store');
-        Route::put('/protocolos-exames/{protocolo}', [ProtocolosExamesController::class, 'update'])
-            ->name('protocolos-exames.update');
-        Route::delete('/protocolos-exames/{protocolo}', [ProtocolosExamesController::class, 'destroy'])
-            ->name('protocolos-exames.destroy');
+        Route::prefix('protocolos-exames')->name('protocolos-exames.')->group(function () {
+            Route::get('/', [ProtocolosExamesController::class, 'indexJson'])
+                ->name('indexJson');
+            Route::post('/', [ProtocolosExamesController::class, 'store'])
+                ->name('store');
+            Route::put('/{protocolo}', [ProtocolosExamesController::class, 'update'])
+                ->name('update');
+            Route::delete('/{protocolo}', [ProtocolosExamesController::class, 'destroy'])
+                ->name('destroy');
+        });
 
         // GHE do Cliente
-        Route::get('/clientes-ghes', [ClienteGheController::class, 'indexJson'])
-            ->name('clientes-ghes.indexJson');
-        Route::post('/clientes-ghes', [ClienteGheController::class, 'store'])
-            ->name('clientes-ghes.store');
-        Route::put('/clientes-ghes/{ghe}', [ClienteGheController::class, 'update'])
-            ->name('clientes-ghes.update');
-        Route::delete('/clientes-ghes/{ghe}', [ClienteGheController::class, 'destroy'])
-            ->name('clientes-ghes.destroy');
+        Route::prefix('clientes-ghes')->name('clientes-ghes.')->group(function () {
+            Route::get('/', [ClienteGheController::class, 'indexJson'])
+                ->name('indexJson');
+            Route::post('/', [ClienteGheController::class, 'store'])
+                ->name('store');
+            Route::put('/{ghe}', [ClienteGheController::class, 'update'])
+                ->name('update');
+            Route::delete('/{ghe}', [ClienteGheController::class, 'destroy'])
+                ->name('destroy');
+        });
     });
 
     // ======================================================

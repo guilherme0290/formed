@@ -37,6 +37,7 @@ class ClienteDashboardController extends Controller
         }
         $temTabela = (bool) $tabela;
         $faturaTotal = $this->faturaTotal($cliente);
+        $vendedorTelefone = $this->telefoneVendedor($cliente, $contratoAtivo);
 
         return view('clientes.dashboard', [
             'user'         => $user,
@@ -47,6 +48,7 @@ class ClienteDashboardController extends Controller
             'contratoAtivo' => $contratoAtivo,
             'servicosContrato' => $servicosContrato,
             'servicosIds' => $servicosIds,
+            'vendedorTelefone' => $vendedorTelefone,
         ]);
     }
 
@@ -102,7 +104,7 @@ class ClienteDashboardController extends Controller
                 ->with('error', 'Nenhum cliente selecionado. Faça login novamente pelo portal do cliente.');
         }
 
-        $cliente = Cliente::find($clienteId);
+        $cliente = Cliente::with('vendedor')->find($clienteId);
 
         if (!$cliente) {
             Auth::logout();
@@ -117,13 +119,12 @@ class ClienteDashboardController extends Controller
         return [$user, $cliente];
     }
 
-    private function tabelaAtiva(Cliente $cliente): ?ClienteContrato
+    private function tabelaAtiva(Cliente $cliente): ?ClienteTabelaPreco
     {
-        return ClienteContrato::query()
+        return ClienteTabelaPreco::query()
             ->where('empresa_id', $cliente->empresa_id)
             ->where('cliente_id', $cliente->id)
-            ->where('status', 'ATIVO')
-            ->orderByDesc('vigencia_inicio')
+            ->where('ativa', true)
             ->first();
     }
 
@@ -328,5 +329,17 @@ class ClienteDashboardController extends Controller
         }
 
         return $precos;
+    }
+
+    private function telefoneVendedor(Cliente $cliente, ?ClienteContrato $contratoAtivo): string
+    {
+        $vendedorId = (int) ($contratoAtivo?->vendedor_id ?? 0);
+        $vendedor = $vendedorId > 0 ? \App\Models\User::find($vendedorId) : null;
+        $telefone = preg_replace('/\D+/', '', $vendedor?->telefone ?? '');
+        if ($telefone !== '') {
+            return $telefone;
+        }
+
+        return preg_replace('/\D+/', '', optional($cliente->vendedor)->telefone ?? '');
     }
 }

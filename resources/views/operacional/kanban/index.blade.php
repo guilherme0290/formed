@@ -1794,6 +1794,8 @@
                             const colunaCor = colunaEl?.dataset.colunaCor || '#38bdf8';
                             const colunaSlug = colunaEl?.dataset.colunaSlug || '';
                             const moveUrl = card.dataset.moveUrl;
+                            const colunaOrigemEl = evt.from;
+                            const colunaOrigemId = colunaOrigemEl?.dataset?.colunaId || '';
 
                             // segurança extra: se por algum motivo chegou aqui, não processa
                             if (card.dataset.cancelada === '1') {
@@ -1822,6 +1824,15 @@
                             // demais colunas -> fluxo normal de mover
                             if (!moveUrl || !colunaId) return;
 
+                            const idsDestino = Array.from(colunaEl.querySelectorAll('.kanban-card'))
+                                .map(el => el.dataset.id)
+                                .filter(Boolean);
+                            const idsOrigem = colunaOrigemEl
+                                ? Array.from(colunaOrigemEl.querySelectorAll('.kanban-card'))
+                                    .map(el => el.dataset.id)
+                                    .filter(Boolean)
+                                : [];
+
                             fetch(moveUrl, {
                                 method: 'POST',
                                 headers: {
@@ -1829,7 +1840,12 @@
                                     'Content-Type': 'application/json',
                                     'Accept': 'application/json',
                                 },
-                                body: JSON.stringify({coluna_id: colunaId}),
+                                body: JSON.stringify({
+                                    coluna_id: colunaId,
+                                    ordem: idsDestino,
+                                    coluna_origem_id: colunaOrigemId,
+                                    ordem_origem: idsOrigem,
+                                }),
                             })
                                 .then(response => response.json())
                                 .then(data => {

@@ -1,6 +1,6 @@
 @extends('layouts.cliente')
 
-@section('title', 'Novo Funcionário')
+@section('title', $modo === 'edit' ? 'Editar Funcionário' : 'Novo Funcionário')
 
 @section('content')
     <div class="max-w-3xl mx-auto mt-6">
@@ -11,13 +11,18 @@
             {{-- FAIXA AZUL COM TÍTULO --}}
             <div class="bg-blue-700 px-6 py-3">
                 <h1 class="text-white font-semibold text-base">
-                    Novo Funcionário
+                    {{ $modo === 'edit' ? 'Editar Funcionário' : 'Novo Funcionário' }}
                 </h1>
             </div>
 
             {{-- FORM --}}
-            <form method="post" action="{{ route('cliente.funcionarios.store') }}" class="p-6 space-y-6">
+            <form method="post"
+                  action="{{ $modo === 'edit' ? route('cliente.funcionarios.update', $funcionario) : route('cliente.funcionarios.store') }}"
+                  class="p-6 space-y-6">
                 @csrf
+                @if($modo === 'edit')
+                    @method('PUT')
+                @endif
 
                 {{-- LINHAS DO FORMULÁRIO PRINCIPAL --}}
                 <div class="grid gap-4 md:grid-cols-2">
@@ -27,7 +32,7 @@
                         <label class="block text-xs font-medium text-slate-600 mb-1">
                             Nome Completo *
                         </label>
-                        <input type="text" name="nome" value="{{ old('nome') }}"
+                        <input type="text" name="nome" value="{{ old('nome', $funcionario->nome ?? '') }}"
                                class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"
                                required>
                         @error('nome')
@@ -40,7 +45,9 @@
                         <label class="block text-xs font-medium text-slate-600 mb-1">
                             CPF *
                         </label>
-                        <input type="text" name="cpf" value="{{ old('cpf') }}"
+                        <input type="text" name="cpf" value="{{ old('cpf', $funcionario->cpf ?? '') }}"
+                               maxlength="14"
+                               inputmode="numeric"
                                class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
                         @error('cpf')
                         <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
@@ -52,7 +59,9 @@
                         <label class="block text-xs font-medium text-slate-600 mb-1">
                             Celular *
                         </label>
-                        <input type="text" name="celular" value="{{ old('celular') }}"
+                        <input type="text" name="celular" value="{{ old('celular', $funcionario->celular ?? '') }}"
+                               maxlength="15"
+                               inputmode="numeric"
                                class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
                         {{-- sem erro porque ainda não está no validate --}}
                     </div>
@@ -64,6 +73,8 @@
                             name="funcao_id"
                             label="Função *"
                             field-id="campo_funcao"
+                            help-text="Funções listadas por GHE, pré-configuradas pelo vendedor/comercial."
+                            :allowCreate="false"
                             :funcoes="$funcoes"
                             :selected="old('funcao_id', $funcionario->funcao_id ?? null)"
                         />
@@ -72,9 +83,6 @@
                         <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
                         @enderror
 
-                        @error('campo_funcao')
-                        <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
-                        @enderror
                     </div>
 
                     {{-- Setor (apenas visual por enquanto) --}}
@@ -82,7 +90,7 @@
                         <label class="block text-xs font-medium text-slate-600 mb-1">
                             Setor *
                         </label>
-                        <input type="text" name="setor" value="{{ old('setor') }}"
+                        <input type="text" name="setor" value="{{ old('setor', $funcionario->setor ?? '') }}"
                                class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
                     </div>
 
@@ -91,7 +99,9 @@
                         <label class="block text-xs font-medium text-slate-600 mb-1">
                             Data de Admissão *
                         </label>
-                        <input type="date" name="data_admissao" value="{{ old('data_admissao') }}"
+                        <input type="date"
+                               name="data_admissao"
+                               value="{{ old('data_admissao', ($funcionario && $funcionario->data_admissao) ? \Carbon\Carbon::parse($funcionario->data_admissao)->format('Y-m-d') : '') }}"
                                class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
                         @error('data_admissao')
                         <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
@@ -154,7 +164,7 @@
 
                     <button type="submit"
                             class="px-4 py-2 text-xs rounded-lg bg-blue-600 text-white hover:bg-blue-700">
-                        Cadastrar
+                        {{ $modo === 'edit' ? 'Salvar alterações' : 'Cadastrar' }}
                     </button>
                 </div>
             </form>
@@ -163,6 +173,49 @@
 @endsection
 @push('scripts')
     <script>
+        (function () {
+            const cpfInput = document.querySelector('input[name="cpf"]');
+            const celularInput = document.querySelector('input[name="celular"]');
+
+            function onlyDigits(value) {
+                return (value || '').toString().replace(/\D+/g, '');
+            }
+
+            function formatCpf(value) {
+                const digits = onlyDigits(value).slice(0, 11);
+                if (digits.length <= 3) return digits;
+                if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+                if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+                return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+            }
+
+            function formatPhone(value) {
+                const digits = onlyDigits(value).slice(0, 11);
+                if (digits.length <= 2) return digits;
+                if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+                if (digits.length <= 10) {
+                    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+                }
+                return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+            }
+
+            function applyCpfMask() {
+                if (!cpfInput) return;
+                cpfInput.value = formatCpf(cpfInput.value);
+            }
+
+            function applyPhoneMask() {
+                if (!celularInput) return;
+                celularInput.value = formatPhone(celularInput.value);
+            }
+
+            cpfInput?.addEventListener('input', applyCpfMask);
+            celularInput?.addEventListener('input', applyPhoneMask);
+
+            applyCpfMask();
+            applyPhoneMask();
+        })();
+
         document.addEventListener('click', function (e) {
             const btn = e.target.closest('[data-funcao-open-modal]');
             if (!btn) return;

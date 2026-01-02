@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\ClienteGheFuncao;
 
 class Funcao extends Model
 {
@@ -29,5 +31,10 @@ class Funcao extends Model
     public function funcionarios()
     {
         return $this->hasMany(Funcionario::class);
+    }
+
+    public function gheFuncoes(): HasMany
+    {
+        return $this->hasMany(ClienteGheFuncao::class, 'funcao_id');
     }
 }

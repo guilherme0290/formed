@@ -4,6 +4,7 @@
     'variant' => 'emerald',
     // permite sobrescrever a rota se precisar
     'route'   => route('operacional.funcoes.store-ajax'),
+    'allowCreate' => true,
 ])
 
 @php
@@ -45,52 +46,64 @@
          data-funcao-error-global>
     </div>
 
-    {{-- Botão principal --}}
-    <button type="button"
-            class="{{ $btnOpenClasses }}"
-            data-funcao-open>
-        <span class="text-base leading-none">+</span>
-        <span class="leading-none">
-            {{ $label }}
-        </span>
-    </button>
+    @if ($allowCreate)
+        {{-- Botão principal --}}
+        <button type="button"
+                class="{{ $btnOpenClasses }}"
+                data-funcao-open>
+            <span class="text-base leading-none">+</span>
+            <span class="leading-none">
+                {{ $label }}
+            </span>
+        </button>
 
-    {{-- Modal (JS puro) --}}
-    <div class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40"
-         data-funcao-modal>
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
-            <h2 class="text-sm font-semibold text-slate-800 mb-3">
-                Nova Função
-            </h2>
+        {{-- Modal (JS puro) --}}
+        <div class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40"
+             data-funcao-modal>
+            <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+                <h2 class="text-sm font-semibold text-slate-800 mb-3">
+                    Nova Função
+                </h2>
 
-            <div class="hidden mb-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700"
-                 data-funcao-error-modal>
-            </div>
+                <div class="hidden mb-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700"
+                     data-funcao-error-modal>
+                </div>
 
-            <div class="space-y-2 mb-4">
-                <label class="block text-xs font-medium text-slate-600">
-                    Nome da Função
-                </label>
-                <input type="text"
-                       data-funcao-input
-                       class="w-full rounded-lg border-slate-200 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500"
-                       placeholder="Ex: Eletricista, Pedreiro, Operador de Máquinas">
-            </div>
+                <div class="space-y-2 mb-4">
+                    <label class="block text-xs font-medium text-slate-600">
+                        Nome da Função
+                    </label>
+                    <input type="text"
+                           data-funcao-input
+                           class="w-full rounded-lg border-slate-200 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                           placeholder="Ex: Eletricista, Pedreiro, Operador de Máquinas">
+                </div>
 
-            <div class="flex justify-end gap-2">
-                <button type="button"
-                        class="px-3 py-2 text-xs rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
-                        data-funcao-cancel>
-                    Cancelar
-                </button>
-                <button type="button"
-                        class="{{ $btnSaveClasses }}"
-                        data-funcao-save>
-                    Salvar Função
-                </button>
+                <div class="flex justify-end gap-2">
+                    <button type="button"
+                            class="px-3 py-2 text-xs rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
+                            data-funcao-cancel>
+                        Cancelar
+                    </button>
+                    <button type="button"
+                            class="{{ $btnSaveClasses }}"
+                            data-funcao-save>
+                        Salvar Função
+                    </button>
+                </div>
             </div>
         </div>
-    </div>
+    @else
+        <button type="button"
+                class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-100 text-slate-400 text-xs font-semibold cursor-not-allowed"
+                disabled
+                title="Cadastro de função disponível no Comercial">
+            <span class="text-base leading-none">+</span>
+            <span class="leading-none">
+                {{ $label }}
+            </span>
+        </button>
+    @endif
 </div>
 
 @once

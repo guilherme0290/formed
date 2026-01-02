@@ -25,7 +25,9 @@ class PropostaController extends Controller
 {
     public function index(Request $request)
     {
-        $empresaId = auth()->user()->empresa_id;
+        $user = auth()->user();
+        $empresaId = $user->empresa_id;
+        $isMaster = $user->hasPapel('Master');
 
         $q = trim((string) $request->query('q', ''));
         $status = strtoupper(trim((string) $request->query('status', '')));
@@ -33,6 +35,10 @@ class PropostaController extends Controller
         $query = Proposta::query()
             ->with(['cliente', 'empresa'])
             ->where('empresa_id', $empresaId);
+
+        if (!$isMaster) {
+            $query->where('vendedor_id', $user->id);
+        }
 
         if ($q !== '') {
             $query->where(function ($sub) use ($q) {
@@ -107,6 +113,9 @@ class PropostaController extends Controller
     {
         $user = auth()->user();
         abort_unless($proposta->empresa_id === $user->empresa_id, 403);
+        if (!$user->hasPapel('Master')) {
+            abort_unless((int) $proposta->vendedor_id === (int) $user->id, 403);
+        }
 
         $empresaId = $user->empresa_id;
 
@@ -158,6 +167,9 @@ class PropostaController extends Controller
     {
         $user = auth()->user();
         abort_unless($proposta->empresa_id === $user->empresa_id, 403);
+        if (!$user->hasPapel('Master')) {
+            abort_unless((int) $proposta->vendedor_id === (int) $user->id, 403);
+        }
 
         return $this->saveProposta($request, $proposta);
     }
@@ -166,6 +178,9 @@ class PropostaController extends Controller
     {
         $user = auth()->user();
         abort_unless($proposta->empresa_id === $user->empresa_id, 403);
+        if (!$user->hasPapel('Master')) {
+            abort_unless((int) $proposta->vendedor_id === (int) $user->id, 403);
+        }
 
         return DB::transaction(function () use ($proposta) {
             $proposta->itens()->delete();
@@ -181,6 +196,9 @@ class PropostaController extends Controller
     {
         $user = auth()->user();
         abort_unless($proposta->empresa_id === $user->empresa_id, 403);
+        if (!$user->hasPapel('Master')) {
+            abort_unless((int) $proposta->vendedor_id === (int) $user->id, 403);
+        }
 
         $data = $request->validate([
             'telefone' => ['required', 'string', 'max:30'],
@@ -205,6 +223,9 @@ class PropostaController extends Controller
     {
         $user = auth()->user();
         abort_unless($proposta->empresa_id === $user->empresa_id, 403);
+        if (!$user->hasPapel('Master')) {
+            abort_unless((int) $proposta->vendedor_id === (int) $user->id, 403);
+        }
 
         $data = $request->validate([
             'email' => ['required', 'email', 'max:255'],
@@ -233,6 +254,9 @@ class PropostaController extends Controller
     {
         $user = auth()->user();
         abort_unless($proposta->empresa_id === $user->empresa_id, 403);
+        if (!$user->hasPapel('Master')) {
+            abort_unless((int) $proposta->vendedor_id === (int) $user->id, 403);
+        }
 
         $data = $request->validate([
             'status' => ['required', 'string', 'in:PENDENTE,ENVIADA,FECHADA,CANCELADA'],
@@ -435,6 +459,14 @@ class PropostaController extends Controller
 
             $contratoParaAtualizar = null;
             if ($proposta) {
+                $payload['status'] = 'PENDENTE';
+                $payload['public_responded_at'] = null;
+                $payload['pipeline_status'] = 'CONTATO_INICIAL';
+                $payload['pipeline_updated_at'] = now();
+                $payload['pipeline_updated_by'] = auth()->id();
+                $payload['perdido_motivo'] = null;
+                $payload['perdido_observacao'] = null;
+
                 $contratoParaAtualizar = \App\Models\ClienteContrato::query()
                     ->where('empresa_id', $empresaId)
                     ->where('proposta_id_origem', $proposta->id)
@@ -617,6 +649,9 @@ class PropostaController extends Controller
     {
         $user = auth()->user();
         abort_unless($proposta->empresa_id === $user->empresa_id, 403);
+        if (!$user->hasPapel('Master')) {
+            abort_unless((int) $proposta->vendedor_id === (int) $user->id, 403);
+        }
 
         $proposta->load(['cliente', 'empresa', 'vendedor', 'itens']);
         $unidades = UnidadeClinica::where('empresa_id', $user->empresa_id)
@@ -643,6 +678,9 @@ class PropostaController extends Controller
     {
         $user = auth()->user();
         abort_unless($proposta->empresa_id === $user->empresa_id, 403);
+        if (!$user->hasPapel('Master')) {
+            abort_unless((int) $proposta->vendedor_id === (int) $user->id, 403);
+        }
 
         $unidades = UnidadeClinica::where('empresa_id', $user->empresa_id)
             ->where('ativo', true)
@@ -675,6 +713,9 @@ class PropostaController extends Controller
     {
         $user = auth()->user();
         abort_unless($proposta->empresa_id === $user->empresa_id, 403);
+        if (!$user->hasPapel('Master')) {
+            abort_unless((int) $proposta->vendedor_id === (int) $user->id, 403);
+        }
 
         $unidades = UnidadeClinica::where('empresa_id', $user->empresa_id)
             ->where('ativo', true)
@@ -708,6 +749,9 @@ class PropostaController extends Controller
     {
         $user = auth()->user();
         abort_unless($proposta->empresa_id === $user->empresa_id, 403);
+        if (!$user->hasPapel('Master')) {
+            abort_unless((int) $proposta->vendedor_id === (int) $user->id, 403);
+        }
 
         if (strtoupper((string) $proposta->status) === 'FECHADA') {
             return back()->with('ok','Proposta já está fechada.');

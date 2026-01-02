@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Operacional;
 
 use App\Http\Controllers\Controller;
 use App\Models\Cliente;
-use App\Models\Funcao;
+use App\Services\AsoGheService;
 use App\Models\KanbanColuna;
 use App\Models\LtcatSolicitacoes;
 use App\Models\Servico;
@@ -42,9 +42,8 @@ class LtcatController extends Controller
 
         $tipoLabel = $tipo === 'matriz' ? 'Matriz' : 'Específico';
 
-        $funcoes = Funcao::where('empresa_id', $empresaId)
-            ->orderBy('nome')
-            ->get();
+        $funcoes = app(AsoGheService::class)
+            ->funcoesDisponiveisParaCliente($empresaId, $cliente->id);
 
         // base para o formulário de funções
         $funcoesForm = old('funcoes');
@@ -79,9 +78,8 @@ class LtcatController extends Controller
         $tipo      = $ltcat->tipo === 'especifico' ? 'especifico' : 'matriz';
         $tipoLabel = $tipo === 'matriz' ? 'Matriz' : 'Específico';
 
-        $funcoes = Funcao::where('empresa_id', $empresaId)
-            ->orderBy('nome')
-            ->get();
+        $funcoes = app(AsoGheService::class)
+            ->funcoesDisponiveisParaCliente($empresaId, $cliente->id);
 
         // usa old() se tiver erro de validação, senão o que veio do banco
         $funcoesForm = old('funcoes', $ltcat->funcoes ?? []);

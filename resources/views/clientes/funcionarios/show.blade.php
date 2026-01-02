@@ -22,6 +22,11 @@
                     ← Voltar para lista
                 </a>
             </div>
+            <a href="{{ route('cliente.funcionarios.edit', $funcionario) }}"
+               class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold
+                      bg-indigo-600 text-white hover:bg-indigo-700">
+                ✏️ Editar informações
+            </a>
         </div>
 
         {{-- Card principal do funcionário --}}
@@ -115,17 +120,17 @@
                     </div>
                 </div>
 
-                {{-- Documentação (placeholder para o futuro) --}}
-                <div>
-                    <h2 class="text-sm font-semibold text-slate-800 mb-3">
-                        Documentação
-                    </h2>
+{{--                --}}{{-- Documentação (placeholder para o futuro) --}}
+{{--                <div>--}}
+{{--                    <h2 class="text-sm font-semibold text-slate-800 mb-3">--}}
+{{--                        Documentação--}}
+{{--                    </h2>--}}
 
-                    <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50/60 px-4 py-6 text-sm text-slate-500">
-                        Em breve você poderá acompanhar aqui os ASOs, treinamentos e outros documentos
-                        do colaborador (válidos, a vencer e vencidos).
-                    </div>
-                </div>
+{{--                    <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50/60 px-4 py-6 text-sm text-slate-500">--}}
+{{--                        Em breve você poderá acompanhar aqui os ASOs, treinamentos e outros documentos--}}
+{{--                        do colaborador (válidos, a vencer e vencidos).--}}
+{{--                    </div>--}}
+{{--                </div>--}}
             </div>
         </div>
     </div>

@@ -1,5 +1,37 @@
 {{-- USUÁRIOS (visual moderno) --}}
-<div x-data="{ open:false }" class="bg-white rounded-2xl shadow-sm border p-6">
+<div x-data="{
+        open: false,
+        editing: false,
+        formAction: '{{ route('master.usuarios.store') }}',
+        formMethod: 'POST',
+        form: {
+            name: '',
+            email: '',
+            telefone: '',
+            papel_id: '',
+            ativo: true,
+        },
+        openCreate() {
+            this.editing = false;
+            this.formAction = '{{ route('master.usuarios.store') }}';
+            this.formMethod = 'POST';
+            this.form = { name: '', email: '', telefone: '', papel_id: '', ativo: true };
+            this.open = true;
+        },
+        openEdit(payload) {
+            this.editing = true;
+            this.formAction = payload.action;
+            this.formMethod = 'PATCH';
+            this.form = {
+                name: payload.name || '',
+                email: payload.email || '',
+                telefone: payload.telefone || '',
+                papel_id: payload.papel_id || '',
+                ativo: payload.ativo === true || payload.ativo === 1 || payload.ativo === '1',
+            };
+            this.open = true;
+        },
+    }" class="bg-white rounded-2xl shadow-sm border p-6">
 
     {{-- Cabeçalho --}}
     <div class="flex flex-col gap-4 mb-5 lg:flex-row lg:items-center lg:justify-between">
@@ -22,7 +54,7 @@
                 <option value="inativos" @selected(request('status') === 'inativos')>Inativos</option>
             </select>
             <button class="w-full px-4 py-2 rounded-xl bg-gray-900 text-white hover:bg-gray-800 sm:w-auto">Filtrar</button>
-            <button type="button" @click="open=true"
+            <button type="button" @click="openCreate()"
                     class="w-full px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 sm:w-auto">
                 + Novo Usuário
             </button>
@@ -64,7 +96,14 @@
 
                             {{-- Editar (depois você liga ao seu modal) --}}
                             <button type="button" class="hover:text-gray-900" title="Editar"
-                                    x-on:click="$dispatch('editar-usuario', { id: {{ $u->id }} })">✏️</button>
+                                    x-on:click="openEdit({
+                                        action: '{{ route('master.usuarios.update', $u) }}',
+                                        name: @js($u->name),
+                                        email: @js($u->email),
+                                        telefone: @js($u->telefone),
+                                        papel_id: {{ $u->papel_id ?? 'null' }},
+                                        ativo: {{ $u->ativo ? 'true' : 'false' }},
+                                    })">✏️</button>
 
                             {{-- Redefinir senha (ENVIA POST) --}}
                             <form method="POST" action="{{ route('master.usuarios.reset', $u) }}" class="inline">
@@ -72,12 +111,7 @@
                                 <button type="submit" class="hover:text-gray-900" title="Redefinir senha">🔑</button>
                             </form>
 
-                            {{-- Ativar / Desativar (ENVIA POST) --}}
-                            <form method="POST" action="{{ route('master.usuarios.toggle', $u) }}" class="inline"
-                                  onsubmit="return confirm('Confirmar {{ $u->ativo ? 'desativação' : 'ativação' }} de {{ $u->name }}?')">
-                                @csrf
-                                <button type="submit" class="hover:text-gray-900" title="{{ $u->ativo ? 'Desativar' : 'Ativar' }}">⏻</button>
-                            </form>
+                            {{-- Ativar/Desativar agora fica no popup de edição --}}
                         </div>
                     </td>
                 </tr>
@@ -98,16 +132,20 @@
          @keydown.escape.window="open=false">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
             <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-semibold">Criar Novo Usuário</h3>
+                <h3 class="text-lg font-semibold" x-text="editing ? 'Editar Usuário' : 'Criar Novo Usuário'"></h3>
                 <button class="text-gray-500" @click="open=false">&times;</button>
             </div>
-            <form method="POST" action="{{ route('master.usuarios.store') }}" class="space-y-3">
+            <form method="POST" :action="formAction" class="space-y-3">
                 @csrf
-                <input name="name" class="w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:border-indigo-400 focus:ring-indigo-400 px-3 py-2" placeholder="Nome Completo *" required>
-                <input name="email" type="email" class="w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:border-indigo-400 focus:ring-indigo-400 px-3 py-2" placeholder="E-mail corporativo *" required>
-                <div class="relative" x-data="{ showPassword: false }">
+                <template x-if="editing">
+                    <input type="hidden" name="_method" value="PATCH">
+                </template>
+                <input name="name" x-model="form.name" class="w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:border-indigo-400 focus:ring-indigo-400 px-3 py-2" placeholder="Nome Completo *" required>
+                <input name="email" x-model="form.email" type="email" class="w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:border-indigo-400 focus:ring-indigo-400 px-3 py-2" placeholder="E-mail corporativo *" required>
+                <div class="relative" x-data="{ showPassword: false }" x-show="!editing">
                     <input name="password"
                            :type="showPassword ? 'text' : 'password'"
+                           :required="!editing"
                            class="w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:border-indigo-400 focus:ring-indigo-400 px-3 py-2 pr-11"
                            placeholder="Senha">
                     <button type="button"
@@ -122,16 +160,21 @@
                         </svg>
                     </button>
                 </div>
-                <input name="telefone" class="w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:border-indigo-400 focus:ring-indigo-400 px-3 py-2" placeholder="Telefone (opcional)">
-                <select name="papel_id" class="w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:border-indigo-400 focus:ring-indigo-400 px-3 py-2" required>
+                <input name="telefone" x-model="form.telefone" class="w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:border-indigo-400 focus:ring-indigo-400 px-3 py-2" placeholder="Telefone (opcional)">
+                <select name="papel_id" x-model="form.papel_id" class="w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:border-indigo-400 focus:ring-indigo-400 px-3 py-2" required>
                     <option value="">Selecione o perfil</option>
                     @foreach($papeis as $p)
                         <option value="{{ $p->id }}">{{ $p->nome }}</option>
                     @endforeach
                 </select>
+                <label class="flex items-center gap-2 text-sm text-gray-600">
+                    <input type="checkbox" name="ativo" class="rounded border-gray-300" x-model="form.ativo">
+                    <span x-text="form.ativo ? 'Usuário ativo' : 'Usuário inativo'"></span>
+                </label>
                 <div class="flex items-center justify-end gap-2 pt-2">
                     <button type="button" class="px-4 py-2 rounded-xl border" @click="open=false">Cancelar</button>
-                    <button class="px-4 py-2 rounded-xl bg-indigo-600 text-white">Salvar e Criar</button>
+                    <button class="px-4 py-2 rounded-xl bg-indigo-600 text-white"
+                            x-text="editing ? 'Salvar alterações' : 'Salvar e Criar'"></button>
                 </div>
             </form>
         </div>

@@ -211,12 +211,21 @@ class PainelController extends Controller
     {
         $data = $request->validate([
             'coluna_id' => ['required', 'exists:kanban_colunas,id'],
+            'ordem' => ['nullable', 'array'],
+            'ordem.*' => ['integer', 'exists:tarefas,id'],
+            'coluna_origem_id' => ['nullable', 'integer', 'exists:kanban_colunas,id'],
+            'ordem_origem' => ['nullable', 'array'],
+            'ordem_origem.*' => ['integer', 'exists:tarefas,id'],
         ]);
 
         $novaColunaId  = (int) $data['coluna_id'];
         $colunaAtualId = (int) $tarefa->coluna_id;
+        $ordemDestino = $data['ordem'] ?? [];
+        $colunaOrigemId = (int) ($data['coluna_origem_id'] ?? 0);
+        $ordemOrigem = $data['ordem_origem'] ?? [];
 
         if ($novaColunaId === $colunaAtualId) {
+            $this->atualizarOrdem($ordemDestino, $novaColunaId);
             return response()->json(['ok' => true]);
         }
 
@@ -288,6 +297,11 @@ class PainelController extends Controller
             'coluna_id' => $novaColunaId,
         ]);
 
+        $this->atualizarOrdem($ordemDestino, $novaColunaId);
+        if ($colunaOrigemId && $colunaOrigemId !== $novaColunaId) {
+            $this->atualizarOrdem($ordemOrigem, $colunaOrigemId);
+        }
+
         // Recarrega coluna para pegar o nome
         $tarefa->load('coluna');
 
@@ -320,6 +334,20 @@ class PainelController extends Controller
                 'data' => optional($log->created_at)->format('d/m H:i'),
             ],
         ]);
+    }
+
+    private function atualizarOrdem(array $ids, int $colunaId): void
+    {
+        if (empty($ids)) {
+            return;
+        }
+
+        foreach ($ids as $index => $id) {
+            Tarefa::query()
+                ->where('id', $id)
+                ->where('coluna_id', $colunaId)
+                ->update(['ordem' => $index + 1]);
+        }
     }
 
 

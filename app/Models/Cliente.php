@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Models\Cidade;
 
 class Cliente extends Model
@@ -38,5 +39,10 @@ class Cliente extends Model
     public function userCliente()
     {
         return $this->hasOne(User::class, 'cliente_id');
+    }
+
+    public function vendedor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'vendedor_id');
     }
 }

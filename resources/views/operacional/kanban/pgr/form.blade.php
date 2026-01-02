@@ -219,7 +219,7 @@
                                     5. Funções e Cargos
                                 </h2>
 
-                                <x-funcoes.create-button label="Cadastrar nova função" variant="emerald" />
+                                <x-funcoes.create-button label="Cadastrar nova função" variant="emerald" :allowCreate="false" />
                             </div>
 
                             @php
@@ -258,6 +258,7 @@
                                                 name="funcoes[{{ $idx }}][funcao_id]"
                                                 field-id="funcoes_{{ $idx }}_funcao_id"
                                                 label="Cargo"
+                                                help-text="Funções listadas por GHE, pré-configuradas pelo vendedor/comercial."
                                                 :funcoes="$funcoes"
                                                 :selected="old('funcoes.'.$idx.'.funcao_id', $f['funcao_id'] ?? null)"
                                                 :show-create="false"

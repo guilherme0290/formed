@@ -124,6 +124,14 @@
                 </span>
                 <span data-sidebar-label>Clientes</span>
             </a>
+
+            <a href="{{ route('comercial.funcoes.index') }}"
+               class="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-200 hover:bg-slate-800 text-sm">
+                <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-500/20 text-slate-200">
+                    🧩
+                </span>
+                <span data-sidebar-label>Funções</span>
+            </a>
         </nav>
 
         <div class="relative z-10 px-4 py-4 border-t border-slate-800 space-y-2 text-sm">

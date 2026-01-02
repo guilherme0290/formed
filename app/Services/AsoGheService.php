@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\ClienteContrato;
 use App\Models\ClienteGhe;
+use App\Models\Funcao;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Carbon;
 
 class AsoGheService
@@ -130,5 +132,32 @@ class AsoGheService
             'ghes' => $snapshotGhes,
             'funcao_ghe_map' => $funcaoMap,
         ];
+    }
+
+    public function funcoesDisponiveisParaCliente(int $empresaId, int $clienteId): Collection
+    {
+        $funcoesIds = ClienteGhe::query()
+            ->where('empresa_id', $empresaId)
+            ->where('cliente_id', $clienteId)
+            ->where('ativo', true)
+            ->with('funcoes')
+            ->get()
+            ->pluck('funcoes')
+            ->flatten()
+            ->pluck('funcao_id')
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($funcoesIds->isEmpty()) {
+            return collect();
+        }
+
+        return Funcao::query()
+            ->where('empresa_id', $empresaId)
+            ->whereIn('id', $funcoesIds)
+            ->where('ativo', true)
+            ->orderBy('nome')
+            ->get();
     }
 }

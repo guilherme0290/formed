@@ -20,11 +20,14 @@ class ApresentacaoController extends Controller
 
     public function cliente(Request $request)
     {
-        $empresaId = $request->user()->empresa_id;
+        $user = $request->user();
+        $empresaId = $user->empresa_id;
+        $isMaster = $user->hasPapel('Master');
 
         $propostas = Proposta::query()
             ->with('cliente')
             ->where('empresa_id', $empresaId)
+            ->when(!$isMaster, fn ($q) => $q->where('vendedor_id', $user->id))
             ->orderByDesc('id')
             ->limit(100)
             ->get(['id', 'cliente_id', 'codigo', 'status', 'created_at', 'valor_total']);
@@ -47,10 +50,13 @@ class ApresentacaoController extends Controller
             'telefone' => ['required', 'string', 'max:30'],
         ]);
 
-        $empresaId = $request->user()->empresa_id;
+        $user = $request->user();
+        $empresaId = $user->empresa_id;
+        $isMaster = $user->hasPapel('Master');
         if (!empty($data['proposta_id'])) {
             $ok = Proposta::where('id', $data['proposta_id'])
                 ->where('empresa_id', $empresaId)
+                ->when(!$isMaster, fn ($q) => $q->where('vendedor_id', $user->id))
                 ->exists();
             abort_if(!$ok, 403);
         }

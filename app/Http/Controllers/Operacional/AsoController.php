@@ -7,6 +7,8 @@ use App\Models\Anexos;
 use App\Models\AsoSolicitacoes;
 use App\Models\Cliente;
 use App\Models\ClienteGhe;
+use App\Models\ClienteTabelaPreco;
+use App\Models\ClienteTabelaPrecoItem;
 use App\Models\Funcao;
 use App\Models\Funcionario;
 use App\Models\KanbanColuna;
@@ -35,7 +37,8 @@ class AsoController extends Controller
         $this->normalizeTreinamentosInput($request);
 
         $treinamentosDisponiveis = $this->getTreinamentosDisponiveis($empresaId);
-        $treinamentosCodigos = array_keys($treinamentosDisponiveis);
+        $treinamentosPermitidos = $this->getTreinamentosPermitidos($empresaId, $cliente->id, $treinamentosDisponiveis);
+        $treinamentosCodigos = $treinamentosPermitidos;
 
         $data = $request->validate([
             'funcionario_id' => ['nullable', 'exists:funcionarios,id'],
@@ -51,7 +54,13 @@ class AsoController extends Controller
             'treinamentos' => ['array'],
             'treinamentos.*' => ['string', Rule::in($treinamentosCodigos)],
             'email_aso' => ['nullable', 'email'],
-        ]);
+        ], $this->mensagensValidacao(), $this->atributosValidacao());
+
+        if (!empty($data['vai_fazer_treinamento']) && empty($treinamentosPermitidos)) {
+            throw ValidationException::withMessages([
+                'treinamentos' => 'Treinamento não configurado para este cliente. Converse com seu comercial.',
+            ]);
+        }
 
         $tarefa = DB::transaction(function () use ($data, $empresaId, $cliente, $usuario,$request) {
 
@@ -209,9 +218,8 @@ class AsoController extends Controller
             ->orderBy('nome')
             ->get();
 
-        $funcoes = Funcao::where('empresa_id', $empresaId)
-            ->orderBy('nome')
-            ->get();
+        $funcoes = app(AsoGheService::class)
+            ->funcoesDisponiveisParaCliente($empresaId, $cliente->id);
 
         $treinamentosDisponiveis = $this->getTreinamentosDisponiveis($empresaId);
 
@@ -252,6 +260,11 @@ class AsoController extends Controller
         }
 
         $treinamentosSelecionados = $this->normalizeTreinamentosValues($treinamentosSelecionados);
+        $treinamentosPermitidos = $this->getTreinamentosPermitidos($empresaId, $cliente->id, $treinamentosDisponiveis);
+        $treinamentosPermitidos = array_values(array_unique(array_merge(
+            $treinamentosPermitidos,
+            $treinamentosSelecionados
+        )));
 
         // VAI FAZER TREINAMENTO
         $vaiFazerTreinamento = (int)old(
@@ -275,6 +288,7 @@ class AsoController extends Controller
             'unidadeSelecionada' => $unidadeSelecionada,
             'vaiFazerTreinamento' => $vaiFazerTreinamento,
             'treinamentosDisponiveis' => $treinamentosDisponiveis,
+            'treinamentosPermitidos' => $treinamentosPermitidos,
             'treinamentosSelecionados' => $treinamentosSelecionados,
             'isEdit' => true,
         ]);
@@ -288,7 +302,8 @@ class AsoController extends Controller
         $this->normalizeTreinamentosInput($request);
 
         $treinamentosDisponiveis = $this->getTreinamentosDisponiveis($empresaId);
-        $treinamentosCodigos = array_keys($treinamentosDisponiveis);
+        $treinamentosPermitidos = $this->getTreinamentosPermitidos($empresaId, $cliente->id, $treinamentosDisponiveis);
+        $treinamentosCodigos = $treinamentosPermitidos;
 
         $data = $request->validate([
             'funcionario_id' => ['nullable', 'exists:funcionarios,id'],
@@ -304,7 +319,13 @@ class AsoController extends Controller
             'treinamentos' => ['array'],
             'treinamentos.*' => ['string', Rule::in($treinamentosCodigos)],
             'email_aso' => ['nullable', 'email'],
-        ]);
+        ], $this->mensagensValidacao(), $this->atributosValidacao());
+
+        if (!empty($data['vai_fazer_treinamento']) && empty($treinamentosPermitidos)) {
+            throw ValidationException::withMessages([
+                'treinamentos' => 'Treinamento não configurado para este cliente. Converse com seu comercial.',
+            ]);
+        }
 
         DB::transaction(function () use ($data, $empresaId, $cliente, $tarefa, $request) {
 
@@ -437,9 +458,8 @@ class AsoController extends Controller
             ->get();
 
         // Funções
-        $funcoes = Funcao::where('empresa_id', $empresaId)
-            ->orderBy('nome')
-            ->get();
+        $funcoes = app(AsoGheService::class)
+            ->funcoesDisponiveisParaCliente($empresaId, $cliente->id);
 
         // Tipos de ASO
         $tiposAso = [
@@ -452,6 +472,7 @@ class AsoController extends Controller
 
         // Treinamentos disponíveis
         $treinamentosDisponiveis = $this->getTreinamentosDisponiveis($empresaId);
+        $treinamentosPermitidos = $this->getTreinamentosPermitidos($empresaId, $cliente->id, $treinamentosDisponiveis);
 
         // Valores default para a view em modo "create"
         $treinamentosSelecionados = [];
@@ -467,6 +488,7 @@ class AsoController extends Controller
             'tiposAso'                 => $tiposAso,
             'funcoes'                  => $funcoes,
             'treinamentosDisponiveis'  => $treinamentosDisponiveis,
+            'treinamentosPermitidos'   => $treinamentosPermitidos,
             'treinamentosSelecionados' => $treinamentosSelecionados,
             'vaiFazerTreinamento'      => $vaiFazerTreinamento,
             'dataAso'                  => $dataAso,
@@ -546,12 +568,7 @@ class AsoController extends Controller
 
     private function getTreinamentosDisponiveis(int $empresaId): array
     {
-        $treinamentoServicoId = (int) (config('services.treinamento_id') ?? 0);
-        if ($treinamentoServicoId <= 0) {
-            $treinamentoServicoId = (int) Servico::where('empresa_id', $empresaId)
-                ->where('nome', 'Treinamentos NRs')
-                ->value('id');
-        }
+        $treinamentoServicoId = $this->treinamentoServicoId($empresaId);
 
         if ($treinamentoServicoId <= 0) {
             return [];
@@ -576,6 +593,110 @@ class AsoController extends Controller
                 return [$item->codigo => $label ?: $item->codigo];
             })
             ->all();
+    }
+
+    private function tabelaClienteAtiva(int $empresaId, int $clienteId): ?ClienteTabelaPreco
+    {
+        if ($clienteId <= 0) {
+            return null;
+        }
+
+        return ClienteTabelaPreco::query()
+            ->where('empresa_id', $empresaId)
+            ->where('cliente_id', $clienteId)
+            ->where('ativa', true)
+            ->first();
+    }
+
+    private function treinamentoServicoId(int $empresaId): ?int
+    {
+        $id = (int) (config('services.treinamento_id') ?? 0);
+        if ($id > 0) {
+            return $id;
+        }
+
+        return Servico::query()
+            ->where('empresa_id', $empresaId)
+            ->where('ativo', true)
+            ->where(function ($q) {
+                $q->whereRaw('LOWER(tipo) = ?', ['treinamento'])
+                    ->orWhereRaw('LOWER(nome) like ?', ['%treinamento%']);
+            })
+            ->orderBy('id')
+            ->value('id');
+    }
+
+    private function getTreinamentosPermitidos(int $empresaId, int $clienteId, array $treinamentosDisponiveis): array
+    {
+        if (empty($treinamentosDisponiveis)) {
+            return [];
+        }
+
+        $treinamentoServicoId = $this->treinamentoServicoId($empresaId);
+        if (!$treinamentoServicoId) {
+            return [];
+        }
+
+        $tabelaCliente = $this->tabelaClienteAtiva($empresaId, $clienteId);
+        if (!$tabelaCliente) {
+            return [];
+        }
+
+        $codigos = ClienteTabelaPrecoItem::query()
+            ->where('cliente_tabela_preco_id', $tabelaCliente->id)
+            ->where('servico_id', $treinamentoServicoId)
+            ->where('ativo', true)
+            ->whereNotNull('codigo')
+            ->orderBy('codigo')
+            ->pluck('codigo')
+            ->map(fn ($codigo) => trim((string) $codigo))
+            ->filter()
+            ->values()
+            ->all();
+
+        if (empty($codigos)) {
+            return [];
+        }
+
+        $codigos = $this->normalizeTreinamentosValues($codigos);
+        $disponiveis = array_keys($treinamentosDisponiveis);
+
+        return array_values(array_intersect($disponiveis, $codigos));
+    }
+
+    private function mensagensValidacao(): array
+    {
+        return [
+            'required' => 'O campo :attribute é obrigatório.',
+            'string' => 'O campo :attribute deve ser um texto válido.',
+            'max' => 'O campo :attribute deve ter no máximo :max caracteres.',
+            'email' => 'Informe um e-mail válido.',
+            'date' => 'Informe uma data válida para :attribute.',
+            'date_format' => 'Informe a data de :attribute no formato correto.',
+            'exists' => 'O valor selecionado para :attribute é inválido.',
+            'in' => 'O valor selecionado para :attribute é inválido.',
+            'array' => 'O campo :attribute deve ser uma lista válida.',
+            'boolean' => 'O campo :attribute deve ser sim ou não.',
+        ];
+    }
+
+    private function atributosValidacao(): array
+    {
+        return [
+            'funcionario_id' => 'funcionário',
+            'nome' => 'nome',
+            'cpf' => 'CPF',
+            'rg' => 'RG',
+            'data_nascimento' => 'data de nascimento',
+            'funcao_id' => 'função',
+            'tipo_aso' => 'tipo de ASO',
+            'data_aso' => 'data do ASO',
+            'unidade_id' => 'unidade',
+            'vai_fazer_treinamento' => 'vai fazer treinamento',
+            'treinamentos' => 'treinamentos',
+            'treinamentos.*' => 'treinamento',
+            'email_aso' => 'e-mail para envio do ASO',
+        ];
     }
 
 

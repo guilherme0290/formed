@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Operacional;
 
 use App\Http\Controllers\Controller;
 use App\Models\Cliente;
-use App\Models\Funcao;
+use App\Services\AsoGheService;
 use App\Models\KanbanColuna;
 use App\Models\LtipSolicitacoes;
 use App\Models\Servico;
@@ -22,9 +22,8 @@ class LtipController extends Controller
 
         abort_if($cliente->empresa_id !== $empresaId, 403);
 
-        $funcoes = Funcao::where('empresa_id', $empresaId)
-            ->orderBy('nome')
-            ->get();
+        $funcoes = app(AsoGheService::class)
+            ->funcoesDisponiveisParaCliente($empresaId, $cliente->id);
 
         // base do formulário de funções
         $funcoesForm = old('funcoes');
@@ -59,9 +58,8 @@ class LtipController extends Controller
 
         $cliente = $ltip->cliente;
 
-        $funcoes = Funcao::where('empresa_id', $empresaId)
-            ->orderBy('nome')
-            ->get();
+        $funcoes = app(AsoGheService::class)
+            ->funcoesDisponiveisParaCliente($empresaId, $cliente->id);
 
         // usa old() se teve erro, senão vem do banco
         $funcoesForm = old('funcoes', $ltip->funcoes ?? []);

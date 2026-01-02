@@ -26,6 +26,16 @@
         $aso ? (int) $aso->vai_fazer_treinamento : 0
     );
 
+    $treinamentosPermitidos = $treinamentosPermitidos ?? [];
+    $temTreinamentosPermitidos = !empty($treinamentosPermitidos);
+    $treinamentosDisponiveis = $treinamentosDisponiveis ?? [];
+    $treinamentosBloqueados = array_diff(array_keys($treinamentosDisponiveis), $treinamentosPermitidos);
+    $temTreinamentosBloqueados = !empty($treinamentosDisponiveis) && !empty($treinamentosBloqueados);
+    $treinamentoAviso = 'Treinamento não configurado para este cliente. Converse com seu comercial.';
+    if (!$temTreinamentosPermitidos) {
+        $vaiFazerTreinamento = 0;
+    }
+
     // Data do ASO (Y-m-d): old() > aso_solicitacao > $dataAso calculado no controller (fallback)
     $dataAsoValue = old(
         'data_aso',
@@ -199,6 +209,8 @@
                                     name="funcao_id"
                                     label="Função"
                                     field-id="campo_funcao"
+                                    help-text="Funções listadas por GHE, pré-configuradas pelo vendedor/comercial."
+                                    :allowCreate="false"
                                     :funcoes="$funcoes"
                                     :selected="old('funcao_id', $funcionario->funcao_id ?? null)"
                                 />
@@ -287,7 +299,10 @@
                                 <button type="button"
                                         id="btn_treina_sim"
                                         class="px-4 py-2 rounded-xl border text-center text-xs font-medium
-                                        {{ $vaiFazerTreinamento ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-700 border-slate-300' }}">
+                                        {{ $vaiFazerTreinamento ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-700 border-slate-300' }}
+                                        {{ $temTreinamentosPermitidos ? '' : 'opacity-60 cursor-not-allowed' }}"
+                                        {{ $temTreinamentosPermitidos ? '' : 'disabled' }}
+                                        title="{{ $temTreinamentosPermitidos ? '' : $treinamentoAviso }}">
                                     Sim
                                 </button>
 
@@ -303,20 +318,38 @@
                             {{-- Lista de treinamentos --}}
                             <div id="listaTreinamentos"
                                  class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2 {{ $vaiFazerTreinamento ? '' : 'hidden' }}">
-                                @foreach($treinamentosDisponiveis as $key => $label)
-                                    <label class="inline-flex items-center gap-2 text-sm text-slate-700">
-                                        <input type="checkbox"
-                                               name="treinamentos[]"
-                                               value="{{ $key }}"
-                                               @checked(in_array($key, (array) $treinamentosSelecionados))
-                                               class="rounded border-slate-300 text-sky-500 focus:ring-sky-400">
-                                        <span>{{ $label }}</span>
-                                    </label>
-                                @endforeach
+                                @if(empty($treinamentosDisponiveis))
+                                    <p class="text-[11px] text-slate-400 md:col-span-2">
+                                        Nenhum treinamento disponível para seleção.
+                                    </p>
+                                @else
+                                    @foreach($treinamentosDisponiveis as $key => $label)
+                                        @php
+                                            $permitido = in_array($key, $treinamentosPermitidos, true);
+                                            $selecionado = in_array($key, (array) $treinamentosSelecionados, true);
+                                        @endphp
+                                        <label class="inline-flex items-center gap-2 text-sm {{ $permitido ? 'text-slate-700' : 'text-slate-400' }}"
+                                               title="{{ $permitido ? '' : $treinamentoAviso }}">
+                                            <input type="checkbox"
+                                                   name="treinamentos[]"
+                                                   value="{{ $key }}"
+                                                   @checked($selecionado)
+                                                   {{ $permitido ? '' : 'disabled' }}
+                                                   class="rounded border-slate-300 text-sky-500 focus:ring-sky-400">
+                                            <span>{{ $label }}</span>
+                                        </label>
+                                    @endforeach
 
-                                <p class="mt-1 text-[11px] text-slate-400 md:col-span-2">
-                                    Você pode selecionar mais de um treinamento.
-                                </p>
+                                    <p class="mt-1 text-[11px] text-slate-400 md:col-span-2">
+                                        Você pode selecionar mais de um treinamento.
+                                    </p>
+
+                                    @if(!$temTreinamentosPermitidos || $temTreinamentosBloqueados)
+                                        <p class="text-[11px] text-slate-400 md:col-span-2">
+                                            {{ $treinamentoAviso }}
+                                        </p>
+                                    @endif
+                                @endif
                             </div>
                         </div>
 
@@ -659,6 +692,10 @@
                 if (!campo || !btnSim || !btnNao || !lista) return;
 
                 function atualizarTreinamento() {
+                    if (btnSim.disabled) {
+                        campo.value = '0';
+                    }
+
                     const ativo = campo.value === '1';
 
                     if (ativo) {
@@ -683,6 +720,9 @@
                 }
 
                 btnSim.addEventListener('click', function () {
+                    if (btnSim.disabled) {
+                        return;
+                    }
                     campo.value = '1';
                     atualizarTreinamento();
                 });
