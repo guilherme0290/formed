@@ -101,7 +101,8 @@
                                 <button type="button"
                                         data-art-value="1"
                                         class="btn-art w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg text-sm font-semibold
-                                               border bg-slate-900 text-white">
+                                               border bg-slate-900 text-white {{ !($artDisponivel ?? true) ? 'opacity-50 cursor-not-allowed' : '' }}"
+                                        @if(!($artDisponivel ?? true)) disabled @endif>
                                     Com ART
                                 </button>
                                 <button type="button"
@@ -113,12 +114,18 @@
                             </div>
 
                             <input type="hidden" name="com_art" id="input-com-art"
-                                   value="{{ old('com_art', isset($pgr) ? (int)$pgr->com_art : 1) }}">
+                                   value="{{ ($artDisponivel ?? true) ? old('com_art', isset($pgr) ? (int)$pgr->com_art : 1) : 0 }}">
 
                             <div id="alert-art"
                                  class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
                                 ⚠ Custo adicional de R$ {{ number_format($valorArt ?? 500, 2, ',', '.') }}
                             </div>
+
+                            @if(!($artDisponivel ?? true))
+                                <div class="mt-2 text-xs text-slate-500">
+                                    ART não disponível no contrato atual do cliente.
+                                </div>
+                            @endif
                         </section>
 
                         {{-- 2. CONTRATANTE / OBRA (somente PGR específico) --}}

@@ -442,7 +442,7 @@ class PropostaController extends Controller
 
         $codigo = $proposta?->codigo ?? ('PRP-' . now()->format('Ymd') . '-' . Str::upper(Str::random(4)));
 
-        return DB::transaction(function () use ($empresaId, $data, $codigo, $valorTotal, $incluirEsocial, $valorEsocial, $proposta) {
+        return DB::transaction(function () use ($empresaId, $data, $codigo, $valorTotal, $incluirEsocial, $valorEsocial, $valorEsocialCampo, $proposta) {
             $payload = [
                 'empresa_id' => $empresaId,
                 'cliente_id' => $data['cliente_id'],

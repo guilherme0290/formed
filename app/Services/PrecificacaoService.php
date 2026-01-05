@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\ClienteContrato;
 use App\Models\ClienteContratoItem;
+use App\Models\PgrSolicitacoes;
+use App\Models\Servico;
 use App\Models\Tarefa;
 use App\Models\Funcionario;
 use App\Models\TabelaPrecoItem;
@@ -235,6 +237,93 @@ class PrecificacaoService
                 'servico_id' => $tarefa->servico_id,
                 'descricao_snapshot' => $descricao ?: ($item->codigo ?? 'Treinamento'),
                 'preco_unitario_snapshot' => (float) $item->preco,
+                'quantidade' => 1,
+            ];
+        }
+
+        return [
+            'contrato' => $contrato,
+            'itemContrato' => $itemContrato,
+            'itensVenda' => $itensVenda,
+        ];
+    }
+
+    /**
+     * Precifica PGR e adiciona ART quando solicitado.
+     *
+     * @return array{contrato: ClienteContrato, itemContrato: ClienteContratoItem, itensVenda: array<int, array<string, mixed>>}
+     */
+    public function precificarPgr(Tarefa $tarefa): array
+    {
+        $contrato = $this->contratoClienteService->getContratoAtivo($tarefa->cliente_id, $tarefa->empresa_id, null);
+
+        if (!$contrato) {
+            throw ValidationException::withMessages([
+                'contrato' => 'Não é possível concluir esta tarefa porque o cliente não possui contrato ativo.',
+            ]);
+        }
+
+        $itemContrato = $contrato->itens()
+            ->where('servico_id', $tarefa->servico_id)
+            ->where('ativo', true)
+            ->first();
+
+        if (!$itemContrato) {
+            throw ValidationException::withMessages([
+                'contrato' => 'Não é possível concluir esta tarefa porque o cliente não possui preço definido para este serviço na proposta/contrato ativo. Solicite ao Comercial para ajustar a proposta e fechar novamente, ou cadastrar o valor do serviço no contrato do cliente.',
+            ]);
+        }
+
+        if ((float) $itemContrato->preco_unitario_snapshot <= 0) {
+            throw ValidationException::withMessages([
+                'contrato' => 'Não é possível concluir esta tarefa porque o serviço não possui valor válido no contrato ativo.',
+            ]);
+        }
+
+        $pgr = $tarefa->pgr ?? PgrSolicitacoes::where('tarefa_id', $tarefa->id)->first();
+        if (!$pgr) {
+            throw ValidationException::withMessages([
+                'contrato' => 'Não foi possível localizar os dados do PGR para precificação.',
+            ]);
+        }
+
+        $tipoLabel = $pgr->tipo === 'especifico' ? 'Específico' : 'Matriz';
+        $descricao = "PGR - {$tipoLabel}" . ($pgr->com_art ? ' (COM ART)' : '');
+
+        $itensVenda = [[
+            'servico_id' => $tarefa->servico_id,
+            'descricao_snapshot' => $descricao,
+            'preco_unitario_snapshot' => (float) $itemContrato->preco_unitario_snapshot,
+            'quantidade' => 1,
+        ]];
+
+        if ($pgr->com_art) {
+            $servicoArtId = Servico::query()
+                ->where('empresa_id', $tarefa->empresa_id)
+                ->where('nome', 'ART')
+                ->value('id');
+
+            if (!$servicoArtId) {
+                throw ValidationException::withMessages([
+                    'contrato' => 'Serviço ART não cadastrado para esta empresa.',
+                ]);
+            }
+
+            $itemArt = $contrato->itens()
+                ->where('servico_id', $servicoArtId)
+                ->where('ativo', true)
+                ->first();
+
+            if (!$itemArt || (float) $itemArt->preco_unitario_snapshot <= 0) {
+                throw ValidationException::withMessages([
+                    'contrato' => 'Não é possível concluir esta tarefa porque o cliente não possui ART com valor válido no contrato ativo.',
+                ]);
+            }
+
+            $itensVenda[] = [
+                'servico_id' => $servicoArtId,
+                'descricao_snapshot' => 'ART',
+                'preco_unitario_snapshot' => (float) $itemArt->preco_unitario_snapshot,
                 'quantidade' => 1,
             ];
         }

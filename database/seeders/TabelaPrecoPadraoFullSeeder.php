@@ -52,6 +52,7 @@ class TabelaPrecoPadraoFullSeeder extends Seeder
             'LTCAT'           => 'Laudo Técnico das Condições Ambientais.',
             'LTIP'            => 'Laudo de Insalubridade e Periculosidade.',
             'APR'             => 'Análise Preliminar de Riscos.',
+            'ART'             => 'Anotação de Responsabilidade Técnica.',
             'PAE'             => 'Plano de Atendimento a Emergências.',
             'Treinamentos NRs'=> 'Normas regulamentadoras e capacitações.',
             'Esocial'         => 'Esocial',
@@ -88,6 +89,7 @@ class TabelaPrecoPadraoFullSeeder extends Seeder
             ['ltcat', 'LTCAT',    'LTCAT (Laudo técnico)',          800.00,  true],
             ['ltip',  'LTIP',     'LTIP (Insalubridade/Periculos.)',950.00,  true],
             ['apr',   'APR',      'APR (Análise preliminar)',       180.00,  true],
+            ['art',   'ART',      'ART (Responsabilidade técnica)', 150.00,  true],
             ['pae',   'PAE',      'PAE (Plano de emergência)',      280.00,  true],
 
             // casos de teste

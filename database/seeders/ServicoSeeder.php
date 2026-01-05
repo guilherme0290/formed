@@ -38,6 +38,10 @@ class ServicoSeeder extends Seeder
                 'descricao' => 'Análise Preliminar de Riscos.',
             ],
             [
+                'nome'      => 'ART',
+                'descricao' => 'Anotação de Responsabilidade Técnica.',
+            ],
+            [
                 'nome'      => 'PAE',
                 'descricao' => 'Plano de Atendimento a Emergências.',
             ],

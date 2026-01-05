@@ -11,6 +11,7 @@ use App\Models\PgrSolicitacoes;
 use App\Models\Servico;
 use App\Models\Tarefa;
 use App\Models\TarefaLog;
+use App\Services\ContratoClienteService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -53,7 +54,9 @@ class PgrController extends Controller
         }
 
         $tipoLabel = $tipo === 'matriz' ? 'Matriz' : 'Específico';
-        $valorArt  = 500.00;
+        $artInfo = $this->artInfoParaCliente($cliente);
+        $valorArt  = $artInfo['valor'] ?? 500.00;
+        $artDisponivel = $artInfo['disponivel'];
 
         return view('operacional.kanban.pgr.form', [
             'cliente'   => $cliente,
@@ -65,6 +68,7 @@ class PgrController extends Controller
             'pgr'       => null,
             'modo'      => 'create',
             'origem'    => $origem,
+            'artDisponivel' => $artDisponivel,
         ]);
     }
 
@@ -88,7 +92,9 @@ class PgrController extends Controller
             ->funcoesDisponiveisParaCliente($empresaId, $cliente->id);
 
         // se quiser manter o valor já salvo, senão usa fixo
-        $valorArt = $pgr->valor_art ?? 500.00;
+        $artInfo = $this->artInfoParaCliente($cliente);
+        $valorArt = $pgr->valor_art ?? ($artInfo['valor'] ?? 500.00);
+        $artDisponivel = $artInfo['disponivel'];
 
         return view('operacional.kanban.pgr.form', [
             'cliente'   => $cliente,
@@ -101,6 +107,7 @@ class PgrController extends Controller
             'tarefa'    => $tarefa,
             'pgr'       => $pgr,
             'modo'      => 'edit',
+            'artDisponivel' => $artDisponivel,
         ]);
     }
 
@@ -137,6 +144,12 @@ class PgrController extends Controller
             'funcoes.*.descricao'     => ['nullable', 'string'],
         ]);
 
+        if ((bool) $data['com_art'] && !$this->artInfoParaCliente($cliente)['disponivel']) {
+            return back()
+                ->withInput()
+                ->withErrors(['com_art' => 'ART não está disponível no contrato do cliente.']);
+        }
+
         $totalTrabalhadores = (int)$data['qtd_homens'] + (int)$data['qtd_mulheres'];
 
         $totalFuncoes = collect($data['funcoes'])
@@ -153,7 +166,8 @@ class PgrController extends Controller
         }
 
         $tipoLabel = $data['tipo'] === 'matriz' ? 'Matriz' : 'Específico';
-        $valorArt  = $data['com_art'] ? 500.00 : null;
+        $artInfo = $this->artInfoParaCliente($cliente);
+        $valorArt  = $data['com_art'] ? ($artInfo['valor'] ?? 500.00) : null;
 
         DB::transaction(function () use (
             $data,
@@ -256,6 +270,12 @@ class PgrController extends Controller
             'funcoes.*.descricao'     => ['nullable', 'string'],
         ]);
 
+        if ((bool) $data['com_art'] && !$this->artInfoParaCliente($cliente)['disponivel']) {
+            return back()
+                ->withInput()
+                ->withErrors(['com_art' => 'ART não está disponível no contrato do cliente.']);
+        }
+
         // valida soma das quantidades x total trabalhadores
         $totalTrabalhadores = (int)$data['qtd_homens'] + (int)$data['qtd_mulheres'];
 
@@ -284,7 +304,8 @@ class PgrController extends Controller
             ->first();
 
         $tipoLabel = $data['tipo'] === 'matriz' ? 'Matriz' : 'Específico';
-        $valorArt  = $data['com_art'] ? 500.00 : null; // se for fixo
+        $artInfo = $this->artInfoParaCliente($cliente);
+        $valorArt  = $data['com_art'] ? ($artInfo['valor'] ?? 500.00) : null;
 
         $tarefaId = null;
 
@@ -437,5 +458,38 @@ class PgrController extends Controller
         return redirect()
             ->route('operacional.kanban')
             ->with('ok', 'Tarefa PGR criada e enviada para a coluna Pendente.');
+    }
+
+    private function artInfoParaCliente(Cliente $cliente): array
+    {
+        $contrato = app(ContratoClienteService::class)
+            ->getContratoAtivo($cliente->id, $cliente->empresa_id, null);
+
+        if (!$contrato) {
+            return ['disponivel' => false, 'valor' => null];
+        }
+
+        $servicoArtId = Servico::query()
+            ->where('empresa_id', $cliente->empresa_id)
+            ->where('nome', 'ART')
+            ->value('id');
+
+        if (!$servicoArtId) {
+            return ['disponivel' => false, 'valor' => null];
+        }
+
+        $item = $contrato->itens()
+            ->where('servico_id', $servicoArtId)
+            ->where('ativo', true)
+            ->first();
+
+        if (!$item) {
+            return ['disponivel' => false, 'valor' => null];
+        }
+
+        return [
+            'disponivel' => true,
+            'valor' => (float) $item->preco_unitario_snapshot,
+        ];
     }
 }
