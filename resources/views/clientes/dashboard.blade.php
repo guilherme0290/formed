@@ -85,7 +85,7 @@
                                 R$ {{ number_format($faturaTotal ?? 0, 2, ',', '.') }}
                             </p>
                             <p class="text-[11px] text-emerald-50/90 mt-1">
-                                Soma dos serviços finalizados (kanban)
+                                Soma das contas a receber em aberto
                             </p>
                         </div>
                     </div>

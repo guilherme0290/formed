@@ -7,7 +7,7 @@
         * { font-family: DejaVu Sans, Arial, sans-serif; }
         body { color: #1f2937; font-size: 12px; }
         .header { border-bottom: 2px solid #0f766e; padding-bottom: 12px; margin-bottom: 16px; }
-        .brand { display: inline-block; vertical-align: middle; }
+        .brand { display: inline-block; vertical-align: middle; background: #ffffff; border: 1px solid #e5e7eb; padding: 8px 12px; border-radius: 10px; }
         .title { display: inline-block; vertical-align: middle; margin-left: 12px; }
         .title h1 { margin: 0; font-size: 18px; }
         .title p { margin: 4px 0 0; font-size: 11px; color: #4b5563; }
@@ -33,7 +33,7 @@
     <div class="header">
         <div class="brand">
             @if($logoData)
-                <img src="{{ $logoData }}" alt="Formed" style="height: 36px;">
+                <img src="{{ $logoData }}" alt="Formed" style="height: 56px;">
             @endif
         </div>
         <div class="title">

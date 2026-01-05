@@ -7,11 +7,12 @@ use App\Models\Cliente;
 use App\Models\ClienteContrato;
 use App\Models\ClienteTabelaPreco;
 use App\Models\ClienteTabelaPrecoItem;
+use App\Models\ContaReceberItem;
 use App\Models\Servico;
 use App\Models\Venda;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 
 class ClienteDashboardController extends Controller
@@ -64,11 +65,82 @@ class ClienteDashboardController extends Controller
 
         [$user, $cliente] = $contexto;
 
+        [$contratoAtivo, $servicosContrato, $servicosIds] = $this->servicosLiberadosPorContrato($cliente);
+        $precos = $this->precosPorContrato($contratoAtivo, $servicosIds);
         $tabela = $this->tabelaAtiva($cliente);
-        $precos = $this->precosPorServico($cliente, $tabela);
+        if (empty(array_filter($precos))) {
+            $precos = $this->precosPorServico($cliente, $tabela);
+        }
         $temTabela = (bool) $tabela;
         $faturaTotal = $this->faturaTotal($cliente);
-        $vendas = $this->vendasFaturadas($cliente);
+
+        $dataInicio = $request->input('data_inicio');
+        $dataFim = $request->input('data_fim');
+        $status = $request->input('status');
+
+        $contaQuery = DB::table('contas_receber_itens as cri')
+            ->leftJoin('servicos as s', 's.id', '=', 'cri.servico_id')
+            ->leftJoin('venda_itens as vi', 'vi.id', '=', 'cri.venda_item_id')
+            ->where('cri.empresa_id', $cliente->empresa_id)
+            ->where('cri.cliente_id', $cliente->id)
+            ->where('cri.status', '!=', 'CANCELADO')
+            ->selectRaw("'conta' as origem")
+            ->selectRaw('cri.id as ref_id')
+            ->selectRaw('COALESCE(s.nome, cri.descricao, vi.descricao_snapshot, "Serviço") as servico')
+            ->selectRaw('cri.data_realizacao as data_realizacao')
+            ->selectRaw('cri.vencimento as vencimento')
+            ->selectRaw('cri.status as status')
+            ->selectRaw('cri.valor as valor');
+
+        if ($status) {
+            $contaQuery->where('cri.status', strtoupper((string) $status));
+        }
+        if ($dataInicio) {
+            $contaQuery->whereDate('cri.data_realizacao', '>=', $dataInicio);
+        }
+        if ($dataFim) {
+            $contaQuery->whereDate('cri.data_realizacao', '<=', $dataFim);
+        }
+
+        $vendaQuery = DB::table('venda_itens as vi')
+            ->join('vendas as v', 'v.id', '=', 'vi.venda_id')
+            ->leftJoin('tarefas as t', 't.id', '=', 'v.tarefa_id')
+            ->leftJoin('servicos as s', 's.id', '=', 'vi.servico_id')
+            ->where('v.empresa_id', $cliente->empresa_id)
+            ->where('v.cliente_id', $cliente->id)
+            ->whereNotExists(function ($q) {
+                $q->select(DB::raw(1))
+                    ->from('contas_receber_itens as cri')
+                    ->whereColumn('cri.venda_item_id', 'vi.id')
+                    ->where('cri.status', '!=', 'CANCELADO');
+            })
+            ->selectRaw("'venda' as origem")
+            ->selectRaw('vi.id as ref_id')
+            ->selectRaw('COALESCE(s.nome, vi.descricao_snapshot, "Serviço") as servico')
+            ->selectRaw('COALESCE(DATE(t.finalizado_em), DATE(v.created_at)) as data_realizacao')
+            ->selectRaw('NULL as vencimento')
+            ->selectRaw("'ABERTO' as status")
+            ->selectRaw('vi.subtotal_snapshot as valor');
+
+        if ($status) {
+            if (strtoupper((string) $status) === 'BAIXADO') {
+                $vendaQuery->whereRaw('1=0');
+            }
+        }
+        if ($dataInicio) {
+            $vendaQuery->whereDate(DB::raw('COALESCE(t.finalizado_em, v.created_at)'), '>=', $dataInicio);
+        }
+        if ($dataFim) {
+            $vendaQuery->whereDate(DB::raw('COALESCE(t.finalizado_em, v.created_at)'), '<=', $dataFim);
+        }
+
+        $union = $contaQuery->unionAll($vendaQuery);
+
+        $itens = DB::query()
+            ->fromSub($union, 'reg')
+            ->orderByDesc('data_realizacao')
+            ->paginate(10)
+            ->withQueryString();
 
         return view('clientes.faturas.index', [
             'user'         => $user,
@@ -76,7 +148,15 @@ class ClienteDashboardController extends Controller
             'temTabela'    => $temTabela,
             'precos'       => $precos,
             'faturaTotal'  => $faturaTotal,
-            'vendas'       => $vendas,
+            'itens'        => $itens,
+            'filtros' => [
+                'data_inicio' => $dataInicio,
+                'data_fim' => $dataFim,
+                'status' => $status,
+            ],
+            'contratoAtivo' => $contratoAtivo,
+            'servicosContrato' => $servicosContrato,
+            'servicosIds' => $servicosIds,
         ]);
     }
 
@@ -178,24 +258,23 @@ class ClienteDashboardController extends Controller
 
     private function faturaTotal(Cliente $cliente): float
     {
-        return (float) Venda::query()
+        $contasAberto = (float) ContaReceberItem::query()
+            ->where('empresa_id', $cliente->empresa_id)
+            ->where('cliente_id', $cliente->id)
+            ->where('status', 'ABERTO')
+            ->sum('valor');
+
+        $vendasSemConta = (float) Venda::query()
             ->where('cliente_id', $cliente->id)
             ->whereHas('tarefa.coluna', function ($q) {
                 $q->where('finaliza', true);
+            })
+            ->whereDoesntHave('itens.contasReceberItens', function ($q) {
+                $q->where('status', '!=', 'CANCELADO');
             })
             ->sum('total');
-    }
 
-    private function vendasFaturadas(Cliente $cliente): LengthAwarePaginator
-    {
-        return Venda::query()
-            ->with(['itens.servico', 'tarefa.coluna'])
-            ->where('cliente_id', $cliente->id)
-            ->whereHas('tarefa.coluna', function ($q) {
-                $q->where('finaliza', true);
-            })
-            ->orderByDesc('created_at')
-            ->paginate(10);
+        return $contasAberto + $vendasSemConta;
     }
 
     private function contratoAtivo(Cliente $cliente): ?ClienteContrato

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class VendaItem extends Model
 {
@@ -32,5 +33,9 @@ class VendaItem extends Model
     {
         return $this->belongsTo(Servico::class);
     }
-}
 
+    public function contasReceberItens(): HasMany
+    {
+        return $this->hasMany(ContaReceberItem::class, 'venda_item_id');
+    }
+}

@@ -31,6 +31,7 @@
                     $links = [
                         ['label' => 'Dashboard', 'icon' => '📊', 'route' => route('financeiro.dashboard'), 'active' => request()->routeIs('financeiro.dashboard')],
                         ['label' => 'Contratos', 'icon' => '📄', 'route' => route('financeiro.contratos'), 'active' => request()->routeIs('financeiro.contratos*')],
+                        ['label' => 'Contas a Receber', 'icon' => '💳', 'route' => route('financeiro.contas-receber'), 'active' => request()->routeIs('financeiro.contas-receber*')],
                     ];
                 @endphp
                 @foreach($links as $link)

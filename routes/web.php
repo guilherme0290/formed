@@ -733,6 +733,22 @@ Route::middleware('auth')->group(function () {
                 ->name('contratos');
             Route::get('/contratos/{contrato}', [\App\Http\Controllers\Financeiro\ContratoController::class, 'show'])
                 ->name('contratos.show');
+            Route::get('/contas-receber', [\App\Http\Controllers\Financeiro\ContasReceberController::class, 'index'])
+                ->name('contas-receber');
+            Route::post('/contas-receber/itens', [\App\Http\Controllers\Financeiro\ContasReceberController::class, 'itens'])
+                ->name('contas-receber.itens');
+            Route::post('/contas-receber', [\App\Http\Controllers\Financeiro\ContasReceberController::class, 'store'])
+                ->name('contas-receber.store');
+            Route::get('/contas-receber/{contaReceber}', [\App\Http\Controllers\Financeiro\ContasReceberController::class, 'show'])
+                ->name('contas-receber.show');
+            Route::post('/contas-receber/{contaReceber}/baixar', [\App\Http\Controllers\Financeiro\ContasReceberController::class, 'baixar'])
+                ->name('contas-receber.baixar');
+            Route::post('/contas-receber/{contaReceber}/reabrir', [\App\Http\Controllers\Financeiro\ContasReceberController::class, 'reabrir'])
+                ->name('contas-receber.reabrir');
+            Route::post('/contas-receber/{contaReceber}/boleto', [\App\Http\Controllers\Financeiro\ContasReceberController::class, 'emitirBoleto'])
+                ->name('contas-receber.boleto');
+            Route::post('/contas-receber/{contaReceber}/itens', [\App\Http\Controllers\Financeiro\ContasReceberController::class, 'storeItem'])
+                ->name('contas-receber.itens.store');
         });
 
 

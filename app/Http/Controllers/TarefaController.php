@@ -139,6 +139,7 @@ class TarefaController extends Controller
                     $vendedorId = optional($tarefa->cliente)->vendedor_id;
                     $comissaoService->gerarPorVenda($venda, $resultado['item'], $vendedorId ?: auth()->id());
                 }
+
             } catch (\Throwable $e) {
                 $mensagem = 'Não é possível concluir esta tarefa porque o cliente não possui preço definido para este serviço na proposta/contrato ativo. Solicite ao Comercial para ajustar a proposta e fechar novamente, ou cadastrar o valor do serviço no contrato do cliente.';
                 if (method_exists($e, 'errors')) {

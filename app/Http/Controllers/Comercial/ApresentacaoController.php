@@ -112,9 +112,9 @@ class ApresentacaoController extends Controller
 
         abort_unless(array_key_exists($segmento, self::SEGMENTOS), 404);
 
-        $logoPath = public_path('storage/logo.svg');
+        $logoPath = public_path('storage/logo.png');
         $logoData = is_file($logoPath)
-            ? 'data:image/svg+xml;base64,' . base64_encode(file_get_contents($logoPath))
+            ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath))
             : null;
 
         $pdf = Pdf::loadView('comercial.apresentacao.pdf', [

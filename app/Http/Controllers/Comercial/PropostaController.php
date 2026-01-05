@@ -498,7 +498,7 @@ class PropostaController extends Controller
                 ]);
             }
 
-            if ($contratoParaAtualizar) {
+            if ($contratoParaAtualizar && strtoupper((string) $proposta->status) === 'FECHADA') {
                 $contratoParaAtualizar->load(['itens.servico', 'cliente']);
 
                 $usuarioNome = auth()->user()?->name ?? 'Sistema';
@@ -693,9 +693,9 @@ class PropostaController extends Controller
                 ->buildSnapshotForCliente($proposta->cliente_id, $user->empresa_id);
         }
 
-        $logoPath = public_path('storage/logo.svg');
+        $logoPath = public_path('storage/logo.png');
         $logoData = is_file($logoPath)
-            ? 'data:image/svg+xml;base64,' . base64_encode(file_get_contents($logoPath))
+            ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath))
             : null;
 
         $pdf = Pdf::loadView('comercial.propostas.pdf', [
@@ -728,9 +728,9 @@ class PropostaController extends Controller
                 ->buildSnapshotForCliente($proposta->cliente_id, $user->empresa_id);
         }
 
-        $logoPath = public_path('storage/logo.svg');
+        $logoPath = public_path('storage/logo.png');
         $logoData = is_file($logoPath)
-            ? 'data:image/svg+xml;base64,' . base64_encode(file_get_contents($logoPath))
+            ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath))
             : null;
 
         $pdf = Pdf::loadView('comercial.propostas.pdf', [
