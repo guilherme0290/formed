@@ -108,6 +108,8 @@
                                     name="nf_funcao_id"
                                     field-id="nf_funcao_id"
                                     label="Função"
+                                    help-text="Funções listadas por GHE, pré-configuradas pelo vendedor/comercial."
+                                    :allowCreate="false"
                                     :funcoes="$funcoes"
                                     :selected="null"
                                 />
@@ -162,6 +164,43 @@
                     <p id="contador-selecionados" class="text-[11px] text-slate-500 mt-1">
                         Nenhum participante selecionado.
                     </p>
+                </section>
+
+                {{-- 2. Selecione os Treinamentos --}}
+                @php
+                    $treinamentosSelecionados = old('treinamentos', $detalhes->treinamentos ?? []);
+                @endphp
+
+                <section class="space-y-3 pt-4 border-t border-slate-100 mt-4">
+                    <h2 class="text-sm font-semibold text-slate-800">2. Selecione os Treinamentos</h2>
+
+                    @if($treinamentosDisponiveis->isEmpty())
+                        <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[11px] text-amber-800">
+                            Não há treinamentos cadastrados na tabela de preços para esta empresa.
+                        </div>
+                    @else
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-64 overflow-y-auto pr-1">
+                            @foreach($treinamentosDisponiveis as $treinamento)
+                                <label class="block border rounded-xl px-3 py-3 text-xs cursor-pointer bg-slate-50 hover:bg-slate-100">
+                                    <div class="flex items-start gap-2">
+                                        <input type="checkbox"
+                                               name="treinamentos[]"
+                                               value="{{ $treinamento->codigo }}"
+                                               class="mt-1 h-3 w-3 text-indigo-600 border-slate-300 rounded"
+                                            @checked(in_array($treinamento->codigo, $treinamentosSelecionados))>
+                                        <div>
+                                            <p class="font-semibold text-slate-800 text-sm">
+                                                {{ $treinamento->codigo }}
+                                            </p>
+                                            <p class="text-[11px] text-slate-500">
+                                                {{ $treinamento->descricao ?? 'Treinamento NR' }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </label>
+                            @endforeach
+                        </div>
+                    @endif
                 </section>
 
                 {{-- 3. Onde será realizado? --}}

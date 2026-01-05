@@ -8,6 +8,7 @@ use App\Models\ClienteContratoLog;
 use App\Models\Proposta;
 use App\Models\PropostaItens;
 use App\Models\User;
+use App\Services\AsoGheService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -21,6 +22,7 @@ class PropostaService
     {
         $proposta = Proposta::with('itens')->findOrFail($propostaId);
         $proposta->loadMissing('cliente');
+        $proposta->loadMissing('itens.servico');
 
         if (strtoupper((string) $proposta->status) === 'FECHADA') {
             return $proposta;
@@ -34,15 +36,33 @@ class PropostaService
             throw ValidationException::withMessages(['itens' => 'Proposta sem itens.']);
         }
 
-        foreach ($proposta->itens as $it) {
-            if ($it->valor_unitario <= 0) {
-                throw ValidationException::withMessages(['itens' => 'Itens precisam de serviço e valor válido.']);
+        $asoGheService = app(AsoGheService::class);
+        $gheSnapshot = $asoGheService->buildSnapshotForCliente($proposta->cliente_id, $proposta->empresa_id);
+        $temGhe = !empty($gheSnapshot['ghes']);
+        $isAsoItem = function (PropostaItens $item) use ($temGhe): bool {
+            if (!$temGhe) {
+                return false;
             }
+
+            $nomeBase = strtoupper((string) ($item->nome ?? $item->descricao ?? ''));
+            return $nomeBase !== '' && str_contains($nomeBase, 'ASO');
+        };
+
+        foreach ($proposta->itens as $it) {
+            if ($it->valor_unitario > 0) {
+                continue;
+            }
+
+            if ($isAsoItem($it)) {
+                continue;
+            }
+
+            throw ValidationException::withMessages(['itens' => 'Itens precisam de serviço e valor válido.']);
         }
 
         $hoje = Carbon::now()->startOfDay();
 
-        return DB::transaction(function () use ($proposta, $hoje, $userId) {
+        return DB::transaction(function () use ($proposta, $hoje, $userId, $temGhe, $gheSnapshot, $isAsoItem) {
             $usuario = User::find($userId);
             $usuarioNome = $usuario?->name ?? 'Sistema';
             $clienteNome = $proposta->cliente?->razao_social ?? 'Cliente';
@@ -81,14 +101,33 @@ class PropostaService
             ]);
 
             // Copia itens
+            $asoSnapshot = null;
+            if ($temGhe && $proposta->itens->contains(fn (PropostaItens $it) => $isAsoItem($it))) {
+                $asoSnapshot = !empty($gheSnapshot['ghes']) ? $gheSnapshot : null;
+            }
+
             foreach ($proposta->itens as $it) {
+                $regrasSnapshot = null;
+                $servicoId = $it->servico_id;
+                if ($isAsoItem($it)) {
+                    if (!$servicoId) {
+                        $servicoId = (int) (config('services.aso_id') ?? 0);
+                        if ($servicoId <= 0) {
+                            throw ValidationException::withMessages([
+                                'itens' => 'Serviço ASO não configurado. Defina FORMED_SERVICO_ASO_ID.',
+                            ]);
+                        }
+                    }
+                    $regrasSnapshot = $asoSnapshot;
+                }
+
                 ClienteContratoItem::create([
                     'cliente_contrato_id' => $contrato->id,
-                    'servico_id' => $it->servico_id,
+                    'servico_id' => $servicoId,
                     'descricao_snapshot' => $it->descricao ?? $it->nome,
                     'preco_unitario_snapshot' => $it->valor_total ?? $it->valor_unitario,
                     'unidade_cobranca' => 'unidade',
-                    'regras_snapshot' => null,
+                    'regras_snapshot' => $regrasSnapshot,
                     'ativo' => true,
                 ]);
 

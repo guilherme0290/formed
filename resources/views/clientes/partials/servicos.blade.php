@@ -29,6 +29,7 @@
             'treinamentos' => $temContratoAtivo && in_array($servicosIds['treinamentos'] ?? null, $servicosContrato),
         ];
 
+        $vendedorTelefone = preg_replace('/\D+/', '', $vendedorTelefone ?? optional($cliente->vendedor)->telefone ?? '');
         $cards = [
             [
                 'slug' => 'funcionarios',
@@ -45,8 +46,9 @@
                 'desc' => 'Agende exames ocupacionais para seus colaboradores.',
                 'icone' => '📅',
                 'preco' => $precos['aso'] ?? null,
+                'permitido' => $permitidos['aso'] ?? false,
                 'rota' => route('cliente.servicos.aso'),
-                'disabled' => !$temTabela || !($precos['aso'] ?? null) || !($permitidos['aso'] ?? false),
+                'disabled' => !($permitidos['aso'] ?? false),
             ],
             [
                 'slug' => 'pgr',
@@ -54,8 +56,9 @@
                 'desc' => 'Programa de Gerenciamento de Riscos.',
                 'icone' => '📋',
                 'preco' => $precos['pgr'] ?? null,
+                'permitido' => $permitidos['pgr'] ?? false,
                 'rota' => route('cliente.servicos.pgr'),
-                'disabled' => !$temTabela || !($precos['pgr'] ?? null) || !($permitidos['pgr'] ?? false),
+                'disabled' => !($permitidos['pgr'] ?? false),
             ],
             [
                 'slug' => 'pcmso',
@@ -63,8 +66,9 @@
                 'desc' => 'Programa de Controle Médico de Saúde Ocupacional.',
                 'icone' => '📑',
                 'preco' => $precos['pcmso'] ?? null,
+                'permitido' => $permitidos['pcmso'] ?? false,
                 'rota' => route('cliente.servicos.pcmso'),
-                'disabled' => !$temTabela || !($precos['pcmso'] ?? null) || !($permitidos['pcmso'] ?? false),
+                'disabled' => !($permitidos['pcmso'] ?? false),
             ],
             [
                 'slug' => 'ltcat',
@@ -72,8 +76,9 @@
                 'desc' => 'Laudo Técnico das Condições Ambientais do Trabalho.',
                 'icone' => '📄',
                 'preco' => $precos['ltcat'] ?? null,
+                'permitido' => $permitidos['ltcat'] ?? false,
                 'rota' => route('cliente.servicos.ltcat'),
-                'disabled' => !$temTabela || !($precos['ltcat'] ?? null) || !($permitidos['ltcat'] ?? false),
+                'disabled' => !($permitidos['ltcat'] ?? false),
             ],
             [
                 'slug' => 'apr',
@@ -81,8 +86,9 @@
                 'desc' => 'Análise Preliminar de Riscos.',
                 'icone' => '⚠️',
                 'preco' => $precos['apr'] ?? null,
+                'permitido' => $permitidos['apr'] ?? false,
                 'rota' => route('cliente.servicos.apr'),
-                'disabled' => !$temTabela || !($precos['apr'] ?? null) || !($permitidos['apr'] ?? false),
+                'disabled' => !($permitidos['apr'] ?? false),
             ],
             [
                 'slug' => 'treinamentos',
@@ -90,8 +96,9 @@
                 'desc' => 'Treinamentos de Normas Regulamentadoras.',
                 'icone' => '🎓',
                 'preco' => $precos['treinamentos'] ?? null,
+                'permitido' => $permitidos['treinamentos'] ?? false,
                 'rota' => route('cliente.servicos.treinamentos'),
-                'disabled' => !$temTabela || !($precos['treinamentos'] ?? null) || !($permitidos['treinamentos'] ?? false),
+                'disabled' => !($permitidos['treinamentos'] ?? false),
             ],
             [
                 'slug' => 'arquivos',
@@ -112,12 +119,24 @@
                     $disabled = $card['disabled'] ?? false;
                     $badge = $card['badge'] ?? null;
                     if (!$badge && array_key_exists('preco', $card)) {
-                        $badge = $card['preco'] ? 'R$ '.number_format($card['preco'], 2, ',', '.') : 'Preço não definido';
+                        $badge = $card['preco'] ? 'R$ '.number_format($card['preco'], 2, ',', '.') : '';
                     }
+                    $showComercial = array_key_exists('preco', $card) && !($card['permitido'] ?? true);
+                    $whatsappMensagem = 'Olá! Gostaria de contratar o serviço "'.$card['titulo'].'" para minha empresa. '.$cliente->razao_social;
+                    $whatsappUrl = $vendedorTelefone
+                        ? 'https://wa.me/'.$vendedorTelefone.'?text='.urlencode($whatsappMensagem)
+                        : '#';
+                    $cardUrl = $showComercial ? $whatsappUrl : $card['rota'];
+                    $cardTarget = $showComercial ? '_blank' : null;
+                    $cardRel = $showComercial ? 'noopener noreferrer' : null;
+
                 @endphp
-                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex flex-col justify-between {{ $disabled ? 'opacity-60' : '' }}">
+                <a href="{{ $cardUrl }}"
+                   @if($cardTarget) target="{{ $cardTarget }}" @endif
+                   @if($cardRel) rel="{{ $cardRel }}" @endif
+                   class="group bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex flex-col justify-between transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:border-slate-300">
                     <div>
-                        <div class="inline-flex items-center justify-center h-9 w-9 rounded-2xl bg-slate-100 text-slate-700 mb-3 text-lg">
+                        <div class="inline-flex items-center justify-center h-9 w-9 rounded-2xl bg-slate-100 text-slate-700 mb-3 text-lg transition group-hover:bg-slate-900 group-hover:text-white">
                             {{ $card['icone'] }}
                         </div>
                         <h2 class="text-sm font-semibold text-slate-800">
@@ -135,16 +154,17 @@
                             </span>
                         @endif
 
-                        @if($disabled)
-                            <span class="text-slate-400 font-medium">Indisponível</span>
+                        @if($showComercial)
+                            <span class="inline-flex items-center gap-1 text-emerald-700 font-semibold">
+                                💬 Conversar com o comercial
+                            </span>
                         @else
-                            <a href="{{ $card['rota'] }}"
-                               class="text-[color:var(--color-brand-azul)] font-medium hover:opacity-100 opacity-80">
+                            <span class="text-[color:var(--color-brand-azul)] font-medium group-hover:opacity-100 opacity-80">
                                 {{ $card['slug'] === 'funcionarios' ? 'Acessar' : 'Solicitar' }}
-                            </a>
+                            </span>
                         @endif
                     </div>
-                </div>
+                </a>
             @endforeach
         </div>
     </div>

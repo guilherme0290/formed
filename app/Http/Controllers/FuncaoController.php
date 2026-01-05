@@ -208,11 +208,24 @@ class FuncaoController extends Controller
             abort(403);
         }
 
-        $funcao->update(['ativo' => false]);
+        $temVinculo = $funcao->funcionarios()->exists()
+            || $funcao->gheFuncoes()->exists();
+
+        if ($temVinculo) {
+            $funcao->update(['ativo' => false]);
+
+            return response()->json([
+                'ok'      => true,
+                'message' => 'Função possui vínculos e foi inativada.',
+                'funcao'  => $funcao,
+            ]);
+        }
+
+        $funcao->delete();
 
         return response()->json([
             'ok'      => true,
-            'message' => 'Função desativada com sucesso.',
+            'message' => 'Função excluída com sucesso.',
             'funcao'  => $funcao,
         ]);
     }

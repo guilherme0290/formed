@@ -66,28 +66,40 @@
 
     {{-- Barra de filtros --}}
     <div class="bg-white border border-slate-200 rounded-2xl px-4 py-3 md:px-5 md:py-4 shadow-sm mb-5">
-        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <form method="get" id="filtro-funcionarios-form"
+              class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div class="flex-1 flex flex-col md:flex-row md:items-center md:gap-3">
                 <div class="relative flex-1">
-                    <form method="get" id="filtro-funcionarios-form">
-                        <input type="hidden" name="status" value="{{ $status }}">
-                        <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400 text-sm">
-                            🔍
-                        </span>
-                        <input
-                            type="text"
-                            name="q"
-                            value="{{ $q }}"
-                            placeholder="Buscar por nome, CPF ou função..."
-                            class="w-full pl-8 pr-3 py-2 rounded-xl border border-slate-200 text-sm
-                                   placeholder:text-slate-400 focus:outline-none
-                                   focus:ring-2 focus:ring-sky-500 focus:border-sky-500">
-                    </form>
+                    <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400 text-sm">
+                        🔍
+                    </span>
+                    <input
+                        type="text"
+                        name="q"
+                        value="{{ $q }}"
+                        placeholder="Buscar por nome, CPF ou função..."
+                        class="w-full pl-8 pr-3 py-2 rounded-xl border border-slate-200 text-sm
+                               placeholder:text-slate-400 focus:outline-none
+                               focus:ring-2 focus:ring-sky-500 focus:border-sky-500">
                 </div>
 
                 <div class="mt-2 md:mt-0">
                     <select
-                        form="filtro-funcionarios-form"
+                        name="funcao_id"
+                        onchange="this.form.submit()"
+                        class="w-full md:w-56 rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2 text-xs
+                               text-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500">
+                        <option value="">Todas as funções</option>
+                        @foreach($funcoes as $funcao)
+                            <option value="{{ $funcao->id }}" @selected((int) $funcaoId === (int) $funcao->id)>
+                                {{ $funcao->nome }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="mt-2 md:mt-0">
+                    <select
                         name="status"
                         onchange="this.form.submit()"
                         class="w-full md:w-40 rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2 text-xs
@@ -106,16 +118,20 @@
                     + Novo funcionário
                 </a>
             </div>
-        </div>
+        </form>
     </div>
 
     {{-- Grid de cards de funcionários --}}
     @if($funcionarios->count())
         <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             @foreach($funcionarios as $f)
-                <a href="{{ route('cliente.funcionarios.show', $f) }}"
-                   class="group bg-white border border-slate-200 rounded-2xl px-4 py-3 shadow-sm
-                          hover:border-sky-400 hover:shadow-md transition">
+                <div
+                    class="group bg-white border border-slate-200 rounded-2xl px-4 py-3 shadow-sm
+                           hover:border-sky-400 hover:shadow-md transition cursor-pointer"
+                    data-card-url="{{ route('cliente.funcionarios.show', $f) }}"
+                    role="link"
+                    tabindex="0"
+                >
                     <div class="flex justify-between gap-2 mb-1.5">
                         <div>
                             <p class="text-sm font-semibold text-slate-900 group-hover:text-sky-700">
@@ -175,12 +191,18 @@
                             @endif
                         </span>
 
-                        <span class="inline-flex items-center gap-0.5 text-sky-500 group-hover:text-sky-600">
-                            <span>Ver detalhes</span>
-                            <span>›</span>
+                        <span class="inline-flex items-center gap-2 text-sky-500">
+                            <a href="{{ route('cliente.funcionarios.edit', $f) }}"
+                               class="hover:text-sky-600 font-medium"
+                               data-card-edit
+                               onclick="event.stopPropagation()">
+                                Editar
+                            </a>
+                            <span class="text-slate-300">•</span>
+                            <span class="group-hover:text-sky-600">Ver detalhes</span>
                         </span>
                     </div>
-                </a>
+                </div>
             @endforeach
         </div>
 
@@ -198,3 +220,22 @@
         </div>
     @endif
 @endsection
+
+@push('scripts')
+    <script>
+        document.querySelectorAll('[data-card-url]').forEach((card) => {
+            const url = card.dataset.cardUrl;
+            if (!url) return;
+            card.addEventListener('click', (event) => {
+                if (event.target.closest('[data-card-edit]')) return;
+                window.location.href = url;
+            });
+            card.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    window.location.href = url;
+                }
+            });
+        });
+    </script>
+@endpush

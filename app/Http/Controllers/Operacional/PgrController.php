@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Operacional;
 use App\Http\Controllers\Controller;
 use App\Models\Anexos;
 use App\Models\Cliente;
-use App\Models\Funcao;
+use App\Services\AsoGheService;
 use App\Models\KanbanColuna;
 use App\Models\PgrSolicitacoes;
 use App\Models\Servico;
@@ -45,9 +45,8 @@ class PgrController extends Controller
         $tipo   = $request->query('tipo', 'matriz');
         $origem = $request->query('origem'); // 'cliente' ou null
 
-        $funcoes = Funcao::where('empresa_id', $empresaId)
-            ->orderBy('nome')
-            ->get();
+        $funcoes = app(AsoGheService::class)
+            ->funcoesDisponiveisParaCliente($empresaId, $cliente->id);
 
         if (!in_array($tipo, ['matriz', 'especifico'], true)) {
             abort(404);
@@ -85,9 +84,8 @@ class PgrController extends Controller
         $tipo      = $pgr->tipo; // matriz|especifico
         $tipoLabel = $tipo === 'matriz' ? 'Matriz' : 'Específico';
 
-        $funcoes = Funcao::where('empresa_id', $empresaId)
-            ->orderBy('nome')
-            ->get();
+        $funcoes = app(AsoGheService::class)
+            ->funcoesDisponiveisParaCliente($empresaId, $cliente->id);
 
         // se quiser manter o valor já salvo, senão usa fixo
         $valorArt = $pgr->valor_art ?? 500.00;

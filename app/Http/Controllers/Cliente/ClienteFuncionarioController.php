@@ -5,9 +5,10 @@ namespace App\Http\Controllers\Cliente;
 use App\Http\Controllers\Controller;
 use App\Models\Cliente;
 use App\Models\Funcionario;
-use App\Models\Funcao;
+use App\Services\AsoGheService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 
 class ClienteFuncionarioController extends Controller
 {
@@ -24,14 +25,15 @@ class ClienteFuncionarioController extends Controller
 
         $cliente = Cliente::findOrFail($clienteId);
 
-        $q      = trim((string) $request->query('q', ''));
-        $status = $request->query('status', 'todos'); // todos|ativos|inativos
+        $q        = trim((string) $request->query('q', ''));
+        $status   = $request->query('status', 'todos'); // todos|ativos|inativos
+        $funcaoId = $request->integer('funcao_id');
 
         $funcionariosQuery = Funcionario::query()
             ->with('funcao') // <<< ADICIONADO: carrega a função junto
             ->where('cliente_id', $cliente->id);
 
-        // busca por nome / CPF (depois ajustamos função se quiser buscar por nome da função)
+        // busca por nome / CPF
         if ($q !== '') {
             $doc = preg_replace('/\D+/', '', $q);
 
@@ -40,6 +42,10 @@ class ClienteFuncionarioController extends Controller
                     ->orWhere('cpf', 'like', "%{$doc}%");
                 // se quiser buscar por função, depois fazemos via relacionamento
             });
+        }
+
+        if ($funcaoId) {
+            $funcionariosQuery->where('funcao_id', $funcaoId);
         }
 
         // filtro de status
@@ -58,11 +64,16 @@ class ClienteFuncionarioController extends Controller
         $totalDocsVencidos = 0; // placeholder
         $totalDocsAVencer  = 0; // placeholder
 
+        $funcoes = app(AsoGheService::class)
+            ->funcoesDisponiveisParaCliente($cliente->empresa_id, $cliente->id);
+
         return view('clientes.funcionarios.index', [
             'cliente'           => $cliente,
             'funcionarios'      => $funcionarios,
             'q'                 => $q,
             'status'            => $status,
+            'funcaoId'          => $funcaoId,
+            'funcoes'           => $funcoes,
             'totalAtivos'       => $totalAtivos,
             'totalInativos'     => $totalInativos,
             'totalDocsVencidos' => $totalDocsVencidos,
@@ -84,15 +95,41 @@ class ClienteFuncionarioController extends Controller
         $cliente = Cliente::findOrFail($user->cliente_id);
 
         // carrega as funções da empresa para o select
-        $funcoes = Funcao::where('empresa_id', $user->empresa_id)
-            ->orderBy('nome')
-            ->get();
+        $funcoes = app(AsoGheService::class)
+            ->funcoesDisponiveisParaCliente($user->empresa_id, $cliente->id);
 
         return view('clientes.funcionarios.form', [
             'cliente'     => $cliente,
             'funcionario' => null,
             'funcoes'     => $funcoes,
             'tab'         => 'geral',
+            'modo'        => 'create',
+        ]);
+    }
+
+    public function edit(Request $request, Funcionario $funcionario)
+    {
+        $user = Auth::user();
+
+        if (!$user || !$user->cliente_id) {
+            abort(403, 'USUÁRIO NÃO ESTÁ VINCULADO A UM CLIENTE.');
+        }
+
+        $cliente = Cliente::findOrFail($user->cliente_id);
+
+        if ($funcionario->cliente_id !== $cliente->id) {
+            abort(403, 'Funcionário não pertence a este cliente.');
+        }
+
+        $funcoes = app(AsoGheService::class)
+            ->funcoesDisponiveisParaCliente($user->empresa_id, $cliente->id);
+
+        return view('clientes.funcionarios.form', [
+            'cliente'     => $cliente,
+            'funcionario' => $funcionario,
+            'funcoes'     => $funcoes,
+            'tab'         => 'geral',
+            'modo'        => 'edit',
         ]);
     }
 
@@ -111,7 +148,12 @@ class ClienteFuncionarioController extends Controller
 
         $dados = $r->validate([
             'nome'            => ['required', 'string', 'max:255'],
-            'cpf'             => ['nullable', 'string', 'max:14'],
+            'cpf'             => [
+                'nullable',
+                'string',
+                'max:14',
+                Rule::unique('funcionarios', 'cpf')->where('cliente_id', $cliente->id),
+            ],
             'rg'              => ['nullable', 'string', 'max:20'],
             'data_nascimento' => ['nullable', 'date'],
             'data_admissao'   => ['nullable', 'date'],
@@ -120,7 +162,6 @@ class ClienteFuncionarioController extends Controller
 
             // vindo do componente
             'funcao_id'       => ['nullable', 'integer', 'exists:funcoes,id'],
-            'campo_funcao'    => ['nullable', 'string', 'max:255'],
 
             'treinamento_nr'          => ['nullable', 'boolean'],
             'exame_admissional'      => ['nullable', 'boolean'],
@@ -130,21 +171,13 @@ class ClienteFuncionarioController extends Controller
             'exame_retorno_trabalho' => ['nullable', 'boolean'],
         ]);
 
-        // se não escolheu uma função existente mas digitou uma nova, cria
-        if (empty($dados['funcao_id']) && !empty($dados['campo_funcao'])) {
-            $novaFuncao = Funcao::create([
-                'empresa_id' => $cliente->empresa_id,
-                'nome'       => $dados['campo_funcao'],
-                'ativo'      => 1,
-            ]);
-
-            $dados['funcao_id'] = $novaFuncao->id;
-        }
-
-        // não precisamos guardar o texto "campo_funcao" na tabela de funcionários
-        unset($dados['campo_funcao']);
-
         // checkboxes
+        $dados['cpf']                   = !empty($dados['cpf'])
+            ? preg_replace('/\D+/', '', $dados['cpf'])
+            : null;
+        $dados['celular']               = !empty($dados['celular'])
+            ? preg_replace('/\D+/', '', $dados['celular'])
+            : null;
         $dados['treinamento_nr']         = $r->boolean('treinamento_nr');
         $dados['exame_admissional']      = $r->boolean('exame_admissional');
         $dados['exame_periodico']        = $r->boolean('exame_periodico');
@@ -161,6 +194,64 @@ class ClienteFuncionarioController extends Controller
         return redirect()
             ->route('cliente.funcionarios.show', $funcionario)
             ->with('ok', 'Funcionário cadastrado com sucesso.');
+    }
+
+    public function update(Request $r, Funcionario $funcionario)
+    {
+        $user = Auth::user();
+
+        if (!$user || !$user->cliente_id) {
+            abort(403, 'USUÁRIO NÃO ESTÁ VINCULADO A UM CLIENTE.');
+        }
+
+        $cliente = Cliente::findOrFail($user->cliente_id);
+
+        if ($funcionario->cliente_id !== $cliente->id) {
+            abort(403, 'Funcionário não pertence a este cliente.');
+        }
+
+        $dados = $r->validate([
+            'nome'            => ['required', 'string', 'max:255'],
+            'cpf'             => [
+                'nullable',
+                'string',
+                'max:14',
+                Rule::unique('funcionarios', 'cpf')
+                    ->where('cliente_id', $cliente->id)
+                    ->ignore($funcionario->id),
+            ],
+            'rg'              => ['nullable', 'string', 'max:20'],
+            'data_nascimento' => ['nullable', 'date'],
+            'data_admissao'   => ['nullable', 'date'],
+            'celular'         => ['nullable', 'string', 'max:20'],
+            'setor'           => ['nullable', 'string', 'max:100'],
+            'funcao_id'       => ['nullable', 'integer', 'exists:funcoes,id'],
+            'treinamento_nr'          => ['nullable', 'boolean'],
+            'exame_admissional'      => ['nullable', 'boolean'],
+            'exame_periodico'        => ['nullable', 'boolean'],
+            'exame_demissional'      => ['nullable', 'boolean'],
+            'exame_mudanca_funcao'   => ['nullable', 'boolean'],
+            'exame_retorno_trabalho' => ['nullable', 'boolean'],
+        ]);
+
+        $dados['cpf']                   = !empty($dados['cpf'])
+            ? preg_replace('/\D+/', '', $dados['cpf'])
+            : null;
+        $dados['celular']               = !empty($dados['celular'])
+            ? preg_replace('/\D+/', '', $dados['celular'])
+            : null;
+        $dados['treinamento_nr']         = $r->boolean('treinamento_nr');
+        $dados['exame_admissional']      = $r->boolean('exame_admissional');
+        $dados['exame_periodico']        = $r->boolean('exame_periodico');
+        $dados['exame_demissional']      = $r->boolean('exame_demissional');
+        $dados['exame_mudanca_funcao']   = $r->boolean('exame_mudanca_funcao');
+        $dados['exame_retorno_trabalho'] = $r->boolean('exame_retorno_trabalho');
+
+        $funcionario->update($dados);
+
+        return redirect()
+            ->route('cliente.funcionarios.show', $funcionario)
+            ->with('ok', 'Funcionário atualizado com sucesso.');
     }
 
     /**

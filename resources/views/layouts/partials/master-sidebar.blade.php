@@ -100,6 +100,12 @@
                 'route' => route('clientes.index'),
                 'active' => request()->routeIs('clientes.*'),
             ],
+            [
+                'label' => 'Funções',
+                'icon' => '🧩',
+                'route' => route('comercial.funcoes.index'),
+                'active' => request()->routeIs('comercial.funcoes.*'),
+            ],
         ];
     @endphp
 

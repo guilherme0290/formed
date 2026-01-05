@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Comercial;
 
 use App\Http\Controllers\Controller;
 use App\Models\EsocialTabPreco;
+use App\Models\Cliente;
+use App\Models\Funcao;
 use App\Models\Servico;
 use App\Models\TabelaPrecoPadrao;
 use App\Models\TabelaPrecoItem;
@@ -219,12 +221,22 @@ class TabelaPrecoController extends Controller
             ->orderBy('descricao')
             ->get();
 
+        $clientes = Cliente::query()
+            ->where('empresa_id', $empresaId)
+            ->orderBy('razao_social')
+            ->get(['id', 'razao_social']);
+
+        $funcoes = Funcao::query()
+            ->where('empresa_id', $empresaId)
+            ->orderBy('nome')
+            ->get(['id', 'nome']);
+
         $routePrefix = $this->contextPrefix();
         $dashboardRoute = $routePrefix === 'master'
             ? route('master.dashboard')
             : route('comercial.dashboard');
 
-        return compact('padrao', 'servicos', 'itens', 'routePrefix', 'dashboardRoute');
+        return compact('padrao', 'servicos', 'itens', 'clientes', 'funcoes', 'routePrefix', 'dashboardRoute');
     }
 
     private function viewPath(): string

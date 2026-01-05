@@ -20,7 +20,9 @@ class PipelineController extends Controller
 
     public function index(Request $request)
     {
-        $empresaId = $request->user()->empresa_id;
+        $user = $request->user();
+        $empresaId = $user->empresa_id;
+        $isMaster = $user->hasPapel('Master');
 
         $busca = trim((string) $request->query('q', ''));
         $statusFiltro = (array) $request->query('status', []);
@@ -33,6 +35,10 @@ class PipelineController extends Controller
             ->where('empresa_id', $empresaId)
             ->with(['cliente', 'vendedor', 'itens'])
             ->orderByDesc('id');
+
+        if (!$isMaster) {
+            $query->where('vendedor_id', $user->id);
+        }
 
         if ($busca !== '') {
             $query->where(function ($q) use ($busca) {
@@ -98,6 +104,9 @@ class PipelineController extends Controller
     {
         $user = $request->user();
         abort_unless($proposta->empresa_id === $user->empresa_id, 403);
+        if (!$user->hasPapel('Master')) {
+            abort_unless((int) $proposta->vendedor_id === (int) $user->id, 403);
+        }
 
         if (in_array(strtoupper((string) $proposta->status), ['FECHADA','CANCELADA'], true)) {
             return response()->json(['message' => 'Proposta fechada/cancelada não pode ser movimentada.'], 422);

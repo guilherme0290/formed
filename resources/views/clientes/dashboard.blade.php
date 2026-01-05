@@ -13,6 +13,17 @@
         // Usados apenas nos cards "Seu Comercial"
         $contatoNome     = $cliente->contato_nome ?? $user->name ?? 'Contato não informado';
         $contatoTelefone = $cliente->telefone ?? $user->telefone ?? '(00) 0000-0000';
+        $vendedorTelefone = $vendedorTelefone ?? '';
+        $whatsappBase = $vendedorTelefone ? 'https://wa.me/'.$vendedorTelefone : '#';
+        $whatsappComercial = $whatsappBase !== '#'
+            ? $whatsappBase.'?text='.urlencode('Olá! Gostaria de falar com o comercial sobre o cliente '.($cliente->razao_social ?? 'minha empresa').'.')
+            : '#';
+        $whatsappPericiaMedica = $whatsappBase !== '#'
+            ? $whatsappBase.'?text='.urlencode('Olá! Gostaria de consultar valores para Perícia Médica para o cliente '.($cliente->razao_social ?? 'minha empresa').'.')
+            : '#';
+        $whatsappPericiaTecnica = $whatsappBase !== '#'
+            ? $whatsappBase.'?text='.urlencode('Olá! Gostaria de consultar valores para Perícia Técnica para o cliente '.($cliente->razao_social ?? 'minha empresa').'.')
+            : '#';
     @endphp
 
     {{-- TÍTULO DO PAINEL --}}
@@ -48,14 +59,15 @@
                     </div>
                 </div>
 
-                <button
-                    type="button"
+                <a
+                    href="{{ $whatsappComercial }}"
+                    @if($whatsappComercial !== '#') target="_blank" rel="noopener noreferrer" @endif
                     class="mt-2 inline-flex items-center justify-center w-full rounded-full
                            bg-emerald-500 hover:bg-emerald-400 text-xs md:text-sm font-semibold
                            text-white py-2.5 transition">
                     <span class="mr-1.5 text-sm">💬</span>
                     Falar no WhatsApp
-                </button>
+                </a>
             </div>
 
             {{-- Card: Fatura Atual (verde) --}}
@@ -73,7 +85,7 @@
                                 R$ {{ number_format($faturaTotal ?? 0, 2, ',', '.') }}
                             </p>
                             <p class="text-[11px] text-emerald-50/90 mt-1">
-                                Soma dos serviços finalizados (kanban)
+                                Soma das contas a receber em aberto
                             </p>
                         </div>
                     </div>
@@ -120,14 +132,15 @@
                     </p>
                 </div>
                 <div class="px-6 pb-5">
-                    <button
-                        type="button"
+                    <a
+                        href="{{ $whatsappPericiaMedica }}"
+                        @if($whatsappPericiaMedica !== '#') target="_blank" rel="noopener noreferrer" @endif
                         class="w-full inline-flex items-center justify-center gap-2 rounded-md
                                bg-emerald-600 hover:bg-emerald-500 text-xs md:text-sm font-semibold
                                text-white py-2.5">
                         <span class="text-sm">💬</span>
                         Consultar Valor no WhatsApp
-                    </button>
+                    </a>
                 </div>
             </article>
 
@@ -147,14 +160,15 @@
                     </p>
                 </div>
                 <div class="px-6 pb-5">
-                    <button
-                        type="button"
+                    <a
+                        href="{{ $whatsappPericiaTecnica }}"
+                        @if($whatsappPericiaTecnica !== '#') target="_blank" rel="noopener noreferrer" @endif
                         class="w-full inline-flex items-center justify-center gap-2 rounded-md
                                bg-emerald-600 hover:bg-emerald-500 text-xs md:text-sm font-semibold
                                text-white py-2.5">
                         <span class="text-sm">💬</span>
                         Consultar Valor no WhatsApp
-                    </button>
+                    </a>
                 </div>
             </article>
         </section>

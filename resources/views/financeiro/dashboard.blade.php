@@ -17,25 +17,31 @@
 
         {{-- Menu horizontal (apenas Dashboard e Contratos) --}}
         <div class="flex flex-wrap items-center gap-3 border-b border-slate-200 pb-2">
-            <a href="#dashboard"
+            <a href="{{ route('financeiro.dashboard') }}"
                class="px-3 py-2 rounded-xl text-sm font-semibold bg-indigo-600 text-white shadow">
                 Dashboard
             </a>
-            <a href="#contratos"
+            <a href="{{ route('financeiro.contratos') }}"
                class="px-3 py-2 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100">
                 Contratos
+            </a>
+            <a href="{{ route('financeiro.contas-receber') }}"
+               class="px-3 py-2 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100">
+                Contas a Receber
             </a>
         </div>
 
         {{-- Indicadores --}}
         <section id="dashboard" class="space-y-6">
-            <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 @php
                     $cards = [
                         ['titulo' => 'Contratos Ativos', 'valor' => $cards['contratos_ativos'] ?? 0, 'sub' => 'Empresas em carteira', 'cor' => 'from-indigo-500 to-blue-600', 'icone' => '📑'],
                         ['titulo' => 'Faturamento Mensal', 'valor' => 'R$ '.number_format($cards['faturamento_mensal'] ?? 0, 2, ',', '.'), 'sub' => 'Receita recorrente', 'cor' => 'from-emerald-500 to-emerald-600', 'icone' => '💵'],
                         ['titulo' => 'Aprovados', 'valor' => $cards['aprovados'] ?? 0, 'sub' => 'Faturamentos confirmados', 'cor' => 'from-purple-500 to-indigo-600', 'icone' => '✅'],
                         ['titulo' => 'Pendentes', 'valor' => $cards['pendentes'] ?? 0, 'sub' => 'Aguardando aprovação', 'cor' => 'from-amber-500 to-orange-600', 'icone' => '⏳'],
+                        ['titulo' => 'Itens em Aberto', 'valor' => $cards['itens_aberto'] ?? 0, 'sub' => 'Contas a receber pendentes', 'cor' => 'from-slate-600 to-slate-800', 'icone' => '🧾'],
+                        ['titulo' => 'Itens Faturados', 'valor' => $cards['itens_faturado'] ?? 0, 'sub' => 'Recebimentos confirmados', 'cor' => 'from-teal-500 to-emerald-700', 'icone' => '💰'],
                     ];
                 @endphp
                 @foreach($cards as $card)

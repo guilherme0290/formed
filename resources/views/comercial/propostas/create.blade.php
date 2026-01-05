@@ -4,10 +4,22 @@
 @section('content')
     @php
         $isEdit = isset($proposta) && $proposta;
+        $temGheSnapshot = false;
+        $gheTotalExames = 0.0;
+        if ($isEdit && $proposta->cliente_id) {
+            $gheSnapshot = app(\App\Services\AsoGheService::class)
+                ->buildSnapshotForCliente($proposta->cliente_id, $proposta->empresa_id);
+            $temGheSnapshot = !empty($gheSnapshot['ghes']);
+            foreach ($gheSnapshot['ghes'] ?? [] as $ghe) {
+                $gheTotalExames += (float) ($ghe['total_exames'] ?? 0);
+            }
+        }
         $initialData = [
             'isEdit' => (bool) $isEdit,
             'itens' => [],
             'esocial' => null,
+            'temGhe' => $temGheSnapshot,
+            'gheTotal' => $gheTotalExames,
         ];
 
         if ($isEdit) {
@@ -98,49 +110,60 @@
                         </div>
                     </section>
 
-                    {{-- 2. Vendedor --}}
+                    {{-- 2. Serviços --}}
                     <section class="space-y-3">
-                        <h2 class="text-sm font-semibold text-slate-700">2. Vendedor</h2>
+                        <h2 class="text-sm font-semibold text-slate-700">2. Serviços</h2>
 
-                        <div class="grid md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="text-xs font-medium text-slate-600">Nome</label>
-                                <input type="text"
-                                       class="mt-1 w-full border border-slate-200 rounded-xl text-sm px-3 py-2 bg-slate-50"
-                                       value="{{ $user->name }}" readonly>
-                            </div>
-                            <div>
-                                <label class="text-xs font-medium text-slate-600">Telefone</label>
-                                <input type="text"
-                                       class="mt-1 w-full border border-slate-200 rounded-xl text-sm px-3 py-2 bg-slate-50"
-                                       value="{{ $user->telefone ?? '' }}" readonly>
-                            </div>
-                        </div>
-                    </section>
-
-                    {{-- 3. Serviços --}}
-                    {{-- 3. Serviços --}}
-                    <section class="space-y-3">
-                        <h2 class="text-sm font-semibold text-slate-700">3. Serviços</h2>
-
-                        {{-- BLOCO: Serviços --}}
                         <div class="rounded-2xl border border-slate-200 p-4">
-                            <div class="text-sm font-semibold text-slate-800 mb-3">Serviços</div>
-
-                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-                                @foreach($servicos as $servico)
-                                    <button type="button"
-                                            class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white hover:bg-slate-50"
-                                            data-action="add-servico"
-                                            data-servico-id="{{ $servico->id }}"
-                                            data-servico-nome="{{ e($servico->nome) }}">
-                                        + {{ $servico->nome }}
-                                    </button>
-                                @endforeach
+                            <div class="flex flex-wrap gap-2 border-b border-slate-100 pb-3 mb-4" data-tabs="proposta">
+                                <button type="button"
+                                        class="px-4 py-2 rounded-full text-sm font-semibold bg-blue-600 text-white"
+                                        data-tab="servicos">
+                                    Serviços
+                                </button>
+                                <button type="button"
+                                        class="relative px-4 py-2 rounded-full text-sm font-semibold text-slate-600 hover:bg-slate-100"
+                                        data-tab="ghe">
+                                    GHE
+                                    <span id="badgeTabGhe" class="hidden absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-amber-400"></span>
+                                </button>
+                                <button type="button"
+                                        class="relative px-4 py-2 rounded-full text-sm font-semibold text-slate-600 hover:bg-slate-100"
+                                        data-tab="treinamentos">
+                                    Treinamentos
+                                    <span id="badgeTabTreinamentos" class="hidden absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-emerald-400"></span>
+                                </button>
                             </div>
-                        </div>
 
-                        {{-- BLOCO: Exames --}}
+                            <div data-tab-panel="servicos" class="space-y-3">
+                                <div class="text-sm font-semibold text-slate-800">Serviços</div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                                    @php
+                                        $servicoTreinamentoId = (int) config('services.treinamento_id');
+                                        $servicoExameId = (int) config('services.exame_id');
+                                        $servicoAsoId = (int) (config('services.aso_id') ?? 0);
+                                    @endphp
+                                    @foreach($servicos as $servico)
+                                        @if(
+                                            (int) $servico->id === $servicoTreinamentoId
+                                            || (int) $servico->id === $servicoExameId
+                                            || ($servicoAsoId > 0 && (int) $servico->id === $servicoAsoId)
+                                        )
+                                            @continue
+                                        @endif
+                                        <button type="button"
+                                                class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white hover:bg-slate-50"
+                                                data-action="add-servico"
+                                                data-servico-id="{{ $servico->id }}"
+                                                data-servico-nome="{{ e($servico->nome) }}">
+                                            + {{ $servico->nome }}
+                                        </button>
+                                    @endforeach
+                                </div>
+                            </div>
+
+                        {{--
+                        BLOCO: Exames
                         <div class="rounded-2xl border border-slate-200 p-4">
                             <div class="flex items-center justify-between mb-3">
                                 <div class="text-sm font-semibold text-slate-800">Exames</div>
@@ -152,37 +175,52 @@
                                 </button>
                             </div>
 
-                            <p class="text-xs text-slate-500">Selecione exames avulsos ou crie um “Pacote de Exames”.</p>
+                            <p class="text-xs text-slate-500">Selecione exames avulsos ou crie um "Pacote de Exames".</p>
 
                             <div id="examesAvulsos" class="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                                 <div class="text-sm text-slate-500">Carregando exames...</div>
                             </div>
                         </div>
+                        --}}
 
-                        {{-- BLOCO: Treinamentos --}}
-                        <div class="rounded-2xl border border-slate-200 p-4">
-                            <div class="flex items-center justify-between mb-3">
-                                <div class="text-sm font-semibold text-slate-800">Treinamentos</div>
-
-                                <button type="button"
-                                        class="px-3 py-2 rounded-xl border border-emerald-200 text-sm bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-semibold"
-                                        id="btnPacoteTreinamentos">
-                                    + Pacote de Treinamentos
-                                </button>
+                            <div data-tab-panel="ghe" class="hidden space-y-3">
+                                <div class="text-sm font-semibold text-slate-800">GHE do Cliente</div>
+                                <div class="flex items-center justify-between">
+                                    <p class="text-xs text-slate-500">
+                                        Defina GHEs, funções e protocolos de exames para este cliente.
+                                    </p>
+                                    <button type="button"
+                                            class="px-3 py-2 rounded-xl border border-amber-200 text-sm bg-amber-50 hover:bg-amber-100 text-amber-800 font-semibold"
+                                            id="btnGheCliente">
+                                        Gerenciar GHE
+                                    </button>
+                                </div>
                             </div>
 
-                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                                @foreach($treinamentos as $t)
+                            <div data-tab-panel="treinamentos" class="hidden space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <div class="text-sm font-semibold text-slate-800">Treinamentos</div>
+
                                     <button type="button"
-                                            class="w-full px-3 py-2 rounded-xl border border-slate-200 text-left text-sm bg-white hover:bg-slate-50"
-                                            data-action="add-treinamento"
-                                            data-nr-id="{{ $t->id }}"
-                                            data-nr-codigo="{{ e($t->codigo) }}"
-                                            data-nr-titulo="{{ e($t->titulo) }}">
-                                        <div class="font-semibold text-slate-800">{{ $t->codigo }}</div>
-                                        <div class="text-xs text-slate-500">#{{ $t->id }} — {{ $t->titulo }}</div>
+                                            class="px-3 py-2 rounded-xl border border-emerald-200 text-sm bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-semibold"
+                                            id="btnPacoteTreinamentos">
+                                        + Pacote de Treinamentos
                                     </button>
-                                @endforeach
+                                </div>
+
+                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                                    @foreach($treinamentos as $t)
+                                        <button type="button"
+                                                class="w-full px-3 py-2 rounded-xl border border-slate-200 text-left text-sm bg-white hover:bg-slate-50"
+                                                data-action="add-treinamento"
+                                                data-nr-id="{{ $t->id }}"
+                                                data-nr-codigo="{{ e($t->codigo) }}"
+                                                data-nr-titulo="{{ e($t->titulo) }}">
+                                            <div class="font-semibold text-slate-800">{{ $t->codigo }}</div>
+                                            <div class="text-xs text-slate-500">#{{ $t->id }} — {{ $t->titulo }}</div>
+                                        </button>
+                                    @endforeach
+                                </div>
                             </div>
                         </div>
 
@@ -196,9 +234,9 @@
                     </section>
 
 
-                    {{-- 4. E-Social --}}
+                    {{-- 3. E-Social --}}
                     <section class="space-y-3">
-                        <h2 class="text-sm font-semibold text-slate-700">4. E-Social (Opcional)</h2>
+                        <h2 class="text-sm font-semibold text-slate-700">3. E-Social (Opcional)</h2>
 
                         <label class="inline-flex items-center gap-2 text-sm text-slate-700">
                             <input type="checkbox" id="chkEsocial" name="incluir_esocial" value="1"
@@ -231,9 +269,9 @@
                         </div>
                     </section>
 
-                    {{-- 5. Forma de Pagamento --}}
+                    {{-- 4. Forma de Pagamento --}}
                     <section class="space-y-3">
-                        <h2 class="text-sm font-semibold text-slate-700">5. Forma de Pagamento *</h2>
+                        <h2 class="text-sm font-semibold text-slate-700">4. Forma de Pagamento *</h2>
 
                         <select name="forma_pagamento" required class="w-full border border-slate-200 rounded-xl text-sm px-3 py-2">
                             <option value="">Selecione...</option>
@@ -283,7 +321,13 @@
         </div>
     </div>
 
-    {{-- MODAL PACOTE EXAMES (dinâmico) --}}
+    @include('comercial.tabela-precos.itens.modal-ghes', [
+        'routePrefix' => 'comercial',
+        'clientes' => $clientes ?? collect(),
+        'funcoes' => $funcoes ?? collect(),
+    ])
+    {{--
+    MODAL PACOTE EXAMES (dinamico)
     <div id="modalExames" class="fixed inset-0 z-50 hidden bg-black/40">
         <div class="min-h-full flex items-center justify-center p-4">
             <div class="bg-white w-full max-w-2xl rounded-2xl shadow-xl overflow-hidden">
@@ -306,7 +350,7 @@
                         </label>
 
                         <div id="pkgExamesList" class="space-y-2 max-h-[45vh] overflow-auto pr-1">
-                            {{-- carregado via fetch --}}
+                            -- carregado via fetch --
                         </div>
                     </div>
 
@@ -330,8 +374,7 @@
             </div>
         </div>
     </div>
-
-
+    --}}
     @include('comercial.propostas.modal-treinamentos')
     {{-- MODAL eSOCIAL (seu include existente) --}}
     @include('comercial.tabela-precos.itens.modal-esocial')
@@ -354,7 +397,8 @@
                     },
                     treinamentosJson: @json(route('comercial.propostas.treinamentos-nrs.json')),
                     examesJson: @json(route('comercial.exames.indexJson')),
-                    esocialPreco: (qtd) => @json(route('comercial.propostas.esocial-preco')) + '?qtd=' + encodeURIComponent(qtd),
+                    esocialPreco: (qtd) => @json(route('comercial.propostas.esocial-preco', ['qtd' => '__QTD__']))
+                        .replace('__QTD__', encodeURIComponent(qtd)),
 
                     esocialList: @json(route('comercial.esocial.faixas.json')),
                     esocialStore: @json(route('comercial.esocial.faixas.store')),
@@ -366,6 +410,7 @@
                 const SERVICO_ESOCIAL_ID = @json(config('services.esocial_id'));
                 const SERVICO_TREINAMENTO_ID = @json(config('services.treinamento_id'));
                 const SERVICO_EXAME_ID = @json(config('services.exame_id'));
+                const SERVICO_ASO_ID = @json(config('services.aso_id'));
 
                 // =========================
                 // State
@@ -377,6 +422,10 @@
                 };
 
                 const INITIAL = @json($initialData);
+                const gheInfo = {
+                    has: !!INITIAL?.temGhe,
+                    total: Number(INITIAL?.gheTotal || 0),
+                };
 
                 // =========================
                 // DOM
@@ -400,7 +449,6 @@
 
                     modalTrein: document.getElementById('modalTreinamentos'),
                     nrChips: document.getElementById('nrChips'),
-
                     modalExames: document.getElementById('modalExames'),
                     examesList: document.getElementById('pkgExamesList'),
                     examesAvulsos: document.getElementById('examesAvulsos'),
@@ -408,8 +456,8 @@
                     pkgExamesNome: document.getElementById('pkgExamesNome'),
                     pkgExamesValorView: document.getElementById('pkgExamesValorView'),
                     pkgExamesValorHidden: document.getElementById('pkgExamesValorHidden'),
-
                     form: document.getElementById('propostaForm'),
+                    tabsWrap: document.querySelector('[data-tabs="proposta"]'),
                 };
 
                 // =========================
@@ -424,11 +472,94 @@
                         state.esocial.qtd = Number(INITIAL.esocial.qtd || 0);
                         state.esocial.valor = Number(INITIAL.esocial.valor || 0);
                     }
+
+                    ensureAsoItemForGhe();
                 }
+
+                initTabs();
+                updateTabBadges();
 
                 // =========================
                 // Utils
                 // =========================
+                function hasAsoItem(it) {
+                    const nomeBase = String(it?.nome || it?.descricao || '').toUpperCase();
+                    return nomeBase && nomeBase.includes('ASO');
+                }
+
+                function ensureAsoItemForGhe() {
+                    if (!gheInfo.has) return;
+                    if (state.itens.some(it => hasAsoItem(it))) return;
+                    const item = {
+                        id: uid(),
+                        servico_id: SERVICO_ASO_ID ? Number(SERVICO_ASO_ID) : null,
+                        tipo: 'SERVICO',
+                        nome: 'ASO',
+                        descricao: 'ASO por GHE',
+                        valor_unitario: 0,
+                        quantidade: 1,
+                        prazo: '',
+                        acrescimo: 0,
+                        desconto: 0,
+                        meta: null,
+                        valor_total: 0,
+                    };
+                    recalcItemTotal(item);
+                    state.itens.push(item);
+                    applyGheToAsoItems();
+                    render();
+                }
+
+                function getAsoTotals() {
+                    let totalAso = 0;
+                    let temAso = false;
+                    state.itens.forEach(it => {
+                        if (hasAsoItem(it)) {
+                            temAso = true;
+                            totalAso += Number(it.valor_total || 0);
+                        }
+                    });
+                    return { temAso, totalAso };
+                }
+
+                function updateTabBadges() {
+                    const badgeGhe = document.getElementById('badgeTabGhe');
+                    const badgeTrein = document.getElementById('badgeTabTreinamentos');
+                    const temGhe = !!gheInfo.has;
+                    const temTrein = state.itens.some(it => (String(it.tipo || '')).toUpperCase() === 'TREINAMENTO_NR');
+
+                    if (badgeGhe) {
+                        badgeGhe.classList.toggle('hidden', !temGhe);
+                    }
+                    if (badgeTrein) {
+                        badgeTrein.classList.toggle('hidden', !temTrein);
+                    }
+                }
+                function initTabs() {
+                    if (!el.tabsWrap) return;
+                    const buttons = Array.from(el.tabsWrap.querySelectorAll('[data-tab]'));
+                    const panels = Array.from(document.querySelectorAll('[data-tab-panel]'));
+                    if (!buttons.length || !panels.length) return;
+
+                    const setActive = (name) => {
+                        buttons.forEach(btn => {
+                            const active = btn.dataset.tab === name;
+                            btn.classList.toggle('bg-blue-600', active);
+                            btn.classList.toggle('text-white', active);
+                            btn.classList.toggle('text-slate-600', !active);
+                            btn.classList.toggle('hover:bg-slate-100', !active);
+                        });
+                        panels.forEach(panel => {
+                            panel.classList.toggle('hidden', panel.dataset.tabPanel !== name);
+                        });
+                    };
+
+                    buttons.forEach(btn => {
+                        btn.addEventListener('click', () => setActive(btn.dataset.tab));
+                    });
+
+                    setActive(buttons[0].dataset.tab);
+                }
 
                 function attachMoneyMask(viewEl, hiddenEl) {
                     if (!viewEl || !hiddenEl) return;
@@ -492,12 +623,38 @@
                     return item.valor_total;
                 }
 
+                function applyGheToAsoItems() {
+                    const gheTotal = Number(gheInfo.total || 0);
+                    if (!gheTotal) return;
+                    const asoItems = state.itens.filter(it => hasAsoItem(it));
+                    if (!asoItems.length) return;
+                    const totalAtual = asoItems.reduce((sum, it) => sum + Number(it.valor_total || 0), 0);
+                    if (totalAtual > 0) return;
+                    const target = asoItems[0];
+                    if (!target.servico_id && SERVICO_ASO_ID) {
+                        target.servico_id = Number(SERVICO_ASO_ID);
+                    }
+                    const qtd = Number(target.quantidade || 1);
+                    target.valor_unitario = qtd > 0 ? (gheTotal / qtd) : gheTotal;
+                    recalcItemTotal(target);
+                }
+
                 function recalcTotals() {
                     let total = 0;
+                    applyGheToAsoItems();
                     state.itens.forEach(i => total += Number(i.valor_total || 0));
                     if (state.esocial.enabled) total += Number(state.esocial.valor || 0);
                     el.total.textContent = brl(total);
+                    updateTabBadges();
                 }
+
+                window.addEventListener('ghe:updated', (event) => {
+                    const detail = event?.detail || {};
+                    gheInfo.has = !!detail.hasGhe;
+                    gheInfo.total = Number(detail.total || 0);
+                    ensureAsoItemForGhe();
+                    recalcTotals();
+                });
 
                 function syncHiddenInputs() {
                     // remove inputs anteriores
@@ -778,6 +935,7 @@
 
                     recalcItemTotal(item);
                     state.itens.push(item);
+                    applyGheToAsoItems();
                     render();
                     showItemToast(`Serviço: ${servicoNome}`);
                     if (Number(item.valor_unitario || 0) <= 0) {
@@ -814,6 +972,7 @@
 
                     recalcItemTotal(item);
                     state.itens.push(item);
+                    applyGheToAsoItems();
                     render();
                     showItemToast(`Treinamento: ${nome}`);
                     if (Number(item.valor_unitario || 0) <= 0) {
@@ -990,6 +1149,7 @@
                 }
 
                 async function openExamesModal() {
+                    if (!el.modalExames) return;
                     el.modalExames.classList.remove('hidden');
                     el.examesList.innerHTML = '<div class="text-sm text-slate-500">Carregando exames...</div>';
                     if (el.pkgExamesNome) el.pkgExamesNome.value = '';
@@ -1032,6 +1192,7 @@
                 }
 
                 window.closeExamesModal = function() {
+                    if (!el.modalExames) return;
                     el.modalExames.classList.add('hidden');
                 }
 
@@ -1073,7 +1234,8 @@
                 // eSocial cálculo
                 // =========================
                 async function updateEsocial(qtd) {
-                    state.esocial.qtd = Number(qtd || 0);
+                    const parsedQtd = Number(qtd || 0);
+                    state.esocial.qtd = Number.isFinite(parsedQtd) ? parsedQtd : 0;
 
                     if (!state.esocial.enabled || state.esocial.qtd <= 0) {
                         state.esocial.valor = 0;
@@ -1084,6 +1246,8 @@
 
                     try {
                         const res = await fetch(URLS.esocialPreco(state.esocial.qtd), { headers: { 'Accept':'application/json' } });
+
+                        if (!res.ok) throw new Error('Falha ao consultar eSocial.');
                         const json = await res.json();
 
                         state.esocial.valor = Number(json?.data?.preco || 0);
@@ -1138,6 +1302,17 @@
                         }
                     }
                 })();
+
+                document.getElementById('btnGheCliente')?.addEventListener('click', () => {
+                    const sel = el.clienteSelect?.value || '';
+                    const nome = el.clienteSelect?.selectedOptions?.[0]?.textContent?.trim() || '';
+                    if (typeof setGheCliente === 'function') {
+                        setGheCliente(sel, nome);
+                    }
+                    if (typeof openGheModal === 'function') {
+                        openGheModal();
+                    }
+                });
 
                 // B) Botão “Pacote de Treinamentos”
                 document.querySelectorAll('[data-action="add-treinamento"]').forEach(btn => {
@@ -1227,12 +1402,25 @@
                     updateEsocial(el.esocialQtd.value || 0);
                 });
 
-                el.esocialQtd?.addEventListener('input', () => updateEsocial(el.esocialQtd.value));
+                const handleEsocialInput = () => updateEsocial(el.esocialQtd.value);
+                el.esocialQtd?.addEventListener('input', handleEsocialInput);
+                el.esocialQtd?.addEventListener('change', handleEsocialInput);
+                el.esocialQtd?.addEventListener('blur', handleEsocialInput);
 
-                // Inicializa UI do eSocial em edição
-                if (INITIAL?.isEdit && el.chkEsocial) {
+                // Inicializa UI do eSocial (novo + edição + validação)
+                if (el.chkEsocial) {
+                    state.esocial.enabled = el.chkEsocial.checked;
                     el.esocialBox.classList.toggle('hidden', !state.esocial.enabled);
-                    if (el.esocialQtd) el.esocialQtd.value = state.esocial.qtd > 0 ? String(state.esocial.qtd) : '';
+                }
+
+                if (el.esocialQtd) {
+                    const initialQtd = Number(el.esocialQtd.value || 0);
+                    state.esocial.qtd = Number.isFinite(initialQtd) ? initialQtd : 0;
+                }
+
+                if (state.esocial.enabled && state.esocial.qtd > 0) {
+                    updateEsocial(state.esocial.qtd);
+                } else {
                     applyEsocialUI();
                 }
 
@@ -1240,7 +1428,10 @@
                 // Submit: garantir meta JSON -> array (backend aceita array)
                 // =========================
                 el.form.addEventListener('submit', (e) => {
-                    const zeroItems = state.itens.filter(it => Number(it.valor_unitario || 0) <= 0);
+                    const zeroItems = state.itens.filter(it => {
+                        if (Number(it.valor_unitario || 0) > 0) return false;
+                        return true;
+                    });
                     if (zeroItems.length) {
                         e.preventDefault();
                         const names = zeroItems.map(it => it.nome).slice(0, 3).join(', ');

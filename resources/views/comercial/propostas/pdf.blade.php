@@ -7,7 +7,7 @@
         * { font-family: DejaVu Sans, Arial, sans-serif; }
         body { color: #1f2937; font-size: 12px; }
         .header { border-bottom: 2px solid #0f766e; padding-bottom: 12px; margin-bottom: 16px; }
-        .brand { display: inline-block; vertical-align: middle; }
+        .brand { display: inline-block; vertical-align: middle; background: #ffffff; border: 1px solid #e5e7eb; padding: 8px 12px; border-radius: 10px; }
         .title { display: inline-block; vertical-align: middle; margin-left: 12px; }
         .title h1 { margin: 0; font-size: 18px; }
         .title p { margin: 4px 0 0; font-size: 11px; color: #4b5563; }
@@ -27,13 +27,13 @@
 </head>
 <body>
     @php
-        $status = strtoupper((string) ($proposta->status ?? 'RASCUNHO'));
+        $status = strtoupper((string) ($proposta->status ?? 'PENDENTE'));
     @endphp
 
     <div class="header">
         <div class="brand">
             @if($logoData)
-                <img src="{{ $logoData }}" alt="Formed" style="height: 36px;">
+                <img src="{{ $logoData }}" alt="Formed" style="height: 56px;">
             @endif
         </div>
         <div class="title">
@@ -91,6 +91,32 @@
                     <td class="right">R$ {{ number_format($item->valor_total, 2, ',', '.') }}</td>
                 </tr>
             @endforeach
+{{--            @if(!empty($gheSnapshot['ghes']))--}}
+{{--                @foreach($gheSnapshot['ghes'] as $ghe)--}}
+{{--                    @php--}}
+{{--                        $totais = $ghe['total_por_tipo'] ?? [];--}}
+{{--                    @endphp--}}
+{{--                    <tr>--}}
+{{--                        <td>--}}
+{{--                            <div style="font-weight: bold;">GHE - {{ $ghe['nome'] ?? '—' }}</div>--}}
+{{--                            <div style="color: #6b7280; font-size: 10px;">{{ $ghe['protocolo']['titulo'] ?? 'Sem protocolo' }}</div>--}}
+{{--                            <div style="color: #6b7280; font-size: 10px;">--}}
+{{--                                Admissional: R$ {{ number_format((float) ($totais['admissional'] ?? 0), 2, ',', '.') }} ·--}}
+{{--                                Periódico: R$ {{ number_format((float) ($totais['periodico'] ?? 0), 2, ',', '.') }} ·--}}
+{{--                                Demissional: R$ {{ number_format((float) ($totais['demissional'] ?? 0), 2, ',', '.') }}--}}
+{{--                            </div>--}}
+{{--                            <div style="color: #6b7280; font-size: 10px;">--}}
+{{--                                Mudança: R$ {{ number_format((float) ($totais['mudanca_funcao'] ?? 0), 2, ',', '.') }} ·--}}
+{{--                                Retorno: R$ {{ number_format((float) ($totais['retorno_trabalho'] ?? 0), 2, ',', '.') }}--}}
+{{--                            </div>--}}
+{{--                        </td>--}}
+{{--                        <td>—</td>--}}
+{{--                        <td class="right">1</td>--}}
+{{--                        <td class="right">R$ {{ number_format((float) ($ghe['total_exames'] ?? 0), 2, ',', '.') }}</td>--}}
+{{--                        <td class="right">R$ {{ number_format((float) ($ghe['total_exames'] ?? 0), 2, ',', '.') }}</td>--}}
+{{--                    </tr>--}}
+{{--                @endforeach--}}
+{{--            @endif--}}
             </tbody>
         </table>
     </div>

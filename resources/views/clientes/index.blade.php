@@ -47,10 +47,24 @@
             <form method="GET" class="grid md:grid-cols-4 gap-4 items-end">
 
                 <div class="md:col-span-2">
-                    <label class="block text-sm font-medium mb-1 text-slate-700">Busca (nome, CNPJ ou e-mail)</label>
-                    <input type="text" name="q" value="{{ $q }}"
-                           placeholder="Ex: 12.345.678/0001-00, contato@empresa.com, Razão Social"
+                    <label class="block text-sm font-medium mb-1 text-slate-700">Busca (razão social, nome fantasia ou CNPJ)</label>
+                    <input type="search" name="q" id="cliente-search" value="{{ $q }}"
+                           list="clientes-sugestoes"
+                           placeholder="Ex: 12.345.678/0001-00, Razão Social ou Nome Fantasia"
                            class="w-full rounded-lg border-slate-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <datalist id="clientes-sugestoes">
+                        @foreach ($clientes as $cliente)
+                            @if($cliente->razao_social)
+                                <option value="{{ $cliente->razao_social }}"></option>
+                            @endif
+                            @if($cliente->nome_fantasia)
+                                <option value="{{ $cliente->nome_fantasia }}"></option>
+                            @endif
+                            @if($cliente->cnpj)
+                                <option value="{{ $cliente->cnpj }}"></option>
+                            @endif
+                        @endforeach
+                    </datalist>
                 </div>
 
                 <div>
@@ -83,14 +97,16 @@
                     <th class="px-4 py-2 text-left w-64">Cliente</th>
                     <th class="px-4 py-2 text-left w-40">CNPJ</th>
                     <th class="px-4 py-2 text-left w-52">Contato</th>
-                    <th class="px-4 py-2 text-center w-32">Acesso</th>
+                    <th class="px-4 py-2 text-center w-20 whitespace-nowrap">Acesso</th>
                     <th class="px-4 py-2 text-center w-24">Status</th>
-                    <th class="px-4 py-2 text-center w-48">Ações</th>
+                    <th class="px-4 py-2 text-center w-28 whitespace-nowrap">Ações</th>
                 </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                 @forelse($clientes as $cliente)
-                    <tr>
+                    <tr data-razao="{{ $cliente->razao_social }}"
+                        data-fantasia="{{ $cliente->nome_fantasia }}"
+                        data-cnpj="{{ preg_replace('/\D+/', '', $cliente->cnpj ?? '') }}">
                         <td class="px-4 py-3">
                             <div class="font-medium text-gray-900">{{ $cliente->razao_social }}</div>
                             @if($cliente->nome_fantasia)
@@ -107,12 +123,16 @@
 
                         <td class="px-4 py-3 text-center">
                             @if($cliente->userCliente)
-                                <span class="px-3 py-1 text-emerald-700 bg-emerald-100 rounded-full text-xs">
-                                    Acesso criado
+                                <span class="inline-flex items-center justify-center w-9 h-9 text-emerald-700 bg-emerald-100 rounded-full text-base"
+                                      title="Acesso criado"
+                                      aria-label="Acesso criado">
+                                    🔓
                                 </span>
                             @else
-                                <span class="px-3 py-1 text-slate-600 bg-slate-100 rounded-full text-xs">
-                                    Sem acesso
+                                <span class="inline-flex items-center justify-center w-9 h-9 text-slate-600 bg-slate-100 rounded-full text-base"
+                                      title="Sem acesso"
+                                      aria-label="Sem acesso">
+                                    🔒
                                 </span>
                             @endif
                         </td>
@@ -130,10 +150,11 @@
                         </td>
 
                         <td class="px-4 py-3 text-center">
-                            <div class="flex items-center justify-center gap-2 flex-wrap">
+                            <div class="flex items-center justify-center gap-2">
                                 <a href="{{ route($routePrefix.'.edit', $cliente) }}"
-                                   class="px-3 py-2 text-blue-700 bg-blue-100 rounded-lg text-xs whitespace-nowrap"
-                                   title="Editar">
+                                   class="px-3 py-2 text-blue-700 bg-blue-100 rounded-lg text-xs"
+                                   title="Editar"
+                                   aria-label="Editar">
                                     ✏️
                                 </a>
 
@@ -144,16 +165,19 @@
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit"
-                                            class="px-3 py-2 text-red-700 bg-red-100 rounded-lg text-xs whitespace-nowrap"
-                                            title="Excluir">
+                                            class="px-3 py-2 text-red-700 bg-red-100 rounded-lg text-xs"
+                                            title="Excluir"
+                                            aria-label="Excluir">
                                         🗑️
                                     </button>
                                 </form>
 
                                 <a href="{{ route($routePrefix.'.acesso.form', $cliente) }}"
-                                   class="px-3 py-1 text-indigo-700 bg-indigo-100 rounded-lg text-xs whitespace-nowrap {{ $cliente->email ? '' : 'opacity-50 cursor-not-allowed' }}"
+                                   class="px-3 py-2 text-indigo-700 bg-indigo-100 rounded-lg text-xs {{ $cliente->email ? '' : 'opacity-50 cursor-not-allowed' }}"
+                                   title="Criar acesso"
+                                   aria-label="Criar acesso"
                                    {{ $cliente->email ? '' : 'aria-disabled=true tabindex=-1' }}>
-                                    🔑 Criar acesso
+                                    🔑
                                 </a>
                             </div>
                         </td>
@@ -174,3 +198,43 @@
         </div>
     </div>
 @endsection
+
+@push('scripts')
+    <script>
+        (function () {
+            const input = document.getElementById('cliente-search');
+            const rows = Array.from(document.querySelectorAll('tbody tr[data-razao]'));
+
+            if (!input || rows.length === 0) {
+                return;
+            }
+
+            const normalize = (value) => (value || '')
+                .toString()
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/\p{Diacritic}/gu, '');
+
+            const onlyDigits = (value) => (value || '').toString().replace(/\D+/g, '');
+
+            const filterRows = () => {
+                const term = normalize(input.value.trim());
+                const termDigits = onlyDigits(term);
+
+                rows.forEach((row) => {
+                    const razao = normalize(row.dataset.razao);
+                    const fantasia = normalize(row.dataset.fantasia);
+                    const cnpj = onlyDigits(row.dataset.cnpj);
+
+                const matchesTexto = term === '' || razao.includes(term) || fantasia.includes(term);
+                const matchesCnpj = termDigits !== '' && cnpj.includes(termDigits);
+
+                row.style.display = matchesTexto || matchesCnpj ? '' : 'none';
+            });
+        };
+
+            input.addEventListener('input', filterRows);
+            filterRows();
+        })();
+    </script>
+@endpush

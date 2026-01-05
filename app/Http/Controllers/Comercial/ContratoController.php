@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ClienteContrato;
 use App\Models\ClienteContratoLog;
 use App\Models\ClienteContratoVigencia;
+use App\Services\AsoGheService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -14,7 +15,9 @@ class ContratoController extends Controller
 {
     public function index(Request $request)
     {
-        $empresaId = $request->user()->empresa_id;
+        $user = $request->user();
+        $empresaId = $user->empresa_id;
+        $isMaster = $user->hasPapel('Master');
 
         $buscaCliente = trim((string) $request->query('q', ''));
         $statusInput  = $request->query('status', []);
@@ -49,6 +52,10 @@ class ContratoController extends Controller
             ->withSum(['itens as valor_mensal' => function ($q) {
                 $q->where('ativo', true);
             }], 'preco_unitario_snapshot');
+
+        if (!$isMaster) {
+            $query->where('vendedor_id', $user->id);
+        }
 
         if ($buscaCliente !== '') {
             $query->whereHas('cliente', function ($q) use ($buscaCliente) {
@@ -87,14 +94,17 @@ class ContratoController extends Controller
 
         // Totalizadores (não dependem de filtros)
         $totalAtivos = ClienteContrato::where('empresa_id', $empresaId)
+            ->when(!$isMaster, fn ($q) => $q->where('vendedor_id', $user->id))
             ->where('status', 'ATIVO')
             ->count();
 
         $totalPendentes = ClienteContrato::where('empresa_id', $empresaId)
+            ->when(!$isMaster, fn ($q) => $q->where('vendedor_id', $user->id))
             ->where('status', 'PENDENTE')
             ->count();
 
         $faturamentoAtivo = ClienteContrato::where('empresa_id', $empresaId)
+            ->when(!$isMaster, fn ($q) => $q->where('vendedor_id', $user->id))
             ->where('status', 'ATIVO')
             ->withSum(['itens as valor_mensal' => function ($q) {
                 $q->where('ativo', true);
@@ -119,8 +129,12 @@ class ContratoController extends Controller
 
     public function show(ClienteContrato $contrato)
     {
-        $empresaId = auth()->user()->empresa_id;
+        $user = auth()->user();
+        $empresaId = $user->empresa_id;
         abort_unless($contrato->empresa_id === $empresaId, 403);
+        if (!$user->hasPapel('Master')) {
+            abort_unless((int) $contrato->vendedor_id === (int) $user->id, 403);
+        }
 
         $contrato->load([
             'cliente',
@@ -135,8 +149,12 @@ class ContratoController extends Controller
 
     public function novaVigencia(ClienteContrato $contrato)
     {
-        $empresaId = auth()->user()->empresa_id;
+        $user = auth()->user();
+        $empresaId = $user->empresa_id;
         abort_unless($contrato->empresa_id === $empresaId, 403);
+        if (!$user->hasPapel('Master')) {
+            abort_unless((int) $contrato->vendedor_id === (int) $user->id, 403);
+        }
 
         $contrato->load(['cliente', 'itens.servico']);
 
@@ -145,8 +163,12 @@ class ContratoController extends Controller
 
     public function storeVigencia(Request $request, ClienteContrato $contrato)
     {
-        $empresaId = $request->user()->empresa_id;
+        $user = $request->user();
+        $empresaId = $user->empresa_id;
         abort_unless($contrato->empresa_id === $empresaId, 403);
+        if (!$user->hasPapel('Master')) {
+            abort_unless((int) $contrato->vendedor_id === (int) $user->id, 403);
+        }
 
         $contrato->load(['cliente', 'itens.servico']);
 
@@ -206,6 +228,19 @@ class ContratoController extends Controller
                 $item->update([
                     'preco_unitario_snapshot' => $novoPreco,
                 ]);
+            }
+
+            $asoServicoId = app(AsoGheService::class)->resolveServicoAsoIdFromContrato($contrato);
+            if ($asoServicoId) {
+                $asoItem = $contrato->itens()->where('servico_id', $asoServicoId)->first();
+                if ($asoItem) {
+                    $asoSnapshot = app(AsoGheService::class)
+                        ->buildSnapshotForCliente($contrato->cliente_id, $empresaId);
+                    if (empty($asoSnapshot['ghes'])) {
+                        $asoSnapshot = null;
+                    }
+                    $asoItem->update(['regras_snapshot' => $asoSnapshot]);
+                }
             }
 
             ClienteContratoLog::create([

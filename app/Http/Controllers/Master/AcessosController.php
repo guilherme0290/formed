@@ -48,16 +48,23 @@ class AcessosController extends Controller
 
     public function usuariosStore(Request $r)
     {
+        $r->merge(['ativo' => $r->has('ativo')]);
+
         $data = $r->validate([
             'name'      => ['required','string','max:255'],
             'email'     => ['required','email','max:255','unique:users,email'],
             'password'   => ['required','string','min:6'],
             'telefone'  => ['nullable','string','max:30'],
             'papel_id'  => ['nullable','exists:papeis,id'],
+            'ativo'     => ['nullable','boolean'],
         ]);
 
         $data['password'] = Hash::make($r->password);
         $data['empresa_id'] = 1;
+        $data['ativo'] = $r->boolean('ativo');
+        $data['telefone'] = !empty($data['telefone'])
+            ? preg_replace('/\D+/', '', $data['telefone'])
+            : null;
 
 
         User::create($data);
@@ -68,13 +75,20 @@ class AcessosController extends Controller
 
     public function usuariosUpdate(Request $r, User $user)
     {
+        $r->merge(['ativo' => $r->has('ativo')]);
+
         $data = $r->validate([
             'name'      => ['required','string','max:255'],
             'email'     => ['required','email','max:255', Rule::unique('users','email')->ignore($user->id)],
             'telefone'  => ['nullable','string','max:30'],
             'papel_id'  => ['nullable','exists:papeis,id'],
+            'ativo'     => ['nullable','boolean'],
         ]);
 
+        $data['ativo'] = $r->boolean('ativo');
+        $data['telefone'] = !empty($data['telefone'])
+            ? preg_replace('/\D+/', '', $data['telefone'])
+            : null;
         $user->update($data);
 
         return redirect()->route('master.acessos', ['tab' => 'usuarios'])

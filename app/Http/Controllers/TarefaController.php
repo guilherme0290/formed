@@ -7,6 +7,8 @@ use App\Models\TarefaLog;
 use Illuminate\Http\Request;
 use App\Models\Tarefa;
 use App\Models\KanbanColuna;
+use App\Models\ClienteContrato;
+use App\Models\Servico;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -92,11 +94,52 @@ class TarefaController extends Controller
         try {
 
             try {
-                $resultado = $precificacaoService->validarServicoNoContrato(
-                    (int) $tarefa->cliente_id,
-                    (int) $tarefa->servico_id,
-                    (int) $tarefa->empresa_id
-                );
+                $dataRef = now()->startOfDay();
+                $contratoAtivo = ClienteContrato::query()
+                    ->where('empresa_id', $tarefa->empresa_id)
+                    ->where('cliente_id', $tarefa->cliente_id)
+                    ->where('status', 'ATIVO')
+                    ->where(function ($q) use ($dataRef) {
+                        $q->whereNull('vigencia_inicio')->orWhere('vigencia_inicio', '<=', $dataRef);
+                    })
+                    ->where(function ($q) use ($dataRef) {
+                        $q->whereNull('vigencia_fim')->orWhere('vigencia_fim', '>=', $dataRef);
+                    })
+                    ->with('itens')
+                    ->latest('vigencia_inicio')
+                    ->first();
+                $contratoItem = $contratoAtivo?->itens
+                    ->firstWhere('servico_id', (int) $tarefa->servico_id);
+                $isAso = !empty($contratoItem?->regras_snapshot['ghes']);
+
+                $servicoTreinamentoId = (int) Servico::where('empresa_id', $tarefa->empresa_id)
+                    ->where('nome', 'Treinamentos NRs')
+                    ->value('id');
+
+                if ($isAso) {
+                    $resultado = $precificacaoService->precificarAso($tarefa);
+                    $venda = $vendaService->criarVendaPorTarefaItens($tarefa, $resultado['contrato'], $resultado['itensVenda']);
+
+                    $vendedorId = optional($tarefa->cliente)->vendedor_id;
+                    $comissaoService->gerarPorVenda($venda, $resultado['itemContrato'], $vendedorId ?: auth()->id());
+                } elseif ($servicoTreinamentoId && (int) $tarefa->servico_id === $servicoTreinamentoId) {
+                    $resultado = $precificacaoService->precificarTreinamentosNr($tarefa);
+                    $venda = $vendaService->criarVendaPorTarefaItens($tarefa, $resultado['contrato'], $resultado['itensVenda']);
+
+                    $vendedorId = optional($tarefa->cliente)->vendedor_id;
+                    $comissaoService->gerarPorVenda($venda, $resultado['itemContrato'], $vendedorId ?: auth()->id());
+                } else {
+                    $resultado = $precificacaoService->validarServicoNoContrato(
+                        (int) $tarefa->cliente_id,
+                        (int) $tarefa->servico_id,
+                        (int) $tarefa->empresa_id
+                    );
+                    $venda = $vendaService->criarVendaPorTarefa($tarefa, $resultado['contrato'], $resultado['item']);
+
+                    $vendedorId = optional($tarefa->cliente)->vendedor_id;
+                    $comissaoService->gerarPorVenda($venda, $resultado['item'], $vendedorId ?: auth()->id());
+                }
+
             } catch (\Throwable $e) {
                 $mensagem = 'Não é possível concluir esta tarefa porque o cliente não possui preço definido para este serviço na proposta/contrato ativo. Solicite ao Comercial para ajustar a proposta e fechar novamente, ou cadastrar o valor do serviço no contrato do cliente.';
                 if (method_exists($e, 'errors')) {
@@ -115,12 +158,6 @@ class TarefaController extends Controller
                 'finalizado_em'           => now(),
                 'path_documento_cliente'  => $path,
             ]);
-
-            if (isset($resultado)) {
-                $venda = $vendaService->criarVendaPorTarefa($tarefa, $resultado['contrato'], $resultado['item']);
-                $vendedorId = optional($tarefa->cliente)->vendedor_id;
-                $comissaoService->gerarPorVenda($venda, $resultado['item'], $vendedorId ?: auth()->id());
-            }
 
             $log = TarefaLog::create([
                 'tarefa_id'      => $tarefa->id,

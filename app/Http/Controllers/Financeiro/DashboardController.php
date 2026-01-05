@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Financeiro;
 
 use App\Http\Controllers\Controller;
 use App\Models\ClienteContrato;
+use App\Models\ContaReceberItem;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 
@@ -46,11 +47,23 @@ class DashboardController extends Controller
         // Aprovados: contratos marcados como ATIVO (consideramos aprovados = ativos)
         $aprovados = $ativos;
 
+        $itensEmAberto = ContaReceberItem::query()
+            ->where('empresa_id', $empresaId)
+            ->where('status', 'ABERTO')
+            ->count();
+
+        $itensFaturados = ContaReceberItem::query()
+            ->where('empresa_id', $empresaId)
+            ->where('status', 'BAIXADO')
+            ->count();
+
         $cards = [
             'contratos_ativos' => $ativos,
             'faturamento_mensal' => $faturamentoMensal,
             'aprovados' => $aprovados,
             'pendentes' => $pendentes,
+            'itens_aberto' => $itensEmAberto,
+            'itens_faturado' => $itensFaturados,
         ];
 
         return view('financeiro.dashboard', [

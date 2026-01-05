@@ -65,6 +65,7 @@
                             <x-funcoes.create-button
                                 label="Cadastrar nova função"
                                 variant="red"
+                                :allowCreate="false"
                             />
 
                             {{-- Botão adicionar linha de função --}}
@@ -101,6 +102,7 @@
                                             name="funcoes[{{ $idx }}][funcao_id]"
                                             field-id="funcoes_{{ $idx }}_funcao_id"
                                             label="Função"
+                                            help-text="Funções listadas por GHE, pré-configuradas pelo vendedor/comercial."
                                             :funcoes="$funcoes"
                                             :selected="old('funcoes.'.$idx.'.funcao_id', $f['funcao_id'] ?? null)"
                                             :show-create="false"

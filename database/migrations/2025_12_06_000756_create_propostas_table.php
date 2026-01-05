@@ -36,7 +36,7 @@ return new class extends Migration
             $table->decimal('valor_total', 12, 2)->default(0);
 
             // rascunho | enviada | aceita | recusada
-            $table->string('status')->default('rascunho');
+            $table->string('status')->default('PENDENTE');
 
             $table->text('observacoes')->nullable();
 

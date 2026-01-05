@@ -4,10 +4,12 @@
     'name'           => 'funcao_id',
     'fieldId'        => null,
     'label'          => 'Função',
+    'helpText'       => null,
     'funcoes'        => [],
     'selected'       => null,
     'modalId'        => 'modal-create-funcao',
     'showCreate'     => true,      // permite esconder o botão "+" em telas dinâmicas
+    'allowCreate'    => true,      // desabilita criação (cliente/operacional)
     'disabled'       => false,     // desabilitar via Blade (true/false)
     'alpineDisabled' => null,      // mantém compatibilidade se já estiver usando em outras telas
 ])
@@ -23,8 +25,18 @@
      data-funcao-csrf="{{ csrf_token() }}">
 
     {{-- Label --}}
-    <label for="{{ $fieldId }}" class="block text-xs font-medium text-slate-600">
-        {{ $label }}
+    <label for="{{ $fieldId }}" class="flex items-center gap-2 text-xs font-medium text-slate-600">
+        <span>{{ $label }}</span>
+        @if ($helpText)
+            <span class="relative inline-flex items-center">
+                <span class="group inline-flex h-4 w-4 items-center justify-center rounded-full bg-slate-100 text-[10px] text-slate-500 cursor-help">
+                    ?
+                    <span class="pointer-events-none absolute left-1/2 top-full z-10 mt-2 w-60 -translate-x-1/2 rounded-lg bg-slate-900 px-2.5 py-2 text-[11px] text-white opacity-0 shadow-lg transition group-hover:opacity-100">
+                        {{ $helpText }}
+                    </span>
+                </span>
+            </span>
+        @endif
     </label>
 
     {{-- Select + botão "+" inline --}}
@@ -49,57 +61,71 @@
 
         @if ($showCreate)
             {{-- Botão "+" (abre modal de nova função) --}}
-            <button
-                type="button"
-                data-funcao-open-modal
-                @if($disabled) disabled @endif
-                @if($alpineDisabled) x-bind:disabled="{{ $alpineDisabled }}" @endif
-                class="inline-flex items-center justify-center w-9 h-9 rounded-full border border-slate-200
-                       bg-white text-slate-600 text-lg leading-none
-                       hover:bg-slate-100 hover:border-slate-300 disabled:opacity-60 disabled:cursor-not-allowed"
-                title="Nova função"
-            >
-                +
-            </button>
+            @if ($allowCreate)
+                <button
+                    type="button"
+                    data-funcao-open-modal
+                    @if($disabled) disabled @endif
+                    @if($alpineDisabled) x-bind:disabled="{{ $alpineDisabled }}" @endif
+                    class="inline-flex items-center justify-center w-9 h-9 rounded-full border border-slate-200
+                           bg-white text-slate-600 text-lg leading-none
+                           hover:bg-slate-100 hover:border-slate-300 disabled:opacity-60 disabled:cursor-not-allowed"
+                    title="Nova função"
+                >
+                    +
+                </button>
+            @else
+                <button
+                    type="button"
+                    disabled
+                    class="inline-flex items-center justify-center w-9 h-9 rounded-full border border-slate-200
+                           bg-slate-100 text-slate-400 text-lg leading-none cursor-not-allowed"
+                    title="Cadastro de função disponível no Comercial"
+                >
+                    +
+                </button>
+            @endif
         @endif
     </div>
 
     {{-- Modal genérico para criação de Função (JS puro) --}}
-    <div class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40"
-         data-funcao-modal>
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
-            <h2 class="text-sm font-semibold text-slate-800 mb-3">
-                Nova Função
-            </h2>
+    @if ($allowCreate)
+        <div class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40"
+             data-funcao-modal>
+            <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+                <h2 class="text-sm font-semibold text-slate-800 mb-3">
+                    Nova Função
+                </h2>
 
-            <div class="hidden mb-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700"
-                 data-funcao-error-modal>
-            </div>
+                <div class="hidden mb-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700"
+                     data-funcao-error-modal>
+                </div>
 
-            <div class="space-y-2 mb-4">
-                <label class="block text-xs font-medium text-slate-600">
-                    Nome da Função
-                </label>
-                <input type="text"
-                       data-funcao-input
-                       class="w-full rounded-lg border-slate-200 text-sm px-3 py-2"
-                       placeholder="Ex: Eletricista, Pedreiro, Operador de Máquinas">
-            </div>
+                <div class="space-y-2 mb-4">
+                    <label class="block text-xs font-medium text-slate-600">
+                        Nome da Função
+                    </label>
+                    <input type="text"
+                           data-funcao-input
+                           class="w-full rounded-lg border-slate-200 text-sm px-3 py-2"
+                           placeholder="Ex: Eletricista, Pedreiro, Operador de Máquinas">
+                </div>
 
-            <div class="flex justify-end gap-2">
-                <button type="button"
-                        class="px-3 py-2 text-xs rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
-                        data-funcao-cancel>
-                    Cancelar
-                </button>
-                <button type="button"
-                        class="px-4 py-2 text-xs rounded-lg bg-emerald-600 text-white font-semibold hover:bg-emerald-700 disabled:opacity-60"
-                        data-funcao-save>
-                    Salvar Função
-                </button>
+                <div class="flex justify-end gap-2">
+                    <button type="button"
+                            class="px-3 py-2 text-xs rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
+                            data-funcao-cancel>
+                        Cancelar
+                    </button>
+                    <button type="button"
+                            class="px-4 py-2 text-xs rounded-lg bg-emerald-600 text-white font-semibold hover:bg-emerald-700 disabled:opacity-60"
+                            data-funcao-save>
+                        Salvar Função
+                    </button>
+                </div>
             </div>
         </div>
-    </div>
+    @endif
 </div>
 
 @once
@@ -226,4 +252,3 @@
         </script>
     @endpush
 @endonce
-

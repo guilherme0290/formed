@@ -211,12 +211,21 @@ class PainelController extends Controller
     {
         $data = $request->validate([
             'coluna_id' => ['required', 'exists:kanban_colunas,id'],
+            'ordem' => ['nullable', 'array'],
+            'ordem.*' => ['integer', 'exists:tarefas,id'],
+            'coluna_origem_id' => ['nullable', 'integer', 'exists:kanban_colunas,id'],
+            'ordem_origem' => ['nullable', 'array'],
+            'ordem_origem.*' => ['integer', 'exists:tarefas,id'],
         ]);
 
         $novaColunaId  = (int) $data['coluna_id'];
         $colunaAtualId = (int) $tarefa->coluna_id;
+        $ordemDestino = $data['ordem'] ?? [];
+        $colunaOrigemId = (int) ($data['coluna_origem_id'] ?? 0);
+        $ordemOrigem = $data['ordem_origem'] ?? [];
 
         if ($novaColunaId === $colunaAtualId) {
+            $this->atualizarOrdem($ordemDestino, $novaColunaId);
             return response()->json(['ok' => true]);
         }
 
@@ -225,12 +234,36 @@ class PainelController extends Controller
 
         if ($finalizando) {
             try {
-                $servicoAsoId = (int) Servico::where('empresa_id', $tarefa->empresa_id)
-                    ->where('nome', 'ASO')
+                $dataRef = now()->startOfDay();
+                $contratoAtivo = ClienteContrato::query()
+                    ->where('empresa_id', $tarefa->empresa_id)
+                    ->where('cliente_id', $tarefa->cliente_id)
+                    ->where('status', 'ATIVO')
+                    ->where(function ($q) use ($dataRef) {
+                        $q->whereNull('vigencia_inicio')->orWhere('vigencia_inicio', '<=', $dataRef);
+                    })
+                    ->where(function ($q) use ($dataRef) {
+                        $q->whereNull('vigencia_fim')->orWhere('vigencia_fim', '>=', $dataRef);
+                    })
+                    ->with('itens')
+                    ->latest('vigencia_inicio')
+                    ->first();
+                $contratoItem = $contratoAtivo?->itens
+                    ->firstWhere('servico_id', (int) $tarefa->servico_id);
+                $isAso = !empty($contratoItem?->regras_snapshot['ghes']);
+
+                $servicoTreinamentoId = (int) Servico::where('empresa_id', $tarefa->empresa_id)
+                    ->where('nome', 'Treinamentos NRs')
                     ->value('id');
 
-                if ($servicoAsoId && (int) $tarefa->servico_id === $servicoAsoId) {
+                if ($isAso) {
                     $resultado = $precificacaoService->precificarAso($tarefa);
+                    $venda = $vendaService->criarVendaPorTarefaItens($tarefa, $resultado['contrato'], $resultado['itensVenda']);
+
+                    $vendedorId = optional($tarefa->cliente)->vendedor_id;
+                    $comissaoService->gerarPorVenda($venda, $resultado['itemContrato'], $vendedorId ?: auth()->id());
+                } elseif ($servicoTreinamentoId && (int) $tarefa->servico_id === $servicoTreinamentoId) {
+                    $resultado = $precificacaoService->precificarTreinamentosNr($tarefa);
                     $venda = $vendaService->criarVendaPorTarefaItens($tarefa, $resultado['contrato'], $resultado['itensVenda']);
 
                     $vendedorId = optional($tarefa->cliente)->vendedor_id;
@@ -264,6 +297,11 @@ class PainelController extends Controller
             'coluna_id' => $novaColunaId,
         ]);
 
+        $this->atualizarOrdem($ordemDestino, $novaColunaId);
+        if ($colunaOrigemId && $colunaOrigemId !== $novaColunaId) {
+            $this->atualizarOrdem($ordemOrigem, $colunaOrigemId);
+        }
+
         // Recarrega coluna para pegar o nome
         $tarefa->load('coluna');
 
@@ -296,6 +334,20 @@ class PainelController extends Controller
                 'data' => optional($log->created_at)->format('d/m H:i'),
             ],
         ]);
+    }
+
+    private function atualizarOrdem(array $ids, int $colunaId): void
+    {
+        if (empty($ids)) {
+            return;
+        }
+
+        foreach ($ids as $index => $id) {
+            Tarefa::query()
+                ->where('id', $id)
+                ->where('coluna_id', $colunaId)
+                ->update(['ordem' => $index + 1]);
+        }
     }
 
 
@@ -357,8 +409,11 @@ class PainelController extends Controller
             ? $contratoAtivo->itens->pluck('servico_id')->filter()->unique()->values()->all()
             : [];
 
+        $asoServicoId = $contratoAtivo?->itens
+            ->first(fn ($item) => !empty($item->regras_snapshot['ghes']))
+            ?->servico_id;
+
         $tipos = [
-            'aso' => ['aso', 'aso'],
             'pgr' => ['pgr', 'pgr'],
             'pcmso' => ['pcmso', 'pcmso'],
             'ltcat' => ['ltcat', 'ltcat'],
@@ -368,7 +423,9 @@ class PainelController extends Controller
             'treinamentos' => ['treinamento', 'treinamentos nrs'],
         ];
 
-        $servicosIds = [];
+        $servicosIds = [
+            'aso' => $asoServicoId ? (int) $asoServicoId : null,
+        ];
         foreach ($tipos as $slug => $variants) {
             $variants = array_map(fn ($v) => mb_strtolower($v), $variants);
             $id = Servico::query()

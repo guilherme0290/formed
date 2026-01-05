@@ -305,8 +305,10 @@
                                             $asoTreinamentosLista = implode(', ', $labelsTrein);
                                         }
 
+                                        $isAsoTask = (bool) $aso;
+
                                         $editUrl = null;
-                                        if ($servicoNome === 'ASO') {
+                                        if ($isAsoTask) {
                                             $editUrl = route('operacional.kanban.aso.editar', $tarefa);
                                         }
                                         if ($servicoNome === 'PGR') {
@@ -390,6 +392,7 @@
                                     data-aso-treinamento="{{ $asoTreinamentoFlag }}"
                                     data-aso-treinamentos="{{ $asoTreinamentosLista }}"
                                     data-aso-email="{{ $asoEmail }}"
+                                    data-is-aso="{{ $isAsoTask ? '1' : '0' }}"
 
                                     data-observacao-interna="{{ e($tarefa->observacao_interna) }}"
                                     data-observacao-url="{{ route('operacional.tarefas.observacao', $tarefa) }}"
@@ -488,7 +491,7 @@
                                         $subtituloCard = $clienteNome;      // default
 
                                         // -------- ASO --------
-                                        if ($servicoNome === 'ASO') {
+                                        if ($isAsoTask) {
                                             $nomeFunc = $funcionarioNome
                                                 ?? optional($tarefa->funcionario)->nome
                                                 ?? 'Sem funcionário';
@@ -1336,7 +1339,7 @@
 
                 // === REGRAS POR TIPO DE SERVIÇO ===
                 const tipoServico = (card.dataset.servico || '').toLowerCase();
-                const isAso = tipoServico.includes('aso');
+                const isAso = card.dataset.isAso === '1';
                 const isPgr = tipoServico.includes('pgr');
 
                 // ASO
@@ -1791,6 +1794,8 @@
                             const colunaCor = colunaEl?.dataset.colunaCor || '#38bdf8';
                             const colunaSlug = colunaEl?.dataset.colunaSlug || '';
                             const moveUrl = card.dataset.moveUrl;
+                            const colunaOrigemEl = evt.from;
+                            const colunaOrigemId = colunaOrigemEl?.dataset?.colunaId || '';
 
                             // segurança extra: se por algum motivo chegou aqui, não processa
                             if (card.dataset.cancelada === '1') {
@@ -1819,6 +1824,15 @@
                             // demais colunas -> fluxo normal de mover
                             if (!moveUrl || !colunaId) return;
 
+                            const idsDestino = Array.from(colunaEl.querySelectorAll('.kanban-card'))
+                                .map(el => el.dataset.id)
+                                .filter(Boolean);
+                            const idsOrigem = colunaOrigemEl
+                                ? Array.from(colunaOrigemEl.querySelectorAll('.kanban-card'))
+                                    .map(el => el.dataset.id)
+                                    .filter(Boolean)
+                                : [];
+
                             fetch(moveUrl, {
                                 method: 'POST',
                                 headers: {
@@ -1826,7 +1840,12 @@
                                     'Content-Type': 'application/json',
                                     'Accept': 'application/json',
                                 },
-                                body: JSON.stringify({coluna_id: colunaId}),
+                                body: JSON.stringify({
+                                    coluna_id: colunaId,
+                                    ordem: idsDestino,
+                                    coluna_origem_id: colunaOrigemId,
+                                    ordem_origem: idsOrigem,
+                                }),
                             })
                                 .then(response => response.json())
                                 .then(data => {

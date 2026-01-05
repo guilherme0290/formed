@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Operacional;
 
 use App\Http\Controllers\Controller;
 use App\Models\Cliente;
-use App\Models\Funcao;
+use App\Services\AsoGheService;
 use App\Models\Funcionario;
 use App\Models\KanbanColuna;
 use App\Models\Servico;
@@ -13,27 +13,32 @@ use App\Models\TarefaLog;
 use App\Models\TreinamentoNR;
 use App\Models\TreinamentoNrDetalhes;
 use App\Models\UnidadeClinica;
+use App\Models\TabelaPrecoItem;
+use App\Models\TabelaPrecoPadrao;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class TreinamentoNrController extends Controller
 {
     public function create(Cliente $cliente)
     {
         $user = Auth::user();
+        $empresaId = $user->empresa_id;
 
         // Funcionários já vinculados ao cliente
         $funcionarios = Funcionario::where('cliente_id', $cliente->id)
             ->orderBy('nome')
             ->get();
 
-        $funcoes = Funcao::where('empresa_id',$user->empresa_id)
-            ->orderBy('nome')
-            ->get();
+        $funcoes = app(AsoGheService::class)
+            ->funcoesDisponiveisParaCliente($empresaId, $cliente->id);
 
         // Unidades da FORMED (ou o que fizer sentido aí)
-        $unidades = UnidadeClinica::orderBy('nome')->get();
+        $unidades = UnidadeClinica::where('empresa_id', $empresaId)->orderBy('nome')->get();
+
+        $treinamentosDisponiveis = $this->getTreinamentosDisponiveis($empresaId);
 
         return view('operacional.kanban.treinamentos-nr.create', [
             'cliente'      => $cliente,
@@ -44,6 +49,7 @@ class TreinamentoNrController extends Controller
             'tarefa'       => null,
             'detalhes'     => null,
             'selecionados' => [],
+            'treinamentosDisponiveis' => $treinamentosDisponiveis,
             'isEdit'       => false,
         ]);
     }
@@ -54,14 +60,25 @@ class TreinamentoNrController extends Controller
         $empresaId = $usuario->empresa_id;
 
         // Validação única
+        $treinamentosDisponiveis = $this->getTreinamentosDisponiveis($empresaId);
+        $treinamentosCodigos = $treinamentosDisponiveis->pluck('codigo')->filter()->values()->all();
+        if (empty($treinamentosCodigos)) {
+            return back()
+                ->withErrors(['treinamentos' => 'Nenhum treinamento disponível na tabela de preços para esta empresa.'])
+                ->withInput();
+        }
+
         $data = $request->validate([
             'funcionarios'   => ['required', 'array', 'min:1'],
             'funcionarios.*' => ['integer', 'exists:funcionarios,id'],
+            'treinamentos'   => ['required', 'array', 'min:1'],
+            'treinamentos.*' => ['string', Rule::in($treinamentosCodigos)],
 
             'local_tipo' => ['required', 'in:clinica,empresa'],
             'unidade_id' => ['required_if:local_tipo,clinica', 'nullable', 'integer', 'exists:unidades_clinicas,id'],
         ], [
             'funcionarios.required' => 'Selecione pelo menos um participante.',
+            'treinamentos.required' => 'Selecione pelo menos um treinamento.',
         ]);
 
         // Coluna inicial do Kanban (igual você usa em outros serviços)
@@ -71,7 +88,9 @@ class TreinamentoNrController extends Controller
             ?? KanbanColuna::where('empresa_id', $empresaId)->orderBy('ordem')->first();
 
         // Serviço Treinamentos NR
-        $servicoTreinamentosNr = Servico::where('nome', 'Treinamentos NRs')->first();
+        $servicoTreinamentosNr = Servico::where('empresa_id', $empresaId)
+            ->where('nome', 'Treinamentos NRs')
+            ->first();
         $tipoLabel             = 'Treinamentos de NRs';
 
         DB::transaction(function () use (
@@ -111,6 +130,7 @@ class TreinamentoNrController extends Controller
                 'tarefa_id'  => $tarefa->id,
                 'local_tipo' => $data['local_tipo'],
                 'unidade_id' => $data['unidade_id'] ?? null,
+                'treinamentos' => $data['treinamentos'],
             ]);
         });
 
@@ -182,11 +202,12 @@ class TreinamentoNrController extends Controller
             ->orderBy('nome')
             ->get();
 
-        $funcoes = Funcao::where('empresa_id', $empresaId)
-            ->orderBy('nome')
-            ->get();
+        $funcoes = app(AsoGheService::class)
+            ->funcoesDisponiveisParaCliente($empresaId, $cliente->id);
 
-        $unidades = UnidadeClinica::orderBy('nome')->get();
+        $unidades = UnidadeClinica::where('empresa_id', $empresaId)->orderBy('nome')->get();
+
+        $treinamentosDisponiveis = $this->getTreinamentosDisponiveis($empresaId);
 
         return view('operacional.kanban.treinamentos-nr.create', [
             'cliente'      => $cliente,
@@ -197,6 +218,7 @@ class TreinamentoNrController extends Controller
             'tarefa'       => $tarefa,
             'detalhes'     => $detalhes,
             'selecionados' => $selecionados,
+            'treinamentosDisponiveis' => $treinamentosDisponiveis,
             'isEdit'       => true,
         ]);
     }
@@ -213,14 +235,25 @@ class TreinamentoNrController extends Controller
 
         $cliente = $tarefa->cliente;
 
+        $treinamentosDisponiveis = $this->getTreinamentosDisponiveis($empresaId);
+        $treinamentosCodigos = $treinamentosDisponiveis->pluck('codigo')->filter()->values()->all();
+        if (empty($treinamentosCodigos)) {
+            return back()
+                ->withErrors(['treinamentos' => 'Nenhum treinamento disponível na tabela de preços para esta empresa.'])
+                ->withInput();
+        }
+
         $data = $request->validate([
             'funcionarios'   => ['required', 'array', 'min:1'],
             'funcionarios.*' => ['integer', 'exists:funcionarios,id'],
+            'treinamentos'   => ['required', 'array', 'min:1'],
+            'treinamentos.*' => ['string', Rule::in($treinamentosCodigos)],
 
             'local_tipo' => ['required', 'in:clinica,empresa'],
             'unidade_id' => ['required_if:local_tipo,clinica', 'nullable', 'integer', 'exists:unidades_clinicas,id'],
         ], [
             'funcionarios.required' => 'Selecione pelo menos um participante.',
+            'treinamentos.required' => 'Selecione pelo menos um treinamento.',
         ]);
 
         DB::transaction(function () use ($data, $tarefa, $usuario) {
@@ -234,6 +267,7 @@ class TreinamentoNrController extends Controller
             $detalhes->unidade_id = $data['local_tipo'] === 'clinica'
                 ? ($data['unidade_id'] ?? null)
                 : null;
+            $detalhes->treinamentos = $data['treinamentos'];
             $detalhes->save();
 
             // Atualiza descrição da tarefa (opcional, mas útil)
@@ -268,5 +302,32 @@ class TreinamentoNrController extends Controller
         return redirect()
             ->route('operacional.kanban')
             ->with('ok', 'Treinamento de NRs atualizado com sucesso.');
+    }
+
+    private function getTreinamentosDisponiveis(int $empresaId)
+    {
+        $servicoTreinamentoId = Servico::where('empresa_id', $empresaId)
+            ->where('nome', 'Treinamentos NRs')
+            ->value('id');
+
+        if (!$servicoTreinamentoId) {
+            return collect();
+        }
+
+        $padrao = TabelaPrecoPadrao::where('empresa_id', $empresaId)
+            ->where('ativa', true)
+            ->first();
+
+        if (!$padrao) {
+            return collect();
+        }
+
+        return TabelaPrecoItem::query()
+            ->where('tabela_preco_padrao_id', $padrao->id)
+            ->where('servico_id', $servicoTreinamentoId)
+            ->where('ativo', true)
+            ->whereNotNull('codigo')
+            ->orderBy('codigo')
+            ->get(['codigo', 'descricao']);
     }
 }
