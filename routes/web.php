@@ -11,6 +11,8 @@ use App\Http\Controllers\Comercial\ProtocolosExamesController;
 use App\Http\Controllers\Comercial\PropostaPrecoController;
 use App\Http\Controllers\Master\AcessosController;
 use App\Http\Controllers\Master\DashboardController as DashboardMaster;
+use App\Http\Controllers\Master\EmailCaixaController;
+use App\Http\Controllers\Master\AgendaVendedorController;
 use App\Http\Controllers\Comercial\DashboardController as DashboardComercial;
 use App\Http\Controllers\Comercial\FuncoesController as ComercialFuncoesController;
 use App\Http\Controllers\Operacional\AsoController;
@@ -715,11 +717,12 @@ Route::middleware('auth')->group(function () {
 
             // Agenda Comercial
             Route::prefix('agenda')->name('agenda.')->group(function () {
-                Route::get('/', [\App\Http\Controllers\Comercial\AgendaController::class, 'index'])->name('index');
-                Route::post('/', [\App\Http\Controllers\Comercial\AgendaController::class, 'store'])->name('store');
-                Route::patch('/{tarefa}/concluir', [\App\Http\Controllers\Comercial\AgendaController::class, 'concluir'])->name('concluir');
-                Route::delete('/{tarefa}', [\App\Http\Controllers\Comercial\AgendaController::class, 'destroy'])->name('destroy');
-            });
+            Route::get('/', [\App\Http\Controllers\Comercial\AgendaController::class, 'index'])->name('index');
+            Route::post('/', [\App\Http\Controllers\Comercial\AgendaController::class, 'store'])->name('store');
+            Route::put('/{tarefa}', [\App\Http\Controllers\Comercial\AgendaController::class, 'update'])->name('update');
+            Route::patch('/{tarefa}/concluir', [\App\Http\Controllers\Comercial\AgendaController::class, 'concluir'])->name('concluir');
+            Route::delete('/{tarefa}', [\App\Http\Controllers\Comercial\AgendaController::class, 'destroy'])->name('destroy');
+        });
         });
 
     // Financeiro (somente view/UI)
@@ -787,6 +790,10 @@ Route::middleware('auth')->group(function () {
         // Dashboard Master
         Route::get('/', [DashboardMaster::class, 'index'])->name('dashboard');
 
+        // Agenda de Vendedores (somente leitura)
+        Route::get('/agenda-vendedores', [AgendaVendedorController::class, 'index'])
+            ->name('agenda-vendedores.index');
+
         // Empresa (dados cadastrais)
         Route::prefix('empresa')->name('empresa.')->group(function () {
             Route::get('/', [\App\Http\Controllers\Master\EmpresaController::class, 'edit'])
@@ -806,6 +813,17 @@ Route::middleware('auth')->group(function () {
                 Route::delete('/{unidade}', [\App\Http\Controllers\Master\UnidadeClinicaController::class, 'destroy'])
                     ->name('destroy');
             });
+        });
+
+        // Caixas de Email (SMTP)
+        Route::prefix('email-caixas')->name('email-caixas.')->group(function () {
+            Route::get('/', [EmailCaixaController::class, 'index'])->name('index');
+            Route::post('/', [EmailCaixaController::class, 'store'])->name('store');
+            Route::post('/testar', [EmailCaixaController::class, 'testar'])->name('testar');
+            Route::post('/{emailCaixa}/testar', [EmailCaixaController::class, 'testarSalvo'])
+                ->name('testar-salvo');
+            Route::put('/{emailCaixa}', [EmailCaixaController::class, 'update'])->name('update');
+            Route::delete('/{emailCaixa}', [EmailCaixaController::class, 'destroy'])->name('destroy');
         });
 
         // Acessos

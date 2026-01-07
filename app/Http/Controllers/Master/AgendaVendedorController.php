@@ -1,41 +1,48 @@
 <?php
 
-namespace App\Http\Controllers\Comercial;
+namespace App\Http\Controllers\Master;
 
 use App\Http\Controllers\Controller;
 use App\Models\AgendaTarefa;
+use App\Models\User;
 use Carbon\Carbon;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
-class AgendaController extends Controller
+class AgendaVendedorController extends Controller
 {
-    public function __construct()
-    {
-        $this->middleware(function (Request $request, $next) {
-            $user = $request->user();
-            if (!$user || mb_strtolower(optional($user->papel)->nome ?? '') !== 'comercial') {
-                abort(403);
-            }
-            return $next($request);
-        });
-    }
-
     public function index(Request $request): View
     {
-        $user = $request->user();
+        $empresaId = $request->user()->empresa_id ?? 1;
         $dataSelecionada = $this->dataSelecionada($request);
         $periodo = $this->periodoSelecionado($request);
         [$inicio, $fim] = $this->intervaloDoPeriodo($dataSelecionada, $periodo);
 
+        $vendedores = User::query()
+            ->where('empresa_id', $empresaId)
+            ->whereHas('papel', function ($q) {
+                $q->whereRaw('LOWER(nome) = ?', ['comercial']);
+            })
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        $vendedorSelecionado = $request->query('vendedor', 'todos');
+        $vendedorId = null;
+        if ($vendedorSelecionado !== 'todos') {
+            $vendedorId = $vendedores->firstWhere('id', (int) $vendedorSelecionado)?->id;
+            $vendedorSelecionado = $vendedorId ? (string) $vendedorId : 'todos';
+        }
+
         $tarefas = AgendaTarefa::query()
-            ->where('user_id', $user->id)
+            ->where('empresa_id', $empresaId)
             ->when(
                 $periodo === 'dia',
                 fn ($q) => $q->whereDate('data', $dataSelecionada->toDateString()),
                 fn ($q) => $q->whereBetween('data', [$inicio->toDateString(), $fim->toDateString()])
             )
+            ->when($vendedorId, fn ($q) => $q->where('user_id', $vendedorId))
+            ->with('usuario:id,name')
+            ->orderBy('user_id')
             ->orderBy('hora')
             ->orderBy('id')
             ->get();
@@ -44,12 +51,9 @@ class AgendaController extends Controller
         $concluidas = $tarefas->where('status', 'CONCLUIDA');
 
         $kpis = [
-            'aberto_total' => AgendaTarefa::query()
-                ->where('user_id', $user->id)
-                ->where('status', 'PENDENTE')
-                ->count(),
-            'pendentes_periodo' => $pendentes->count(),
-            'concluidas_periodo' => $concluidas->count(),
+            'total' => $tarefas->count(),
+            'pendentes' => $pendentes->count(),
+            'concluidas' => $concluidas->count(),
         ];
 
         $inicioMes = $dataSelecionada->copy()->startOfMonth();
@@ -65,7 +69,8 @@ class AgendaController extends Controller
             $fimAno = $dataSelecionada->copy()->endOfYear();
 
             $tarefasAno = AgendaTarefa::query()
-                ->where('user_id', $user->id)
+                ->where('empresa_id', $empresaId)
+                ->when($vendedorId, fn ($q) => $q->where('user_id', $vendedorId))
                 ->whereBetween('data', [$inicioAno->toDateString(), $fimAno->toDateString()])
                 ->orderBy('data')
                 ->orderBy('hora')
@@ -101,7 +106,8 @@ class AgendaController extends Controller
             }
         } else {
             $tarefasMes = AgendaTarefa::query()
-                ->where('user_id', $user->id)
+                ->where('empresa_id', $empresaId)
+                ->when($vendedorId, fn ($q) => $q->where('user_id', $vendedorId))
                 ->whereBetween('data', [$inicioMes->toDateString(), $fimMes->toDateString()])
                 ->orderBy('data')
                 ->orderBy('hora')
@@ -128,7 +134,9 @@ class AgendaController extends Controller
             }
         }
 
-        return view('comercial.agenda.index', compact(
+        return view('master.agenda-vendedores.index', compact(
+            'vendedores',
+            'vendedorSelecionado',
             'tarefas',
             'pendentes',
             'concluidas',
@@ -144,82 +152,6 @@ class AgendaController extends Controller
         ));
     }
 
-    public function store(Request $request): RedirectResponse
-    {
-        $user = $request->user();
-        $data = $this->validateTarefa($request);
-
-        AgendaTarefa::create([
-            'empresa_id' => $user->empresa_id,
-            'user_id' => $user->id,
-            'titulo' => $data['titulo'],
-            'descricao' => $data['descricao'] ?? null,
-            'tipo' => $data['tipo'],
-            'prioridade' => $data['prioridade'],
-            'data' => $data['data'],
-            'hora' => $data['hora'] ?? null,
-            'cliente' => $data['cliente'] ?? null,
-            'status' => 'PENDENTE',
-        ]);
-
-        return redirect()
-            ->route('comercial.agenda.index', ['data' => $data['data']])
-            ->with('ok', 'Tarefa criada.');
-    }
-
-    public function update(Request $request, AgendaTarefa $tarefa): RedirectResponse
-    {
-        $this->authorizeOwner($request, $tarefa);
-        if ($tarefa->status !== 'PENDENTE') {
-            return back()->with('erro', 'So e possivel editar tarefas pendentes.');
-        }
-
-        $data = $this->validateTarefa($request);
-
-        $tarefa->update([
-            'titulo' => $data['titulo'],
-            'descricao' => $data['descricao'] ?? null,
-            'tipo' => $data['tipo'],
-            'prioridade' => $data['prioridade'],
-            'data' => $data['data'],
-            'hora' => $data['hora'] ?? null,
-            'cliente' => $data['cliente'] ?? null,
-        ]);
-
-        return redirect()
-            ->route('comercial.agenda.index', ['data' => $data['data'], 'periodo' => $request->query('periodo', 'dia')])
-            ->with('ok', 'Tarefa atualizada.');
-    }
-
-    public function concluir(Request $request, AgendaTarefa $tarefa): RedirectResponse
-    {
-        $this->authorizeOwner($request, $tarefa);
-
-        $tarefa->update([
-            'status' => 'CONCLUIDA',
-            'concluida_em' => now(),
-        ]);
-
-        return redirect()
-            ->route('comercial.agenda.index', ['data' => $tarefa->data->toDateString()])
-            ->with('ok', 'Tarefa concluída.');
-    }
-
-    public function destroy(Request $request, AgendaTarefa $tarefa): RedirectResponse
-    {
-        $this->authorizeOwner($request, $tarefa);
-        if ($tarefa->status !== 'PENDENTE') {
-            return back()->with('erro', 'Só é possível remover tarefas pendentes.');
-        }
-
-        $data = $tarefa->data->toDateString();
-        $tarefa->delete();
-
-        return redirect()
-            ->route('comercial.agenda.index', ['data' => $data])
-            ->with('ok', 'Tarefa removida.');
-    }
-
     private function dataSelecionada(Request $request): Carbon
     {
         $data = $request->query('data');
@@ -232,51 +164,26 @@ class AgendaController extends Controller
 
     private function periodoSelecionado(Request $request): string
     {
-        $periodo = strtolower((string) $request->query('periodo', 'dia'));
-        return in_array($periodo, ['dia', 'semana', 'mes', 'ano'], true) ? $periodo : 'dia';
+        $periodo = strtolower((string) $request->query('periodo', 'mes'));
+        return in_array($periodo, ['mes', 'ano'], true) ? $periodo : 'mes';
     }
 
     private function intervaloDoPeriodo(Carbon $base, string $periodo): array
     {
-        if ($periodo === 'semana') {
-            $inicio = $base->copy()->startOfWeek();
-            $fim = $base->copy()->endOfWeek();
-            return [$inicio, $fim];
-        }
-
         if ($periodo === 'mes') {
             $inicio = $base->copy()->startOfMonth();
             $fim = $base->copy()->endOfMonth();
             return [$inicio, $fim];
         }
+
         if ($periodo === 'ano') {
             $inicio = $base->copy()->startOfYear();
             $fim = $base->copy()->endOfYear();
             return [$inicio, $fim];
         }
 
-        $inicio = $base->copy()->startOfDay();
-        $fim = $base->copy()->endOfDay();
+        $inicio = $base->copy()->startOfMonth();
+        $fim = $base->copy()->endOfMonth();
         return [$inicio, $fim];
-    }
-
-    private function validateTarefa(Request $request): array
-    {
-        return $request->validate([
-            'titulo' => ['required', 'string', 'max:255'],
-            'descricao' => ['nullable', 'string'],
-            'tipo' => ['required', 'string', 'max:50'],
-            'prioridade' => ['required', 'string', 'max:20'],
-            'data' => ['required', 'date'],
-            'hora' => ['nullable', 'date_format:H:i'],
-            'cliente' => ['nullable', 'string', 'max:255'],
-        ]);
-    }
-
-    private function authorizeOwner(Request $request, AgendaTarefa $tarefa): void
-    {
-        if ($tarefa->user_id !== $request->user()->id) {
-            abort(403);
-        }
     }
 }

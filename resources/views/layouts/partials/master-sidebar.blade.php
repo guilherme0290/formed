@@ -53,6 +53,18 @@
                 'active' => request()->routeIs('master.empresa.*'),
             ],
             [
+                'label' => 'Agenda Vendedores',
+                'icon' => '??',
+                'route' => route('master.agenda-vendedores.index'),
+                'active' => request()->routeIs('master.agenda-vendedores.*'),
+            ],
+            [
+                'label' => 'Caixas de Email',
+                'icon' => '@',
+                'route' => route('master.email-caixas.index'),
+                'active' => request()->routeIs('master.email-caixas.*'),
+            ],
+            [
                 'label' => 'Comercial',
                 'icon' => '🧭',
                 'route' => route('comercial.dashboard'),
@@ -142,3 +154,18 @@
         </form>
     </div>
 </aside>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

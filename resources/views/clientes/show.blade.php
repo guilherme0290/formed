@@ -30,7 +30,7 @@
         @endif
 
         @if (session('acesso_cliente'))
-            @php($acesso = session('acesso_cliente'))
+            @php $acesso = session('acesso_cliente'); @endphp
             <div class="mb-4 rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
                 <div class="font-semibold">Acesso do cliente criado</div>
                 <p>Login: <span class="font-mono">{{ $acesso['email'] }}</span></p>
