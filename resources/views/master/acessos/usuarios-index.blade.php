@@ -59,9 +59,14 @@
                 + Novo Usuário
             </button>
         </form>
-    </div>
-
-    {{-- Tabela --}}
+    </div><a href="{{ $emailLink }}"
+                   class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+                    Enviar por e-mail
+                </a>
+            </div>
+        </div>
+    @endif
+{{-- Tabela --}}
     <div class="overflow-hidden rounded-xl border">
         <table class="w-full text-sm">
             <thead class="bg-gray-50 text-gray-500">
@@ -180,3 +185,4 @@
         </div>
     </div>
 </div>
+

@@ -822,6 +822,8 @@ Route::middleware('auth')->group(function () {
             Route::post('/testar', [EmailCaixaController::class, 'testar'])->name('testar');
             Route::post('/{emailCaixa}/testar', [EmailCaixaController::class, 'testarSalvo'])
                 ->name('testar-salvo');
+            Route::post('/{emailCaixa}/enviar-teste', [EmailCaixaController::class, 'enviarTesteSalvo'])
+                ->name('enviar-teste');
             Route::put('/{emailCaixa}', [EmailCaixaController::class, 'update'])->name('update');
             Route::delete('/{emailCaixa}', [EmailCaixaController::class, 'destroy'])->name('destroy');
         });

@@ -66,24 +66,19 @@ class AcessosController extends Controller
             ? preg_replace('/\D+/', '', $data['telefone'])
             : null;
 
-
         User::create($data);
 
         return redirect()->route('master.acessos', ['tab' => 'usuarios'])
-            ->with('ok', 'Usuário criado com sucesso');
+            ->with('ok', 'Usuario criado com sucesso');
     }
 
     public function usuariosUpdate(Request $r, User $user)
     {
         $r->merge(['ativo' => $r->has('ativo')]);
 
-        $data = $r->validate([
-            'name'      => ['required','string','max:255'],
-            'email'     => ['required','email','max:255', Rule::unique('users','email')->ignore($user->id)],
-            'telefone'  => ['nullable','string','max:30'],
-            'papel_id'  => ['nullable','exists:papeis,id'],
-            'ativo'     => ['nullable','boolean'],
-        ]);
+        
+
+        \ = (string) \->input('password');
 
         $data['ativo'] = $r->boolean('ativo');
         $data['telefone'] = !empty($data['telefone'])
@@ -126,9 +121,9 @@ class AcessosController extends Controller
 
     public function usuariosSetPassword(Request $r, User $user)  // ✅ tipos corretos
     {
-        $data = $r->validate([
-            'password' => ['required', 'confirmed', 'min:8'],
-        ]);
+        
+
+        \ = (string) \->input('password');
 
         $user->forceFill([
             'password' => bcrypt($data['password']),
@@ -138,3 +133,5 @@ class AcessosController extends Controller
     }
 
 }
+
+

@@ -8,8 +8,10 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Symfony\Component\Mailer\Mailer;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 use Symfony\Component\Mailer\Transport\Smtp\EsmtpTransport;
+use Symfony\Component\Mime\Email;
 
 class EmailCaixaController extends Controller
 {
@@ -69,40 +71,14 @@ class EmailCaixaController extends Controller
         $empresaId = $request->user()->empresa_id ?? 1;
         $this->assertEmpresa($emailCaixa, $empresaId);
 
-        $requerAuth = $request->boolean('requer_autenticacao');
-
         $data = $request->validate([
-            'nome' => ['required', 'string', 'max:120'],
-            'host' => ['required', 'string', 'max:255'],
-            'porta' => ['required', 'integer', 'min:1', 'max:65535'],
-            'criptografia' => ['required', Rule::in(['none', 'ssl', 'starttls', 'tls'])],
-            'timeout' => ['nullable', 'integer', 'min:1', 'max:600'],
-            'requer_autenticacao' => ['sometimes', 'boolean'],
-            'usuario' => [$requerAuth ? 'required' : 'nullable', 'string', 'max:255'],
+            'usuario' => ['required', 'email', 'max:255'],
             'senha' => ['nullable', 'string', 'max:255'],
-            'ativo' => ['sometimes', 'boolean'],
         ]);
 
-        $criptografia = $data['criptografia'] === 'tls' ? 'starttls' : $data['criptografia'];
-
-        if ($requerAuth && !$request->filled('senha') && empty($emailCaixa->senha)) {
-            return back()
-                ->withErrors(['senha' => 'Informe a senha SMTP para esta caixa.'])
-                ->withInput();
-        }
-
         $emailCaixa->update([
-            'nome' => $data['nome'],
-            'host' => $data['host'],
-            'porta' => $data['porta'],
-            'criptografia' => $criptografia,
-            'timeout' => $data['timeout'] ?? null,
-            'requer_autenticacao' => $requerAuth,
-            'usuario' => $requerAuth ? ($data['usuario'] ?? null) : null,
-            'senha' => $requerAuth
-                ? ($request->filled('senha') ? $data['senha'] : $emailCaixa->senha)
-                : null,
-            'ativo' => $request->boolean('ativo', false),
+            'usuario' => $data['usuario'],
+            'senha' => $request->filled('senha') ? $data['senha'] : $emailCaixa->senha,
         ]);
 
         return redirect()
@@ -119,7 +95,7 @@ class EmailCaixaController extends Controller
 
         return redirect()
             ->route('master.email-caixas.index')
-            ->with('ok', 'Caixa de email removida com sucesso.');
+            ->with('ok', 'Email excluido com sucesso.');
     }
 
     public function testar(Request $request): RedirectResponse
@@ -168,15 +144,7 @@ class EmailCaixaController extends Controller
         $this->assertEmpresa($emailCaixa, $empresaId);
 
         try {
-            $this->executarTesteSmtp([
-                'host' => $emailCaixa->host,
-                'porta' => $emailCaixa->porta,
-                'criptografia' => $emailCaixa->criptografia,
-                'timeout' => $emailCaixa->timeout,
-                'requer_autenticacao' => $emailCaixa->requer_autenticacao,
-                'usuario' => $emailCaixa->usuario,
-                'senha' => $emailCaixa->senha,
-            ]);
+            $this->executarTesteSmtp($this->getConfigFromModel($emailCaixa));
         } catch (TransportExceptionInterface $e) {
             return back()
                 ->with('smtp_error', 'Falha ao conectar: '.$e->getMessage());
@@ -189,6 +157,65 @@ class EmailCaixaController extends Controller
             ->with('smtp_ok', 'Conexao bem-sucedida.');
     }
 
+    public function enviarTesteSalvo(Request $request, EmailCaixa $emailCaixa): RedirectResponse
+    {
+        $empresaId = $request->user()->empresa_id ?? 1;
+        $this->assertEmpresa($emailCaixa, $empresaId);
+
+        $validator = validator($request->all(), [
+            'destino' => ['required', 'email', 'max:255'],
+        ]);
+
+        if ($validator->fails()) {
+            return back()
+                ->withInput()
+                ->with([
+                    'smtp_send_error' => $validator->errors()->first(),
+                    'smtp_send_id' => $emailCaixa->id,
+                ]);
+        }
+
+        if (empty($emailCaixa->usuario)) {
+            return back()
+                ->withInput()
+                ->with([
+                    'smtp_send_error' => 'Informe o e-mail de login desta caixa para enviar o teste.',
+                    'smtp_send_id' => $emailCaixa->id,
+                ]);
+        }
+
+        try {
+            $transport = $this->criarTransport($this->getConfigFromModel($emailCaixa));
+            $mailer = new Mailer($transport);
+
+            $email = (new Email())
+                ->from($emailCaixa->usuario)
+                ->to($request->input('destino'))
+                ->subject('Teste SMTP')
+                ->text('Este e um email de teste enviado pela configuracao SMTP.');
+
+            $mailer->send($email);
+        } catch (TransportExceptionInterface $e) {
+            return back()
+                ->with([
+                    'smtp_send_error' => 'Falha ao enviar: '.$e->getMessage(),
+                    'smtp_send_id' => $emailCaixa->id,
+                ]);
+        } catch (\Throwable $e) {
+            return back()
+                ->with([
+                    'smtp_send_error' => 'Erro inesperado ao enviar o email de teste.',
+                    'smtp_send_id' => $emailCaixa->id,
+                ]);
+        }
+
+        return back()
+            ->with([
+                'smtp_send_ok' => 'Email de teste enviado com sucesso.',
+                'smtp_send_id' => $emailCaixa->id,
+            ]);
+    }
+
     private function assertEmpresa(EmailCaixa $emailCaixa, int $empresaId): void
     {
         if ((int) $emailCaixa->empresa_id !== $empresaId) {
@@ -196,7 +223,28 @@ class EmailCaixaController extends Controller
         }
     }
 
+    private function getConfigFromModel(EmailCaixa $emailCaixa): array
+    {
+        return [
+            'host' => $emailCaixa->host,
+            'porta' => $emailCaixa->porta,
+            'criptografia' => $emailCaixa->criptografia,
+            'timeout' => $emailCaixa->timeout,
+            'requer_autenticacao' => $emailCaixa->requer_autenticacao,
+            'usuario' => $emailCaixa->usuario,
+            'senha' => $emailCaixa->senha,
+        ];
+    }
+
     private function executarTesteSmtp(array $config): void
+    {
+        $transport = $this->criarTransport($config);
+
+        $transport->start();
+        $transport->stop();
+    }
+
+    private function criarTransport(array $config): EsmtpTransport
     {
         $criptografia = $config['criptografia'] === 'tls' ? 'starttls' : $config['criptografia'];
         $tls = $criptografia === 'ssl';
@@ -223,7 +271,6 @@ class EmailCaixaController extends Controller
             $transport->setPassword((string) ($config['senha'] ?? ''));
         }
 
-        $transport->start();
-        $transport->stop();
+        return $transport;
     }
 }

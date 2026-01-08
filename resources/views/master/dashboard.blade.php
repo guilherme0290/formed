@@ -85,6 +85,14 @@
                     </div>
                 </a>
 
+                <a href="{{ route('master.email-caixas.index') }}" class="rounded-2xl border border-sky-100 bg-sky-50/80 hover:bg-sky-100 transition shadow-sm p-4 flex items-center gap-3">
+                    <span class="h-10 w-10 rounded-xl bg-sky-500/10 text-sky-600 grid place-items-center text-xl">@</span>
+                    <div>
+                        <div class="font-semibold text-slate-900">Configuração de Email</div>
+                        <div class="text-sm text-slate-500">SMTP e caixas salvas</div>
+                    </div>
+                </a>
+
                 <a href="{{ route('clientes.index') }}"
                    class="rounded-2xl border border-blue-100 bg-blue-50/80 hover:bg-blue-100 transition shadow-sm p-4 flex items-center gap-3">
                     <span class="h-10 w-10 rounded-xl bg-blue-500/10 text-blue-600 grid place-items-center text-xl">👤</span>
@@ -165,3 +173,4 @@
         </div>
     </div>
 @endsection
+
