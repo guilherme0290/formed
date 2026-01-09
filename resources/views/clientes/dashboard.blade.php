@@ -1,4 +1,4 @@
-{{-- resources/views/clientes/dashboard.blade.php --}}
+﻿{{-- resources/views/clientes/dashboard.blade.php --}}
 @extends('layouts.cliente')
 
 @section('title', 'Painel do Cliente')
@@ -11,50 +11,54 @@
         $precos = $precos ?? [];
 
         // Usados apenas nos cards "Seu Comercial"
-        $contatoNome     = $cliente->contato_nome ?? $user->name ?? 'Contato não informado';
-        $contatoTelefone = $cliente->telefone ?? $user->telefone ?? '(00) 0000-0000';
+        $contatoNome     = optional($cliente->vendedor)->name ?? "Comercial n\u{00E3}o informado";
+        $contatoTelefone = optional($cliente->vendedor)->telefone ?? '-';
+        $contatoEmail    = optional($cliente->vendedor)->email ?? '-';
         $vendedorTelefone = $vendedorTelefone ?? '';
         $whatsappBase = $vendedorTelefone ? 'https://wa.me/'.$vendedorTelefone : '#';
         $whatsappComercial = $whatsappBase !== '#'
-            ? $whatsappBase.'?text='.urlencode('Olá! Gostaria de falar com o comercial sobre o cliente '.($cliente->razao_social ?? 'minha empresa').'.')
+            ? $whatsappBase.'?text='.urlencode("Ol\u{00E1}! Gostaria de falar com o comercial sobre o cliente ".($cliente->razao_social ?? "minha empresa").".")
             : '#';
         $whatsappPericiaMedica = $whatsappBase !== '#'
-            ? $whatsappBase.'?text='.urlencode('Olá! Gostaria de consultar valores para Perícia Médica para o cliente '.($cliente->razao_social ?? 'minha empresa').'.')
+            ? $whatsappBase.'?text='.urlencode("Ol\u{00E1}! Gostaria de consultar valores para Per\u{00ED}cia M\u{00E9}dica para o cliente ".($cliente->razao_social ?? "minha empresa").".")
             : '#';
         $whatsappPericiaTecnica = $whatsappBase !== '#'
-            ? $whatsappBase.'?text='.urlencode('Olá! Gostaria de consultar valores para Perícia Técnica para o cliente '.($cliente->razao_social ?? 'minha empresa').'.')
+            ? $whatsappBase.'?text='.urlencode("Ol\u{00E1}! Gostaria de consultar valores para Per\u{00ED}cia T\u{00E9}cnica para o cliente ".($cliente->razao_social ?? "minha empresa").".")
             : '#';
     @endphp
 
-    {{-- TÍTULO DO PAINEL --}}
-    <section class="max-w-6xl mx-auto px-4 md:px-0">
+    {{-- TÃTULO DO PAINEL --}}
+    <section class="w-full px-4 sm:px-6 lg:px-8">
         <div class="mb-6">
             <h2 class="text-xl md:text-2xl font-semibold text-slate-900">
                 Painel do Cliente
             </h2>
             <p class="text-xs md:text-sm text-slate-500">
-                Gerencie seus serviços e solicitações.
+                Gerencie seus servi&ccedil;os e solicita&ccedil;&otilde;es.
             </p>
         </div>
 
         {{-- CARDS PRINCIPAIS (SEU COMERCIAL + FATURA ATUAL) --}}
-        <div class="grid gap-4 md:gap-6 md:grid-cols-2 mb-8">
+        <div class="grid gap-4 md:gap-6 sm:grid-cols-2 lg:grid-cols-3 mb-8">
 
             {{-- Card: Seu Comercial (azul) --}}
             <div class="rounded-3xl bg-[#1554d9] text-white shadow-lg shadow-blue-900/20 p-5 md:p-6 flex flex-col justify-between">
                 <div class="flex items-start gap-3 mb-4">
                     <div class="h-9 w-9 rounded-2xl bg-white/15 flex items-center justify-center text-xl">
-                        📞
+                        ðŸ“ž
                     </div>
                     <div>
                         <p class="text-xs uppercase tracking-[0.18em] text-blue-100/90">
                             Seu Comercial
                         </p>
                         <p class="mt-1 font-semibold text-base md:text-lg">
-                            {{ $contatoNome }}
+        $contatoNome     = optional($cliente->vendedor)->name ?? "Comercial n\u{00E3}o informado";
                         </p>
                         <p class="text-xs text-blue-100/80 mt-1">
                             {{ $contatoTelefone }}
+                        </p>
+                        <p class="text-xs text-blue-100/80 mt-1">
+                            {{ $contatoEmail }}
                         </p>
                     </div>
                 </div>
@@ -65,7 +69,7 @@
                     class="mt-2 inline-flex items-center justify-center w-full rounded-full
                            bg-emerald-500 hover:bg-emerald-400 text-xs md:text-sm font-semibold
                            text-white py-2.5 transition">
-                    <span class="mr-1.5 text-sm">💬</span>
+                    <span class="mr-1.5 text-sm">ðŸ’¬</span>
                     Falar no WhatsApp
                 </a>
             </div>
@@ -75,7 +79,7 @@
                 <div>
                     <div class="flex items-start gap-3 mb-4">
                         <div class="h-9 w-9 rounded-2xl bg-white/15 flex items-center justify-center text-xl">
-                            💲
+                            ðŸ’²
                         </div>
                         <div>
                             <p class="text-xs uppercase tracking-[0.18em] text-emerald-50/90">
@@ -99,74 +103,103 @@
                     </a>
                 </div>
 
-                {{-- Botão amarelo "Realizar Pagamento" (desabilitado por ora) --}}
+                {{-- BotÃ£o amarelo "Realizar Pagamento" (desabilitado por ora) --}}
                 <button
                     type="button"
                     disabled
                     class="w-full rounded-md bg-amber-300/70 text-xs md:text-[13px] font-semibold
                            text-slate-600 px-3 py-2 flex items-center justify-center gap-2 shadow-inner shadow-amber-200/50 cursor-not-allowed">
-                    <span class="text-sm">💳</span>
+                    <span class="text-sm">ðŸ’³</span>
                     Realizar Pagamento (em breve)
                 </button>
             </div>
+
+            {{-- Card: Servicos em andamento (teal) --}}
+            <div class="rounded-3xl bg-[#0f766e] text-white shadow-lg shadow-emerald-900/20 p-5 md:p-6 flex flex-col justify-between">
+                <div>
+                    <div class="flex items-start gap-3 mb-4">
+                        <div class="h-9 w-9 rounded-2xl bg-white/15 flex items-center justify-center text-xl">
+                            >>
+                        </div>
+                        <div>
+                            <p class="text-xs uppercase tracking-[0.18em] text-emerald-50/90">
+                                Servicos em andamento
+                            </p>
+                            <p class="mt-1 text-lg md:text-2xl font-semibold">
+                                R$ {{ number_format($totalEmAndamento ?? 0, 2, ',', '.') }}
+                            </p>
+                            <p class="text-[11px] text-emerald-50/90 mt-1">
+                                Total estimado dos servicos em aberto
+                            </p>
+                        </div>
+                    </div>
+
+                    <a
+                        href="{{ route('cliente.faturas') }}"
+                        class="w-full inline-flex items-center justify-center rounded-md bg-white text-xs md:text-[13px] font-semibold
+                               text-slate-900 px-3 py-2 mb-3 text-center shadow-sm hover:bg-slate-50 transition">
+                        Ver Detalhes
+                    </a>
+                </div>
+            </div>
         </div>
 
-        {{-- SEÇÃO: SERVIÇOS DISPONÍVEIS (BARRA AZUL-MARINHO + GRID DE CARDS) --}}
+        {{-- SEÃ‡ÃƒO: SERVIÃ‡OS DISPONÃVEIS (BARRA AZUL-MARINHO + GRID DE CARDS) --}}
         @include('clientes.partials.servicos')
 
-        {{-- SEÇÃO: PERÍCIAS (CARD ROSA + AZUL PETRÓLEO) --}}
+        {{-- SEÃ‡ÃƒO: PERÃCIAS (CARD ROSA + AZUL PETRÃ“LEO) --}}
         <section class="mt-8 grid gap-6 md:grid-cols-2">
-            {{-- Perícia Médica --}}
+            {{-- PerÃ­cia MÃ©dica --}}
             <article class="bg-white rounded-3xl shadow-md border border-slate-200 overflow-hidden">
                 <header class="bg-[#c0145f] text-white px-6 py-3 flex items-center gap-2 text-sm font-semibold">
-                    <span>⚖️</span>
-                    <span>Perícia Médica</span>
+                    <span>âš–ï¸</span>
+                    <span>PerÃ­cia MÃ©dica</span>
                 </header>
                 <div class="px-6 py-4 text-sm text-slate-600 space-y-2">
                     <p class="font-semibold text-slate-800">
                         Atendemos todo o Brasil!
                     </p>
                     <p class="text-xs md:text-sm">
-                        Ajudamos empresas em processos trabalhistas enviando assistente médico para perícia com
-                        laudo e impugnações necessárias, auxiliando o advogado da empresa.
+                        Ajudamos empresas em processos trabalhistas enviando assistente mÃ©dico para perÃ­cia com
+                        laudo e impugnaÃ§Ãµes necessÃ¡rias, auxiliando o advogado da empresa.
                     </p>
                 </div>
                 <div class="px-6 pb-5">
                     <a
                         href="{{ $whatsappPericiaMedica }}"
-                        @if($whatsappPericiaMedica !== '#') target="_blank" rel="noopener noreferrer" @endif
+            ? $whatsappBase.'?text='.urlencode("Ol\u{00E1}! Gostaria de consultar valores para Per\u{00ED}cia M\u{00E9}dica para o cliente ".($cliente->razao_social ?? "minha empresa").".")
                         class="w-full inline-flex items-center justify-center gap-2 rounded-md
                                bg-emerald-600 hover:bg-emerald-500 text-xs md:text-sm font-semibold
                                text-white py-2.5">
-                        <span class="text-sm">💬</span>
+                        <span class="text-sm">ðŸ’¬</span>
                         Consultar Valor no WhatsApp
                     </a>
                 </div>
             </article>
 
-            {{-- Perícia Técnica --}}
+            {{-- PerÃ­cia TÃ©cnica --}}
             <article class="bg-white rounded-3xl shadow-md border border-slate-200 overflow-hidden">
                 <header class="bg-[#046c82] text-white px-6 py-3 flex items-center gap-2 text-sm font-semibold">
-                    <span>⚖️</span>
-                    <span>Perícia Técnica</span>
+                    <span>âš–ï¸</span>
+                    <span>PerÃ­cia TÃ©cnica</span>
                 </header>
                 <div class="px-6 py-4 text-sm text-slate-600 space-y-2">
                     <p class="font-semibold text-slate-800">
                         Atendemos todo o Brasil!
                     </p>
                     <p class="text-xs md:text-sm">
-                        Apoiamos sua empresa com perito engenheiro para perícia com laudo técnico
+                        Apoiamos sua empresa com perito engenheiro para perÃ­cia com laudo tÃ©cnico
                         e pareceres complementares, auxiliando o advogado da empresa.
                     </p>
                 </div>
                 <div class="px-6 pb-5">
                     <a
                         href="{{ $whatsappPericiaTecnica }}"
-                        @if($whatsappPericiaTecnica !== '#') target="_blank" rel="noopener noreferrer" @endif
+            ? $whatsappBase.'?text='.urlencode("Ol\u{00E1}! Gostaria de consultar valores para Per\u{00ED}cia T\u{00E9}cnica para o cliente ".($cliente->razao_social ?? "minha empresa").".")
                         class="w-full inline-flex items-center justify-center gap-2 rounded-md
                                bg-emerald-600 hover:bg-emerald-500 text-xs md:text-sm font-semibold
                                text-white py-2.5">
-                        <span class="text-sm">💬</span>
+                        <span class="text-sm">ðŸ’¬</span>
                         Consultar Valor no WhatsApp
                     </a>
                 </div>

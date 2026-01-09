@@ -1,10 +1,10 @@
-{{-- resources/views/clientes/faturas/index.blade.php --}}
+﻿{{-- resources/views/clientes/faturas/index.blade.php --}}
 @extends('layouts.cliente')
 
 @section('title', 'Faturas e Serviços')
 
 @section('content')
-    <section class="max-w-6xl mx-auto px-4 md:px-0">
+    <section class="w-full px-4 sm:px-6 lg:px-8 2xl:px-12">
         <div class="flex items-center justify-between mb-6">
             <div>
                 <h2 class="text-xl md:text-2xl font-semibold text-slate-900">
@@ -17,7 +17,7 @@
 
             <a href="{{ route('cliente.dashboard') }}"
                class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-900 text-white text-xs md:text-sm font-semibold shadow">
-                ⏪ Voltar ao painel
+                Voltar ao painel
             </a>
         </div>
 
@@ -34,10 +34,11 @@
                     </div>
                 </div>
                 <div>
-                    <label class="text-xs font-semibold text-slate-600">Status</label>
+                    <label class="text-xs font-semibold text-slate-600">Período</label>
                     <select name="status" class="w-full rounded-lg border-slate-200 bg-white text-slate-900 text-sm">
                         <option value="" class="text-slate-900">Todos</option>
-                        <option value="ABERTO" class="text-slate-900" @selected(($filtros['status'] ?? '') === 'ABERTO')>Em aberto</option>
+                        <option value="ABERTO" class="text-slate-900" @selected(($filtros['status'] ?? '') === 'ABERTO')>Em andamento</option>
+                        <option value="VENCIDO" class="text-slate-900" @selected(($filtros['status'] ?? '') === 'VENCIDO')>Vencidos</option>
                         <option value="BAIXADO" class="text-slate-900" @selected(($filtros['status'] ?? '') === 'BAIXADO')>Pago</option>
                     </select>
                 </div>
@@ -50,27 +51,69 @@
             </form>
         </div>
 
-        <div class="grid gap-4 md:grid-cols-3 mb-6">
-            <div class="md:col-span-3 rounded-2xl bg-[#059669] text-white shadow-lg shadow-emerald-900/25 p-5 flex items-center justify-between">
+        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-6">
+            <div class="rounded-2xl bg-[#059669] text-white shadow-lg shadow-emerald-900/25 p-5 flex items-center justify-between">
                 <div>
                     <p class="text-[11px] uppercase tracking-[0.18em] text-emerald-50/90">
-                        Fatura em aberto
+                        Em andamento
                     </p>
                     <p class="mt-1 text-2xl md:text-3xl font-semibold">
-                        R$ {{ number_format($faturaTotal ?? 0, 2, ',', '.') }}
+                        R$ {{ number_format($totalEmAndamento ?? 0, 2, ',', '.') }}
                     </p>
                     <p class="text-[11px] text-emerald-50/80 mt-1">
-                        Soma das contas a receber em aberto
+                        Servicos em andamento
                     </p>
                 </div>
-                <div class="hidden md:block text-4xl">💲</div>
+                <div class="hidden md:block text-4xl">$</div>
+            </div>
+            <div class="rounded-2xl bg-rose-600 text-white shadow-lg shadow-rose-900/25 p-5 flex items-center justify-between">
+                <div>
+                    <p class="text-[11px] uppercase tracking-[0.18em] text-rose-100/90">
+                        Vencidos
+                    </p>
+                    <p class="mt-1 text-2xl md:text-3xl font-semibold">
+                        R$ {{ number_format($totalVencido ?? 0, 2, ',', '.') }}
+                    </p>
+                    <p class="text-[11px] text-rose-100/80 mt-1">
+                        Faturas em atraso
+                    </p>
+                </div>
+                <div class="hidden md:block text-4xl">!</div>
+            </div>
+            <div class="rounded-2xl bg-[#059669] text-white shadow-lg shadow-emerald-900/25 p-5 flex items-center justify-between">
+                <div>
+                    <p class="text-[11px] uppercase tracking-[0.18em] text-emerald-50/90">
+                        Pagas
+                    </p>
+                    <p class="mt-1 text-2xl md:text-3xl font-semibold">
+                        R$ {{ number_format($totalPago ?? 0, 2, ',', '.') }}
+                    </p>
+                    <p class="text-[11px] text-emerald-50/80 mt-1">
+                        Faturas liquidadas
+                    </p>
+                </div>
+                <div class="hidden md:block text-4xl">$</div>
+            </div>
+            <div class="rounded-2xl bg-[#059669] text-white shadow-lg shadow-emerald-900/25 p-5 flex items-center justify-between">
+                <div>
+                    <p class="text-[11px] uppercase tracking-[0.18em] text-emerald-50/90">
+                        Total geral
+                    </p>
+                    <p class="mt-1 text-2xl md:text-3xl font-semibold">
+                        R$ {{ number_format($totalGeral ?? 0, 2, ',', '.') }}
+                    </p>
+                    <p class="text-[11px] text-emerald-50/80 mt-1">
+                        Em aberto + pagas
+                    </p>
+                </div>
+                <div class="hidden md:block text-4xl">$</div>
             </div>
         </div>
 
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             <header class="bg-slate-900 text-white px-4 py-3 flex items-center justify-between">
                 <div class="flex items-center gap-2 text-sm font-semibold">
-                    <span>📋</span> <span>Detalhes da fatura</span>
+                    <span>Detalhes da fatura</span>
                 </div>
                 <span class="text-[12px] text-slate-200">
                     Atualizado automaticamente
@@ -83,7 +126,7 @@
                 </div>
             @else
                 <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-slate-200 text-sm">
+                    <table class="w-full min-w-full divide-y divide-slate-200 text-sm">
                         <thead class="bg-slate-50 text-slate-600">
                             <tr>
                                 <th class="px-4 py-3 text-left font-semibold">Data</th>
@@ -99,7 +142,7 @@
                                     $servicoNome = $item->servico ?? 'Serviço';
                                     $status = strtoupper((string) $item->status);
                                     $vencimento = $item->vencimento ? \Carbon\Carbon::parse($item->vencimento) : null;
-                                    $vencido = $status === 'ABERTO' && $vencimento?->lt(now()->startOfDay());
+                                    $vencido = $status !== 'BAIXADO' && $vencimento?->lt(now()->startOfDay());
                                     $badge = match(true) {
                                         $status === 'BAIXADO' => 'bg-emerald-50 text-emerald-700 border-emerald-100',
                                         $vencido => 'bg-rose-50 text-rose-700 border-rose-100',
@@ -109,7 +152,7 @@
                                 @endphp
                                 <tr class="hover:bg-slate-50/60">
                                     <td class="px-4 py-3 text-slate-700">
-                                        {{ $item->data_realizacao ? \Carbon\Carbon::parse($item->data_realizacao)->format('d/m/Y') : '—' }}
+                                        {{ $item->data_realizacao ? \Carbon\Carbon::parse($item->data_realizacao)->format('d/m/Y') : 'N/A' }}
                                     </td>
                                     <td class="px-4 py-3 text-slate-800">
                                         {{ $servicoNome }}
@@ -121,7 +164,7 @@
                                         </span>
                                     </td>
                                     <td class="px-4 py-3 text-slate-700">
-                                        {{ $vencimento?->format('d/m/Y') ?? '—' }}
+                                        {{ $vencimento?->format('d/m/Y') ?? 'N/A' }}
                                     </td>
                                     <td class="px-4 py-3 text-right font-semibold text-slate-900">
                                         R$ {{ number_format((float) $item->valor, 2, ',', '.') }}
@@ -139,3 +182,4 @@
         </div>
     </section>
 @endsection
+

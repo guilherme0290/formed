@@ -305,9 +305,8 @@ Route::middleware('auth')->group(function () {
             [TreinamentoNrController::class, 'storeFuncionario']
         )->name('treinamentos-nr.funcionarios.store');
 
-        Route::post('funcoes', [FuncaoController::class, 'storefast'])
-            ->name('funcoes.store-ajax');
-    });
+        Route::post('funcoes', [FuncaoController::class, 'storefast']);
+      });
 
     // ======================================================
     //                  CLIENTE (PAINEL)
@@ -362,6 +361,10 @@ Route::middleware('auth')->group(function () {
 
             Route::get('/faturas', [ClienteDashboardController::class, 'faturas'])
                 ->name('faturas');
+
+            Route::get('/andamento', function () {
+                return redirect()->route('cliente.faturas');
+            })->name('andamento');
 
             Route::prefix('funcionarios')->name('funcionarios.')->group(function () {
                 Route::get('/', [ClienteFuncionarioController::class, 'index'])

@@ -56,11 +56,66 @@
                     <p class="text-xs text-slate-500">O usuário deverá definir nova senha no primeiro login.</p>
                 </div>
 
-                <div class="grid sm:grid-cols-1 gap-2">
+                <div class="grid sm:grid-cols-3 gap-2">
                     <button type="submit" class="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 w-full">
                         Criar acesso
-                    </button></div>
+                    </button>
+                    <a id="btnWhatsapp" href="#" target="_blank" class="px-4 py-2 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 text-sm font-semibold text-center hover:bg-emerald-100 w-full">
+                        Enviar no WhatsApp
+                    </a>
+                    <button type="button" id="btnEmail" class="px-4 py-2 rounded-xl bg-slate-50 text-slate-700 border border-slate-200 text-sm font-semibold text-center hover:bg-slate-100 w-full">
+                        Enviar por e-mail
+                    </button>
+                </div>
             </form>
+        </div>
+    </div>
+
+    <div id="modalEmailAcesso" class="fixed inset-0 z-50 hidden bg-black/40">
+        <div class="min-h-full flex items-center justify-center p-4">
+            <div class="bg-white w-full max-w-xl rounded-2xl shadow-xl overflow-hidden">
+                <div class="px-6 py-4 border-b flex items-center justify-between">
+                    <h3 class="text-lg font-semibold text-slate-800">Enviar acesso por e-mail</h3>
+                    <button type="button" class="h-9 w-9 rounded-xl hover:bg-slate-100 text-slate-500"
+                            onclick="closeEmailModal()">✕</button>
+                </div>
+
+                <div class="p-6 space-y-4">
+                    <div>
+                        <label class="text-xs font-semibold text-slate-600">E-mail</label>
+                        <input id="emailModalTo" type="email"
+                               class="mt-1 w-full rounded-xl border border-slate-200 text-sm px-3 py-2"
+                               placeholder="email@cliente.com">
+                    </div>
+
+                    <div>
+                        <label class="text-xs font-semibold text-slate-600">Assunto</label>
+                        <input id="emailModalSubject"
+                               class="mt-1 w-full rounded-xl border border-slate-200 text-sm px-3 py-2"
+                               value="Acesso ao portal do cliente">
+                    </div>
+
+                    <div>
+                        <label class="text-xs font-semibold text-slate-600">Mensagem</label>
+                        <textarea id="emailModalBody" rows="5"
+                                  class="mt-1 w-full rounded-xl border border-slate-200 text-sm px-3 py-2"
+                                  placeholder="Mensagem..."></textarea>
+                    </div>
+
+                    <div class="pt-2 flex justify-end gap-2">
+                        <button type="button"
+                                class="rounded-xl px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                                onclick="closeEmailModal()">
+                            Cancelar
+                        </button>
+                        <a id="emailModalLink"
+                           class="rounded-xl bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 text-sm font-semibold"
+                           href="#">
+                            Abrir e-mail
+                        </a>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -69,6 +124,16 @@
             const senhaInput = document.getElementById('senhaInput');
             const btnGerar = document.getElementById('btnGerarSenha');
             const btnCopiar = document.getElementById('btnCopiarSenha');
+            const btnWhatsapp = document.getElementById('btnWhatsapp');
+            const btnEmail = document.getElementById('btnEmail');
+            const emailInput = document.querySelector('input[name=\"email\"]');
+            const telefone = '{{ $telefoneLimpo }}';
+            const sistemaUrl = @json(route('login'));
+            const modalEmail = document.getElementById('modalEmailAcesso');
+            const emailModalTo = document.getElementById('emailModalTo');
+            const emailModalSubject = document.getElementById('emailModalSubject');
+            const emailModalBody = document.getElementById('emailModalBody');
+            const emailModalLink = document.getElementById('emailModalLink');
 
             function gerarSenha() {
                 const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789@$!';
@@ -77,6 +142,7 @@
                     s += chars.charAt(Math.floor(Math.random() * chars.length));
                 }
                 senhaInput.value = s;
+                atualizarLinks();
             }
 
             function copiarSenha() {
@@ -86,8 +152,58 @@
                 });
             }
 
+            function montarMensagem(email, senha) {
+                return `Olá! Aqui estão seus acessos ao portal:\nLogin: ${email}\nSenha temporária: ${senha}\nAcesse: ${sistemaUrl}\nAltere a senha no primeiro login.`;
+            }
+
+            function atualizarLinks() {
+                const email = emailInput.value || '';
+                const senha = senhaInput.value || '';
+                const texto = encodeURIComponent(montarMensagem(email, senha));
+
+                if (telefone) {
+                    btnWhatsapp.href = `https://wa.me/${telefone}?text=${texto}`;
+                } else {
+                    btnWhatsapp.href = '#';
+                }
+            }
+
+            function abrirEmailModal() {
+                if (!modalEmail) return;
+                const email = emailInput.value || '';
+                const senha = senhaInput.value || '';
+                const mensagem = montarMensagem(email, senha);
+
+                if (emailModalTo) emailModalTo.value = email;
+                if (emailModalSubject && !emailModalSubject.value) {
+                    emailModalSubject.value = 'Acesso ao portal do cliente';
+                }
+                if (emailModalBody) emailModalBody.value = mensagem;
+
+                atualizarEmailModalLink();
+                modalEmail.classList.remove('hidden');
+            }
+
+            function atualizarEmailModalLink() {
+                if (!emailModalLink) return;
+                const to = encodeURIComponent(emailModalTo?.value || '');
+                const subject = encodeURIComponent(emailModalSubject?.value || 'Acesso ao portal do cliente');
+                const body = encodeURIComponent(emailModalBody?.value || '');
+                emailModalLink.href = `mailto:${to}?subject=${subject}&body=${body}`;
+            }
+
+            window.closeEmailModal = () => modalEmail?.classList.add('hidden');
+
             btnGerar?.addEventListener('click', gerarSenha);
             btnCopiar?.addEventListener('click', copiarSenha);
+            emailInput?.addEventListener('input', atualizarLinks);
+            senhaInput?.addEventListener('input', atualizarLinks);
+            btnEmail?.addEventListener('click', abrirEmailModal);
+            emailModalTo?.addEventListener('input', atualizarEmailModalLink);
+            emailModalSubject?.addEventListener('input', atualizarEmailModalLink);
+            emailModalBody?.addEventListener('input', atualizarEmailModalLink);
+
+            atualizarLinks();
         })();
     </script>
 @endsection

@@ -9,6 +9,7 @@ use App\Models\ClienteTabelaPreco;
 use App\Models\ClienteTabelaPrecoItem;
 use App\Models\ContaReceberItem;
 use App\Models\Servico;
+use App\Models\Tarefa;
 use App\Models\Venda;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
@@ -38,7 +39,18 @@ class ClienteDashboardController extends Controller
         }
         $temTabela = (bool) $tabela;
         $faturaTotal = $this->faturaTotal($cliente);
+        $tarefasEmAndamento = $this->tarefasEmAndamento($cliente, false);
+        $totalEmAndamento = $this->totalEmAndamento($contratoAtivo, $tarefasEmAndamento);
+
+        $totalPago = (float) ContaReceberItem::query()
+            ->where('empresa_id', $cliente->empresa_id)
+            ->where('cliente_id', $cliente->id)
+            ->where('status', 'BAIXADO')
+            ->sum('valor');
+        $totalGeral = $faturaTotal + $totalPago;
         $vendedorTelefone = $this->telefoneVendedor($cliente, $contratoAtivo);
+        $tarefasEmAndamento = $this->tarefasEmAndamento($cliente, false);
+        $totalEmAndamento = $this->totalEmAndamento($contratoAtivo, $tarefasEmAndamento);
 
         return view('clientes.dashboard', [
             'user'         => $user,
@@ -46,11 +58,20 @@ class ClienteDashboardController extends Controller
             'temTabela'    => $temTabela,
             'precos'       => $precos,
             'faturaTotal'  => $faturaTotal,
+            'totalEmAndamento' => $totalEmAndamento,
             'contratoAtivo' => $contratoAtivo,
             'servicosContrato' => $servicosContrato,
             'servicosIds' => $servicosIds,
             'vendedorTelefone' => $vendedorTelefone,
         ]);
+    }
+
+    /**
+     * Lista de servicos em andamento para o portal do cliente.
+     */
+    public function andamento(Request $request)
+    {
+        return redirect()->route('cliente.faturas');
     }
 
     /**
@@ -73,6 +94,20 @@ class ClienteDashboardController extends Controller
         }
         $temTabela = (bool) $tabela;
         $faturaTotal = $this->faturaTotal($cliente);
+        $tarefasEmAndamento = $this->tarefasEmAndamento($cliente, false);
+        $totalEmAndamento = $this->totalEmAndamento($contratoAtivo, $tarefasEmAndamento);
+        $totalPago = (float) ContaReceberItem::query()
+            ->where('empresa_id', $cliente->empresa_id)
+            ->where('cliente_id', $cliente->id)
+            ->where('status', 'BAIXADO')
+            ->sum('valor');
+        $totalVencido = (float) ContaReceberItem::query()
+            ->where('empresa_id', $cliente->empresa_id)
+            ->where('cliente_id', $cliente->id)
+            ->whereNotIn('status', ['BAIXADO', 'CANCELADO'])
+            ->whereDate('vencimento', '<', now()->startOfDay())
+            ->sum('valor');
+        $totalGeral = $faturaTotal + $totalPago;
 
         $dataInicio = $request->input('data_inicio');
         $dataFim = $request->input('data_fim');
@@ -93,7 +128,15 @@ class ClienteDashboardController extends Controller
             ->selectRaw('cri.valor as valor');
 
         if ($status) {
-            $contaQuery->where('cri.status', strtoupper((string) $status));
+            $statusFiltro = strtoupper((string) $status);
+            if ($statusFiltro === 'VENCIDO') {
+                $contaQuery->whereNotIn('cri.status', ['BAIXADO', 'CANCELADO'])
+                    ->whereDate('cri.vencimento', '<', now()->startOfDay());
+            } elseif ($statusFiltro === 'ABERTO') {
+                $contaQuery->whereNotIn('cri.status', ['BAIXADO', 'CANCELADO']);
+            } else {
+                $contaQuery->where('cri.status', $statusFiltro);
+            }
         }
         if ($dataInicio) {
             $contaQuery->whereDate('cri.data_realizacao', '>=', $dataInicio);
@@ -123,7 +166,8 @@ class ClienteDashboardController extends Controller
             ->selectRaw('vi.subtotal_snapshot as valor');
 
         if ($status) {
-            if (strtoupper((string) $status) === 'BAIXADO') {
+            $statusFiltro = strtoupper((string) $status);
+            if ($statusFiltro === 'BAIXADO' || $statusFiltro === 'VENCIDO') {
                 $vendaQuery->whereRaw('1=0');
             }
         }
@@ -148,6 +192,10 @@ class ClienteDashboardController extends Controller
             'temTabela'    => $temTabela,
             'precos'       => $precos,
             'faturaTotal'  => $faturaTotal,
+            'totalEmAndamento' => $totalEmAndamento,
+            'totalPago' => $totalPago,
+            'totalVencido' => $totalVencido,
+            'totalGeral' => $totalGeral,
             'itens'        => $itens,
             'filtros' => [
                 'data_inicio' => $dataInicio,
@@ -261,7 +309,7 @@ class ClienteDashboardController extends Controller
         $contasAberto = (float) ContaReceberItem::query()
             ->where('empresa_id', $cliente->empresa_id)
             ->where('cliente_id', $cliente->id)
-            ->where('status', 'ABERTO')
+            ->whereNotIn('status', ['BAIXADO', 'CANCELADO'])
             ->sum('valor');
 
         $vendasSemConta = (float) Venda::query()
@@ -275,6 +323,71 @@ class ClienteDashboardController extends Controller
             ->sum('total');
 
         return $contasAberto + $vendasSemConta;
+    }
+
+    private function tarefasEmAndamento(Cliente $cliente, bool $withRelations): \Illuminate\Support\Collection
+    {
+        $query = Tarefa::query()
+            ->where('empresa_id', $cliente->empresa_id)
+            ->where('cliente_id', $cliente->id)
+            ->whereNull('finalizado_em')
+            ->whereHas('coluna', function ($q) {
+                $q->where('finaliza', false);
+            })
+            ->orderByDesc('updated_at');
+
+        if ($withRelations) {
+            $query->with(['servico', 'coluna']);
+        } else {
+            $query->select(['id', 'cliente_id', 'empresa_id', 'servico_id', 'coluna_id', 'updated_at']);
+        }
+
+        return $query->get();
+    }
+
+    private function totalEmAndamento(?ClienteContrato $contratoAtivo, iterable $tarefas): float
+    {
+        if (!$contratoAtivo) {
+            return 0.0;
+        }
+
+        $itensPorServico = $contratoAtivo->itens->keyBy('servico_id');
+        $total = 0.0;
+
+        foreach ($tarefas as $tarefa) {
+            $valor = (float) ($itensPorServico->get($tarefa->servico_id)->preco_unitario_snapshot ?? 0);
+            if ($valor > 0) {
+                $total += $valor;
+            }
+        }
+
+        return $total;
+    }
+
+    private function anexarValoresEmAndamento(?ClienteContrato $contratoAtivo, iterable $tarefas): float
+    {
+        $total = 0.0;
+
+        if (!$contratoAtivo) {
+            foreach ($tarefas as $tarefa) {
+                $tarefa->setAttribute('valor_estimado', null);
+            }
+
+            return $total;
+        }
+
+        $itensPorServico = $contratoAtivo->itens->keyBy('servico_id');
+        foreach ($tarefas as $tarefa) {
+            $valor = (float) ($itensPorServico->get($tarefa->servico_id)->preco_unitario_snapshot ?? 0);
+            if ($valor > 0) {
+                $tarefa->setAttribute('valor_estimado', $valor);
+                $total += $valor;
+            } else {
+                $tarefa->setAttribute('valor_estimado', null);
+            }
+        }
+
+        return $total;
     }
 
     private function contratoAtivo(Cliente $cliente): ?ClienteContrato

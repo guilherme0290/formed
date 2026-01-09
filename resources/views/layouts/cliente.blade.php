@@ -134,7 +134,7 @@
 
         {{-- TOP BAR IGUAL AO OPERACIONAL (mesmo azul) --}}
         <header class="bg-blue-900 text-white shadow-sm">
-            <div class="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
+            <div class="w-full px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
 
                 {{-- Lado esquerdo: FORMED + subtítulo --}}
                 <div class="flex items-baseline gap-3">
@@ -182,7 +182,7 @@
             @endphp
 
             <section class="w-full bg-[#1450d2] text-white shadow-lg shadow-slate-900/20 py-5 md:py-6">
-                <div class="max-w-7xl mx-auto px-6 md:px-8 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+                <div class="w-full px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
 
                     {{-- Nome do cliente + CNPJ --}}
                     <div class="flex items-start gap-3">
@@ -237,7 +237,7 @@
 
         {{-- ALERTAS --}}
         @if (session('ok'))
-            <div class="max-w-7xl mx-auto mt-4 px-6">
+            <div class="w-full mt-4 px-4 sm:px-6 lg:px-8">
                 <div class="rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700 shadow">
                     {{ session('ok') }}
                 </div>
@@ -245,7 +245,7 @@
         @endif
 
         @if (session('erro'))
-            <div class="max-w-7xl mx-auto mt-4 px-6">
+            <div class="w-full mt-4 px-4 sm:px-6 lg:px-8">
                 <div class="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 shadow">
                     {{ session('erro') }}
                 </div>
@@ -261,7 +261,7 @@
             </div>
 
             <div class="relative z-10">
-                <div class="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+                <div class="w-full px-4 sm:px-6 lg:px-8 py-6">
                     @yield('content')
                 </div>
             </div>

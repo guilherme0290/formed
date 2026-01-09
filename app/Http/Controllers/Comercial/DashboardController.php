@@ -19,6 +19,7 @@ class DashboardController extends Controller
         return view('comercial.dashboard', [
             'ranking' => $ranking,
         ]);
+
     }
 
     private function rankingVendedores(?int $empresaId): array
