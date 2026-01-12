@@ -39,7 +39,7 @@ class ClienteController extends Controller
                 });
             })
             ->when($status !== 'todos', fn($w) => $w->where('ativo', $status === 'ativo'))
-            ->orderBy('razao_social')
+            ->orderByDesc('id')
             ->paginate(15)
             ->withQueryString();
 

@@ -150,7 +150,14 @@ class PropostaService
                 ]);
             }
 
-            $proposta->update(['status' => 'FECHADA']);
+            $proposta->update([
+                'status' => 'FECHADA',
+                'pipeline_status' => 'FECHAMENTO',
+                'pipeline_updated_at' => now(),
+                'pipeline_updated_by' => $userId,
+                'perdido_motivo' => null,
+                'perdido_observacao' => null,
+            ]);
 
             return $proposta->fresh(['itens']);
         });

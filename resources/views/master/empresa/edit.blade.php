@@ -26,8 +26,7 @@
                     </a>
                     <a href="{{ route('master.empresa.edit', ['tab' => 'unidades']) }}"
                        class="px-4 py-2 rounded-xl text-sm font-semibold border {{ $activeTab === 'unidades' ? 'bg-indigo-600 text-white border-indigo-600' : 'border-slate-200 text-slate-600 hover:bg-slate-50' }}">
-                        Unidades clínicas
-                    </a>
+                        Cl&iacute;nicas credenciadas</a>
                 </div>
 
                 @if (session('ok'))
@@ -73,6 +72,7 @@
                                 <input type="text" name="cnpj" value="{{ old('cnpj', $empresa->cnpj) }}"
                                        class="mt-1 w-full rounded-xl border border-slate-200 text-sm px-3 py-2 js-cnpj"
                                        placeholder="00.000.000/0000-00">
+                                <p id="cnpjMsg" class="text-[11px] text-slate-500 mt-1 hidden"></p>
                             </div>
                         </div>
 
@@ -146,7 +146,7 @@
                             <div
                                 class="px-5 py-3 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
                                 <div>
-                                    <h2 class="text-sm font-semibold text-slate-800">Unidades clínicas</h2>
+                                    <h2 class="text-sm font-semibold text-slate-800">Cl&iacute;nicas credenciadas</h2>
                                     <span class="text-xs text-slate-500">{{ $unidades->count() }} unidade(s)</span>
                                 </div>
                                 <a href="{{ route('master.empresa.unidades.create') }}"
@@ -177,7 +177,7 @@
                                             </a>
                                             <form method="POST"
                                                   action="{{ route('master.empresa.unidades.destroy', $unidade) }}"
-                                                  onsubmit="return confirm('Deseja remover esta unidade clínica?')">
+                                                  onsubmit="return confirm('Deseja remover esta unidade cl&iacute;nica?')">
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit"
@@ -258,6 +258,66 @@
         document.querySelector('#estado')?.addEventListener('change', async (e) => {
             const uf = e.target.value;
             await carregarCidadesPorUf(uf);
+        });
+
+        const cnpjInput = document.querySelector('input[name="cnpj"]');
+        const enderecoInput = document.querySelector('input[name="endereco"]');
+        const estadoSelect = document.getElementById('estado');
+        const cnpjMsg = document.getElementById('cnpjMsg');
+
+        function setCnpjMsg(type, text) {
+            if (!cnpjMsg) return;
+            cnpjMsg.classList.remove('hidden');
+            cnpjMsg.className = 'text-[11px] mt-1';
+            if (type === 'err') {
+                cnpjMsg.classList.add('text-rose-600');
+            } else if (type === 'ok') {
+                cnpjMsg.classList.add('text-emerald-600');
+            } else {
+                cnpjMsg.classList.add('text-slate-500');
+            }
+            cnpjMsg.textContent = text;
+        }
+
+        async function consultarCnpjEmpresa(cnpj) {
+            const baseUrl = @json(route('clientes.consulta-cnpj', ['cnpj' => '__CNPJ__']));
+            const resp = await fetch(baseUrl.replace('__CNPJ__', encodeURIComponent(cnpj)));
+            let json = null;
+            try {
+                json = await resp.json();
+            } catch (_) {
+                json = null;
+            }
+            return json;
+        }
+
+        cnpjInput?.addEventListener('blur', async () => {
+            const digits = (cnpjInput.value || '').replace(/\D/g, '');
+            if (digits.length !== 14) return;
+
+            setCnpjMsg('info', 'Buscando CNPJ...');
+
+            try {
+                const data = await consultarCnpjEmpresa(digits);
+                if (!data || data.error) {
+                    setCnpjMsg('err', (data && data.error) ? data.error : 'Falha ao consultar CNPJ.');
+                    return;
+                }
+
+                if (enderecoInput) {
+                    const partes = [data.endereco, data.bairro, data.complemento].filter(Boolean);
+                    if (partes.length) enderecoInput.value = partes.join(' - ');
+                }
+
+                if (estadoSelect && data.uf) {
+                    estadoSelect.value = data.uf;
+                    await carregarCidadesPorUf(data.uf, data.municipio || null);
+                }
+
+                setCnpjMsg('ok', 'CNPJ encontrado.');
+            } catch (e) {
+                setCnpjMsg('err', 'Falha ao consultar CNPJ.');
+            }
         });
     </script>
 @endsection

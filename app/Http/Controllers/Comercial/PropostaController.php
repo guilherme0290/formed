@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Cliente;
 use App\Models\ClienteContratoItem;
 use App\Models\ClienteContratoLog;
+use App\Models\Empresa;
 use App\Models\Funcao;
 use App\Models\Proposta;
 use App\Models\PropostaItens;
@@ -68,11 +69,11 @@ class PropostaController extends Controller
 
     public function create()
     {
-        $empresaId = auth()->user()->empresa_id;
+        $empresaId = auth()->user()->empresa_id ?? 1;
 
         $esocialId = config('services.esocial_id');
 
-        $clientes = Cliente::where('empresa_id', $empresaId)->orderBy('razao_social')->get();
+        $clientes = Cliente::where('empresa_id', $empresaId)->orderByDesc('id')->get();
         $servicos = Servico::where('empresa_id', $empresaId)
             ->where('ativo', true)
             ->when($esocialId, fn($q) => $q->where('id', '!=', $esocialId))
@@ -117,11 +118,11 @@ class PropostaController extends Controller
             abort_unless((int) $proposta->vendedor_id === (int) $user->id, 403);
         }
 
-        $empresaId = $user->empresa_id;
+        $empresaId = $user->empresa_id ?? 1;
 
         $esocialId = config('services.esocial_id');
 
-        $clientes = Cliente::where('empresa_id', $empresaId)->orderBy('razao_social')->get();
+        $clientes = Cliente::where('empresa_id', $empresaId)->orderByDesc('id')->get();
         $servicos = Servico::where('empresa_id', $empresaId)
             ->where('ativo', true)
             ->when($esocialId, fn($q) => $q->where('id', '!=', $esocialId))
@@ -213,7 +214,14 @@ class PropostaController extends Controller
         $publicLink = $this->ensurePublicLink($proposta);
         $mensagem = $this->appendPublicLink($data['mensagem'], $publicLink);
 
-        $proposta->update(['status' => 'ENVIADA']);
+        $proposta->update([
+            'status' => 'ENVIADA',
+            'pipeline_status' => 'PROPOSTA_ENVIADA',
+            'pipeline_updated_at' => now(),
+            'pipeline_updated_by' => $user->id,
+            'perdido_motivo' => null,
+            'perdido_observacao' => null,
+        ]);
 
         $url = 'https://wa.me/' . $digits . '?text=' . urlencode($mensagem);
         return redirect()->away($url);
@@ -241,7 +249,14 @@ class PropostaController extends Controller
                 $m->to($data['email'])->subject($data['assunto']);
             });
 
-            $proposta->update(['status' => 'ENVIADA']);
+            $proposta->update([
+                'status' => 'ENVIADA',
+                'pipeline_status' => 'PROPOSTA_ENVIADA',
+                'pipeline_updated_at' => now(),
+                'pipeline_updated_by' => $user->id,
+                'perdido_motivo' => null,
+                'perdido_observacao' => null,
+            ]);
 
             return back()->with('ok', 'E-mail enviado.');
         } catch (\Throwable $e) {
@@ -278,7 +293,27 @@ class PropostaController extends Controller
         if ($novo === 'FECHADA') {
             $service->fechar($proposta->id, $user->id);
         } else {
-            $proposta->update(['status' => $novo]);
+            $pipelineStatus = match ($novo) {
+                'ENVIADA' => 'PROPOSTA_ENVIADA',
+                'CANCELADA' => 'PERDIDO',
+                default => $proposta->pipeline_status ?? 'CONTATO_INICIAL',
+            };
+
+            $payload = [
+                'status' => $novo,
+                'pipeline_status' => $pipelineStatus,
+                'pipeline_updated_at' => now(),
+                'pipeline_updated_by' => $user->id,
+            ];
+
+            if ($novo === 'CANCELADA') {
+                $payload['perdido_motivo'] = $proposta->perdido_motivo ?: 'Cancelada';
+            } else {
+                $payload['perdido_motivo'] = null;
+                $payload['perdido_observacao'] = null;
+            }
+
+            $proposta->update($payload);
         }
 
         return response()->json([
@@ -291,9 +326,47 @@ class PropostaController extends Controller
     {
         $empresaId = auth()->user()->empresa_id;
 
+        if ($request->boolean('incluir_esocial')) {
+            $itensInput = $request->input('itens', []);
+            $itensInput = is_array($itensInput) ? $itensInput : [];
+            $valorEsocial = (float) ($request->input('esocial_valor_mensal') ?? 0);
+
+            $esocialIndex = null;
+            foreach ($itensInput as $idx => $item) {
+                if (strtoupper((string) ($item['tipo'] ?? '')) === 'ESOCIAL') {
+                    $esocialIndex = $idx;
+                    break;
+                }
+            }
+
+            $esocialItem = [
+                'servico_id' => null,
+                'tipo' => 'ESOCIAL',
+                'nome' => 'eSocial',
+                'descricao' => 'eSocial',
+                'valor_unitario' => $valorEsocial,
+                'quantidade' => 1,
+                'prazo' => null,
+                'acrescimo' => 0,
+                'desconto' => 0,
+                'valor_total' => $valorEsocial,
+                'meta' => null,
+            ];
+
+            if ($esocialIndex === null) {
+                $itensInput[] = $esocialItem;
+            } else {
+                $itensInput[$esocialIndex] = array_merge($itensInput[$esocialIndex], $esocialItem);
+            }
+
+            $request->merge(['itens' => $itensInput]);
+        }
+
         $data = $request->validate([
             'cliente_id' => ['required','integer'],
             'forma_pagamento' => ['required','string','max:80'],
+            'prazo_dias' => ['nullable','integer','min:1','max:365'],
+            'vencimento_servicos' => ['nullable','integer','min:1','max:31'],
 
             'incluir_esocial' => ['nullable','boolean'],
             'esocial_qtd_funcionarios' => ['nullable','integer','min:0'],
@@ -441,14 +514,18 @@ class PropostaController extends Controller
         $valorTotal = $valorItens + $valorEsocial;
 
         $codigo = $proposta?->codigo ?? ('PRP-' . now()->format('Ymd') . '-' . Str::upper(Str::random(4)));
+        $prazoDias = (int) ($data['prazo_dias'] ?? ($proposta?->prazo_dias ?? 7));
+        $vencimentoServicos = $data['vencimento_servicos'] ?? ($proposta?->vencimento_servicos ?? null);
 
-        return DB::transaction(function () use ($empresaId, $data, $codigo, $valorTotal, $incluirEsocial, $valorEsocial, $valorEsocialCampo, $proposta) {
+        return DB::transaction(function () use ($empresaId, $data, $codigo, $valorTotal, $incluirEsocial, $valorEsocial, $valorEsocialCampo, $proposta, $prazoDias, $vencimentoServicos) {
             $payload = [
                 'empresa_id' => $empresaId,
                 'cliente_id' => $data['cliente_id'],
                 'vendedor_id' => $proposta?->vendedor_id ?? auth()->id(),
                 'codigo' => $codigo,
                 'forma_pagamento' => $data['forma_pagamento'],
+                'prazo_dias' => $prazoDias,
+                'vencimento_servicos' => $vencimentoServicos,
 
                 'incluir_esocial' => $incluirEsocial,
                 'esocial_qtd_funcionarios' => $incluirEsocial ? ($data['esocial_qtd_funcionarios'] ?? 0) : null,
@@ -665,9 +742,11 @@ class PropostaController extends Controller
 
 
         $publicLink = $this->ensurePublicLink($proposta);
+        $empresa = Empresa::find($proposta->empresa_id);
 
         return view('comercial.propostas.show', [
             'proposta' => $proposta,
+            'empresa' => $empresa,
             'publicLink' => $publicLink,
             'unidades' => $unidades,
             'gheSnapshot' => $gheSnapshot,
@@ -698,8 +777,11 @@ class PropostaController extends Controller
             ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath))
             : null;
 
+        $empresa = Empresa::find($proposta->empresa_id);
+
         $pdf = Pdf::loadView('comercial.propostas.pdf', [
             'proposta' => $proposta,
+            'empresa' => $empresa,
             'logoData' => $logoData,
             'gheSnapshot' => $gheSnapshot,
         ])->setPaper('a4');
@@ -733,8 +815,11 @@ class PropostaController extends Controller
             ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath))
             : null;
 
+        $empresa = Empresa::find($proposta->empresa_id);
+
         $pdf = Pdf::loadView('comercial.propostas.pdf', [
             'proposta' => $proposta,
+            'empresa' => $empresa,
             'logoData' => $logoData,
             'gheSnapshot' => $gheSnapshot,
         ])->setPaper('a4');

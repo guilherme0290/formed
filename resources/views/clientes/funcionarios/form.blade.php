@@ -5,6 +5,13 @@
 @section('content')
     <div class="max-w-3xl mx-auto mt-6">
 
+        <div class="mb-3">
+            <a href="{{ route('cliente.funcionarios.index') }}"
+               class="px-4 py-2 text-xs rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50">
+                &larr; Voltar para funcion&aacute;rios
+            </a>
+        </div>
+
         {{-- Caixa do formulário com borda azul no topo --}}
         <div class="bg-white rounded-2xl shadow border border-slate-200 overflow-hidden">
 

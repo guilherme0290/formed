@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Comercial;
 
 use App\Http\Controllers\Controller;
 use App\Models\Proposta;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -25,11 +26,17 @@ class PipelineController extends Controller
         $isMaster = $user->hasPapel('Master');
 
         $busca = trim((string) $request->query('q', ''));
-        $statusFiltro = (array) $request->query('status', []);
+        $statusFiltro = '';
+        if ($request->has('status')) {
+            $statusInput = $request->query('status', '');
+            if (is_array($statusInput)) {
+                $statusInput = $statusInput[0] ?? '';
+            }
+            $statusFiltro = strtoupper(trim((string) $statusInput));
+        }
         $vendedorFiltro = (int) $request->query('vendedor_id', 0);
 
-        $statusFiltro = array_filter(array_map(fn($s) => strtoupper(trim((string) $s)), $statusFiltro));
-        $filtroCustom = !empty($statusFiltro);
+        $filtroCustom = $statusFiltro !== '';
 
         $query = Proposta::query()
             ->where('empresa_id', $empresaId)
@@ -50,8 +57,8 @@ class PipelineController extends Controller
             });
         }
 
-        if (!empty($statusFiltro)) {
-            $query->whereIn('pipeline_status', $statusFiltro);
+        if ($statusFiltro !== '') {
+            $query->where('pipeline_status', $statusFiltro);
         }
 
         if ($vendedorFiltro > 0) {
@@ -76,19 +83,75 @@ class PipelineController extends Controller
             ];
         }
 
+        $agora = Carbon::now();
         foreach ($propostas as $p) {
-            $status = strtoupper($p->pipeline_status ?? 'CONTATO_INICIAL');
+            $statusProposta = strtoupper((string) $p->status);
+            $prazoDias = (int) ($p->prazo_dias ?? 7);
+            $expirou = false;
+
+            if ($prazoDias > 0 && $p->created_at) {
+                $expiraEm = $p->created_at->copy()->addDays($prazoDias)->endOfDay();
+                $expirou = $agora->greaterThan($expiraEm)
+                    && !in_array($statusProposta, ['FECHADA', 'CANCELADA'], true);
+            }
+
+            if ($expirou && strtoupper((string) $p->pipeline_status) !== 'PERDIDO') {
+                $p->update([
+                    'pipeline_status' => 'PERDIDO',
+                    'pipeline_updated_at' => $agora,
+                    'pipeline_updated_by' => null,
+                    'perdido_motivo' => 'Prazo expirado',
+                ]);
+            } elseif ($statusProposta === 'ENVIADA' && strtoupper((string) $p->pipeline_status) !== 'PROPOSTA_ENVIADA') {
+                $p->update([
+                    'pipeline_status' => 'PROPOSTA_ENVIADA',
+                    'pipeline_updated_at' => $agora,
+                    'pipeline_updated_by' => $p->pipeline_updated_by,
+                ]);
+            } elseif ($statusProposta === 'FECHADA' && strtoupper((string) $p->pipeline_status) !== 'FECHAMENTO') {
+                $p->update([
+                    'pipeline_status' => 'FECHAMENTO',
+                    'pipeline_updated_at' => $agora,
+                    'pipeline_updated_by' => $p->pipeline_updated_by,
+                ]);
+            } elseif ($statusProposta === 'CANCELADA' && strtoupper((string) $p->pipeline_status) !== 'PERDIDO') {
+                $p->update([
+                    'pipeline_status' => 'PERDIDO',
+                    'pipeline_updated_at' => $agora,
+                    'pipeline_updated_by' => $p->pipeline_updated_by,
+                ]);
+            }
+
+            if ($expirou || $statusProposta === 'CANCELADA') {
+                $status = 'PERDIDO';
+            } elseif ($statusProposta === 'FECHADA') {
+                $status = 'FECHAMENTO';
+            } elseif ($statusProposta === 'ENVIADA') {
+                $status = 'PROPOSTA_ENVIADA';
+            } else {
+                $status = strtoupper($p->pipeline_status ?? 'CONTATO_INICIAL');
+            }
+
             if (!array_key_exists($status, $colunas)) {
                 $status = 'CONTATO_INICIAL';
             }
             $colunas[$status]['cards'][] = $p;
         }
 
+        $vendedores = $isMaster
+            ? User::query()
+                ->where('empresa_id', $empresaId)
+                ->whereHas('papel', fn ($q) => $q->whereRaw('lower(nome) = ?', ['comercial']))
+                ->orderBy('name')
+                ->get(['id', 'name'])
+            : collect([$user]);
+
         return view('comercial.pipeline.index', [
             'colunas' => $colunas,
             'busca' => $busca,
             'statusFiltro' => $statusFiltro,
             'vendedorFiltro' => $vendedorFiltro,
+            'vendedores' => $vendedores,
             'colunasMeta' => $this->colunas,
             'kpi' => [
                 'total' => $total,

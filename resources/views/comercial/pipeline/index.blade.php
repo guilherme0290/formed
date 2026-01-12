@@ -84,10 +84,11 @@
 
                     <div>
                         <label class="text-xs font-semibold text-slate-600">Status</label>
-                        <select name="status[]" multiple
+                        <select name="status"
                                 class="mt-1 w-full rounded-xl border border-slate-200 text-sm px-3 py-2">
+                            <option value="" @selected($statusFiltro === '')>Todos</option>
                             @foreach($colunasMeta as $slug => $label)
-                                <option value="{{ $slug }}" @selected(in_array($slug, $statusFiltro))>{{ $label }}</option>
+                                <option value="{{ $slug }}" @selected($slug === $statusFiltro)>{{ $label }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -96,7 +97,11 @@
                         <label class="text-xs font-semibold text-slate-600">Vendedores</label>
                         <select name="vendedor_id" class="mt-1 w-full rounded-xl border border-slate-200 text-sm px-3 py-2">
                             <option value="">Todos os Vendedores</option>
-                            {{-- placeholder, preencher com usuários vendedores quando necessário --}}
+                            @foreach($vendedores as $vendedor)
+                                <option value="{{ $vendedor->id }}" @selected((int) $vendedorFiltro === (int) $vendedor->id)>
+                                    {{ $vendedor->name }}
+                                </option>
+                            @endforeach
                         </select>
                     </div>
 
@@ -145,6 +150,20 @@
                             'FECHAMENTO' => 'bg-emerald-50',
                             'PERDIDO' => 'bg-rose-50',
                         ];
+                        $borderClasses = [
+                            'CONTATO_INICIAL' => 'border-sky-200',
+                            'PROPOSTA_ENVIADA' => 'border-indigo-200',
+                            'EM_NEGOCIACAO' => 'border-amber-200',
+                            'FECHAMENTO' => 'border-emerald-200',
+                            'PERDIDO' => 'border-rose-200',
+                        ];
+                        $badgeClasses = [
+                            'CONTATO_INICIAL' => 'bg-sky-100 text-sky-700 border border-sky-200',
+                            'PROPOSTA_ENVIADA' => 'bg-indigo-100 text-indigo-700 border border-indigo-200',
+                            'EM_NEGOCIACAO' => 'bg-amber-100 text-amber-700 border border-amber-200',
+                            'FECHAMENTO' => 'bg-emerald-100 text-emerald-700 border border-emerald-200',
+                            'PERDIDO' => 'bg-rose-100 text-rose-700 border border-rose-200',
+                        ];
                     @endphp
                     @foreach($colunas as $slug => $coluna)
                         @php
@@ -152,6 +171,8 @@
                             $count = count($coluna['cards']);
                             $borda = $bordas[$slug] ?? '#94a3b8';
                             $cardBgClass = $cardBg[$slug] ?? 'bg-white';
+                            $borderClass = $borderClasses[$slug] ?? 'border-slate-200';
+                            $badgeClass = $badgeClasses[$slug] ?? 'bg-blue-100 text-blue-700 border border-blue-200';
                         @endphp
                         <section class="flex flex-col w-56 md:w-60 lg:w-64 flex-shrink-0 gap-3">
 
@@ -169,17 +190,24 @@
                                 </div>
                             </article>
 
-                            <article class="bg-white border border-slate-200 rounded-2xl flex flex-col h-[64vh] md:h-[68vh] shadow-md">
+                            <article class="bg-white border border-slate-200 rounded-2xl flex flex-col h-[64vh] md:h-[68vh] shadow-md"
+                                     data-card-bg="{{ $cardBgClass }}"
+                                     data-border-class="{{ $borderClass }}"
+                                     data-border-color="{{ $borda }}"
+                                     data-badge-class="{{ $badgeClass }}"
+                                     data-badge-label="{{ $coluna['titulo'] }}">
                                 <div class="flex-1 overflow-y-auto px-3 py-3 space-y-3 kanban-column"
                                      data-coluna="{{ $slug }}">
                                     @forelse($coluna['cards'] as $p)
                                         @php
-                                            $tag = 'Final';
-                                            $codigo = $p->codigo ?? ('PROP-'.$p->id);
+                                            $tag = $coluna['titulo'];
+                                            $codigo = str_pad((int) $p->id, 2, '0', STR_PAD_LEFT);
                                             $valor = number_format((float) $p->valor_total, 2, ',', '.');
-                                            $servicesCount = $p->itens->count() ?? 0;
+                                            $hasEsocialItem = $p->itens->contains(fn ($it) => strtoupper((string) ($it->tipo ?? '')) === 'ESOCIAL');
+                                            $servicesCount = ($p->itens->count() ?? 0) + (!$hasEsocialItem && $p->incluir_esocial ? 1 : 0);
                                             $dataEnvio = optional($p->updated_at)->format('d/m/Y');
                                             $badgeTipo = 'bg-blue-100 text-blue-700 border border-blue-200';
+                                            $prazoDias = (int) ($p->prazo_dias ?? 7);
                                             $avisos = [];
                                             if ($p->pipeline_status === 'PERDIDO') {
                                                 $avisos[] = 'Perdido: ' . ($p->perdido_motivo ?? 'motivo não informado');
@@ -202,19 +230,23 @@
                                                  data-cliente="{{ $p->cliente->razao_social ?? '—' }}"
                                                  data-telefone="{{ $p->cliente->telefone ?? '' }}"
                                                  data-email="{{ $p->cliente->email ?? 'Não informado' }}"
-                                                 data-codigo="{{ $p->codigo ?? ('PROP-'.$p->id) }}"
+                                                 data-codigo="{{ str_pad((int) $p->id, 2, '0', STR_PAD_LEFT) }}"
                                                  data-status-label="{{ $p->status ?? '—' }}"
+                                                 data-pipeline-status="{{ strtoupper((string) ($p->pipeline_status ?? 'CONTATO_INICIAL')) }}"
+                                                 data-esocial-enabled="{{ $p->incluir_esocial ? '1' : '0' }}"
+                                                 data-esocial-qtd="{{ $p->esocial_qtd_funcionarios ?? 0 }}"
+                                                 data-esocial-valor="{{ number_format((float) ($p->esocial_valor_mensal ?? 0), 2, ',', '.') }}"
                                                  data-valor="{{ number_format((float) $p->valor_total, 2, ',', '.') }}"
                                                  data-servicos="{{ $servicesCount }}"
                                                  data-vendedor="{{ $p->vendedor->name ?? '—' }}"
                                                  data-envio="{{ optional($p->created_at)->format('d/m/Y') }}"
-                                                 data-validade="{{ optional($p->created_at)->addDays(30)->format('d/m/Y') }}"
+                                                 data-validade="{{ optional($p->created_at)->addDays($prazoDias)->format('d/m/Y') }}"
                                                  data-ultimo-contato="{{ $dataEnvio }}"
                                                  data-itens='@json($itensJson)'
                                                  data-timeline='@json($timelineJson)'>
                                             <div class="flex items-center justify-between">
                                                 <div class="font-semibold text-slate-900 line-clamp-2">{{ $p->cliente->razao_social ?? '—' }}</div>
-                                                <span class="px-2 py-0.5 rounded-full text-[11px] font-semibold {{ $badgeTipo }}">{{ $tag }}</span>
+                                                <span class="px-2 py-0.5 rounded-full text-[11px] font-semibold {{ $badgeTipo }}" data-card-badge>{{ $tag }}</span>
                                             </div>
                                             <div class="text-xs text-slate-500">{{ $codigo }}</div>
 
@@ -380,14 +412,15 @@
                             </div>
                             <div class="p-4 space-y-3">
                                 <div class="text-xs font-semibold text-slate-600">Novo Status</div>
-                                <select class="w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm">
-                                    <option>Proposta Enviada</option>
-                                    <option>Em Negociação</option>
-                                    <option>Fechamento</option>
-                                    <option>Fechada</option>
-                                    <option>Perdido</option>
+                                <select id="modalNovoStatus" class="w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm">
+                                    <option value="CONTATO_INICIAL">Contato Inicial</option>
+                                    <option value="PROPOSTA_ENVIADA">Proposta Enviada</option>
+                                    <option value="EM_NEGOCIACAO">Em Negociacao</option>
+                                    <option value="FECHAMENTO">Fechamento</option>
+                                    <option value="PERDIDO">Perdido</option>
                                 </select>
-                                <button class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold">Atualizar Status</button>
+                                <button id="modalAtualizarStatusBtn" class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold">Atualizar Status</button>
+                                <p id="modalStatusMsg" class="text-xs text-amber-700 hidden"></p>
                             </div>
                         </div>
 
@@ -427,6 +460,11 @@
             const endpoint = @json(route('comercial.pipeline.mover', ['proposta' => '__ID__']));
             const modal = document.getElementById('modalProposta');
 
+            const statusSelect = document.getElementById('modalNovoStatus');
+            const statusButton = document.getElementById('modalAtualizarStatusBtn');
+            const statusMsg = document.getElementById('modalStatusMsg');
+            let currentCard = null;
+
             const fields = {
                 codigo: document.getElementById('modalCodigo'),
                 status: document.getElementById('modalStatus'),
@@ -450,10 +488,33 @@
                 }
             }
 
-            function sendMove(cardId, newStatus) {
+            function setStatusMsg(type, text) {
+                if (!statusMsg) return;
+                statusMsg.classList.remove('hidden');
+                statusMsg.className = 'text-xs';
+                statusMsg.classList.add(type === 'err' ? 'text-rose-600' : 'text-amber-700');
+                statusMsg.textContent = text;
+            }
+
+            function clearStatusMsg() {
+                statusMsg?.classList.add('hidden');
+            }
+
+            function showToast(message, type = 'ok') {
+                const toast = document.createElement('div');
+                toast.className = `fixed top-4 right-4 z-[60] px-4 py-2 rounded-xl text-xs font-semibold shadow-lg ${type === 'err' ? 'bg-rose-600 text-white' : 'bg-emerald-600 text-white'}`;
+                toast.textContent = message;
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 2500);
+            }
+
+            function sendMove(cardId, newStatus, motivo = '') {
                 const url = endpoint.replace('__ID__', cardId);
                 const form = new FormData();
                 form.append('pipeline_status', newStatus);
+                if (newStatus === 'PERDIDO' && motivo) {
+                    form.append('perdido_motivo', motivo);
+                }
                 form.append('_token', document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '');
 
                 return fetch(url, {
@@ -465,6 +526,7 @@
                         const data = await res.json().catch(() => ({}));
                         throw new Error(data.message || 'Erro ao mover card.');
                     }
+                    return res.json().catch(() => ({}));
                 });
             }
 
@@ -479,7 +541,7 @@
                         const newStatus = col.dataset.coluna;
 
                         try {
-                            await sendMove(cardId, newStatus);
+                            await sendMove(cardId, newStatus, newStatus === 'PERDIDO' ? 'Atualizado no kanban' : '');
                             updateCounter(col);
                             if (evt.from !== col) updateCounter(evt.from);
                         } catch (e) {
@@ -514,8 +576,57 @@
                 });
             }
 
+            function moveCardToColumn(card, newStatus) {
+                if (!card) return;
+                const target = document.querySelector(`[data-coluna="${newStatus}"]`);
+                const from = card.closest('[data-coluna]');
+                if (!target) return;
+                target.prepend(card);
+                updateCounter(target);
+                if (from && from !== target) updateCounter(from);
+
+                const targetWrap = target.closest('article');
+                if (!targetWrap) return;
+
+                const newBg = targetWrap.dataset.cardBg || '';
+                if (newBg) {
+                    card.className = card.className.replace(/\bbg-[^\s]+/g, '').trim();
+                    card.classList.add(newBg);
+                }
+
+                const borderClasses = [
+                    'border-slate-200',
+                    'border-sky-200',
+                    'border-indigo-200',
+                    'border-amber-200',
+                    'border-emerald-200',
+                    'border-rose-200',
+                ];
+                borderClasses.forEach((cls) => card.classList.remove(cls));
+                const newBorderClass = targetWrap.dataset.borderClass || '';
+                if (newBorderClass) {
+                    card.classList.add(newBorderClass);
+                }
+
+                const newBorder = targetWrap.dataset.borderColor || '';
+                if (newBorder) {
+                    card.style.borderLeftColor = newBorder;
+                }
+
+                const badgeEl = card.querySelector('[data-card-badge]');
+                const newBadgeClass = targetWrap.dataset.badgeClass || '';
+                if (badgeEl && newBadgeClass) {
+                    badgeEl.className = `px-2 py-0.5 rounded-full text-[11px] font-semibold ${newBadgeClass}`;
+                }
+                const newBadgeLabel = targetWrap.dataset.badgeLabel || '';
+                if (badgeEl && newBadgeLabel) {
+                    badgeEl.textContent = newBadgeLabel;
+                }
+            }
+
             function openModalFromCard(card) {
                 if (!card || !modal) return;
+                currentCard = card;
                 fields.codigo.textContent = card.dataset.codigo || '—';
                 fields.cliente.textContent = card.dataset.cliente || '—';
                 fields.telefone.textContent = card.dataset.telefone || '—';
@@ -526,6 +637,10 @@
                 fields.validade.textContent = card.dataset.validade || '—';
                 fields.ultimo.textContent = card.dataset.ultimoContato || '—';
                 fields.status.textContent = card.dataset.statusLabel || '—';
+                if (statusSelect) {
+                    statusSelect.value = card.dataset.pipelineStatus || 'CONTATO_INICIAL';
+                }
+                clearStatusMsg();
 
                 try {
                     const timeline = JSON.parse(card.dataset.timeline || '[]');
@@ -548,6 +663,16 @@
                             `;
                             fields.servicos.appendChild(row);
                         });
+                        if (card.dataset.esocialEnabled === '1') {
+                            const row = document.createElement('div');
+                            row.className = 'flex items-center justify-between';
+                            row.innerHTML = `
+                                <div class="text-slate-800 font-semibold">eSocial</div>
+                                <div class="text-xs text-slate-500">Quantidade: ${card.dataset.esocialQtd || 0}</div>
+                                <div class="text-emerald-700 font-bold">R$ ${card.dataset.esocialValor || '0,00'}</div>
+                            `;
+                            fields.servicos.appendChild(row);
+                        }
                     } catch (e) {
                         // deixa vazio em caso de erro
                     }
@@ -565,6 +690,22 @@
 
             modal?.addEventListener('click', (e) => {
                 if (e.target === modal) closeModalProposta();
+            });
+
+            statusButton?.addEventListener('click', async () => {
+                if (!currentCard || !statusSelect) return;
+                const newStatus = statusSelect.value;
+                clearStatusMsg();
+
+                try {
+                    await sendMove(currentCard.dataset.card, newStatus, newStatus === 'PERDIDO' ? 'Atualizado no kanban' : '');
+                    currentCard.dataset.pipelineStatus = newStatus;
+                    moveCardToColumn(currentCard, newStatus);
+                    closeModalProposta();
+                    showToast('Status atualizado.');
+                } catch (e) {
+                    setStatusMsg('err', e.message || 'Falha ao atualizar status.');
+                }
             });
         })();
     </script>

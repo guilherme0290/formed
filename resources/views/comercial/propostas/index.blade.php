@@ -93,7 +93,7 @@
                             $cliente = $proposta->cliente;
                             $empresaTxt = $proposta->empresa?->nome ?? '—';
                             $clienteTxt = $cliente?->razao_social ?? '—';
-                            $ref = $proposta->codigo ?? ('#'.$proposta->id);
+                            $ref = str_pad((int) $proposta->id, 2, '0', STR_PAD_LEFT);
                             $status = strtoupper((string) ($proposta->status ?? ''));
 
                             $badgeByStatus = [

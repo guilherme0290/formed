@@ -57,6 +57,7 @@
             </div>
 
             <form id="formGhe" class="p-6 space-y-5">
+                <div id="gheFormAlert" class="hidden"></div>
                 <input type="hidden" id="ghe_id" value="">
 
                 <div class="grid md:grid-cols-2 gap-4">
@@ -203,6 +204,7 @@
                     modal: document.getElementById('modalGhe'),
                     list: document.getElementById('gheList'),
                     alert: document.getElementById('gheAlert'),
+                    formAlert: document.getElementById('gheFormAlert'),
                     clienteId: document.getElementById('gheClienteId'),
                     clienteNome: document.getElementById('gheClienteNome'),
                     modalForm: document.getElementById('modalGheForm'),
@@ -241,20 +243,28 @@
                     .replaceAll('"','&quot;').replaceAll("'",'&#039;');
             }
 
-            function alertBox(type,msg){
-                if(!GHE.dom.alert) return;
-                GHE.dom.alert.classList.remove('hidden');
-                GHE.dom.alert.className = 'rounded-xl border px-4 py-3 text-sm';
-                if(type==='ok'){
-                    GHE.dom.alert.classList.add('bg-emerald-50','border-emerald-200','text-emerald-800');
-                } else {
-                    GHE.dom.alert.classList.add('bg-red-50','border-red-200','text-red-800');
+            function alertTarget(){
+                if (GHE.dom.modalForm && !GHE.dom.modalForm.classList.contains('hidden') && GHE.dom.formAlert) {
+                    return GHE.dom.formAlert;
                 }
-                GHE.dom.alert.textContent = msg;
+                return GHE.dom.alert;
+            }
+
+            function alertBox(type,msg){
+                const target = alertTarget();
+                if(!target) return;
+                target.classList.remove('hidden');
+                target.className = 'rounded-xl border px-4 py-3 text-sm';
+                if(type==='ok'){
+                    target.classList.add('bg-emerald-50','border-emerald-200','text-emerald-800');
+                } else {
+                    target.classList.add('bg-red-50','border-red-200','text-red-800');
+                }
+                target.textContent = msg;
             }
             function alertHide(){
-                if(!GHE.dom.alert) return;
-                GHE.dom.alert.classList.add('hidden');
+                if(GHE.dom.alert) GHE.dom.alert.classList.add('hidden');
+                if(GHE.dom.formAlert) GHE.dom.formAlert.classList.add('hidden');
             }
 
             async function loadProtocolos(){
@@ -502,6 +512,7 @@
             window.openGheForm = async function(ghe){
                 await loadProtocolos();
                 GHE.dom.modalForm?.classList.remove('hidden');
+                alertHide();
                 GHE.dom.title.textContent = ghe ? 'Editar GHE' : 'Novo GHE';
                 GHE.dom.id.value = ghe?.id || '';
                 GHE.dom.nome.value = ghe?.nome || '';

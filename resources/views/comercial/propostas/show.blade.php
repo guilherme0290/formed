@@ -4,6 +4,8 @@
 @section('content')
     @php
         $status = strtoupper((string) ($proposta->status ?? 'PENDENTE'));
+        $hasEsocialItem = $proposta->itens->contains(fn ($it) => strtoupper((string) ($it->tipo ?? '')) === 'ESOCIAL');
+        $propostaSequencial = str_pad((int) $proposta->id, 2, '0', STR_PAD_LEFT);
         $statusBadge = match ($status) {
             'PENDENTE' => 'bg-amber-50 text-amber-800 border-amber-200',
             'ENVIADA' => 'bg-blue-50 text-blue-700 border-blue-200',
@@ -30,7 +32,7 @@
                         </div>
                         <div>
                             <div class="text-xs uppercase tracking-[0.2em] text-emerald-100">Proposta Comercial</div>
-                            <h1 class="text-xl font-semibold tracking-tight">{{ $proposta->codigo ?? ('Proposta #'.$proposta->id) }}</h1>
+                            <h1 class="text-xl font-semibold tracking-tight">{{ $propostaSequencial }}</h1>
                             <p class="text-xs text-emerald-100 mt-1">
                                 Criada em {{ optional($proposta->created_at)->format('d/m/Y') ?? '—' }}
                             </p>
@@ -61,12 +63,12 @@
 
                 <div class="grid gap-4 md:grid-cols-3">
                     <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
-                        <div class="text-xs font-semibold text-slate-500 uppercase">Cliente</div>
+                        <div class="text-xs font-semibold text-slate-500 uppercase">Vendedor</div>
                         <div class="text-sm font-semibold text-slate-900 mt-1">
-                            {{ $proposta->cliente->razao_social ?? '—' }}
+                            {{ $proposta->vendedor->name ?? '-' }}
                         </div>
                         <div class="text-xs text-slate-500 mt-1">
-                            {{ $proposta->cliente->email ?? 'E-mail não informado' }}
+                            {{ $proposta->vendedor->email ?? '' }}
                         </div>
                     </div>
                     <div class="rounded-2xl border border-slate-200 bg-white px-4 py-4">
@@ -75,9 +77,19 @@
                             {{ $proposta->forma_pagamento ?? '—' }}
                         </div>
                         <div class="text-xs text-slate-500 mt-1">
-                            Itens: {{ $proposta->itens->count() }}
+                            Itens: {{ $proposta->itens->count() + (!$hasEsocialItem && $proposta->incluir_esocial ? 1 : 0) }}
                         </div>
                     </div>
+                    <div class="rounded-2xl border border-slate-200 bg-white px-4 py-4">
+                        <div class="text-xs font-semibold text-slate-500 uppercase">Data de vencimento</div>
+                        <div class="text-sm font-semibold text-slate-900 mt-1">
+                            {{ $proposta->vencimento_servicos ?? '-'  }}
+                        </div>
+                        <div class="text-xs text-slate-500 mt-1">
+                            Prazo da proposta: {{ $proposta->prazo_dias ?? 7 }} dias
+                        </div>
+                    </div>
+
                     <div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4">
                         <div class="text-xs font-semibold text-emerald-700 uppercase">Valor total</div>
                         <div class="text-2xl font-semibold text-emerald-800 mt-2">
@@ -93,16 +105,16 @@
                     <div class="rounded-2xl border border-slate-200 p-4">
                         <div class="text-xs font-semibold text-slate-500 uppercase mb-2">Contratada</div>
                         <div class="text-sm font-semibold text-slate-900">
-                            {{ $proposta->empresa->nome_fantasia ?? 'FORMED' }}
+                            {{ $empresa->nome ?? $empresa->nome_fantasia ?? 'FORMED' }}
                         </div>
                         <div class="text-xs text-slate-500 mt-1">
-                            {{ $proposta->empresa->cnpj ?? '' }}
+                            {{ $empresa->cnpj ?? '' }}
                         </div>
                     </div>
                     <div class="rounded-2xl border border-slate-200 p-4 bg-slate-50">
                         <div class="text-xs font-semibold text-slate-500 uppercase mb-2">Cliente final</div>
                         <div class="text-sm font-semibold text-slate-900">
-                            {{ $proposta->cliente->razao_social ?? '—' }}
+                            {{ $proposta->cliente->razao_social ?? '-' }}
                         </div>
                         <div class="text-xs text-slate-500 mt-1">
                             {{ $proposta->cliente->cnpj ?? '' }}
@@ -193,7 +205,7 @@
 
                 @if($unidades->count())
                     <div class="rounded-2xl border border-slate-200 p-4">
-                        <div class="text-xs font-semibold text-slate-500 uppercase mb-2">Unidades</div>
+                        <div class="text-xs font-semibold text-slate-500 uppercase mb-2">Cl&iacute;nicas credenciadas</div>
                         <div class="grid gap-2 md:grid-cols-2">
                             @foreach($unidades as $unidade)
                                 <div class="rounded-xl border border-slate-200 px-3 py-2 text-xs">
@@ -311,7 +323,7 @@
                         <label class="text-xs font-semibold text-slate-600">Assunto</label>
                         <input id="emailAssunto" name="assunto"
                                class="mt-1 w-full rounded-xl border border-slate-200 text-sm px-3 py-2"
-                               value="Proposta {{ $proposta->codigo ?? ('#' . $proposta->id) }}">
+                               value="Proposta {{ $propostaSequencial }}">
                     </div>
 
                     <div>
@@ -346,7 +358,7 @@
                 const whatsappMensagem = document.getElementById('whatsappMensagem');
                 const emailMensagem = document.getElementById('emailMensagem');
                 const emailAssunto = document.getElementById('emailAssunto');
-                const propostaRef = @json($proposta->codigo ?? ('#' . $proposta->id));
+                const propostaRef = @json($propostaSequencial);
                 const publicLink = @json($publicLink ?? '');
 
                 function openWhatsappModal() {

@@ -144,29 +144,18 @@
                     </span>
                 </div>
 
-                {{-- Lado direito: usuário + botão trocar --}}
-                <div class="flex items-center gap-4 text-xs md:text-sm text-blue-50">
-                    <span class="hidden md:inline">
-                        @auth
-                            {{ auth()->user()->name ?? 'Usuário Portal Cliente' }}
-                        @else
-                            Usuário Portal Cliente
-                        @endauth
-                    </span>
-
-                    @auth
-                        <form method="POST" action="{{ route('logout') }}">
-                            @csrf
-                            <button type="submit"
-                                    class="inline-flex items-center gap-1 rounded-full border border-blue-300/60
-                                           px-3 py-1 text-[11px] font-medium text-blue-50
-                                           hover:bg-white/10 hover:text-white transition">
-                                <span class="text-xs">⇄</span>
-                                Trocar usuário
-                            </button>
-                        </form>
-                    @endauth
-                </div>
+                {{-- Lado direito: botao trocar --}}
+                @auth
+                    <form method="POST" action="{{ route('logout') }}">
+                        @csrf
+                        <button type="submit"
+                                class="inline-flex items-center gap-1 rounded-full border border-blue-300/60
+                                       px-3 py-1 text-[11px] font-medium text-blue-50
+                                       hover:bg-white/10 hover:text-white transition">
+                            Trocar usuário
+                        </button>
+                    </form>
+                @endauth
 
             </div>
         </header>
@@ -176,9 +165,9 @@
             @php
                 $razaoOuFantasia = $cliente->nome_fantasia ?: $cliente->razao_social;
                 $cnpjFormatado   = $cliente->cnpj ?? '';
-                $contatoNome     = $cliente->contato_nome ?? (auth()->user()->name ?? 'Contato não informado');
-                $contatoTelefone = $cliente->telefone ?? (auth()->user()->telefone ?? '(00) 0000-0000');
-                $contatoEmail    = $cliente->email ?? (auth()->user()->email ?? 'email@dominio.com');
+                $contatoNome     = optional($cliente->vendedor)->name ?? 'Comercial nao informado';
+                $contatoTelefone = optional($cliente->vendedor)->telefone ?? '(00) 0000-0000';
+                $contatoEmail    = optional($cliente->vendedor)->email ?? 'email@dominio.com';
             @endphp
 
             <section class="w-full bg-[#1450d2] text-white shadow-lg shadow-slate-900/20 py-5 md:py-6">

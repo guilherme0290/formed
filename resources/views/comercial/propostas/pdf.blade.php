@@ -28,6 +28,7 @@
 <body>
     @php
         $status = strtoupper((string) ($proposta->status ?? 'PENDENTE'));
+        $hasEsocialItem = $proposta->itens->contains(fn ($it) => strtoupper((string) ($it->tipo ?? '')) === 'ESOCIAL');
     @endphp
 
     <div class="header">
@@ -38,7 +39,7 @@
         </div>
         <div class="title">
             <h1>Proposta Comercial</h1>
-            <p>{{ $proposta->codigo ?? ('Proposta #'.$proposta->id) }} — {{ optional($proposta->created_at)->format('d/m/Y') ?? '—' }}</p>
+            <p>{{ str_pad((int) $proposta->id, 2, '0', STR_PAD_LEFT) }} — {{ optional($proposta->created_at)->format('d/m/Y') ?? '—' }}</p>
             <span class="badge">{{ str_replace('_', ' ', $status) }}</span>
         </div>
     </div>
@@ -49,14 +50,14 @@
                 <td style="width: 50%; padding-right: 8px;">
                     <div class="box">
                         <div class="muted">Contratada</div>
-                        <div class="value">{{ $proposta->empresa->nome_fantasia ?? 'FORMED' }}</div>
-                        <div>{{ $proposta->empresa->cnpj ?? '' }}</div>
+                        <div class="value">{{ $empresa->nome ?? $empresa->nome_fantasia ?? 'FORMED' }}</div>
+                        <div>{{ $empresa->cnpj ?? '' }}</div>
                     </div>
                 </td>
                 <td style="width: 50%; padding-left: 8px;">
                     <div class="box">
                         <div class="muted">Cliente final</div>
-                        <div class="value">{{ $proposta->cliente->razao_social ?? '—' }}</div>
+                        <div class="value">{{ $proposta->cliente->razao_social ?? '-' }}</div>
                         <div>{{ $proposta->cliente->cnpj ?? '' }}</div>
                     </div>
                 </td>
@@ -138,7 +139,9 @@
                     <div class="box">
                         <div class="muted">Forma de pagamento</div>
                         <div class="value">{{ $proposta->forma_pagamento ?? '—' }}</div>
-                        <div style="margin-top: 6px; color: #6b7280;">Itens: {{ $proposta->itens->count() }}</div>
+                        <div style="margin-top: 6px; color: #6b7280;">Itens: {{ $proposta->itens->count() + (!$hasEsocialItem && $proposta->incluir_esocial ? 1 : 0) }}</div>
+                        <div style="margin-top: 6px; color: #6b7280;">Data de vencimento: {{ $proposta->vencimento_servicos ?? '-' }}</div>
+                        <div style="margin-top: 6px; color: #6b7280;">Prazo da proposta: {{ $proposta->prazo_dias ?? 7 }} dias</div>
                     </div>
                 </td>
                 <td style="width: 45%; padding-left: 8px;">
@@ -155,7 +158,7 @@
 
     @if($proposta->unidades->count())
         <div class="section">
-            <div class="muted">Unidades</div>
+            <div class="muted">Cl&iacute;nicas credenciadas</div>
             <table>
                 <thead>
                 <tr>

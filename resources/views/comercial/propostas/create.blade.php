@@ -284,6 +284,26 @@
                         </select>
                     </section>
 
+                    {{-- 5. Prazo da proposta --}}
+                    <section class="space-y-3">
+                        <h2 class="text-sm font-semibold text-slate-700">5. Prazo da proposta (dias)</h2>
+
+                        <input type="number" name="prazo_dias" min="1" max="365"
+                               value="{{ old('prazo_dias', $isEdit ? ($proposta->prazo_dias ?? 7) : 7) }}"
+                               class="w-full border border-slate-200 rounded-xl text-sm px-3 py-2">
+                        <p class="text-xs text-slate-500">Padrao: 7 dias.</p>
+                    </section>
+
+                    {{-- 6. Data de vencimento --}}
+                    <section class="space-y-3">
+                        <h2 class="text-sm font-semibold text-slate-700">6. Data de vencimento</h2>
+
+                        <input type="number" min="1" max="31" name="vencimento_servicos"
+                               value="{{ old('vencimento_servicos', $isEdit ? ($proposta->vencimento_servicos ?? '') : '') }}"
+                               class="w-full border border-slate-200 rounded-xl text-sm px-3 py-2">
+
+                    </section>
+
                     {{-- Rodapé --}}
                     <section class="pt-4 border-t flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                         <div class="bg-blue-600 text-white rounded-2xl px-6 py-4">
@@ -466,6 +486,7 @@
                 if (INITIAL?.isEdit) {
                     state.itens = Array.isArray(INITIAL.itens) ? INITIAL.itens : [];
                     state.itens.forEach(it => recalcItemTotal(it));
+                    removeEsocialItens();
 
                     if (INITIAL.esocial) {
                         state.esocial.enabled = !!INITIAL.esocial.enabled;
@@ -639,9 +660,23 @@
                     recalcItemTotal(target);
                 }
 
+                function removeEsocialItens() {
+                    const servicoId = Number(SERVICO_ESOCIAL_ID || 0);
+                    const before = state.itens.length;
+                    state.itens = state.itens.filter(it => {
+                        const tipo = String(it.tipo || '').toUpperCase();
+                        const itemServicoId = Number(it.servico_id || 0);
+                        if (tipo === 'ESOCIAL') return false;
+                        if (servicoId > 0 && itemServicoId === servicoId) return false;
+                        return true;
+                    });
+                    return before !== state.itens.length;
+                }
+
                 function recalcTotals() {
                     let total = 0;
                     applyGheToAsoItems();
+                    removeEsocialItens();
                     state.itens.forEach(i => total += Number(i.valor_total || 0));
                     if (state.esocial.enabled) total += Number(state.esocial.valor || 0);
                     el.total.textContent = brl(total);
@@ -657,6 +692,7 @@
                 });
 
                 function syncHiddenInputs() {
+                    removeEsocialItens();
                     // remove inputs anteriores
                     document.querySelectorAll('[data-hidden-itens]').forEach(n => n.remove());
 
@@ -726,6 +762,7 @@
                 // =========================
                 function render() {
                     el.lista.innerHTML = '';
+                    removeEsocialItens();
 
                     state.itens.forEach(item => {
                         const hasZeroPrice = Number(item.valor_unitario || 0) <= 0;

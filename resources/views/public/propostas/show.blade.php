@@ -209,6 +209,7 @@
 <body>
 @php
     $status = strtoupper((string) ($proposta->status ?? 'PENDENTE'));
+    $hasEsocialItem = $proposta->itens->contains(fn ($it) => strtoupper((string) ($it->tipo ?? '')) === 'ESOCIAL');
     $statusLabel = str_replace('_', ' ', $status);
     $podeResponder = !in_array($status, ['FECHADA', 'CANCELADA'], true);
     $showSuccess = session('ok');
@@ -364,7 +365,7 @@
             </div>
             <div class="status-pill">{{ $statusLabel }}</div>
         </div>
-        <h1 class="hero-title">{{ $proposta->codigo ?? ('Proposta #'.$proposta->id) }}</h1>
+        <h1 class="hero-title">{{ str_pad((int) $proposta->id, 2, '0', STR_PAD_LEFT) }}</h1>
         <p class="hero-subtitle">Criada em {{ optional($proposta->created_at)->format('d/m/Y') ?? '—' }}</p>
     </section>
 
@@ -388,7 +389,7 @@
         <div class="card">
             <div class="label">Forma de pagamento</div>
             <div class="value">{{ $proposta->forma_pagamento ?? '—' }}</div>
-            <div class="muted">Itens: {{ $proposta->itens->count() }}</div>
+            <div class="muted">Itens: {{ $proposta->itens->count() + (!$hasEsocialItem && $proposta->incluir_esocial ? 1 : 0) }}</div>
         </div>
         <div class="total-box">
             <div class="label">Valor total</div>

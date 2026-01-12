@@ -18,12 +18,14 @@ class Proposta extends Model
         'esocial_valor_mensal',
         'valor_total',
         'status',
+        'prazo_dias',
         'public_responded_at',
         'pipeline_status',
         'pipeline_updated_at',
         'pipeline_updated_by',
         'perdido_motivo',
         'perdido_observacao',
+        'vencimento_servicos',
         'observacoes',
     ];
 
@@ -31,8 +33,10 @@ class Proposta extends Model
         'incluir_esocial'       => 'bool',
         'esocial_valor_mensal'  => 'decimal:2',
         'valor_total'           => 'decimal:2',
+        'prazo_dias'            => 'int',
         'pipeline_updated_at'   => 'datetime',
         'public_responded_at'   => 'datetime',
+        'vencimento_servicos'   => 'int',
     ];
 
     public function empresa()

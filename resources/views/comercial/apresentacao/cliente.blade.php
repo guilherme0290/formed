@@ -48,7 +48,7 @@
                                     data-razao="{{ e($p->cliente?->razao_social ?? '') }}"
                                     data-cnpj="{{ e($p->cliente?->cnpj ?? '') }}"
                                     data-telefone="{{ e($p->cliente?->telefone ?? '') }}">
-                                #{{ $p->id }} — {{ $p->codigo ?? 'Proposta' }} — {{ $p->cliente?->razao_social ?? '—' }}
+                                #{{ str_pad((int) $p->id, 2, '0', STR_PAD_LEFT) }} - {{ $p->cliente?->razao_social ?? '-' }}
                             </option>
                         @endforeach
                     </select>

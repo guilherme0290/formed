@@ -3,7 +3,7 @@
 
 @section('content')
 
-    <div class="max-w-6xl mx-auto px-4 md:px-8 py-8 space-y-8">
+    <div class="w-full px-4 md:px-8 py-8 space-y-8">
 
         {{-- Hero --}}
         <div class="rounded-3xl bg-gradient-to-r from-indigo-700 via-indigo-600 to-blue-600 text-white shadow-xl p-6 md:p-8 flex flex-col gap-4 items-center text-center">
@@ -173,4 +173,3 @@
         </div>
     </div>
 @endsection
-
