@@ -11,6 +11,7 @@ use App\Models\PcmsoSolicitacoes;
 use App\Models\Servico;
 use App\Models\Tarefa;
 use App\Models\TarefaLog;
+use App\Services\AsoGheService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -61,10 +62,14 @@ class PcmsoController extends Controller
 
         $tipo = $tipo === 'especifico' ? 'especifico' : 'matriz';
 
+        $funcoes = app(AsoGheService::class)
+            ->funcoesDisponiveisParaCliente($usuario->empresa_id, $cliente->id);
+
         if ($tipo === 'matriz') {
             return view('operacional.kanban.pcmso.form_matriz', [
                 'cliente' => $cliente,
                 'tipo'    => $tipo,
+                'funcoes' => $funcoes,
                 'anexos'  => collect(),
             ]);
         }
@@ -72,6 +77,7 @@ class PcmsoController extends Controller
         return view('operacional.kanban.pcmso.form_especifico', [
             'cliente' => $cliente,
             'tipo'    => $tipo,
+            'funcoes' => $funcoes,
             'anexos'  => collect(),
         ]);
     }
@@ -91,6 +97,11 @@ class PcmsoController extends Controller
         // regras comuns
         $rules = [
             'pgr_arquivo' => ['required', 'file', 'mimes:pdf', 'max:10240'],
+            'funcoes'                 => ['required', 'array', 'min:1'],
+            'funcoes.*.funcao_id'     => ['required', 'integer', 'exists:funcoes,id'],
+            'funcoes.*.quantidade'    => ['required', 'integer', 'min:1'],
+            'funcoes.*.cbo'           => ['nullable', 'string', 'max:20'],
+            'funcoes.*.descricao'     => ['nullable', 'string'],
         ];
 
         // se for específico, exige dados da obra
@@ -103,7 +114,23 @@ class PcmsoController extends Controller
             ]);
         }
 
-        $data = $request->validate($rules);
+        $messages = [
+            'pgr_arquivo.required' => 'Anexe o arquivo do PGR em PDF.',
+            'pgr_arquivo.file' => 'O arquivo do PGR precisa ser um arquivo valido.',
+            'pgr_arquivo.mimes' => 'O arquivo do PGR deve ser um PDF.',
+            'pgr_arquivo.max' => 'O arquivo do PGR deve ter no maximo 10MB.',
+            'obra_nome.required' => 'Informe o nome da obra.',
+            'funcoes.required' => 'Adicione ao menos uma funcao.',
+            'funcoes.array' => 'Formato invalido para funcoes.',
+            'funcoes.min' => 'Adicione ao menos uma funcao.',
+            'funcoes.*.funcao_id.required' => 'Selecione a funcao.',
+            'funcoes.*.funcao_id.exists' => 'Funcao invalida.',
+            'funcoes.*.quantidade.required' => 'Informe a quantidade da funcao.',
+            'funcoes.*.quantidade.integer' => 'Informe um numero valido para a quantidade.',
+            'funcoes.*.quantidade.min' => 'A quantidade da funcao deve ser pelo menos 1.',
+        ];
+
+        $data = $request->validate($rules, $messages);
 
         // armazena PDF do PGR no S3
         // o campo pgr_arquivo_path vai guardar a "key" do S3 (ex: pcmso_pgr/1/arquivo.pdf)
@@ -165,6 +192,7 @@ class PcmsoController extends Controller
                 'tipo'                  => $tipo,
                 'pgr_origem'            => 'arquivo_cliente',
                 'pgr_arquivo_path'      => $path, // key do S3
+                'funcoes'               => $data['funcoes'],
                 'obra_nome'             => $data['obra_nome']             ?? null,
                 'obra_cnpj_contratante' => $data['obra_cnpj_contratante'] ?? null,
                 'obra_cei_cno'          => $data['obra_cei_cno']          ?? null,
@@ -224,10 +252,14 @@ class PcmsoController extends Controller
         $cliente = $tarefa->cliente;
         $tipo    = $pcmso->tipo === 'especifico' ? 'especifico' : 'matriz';
 
+        $funcoes = app(AsoGheService::class)
+            ->funcoesDisponiveisParaCliente($empresaId, $cliente->id);
+
         if ($tipo === 'matriz') {
             return view('operacional.kanban.pcmso.form_matriz', [
                 'cliente' => $cliente,
                 'tipo'    => $tipo,
+                'funcoes' => $funcoes,
                 'pcmso'   => $pcmso,
                 'isEdit'  => true,
                 'anexos'  => $anexos,
@@ -237,6 +269,7 @@ class PcmsoController extends Controller
         return view('operacional.kanban.pcmso.form_especifico', [
             'cliente' => $cliente,
             'tipo'    => $tipo,
+            'funcoes' => $funcoes,
             'pcmso'   => $pcmso,
             'isEdit'  => true,
             'anexos'  => $anexos,
@@ -260,6 +293,11 @@ class PcmsoController extends Controller
         $rules = [
             'pgr_arquivo'    => ['nullable', 'file', 'mimes:pdf', 'max:10240'],
             'remover_arquivo'=> ['nullable', 'boolean'],
+            'funcoes'                 => ['required', 'array', 'min:1'],
+            'funcoes.*.funcao_id'     => ['required', 'integer', 'exists:funcoes,id'],
+            'funcoes.*.quantidade'    => ['required', 'integer', 'min:1'],
+            'funcoes.*.cbo'           => ['nullable', 'string', 'max:20'],
+            'funcoes.*.descricao'     => ['nullable', 'string'],
         ];
 
         // se for específico, atualiza dados da obra também
@@ -272,7 +310,23 @@ class PcmsoController extends Controller
             ]);
         }
 
-        $data = $request->validate($rules);
+        $messages = [
+            'pgr_arquivo.required' => 'Anexe o arquivo do PGR em PDF.',
+            'pgr_arquivo.file' => 'O arquivo do PGR precisa ser um arquivo valido.',
+            'pgr_arquivo.mimes' => 'O arquivo do PGR deve ser um PDF.',
+            'pgr_arquivo.max' => 'O arquivo do PGR deve ter no maximo 10MB.',
+            'obra_nome.required' => 'Informe o nome da obra.',
+            'funcoes.required' => 'Adicione ao menos uma funcao.',
+            'funcoes.array' => 'Formato invalido para funcoes.',
+            'funcoes.min' => 'Adicione ao menos uma funcao.',
+            'funcoes.*.funcao_id.required' => 'Selecione a funcao.',
+            'funcoes.*.funcao_id.exists' => 'Funcao invalida.',
+            'funcoes.*.quantidade.required' => 'Informe a quantidade da funcao.',
+            'funcoes.*.quantidade.integer' => 'Informe um numero valido para a quantidade.',
+            'funcoes.*.quantidade.min' => 'A quantidade da funcao deve ser pelo menos 1.',
+        ];
+
+        $data = $request->validate($rules, $messages);
 
         $disk = Storage::disk('s3');
 
@@ -303,12 +357,13 @@ class PcmsoController extends Controller
         if (!$pathAtual) {
             return back()
                 ->withInput()
-                ->withErrors(['pgr_arquivo' => 'É necessário manter um PGR anexado (envie um novo arquivo ou não marque para remover).']);
+                ->withErrors(['pgr_arquivo' => 'E necessario manter um PGR anexado (envie um novo arquivo ou nao marque para remover).']);
         }
 
         // monta payload de atualização
         $updateData = [
             'pgr_arquivo_path' => $pathAtual, // key no S3
+            'funcoes'          => $data['funcoes'],
         ];
 
         if ($tipo === 'especifico') {

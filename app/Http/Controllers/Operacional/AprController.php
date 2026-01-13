@@ -37,7 +37,7 @@ class AprController extends Controller
             'endereco_atividade'  => ['required', 'string', 'max:255'],
             'funcoes_envolvidas'  => ['required', 'string'],
             'etapas_atividade'    => ['required', 'string'],
-        ]);
+        ], $this->mensagensValidacao(), $this->atributosValidacao());
 
         // coluna inicial (Pendente)
         $colunaInicial = KanbanColuna::where('empresa_id', $empresaId)
@@ -139,7 +139,7 @@ class AprController extends Controller
             'endereco_atividade'  => ['required', 'string', 'max:255'],
             'funcoes_envolvidas'  => ['required', 'string'],
             'etapas_atividade'    => ['required', 'string'],
-        ]);
+        ], $this->mensagensValidacao(), $this->atributosValidacao());
 
         DB::transaction(function () use ($apr, $data, $user) {
             $apr->update([
@@ -169,5 +169,23 @@ class AprController extends Controller
         return redirect()
             ->route('operacional.kanban')
             ->with('ok', 'APR atualizada com sucesso!');
+    }
+
+    private function mensagensValidacao(): array
+    {
+        return [
+            'required' => 'O campo :attribute e obrigatorio.',
+            'string' => 'O campo :attribute deve ser um texto valido.',
+            'max' => 'O campo :attribute deve ter no maximo :max caracteres.',
+        ];
+    }
+
+    private function atributosValidacao(): array
+    {
+        return [
+            'endereco_atividade' => 'endereco da atividade',
+            'funcoes_envolvidas' => 'funcoes envolvidas',
+            'etapas_atividade' => 'etapas da atividade',
+        ];
     }
 }

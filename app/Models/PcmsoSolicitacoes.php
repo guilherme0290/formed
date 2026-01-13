@@ -17,11 +17,16 @@ class PcmsoSolicitacoes extends Model
         'pgr_origem',
         'pgr_solicitacao_id',
         'pgr_arquivo_path',
+        'funcoes',
         'obra_nome',
         'obra_cnpj_contratante',
         'obra_cei_cno',
         'obra_endereco',
         'prazo_dias',
+    ];
+
+    protected $casts = [
+        'funcoes' => 'array',
     ];
 
     public function empresa()

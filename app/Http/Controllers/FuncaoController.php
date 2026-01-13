@@ -88,9 +88,12 @@ class FuncaoController extends Controller
 
         if ($jaExiste) {
             return response()->json([
-                'ok'      => false,
-                'message' => 'Já existe uma função cadastrada com este nome.',
-            ], 422);
+                'ok'       => true,
+                'existing' => true,
+                'id'       => $jaExiste->id,
+                'nome'     => $jaExiste->nome,
+                'message'  => 'Função já cadastrada. Selecionada no dropdown.',
+            ]);
         }
 
         $funcao = Funcao::create([

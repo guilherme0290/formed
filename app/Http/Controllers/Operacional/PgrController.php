@@ -124,6 +124,27 @@ class PgrController extends Controller
         $cliente = $tarefa->cliente;
 
         // mesma validação do store
+        $messages = [
+            'tipo.required' => 'Selecione o tipo do PGR.',
+            'tipo.in' => 'Selecione um tipo de PGR valido.',
+            'com_art.required' => 'Informe se o PGR tera ART.',
+            'com_art.boolean' => 'Informe um valor valido para ART.',
+            'qtd_homens.required' => 'Informe a quantidade de funcionarios homens.',
+            'qtd_homens.integer' => 'Informe um numero valido para funcionarios homens.',
+            'qtd_homens.min' => 'A quantidade de funcionarios homens nao pode ser negativa.',
+            'qtd_mulheres.required' => 'Informe a quantidade de funcionarias mulheres.',
+            'qtd_mulheres.integer' => 'Informe um numero valido para funcionarias mulheres.',
+            'qtd_mulheres.min' => 'A quantidade de funcionarias mulheres nao pode ser negativa.',
+            'funcoes.required' => 'Adicione ao menos uma funcao.',
+            'funcoes.array' => 'Formato invalido para funcoes.',
+            'funcoes.min' => 'Adicione ao menos uma funcao.',
+            'funcoes.*.funcao_id.required' => 'Selecione a funcao.',
+            'funcoes.*.funcao_id.exists' => 'Funcao invalida.',
+            'funcoes.*.quantidade.required' => 'Informe a quantidade da funcao.',
+            'funcoes.*.quantidade.integer' => 'Informe um numero valido para a quantidade.',
+            'funcoes.*.quantidade.min' => 'A quantidade da funcao deve ser pelo menos 1.',
+        ];
+
         $data = $request->validate([
             'tipo'         => ['required', 'in:matriz,especifico'],
             'com_art'      => ['required', 'boolean'],
@@ -142,7 +163,8 @@ class PgrController extends Controller
             'funcoes.*.quantidade'    => ['required', 'integer', 'min:1'],
             'funcoes.*.cbo'           => ['nullable', 'string', 'max:20'],
             'funcoes.*.descricao'     => ['nullable', 'string'],
-        ]);
+        
+        ], $messages);
 
         if ((bool) $data['com_art'] && !$this->artInfoParaCliente($cliente)['disponivel']) {
             return back()
@@ -249,6 +271,27 @@ class PgrController extends Controller
 
         abort_if($cliente->empresa_id !== $empresaId, 403);
 
+        $messages = [
+            'tipo.required' => 'Selecione o tipo do PGR.',
+            'tipo.in' => 'Selecione um tipo de PGR valido.',
+            'com_art.required' => 'Informe se o PGR tera ART.',
+            'com_art.boolean' => 'Informe um valor valido para ART.',
+            'qtd_homens.required' => 'Informe a quantidade de funcionarios homens.',
+            'qtd_homens.integer' => 'Informe um numero valido para funcionarios homens.',
+            'qtd_homens.min' => 'A quantidade de funcionarios homens nao pode ser negativa.',
+            'qtd_mulheres.required' => 'Informe a quantidade de funcionarias mulheres.',
+            'qtd_mulheres.integer' => 'Informe um numero valido para funcionarias mulheres.',
+            'qtd_mulheres.min' => 'A quantidade de funcionarias mulheres nao pode ser negativa.',
+            'funcoes.required' => 'Adicione ao menos uma funcao.',
+            'funcoes.array' => 'Formato invalido para funcoes.',
+            'funcoes.min' => 'Adicione ao menos uma funcao.',
+            'funcoes.*.funcao_id.required' => 'Selecione a funcao.',
+            'funcoes.*.funcao_id.exists' => 'Funcao invalida.',
+            'funcoes.*.quantidade.required' => 'Informe a quantidade da funcao.',
+            'funcoes.*.quantidade.integer' => 'Informe um numero valido para a quantidade.',
+            'funcoes.*.quantidade.min' => 'A quantidade da funcao deve ser pelo menos 1.',
+        ];
+
         $data = $request->validate([
             'tipo'         => ['required', 'in:matriz,especifico'],
             'com_art'      => ['required', 'boolean'],
@@ -268,7 +311,8 @@ class PgrController extends Controller
             'funcoes.*.quantidade'    => ['required', 'integer', 'min:1'],
             'funcoes.*.cbo'           => ['nullable', 'string', 'max:20'],
             'funcoes.*.descricao'     => ['nullable', 'string'],
-        ]);
+        
+        ], $messages);
 
         if ((bool) $data['com_art'] && !$this->artInfoParaCliente($cliente)['disponivel']) {
             return back()
