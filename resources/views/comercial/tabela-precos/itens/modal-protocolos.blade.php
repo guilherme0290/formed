@@ -5,8 +5,8 @@
         <div class="bg-white w-full max-w-5xl rounded-2xl shadow-xl overflow-hidden max-h-[85vh] flex flex-col">
             <div class="px-6 py-4 bg-slate-800 text-white flex items-center justify-between">
                 <div>
-                    <h2 class="text-lg font-semibold">Protocolos de Exames</h2>
-                    <p class="text-xs opacity-90">Monte protocolos com exames e preço total.</p>
+                    <h2 class="text-lg font-semibold">Grupo de Exames</h2>
+                    <p class="text-xs opacity-90">Monte grupos com exames e preço total.</p>
                 </div>
                 <button type="button"
                         onclick="closeProtocolosModal()"
@@ -19,7 +19,7 @@
                 <div id="protocolosAlert" class="hidden"></div>
 
                 <div class="flex items-center justify-between gap-3">
-                    <div class="text-sm font-semibold text-slate-800">Lista de protocolos</div>
+                    <div class="text-sm font-semibold text-slate-800">Lista de Grupos</div>
 
                     <button type="button"
                             onclick="openProtocoloForm(null)"
@@ -28,7 +28,7 @@
                                    text-white px-5 py-2.5 text-sm font-semibold shadow-sm
                                    ring-1 ring-slate-700/30 transition">
                         <span class="text-base leading-none">＋</span>
-                        <span>Novo Protocolo</span>
+                        <span>Novo Grupo</span>
                     </button>
                 </div>
 
@@ -43,7 +43,7 @@
     <div class="min-h-full w-full flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-2xl rounded-2xl shadow-xl overflow-hidden">
             <div class="px-6 py-4 border-b flex items-center justify-between">
-                <h3 id="protocoloFormTitle" class="text-lg font-semibold text-slate-800">Novo Protocolo</h3>
+                <h3 id="protocoloFormTitle" class="text-lg font-semibold text-slate-800">Novo Grupo</h3>
                 <button type="button" onclick="closeProtocoloForm()"
                         class="h-9 w-9 rounded-xl hover:bg-slate-100 text-slate-500 flex items-center justify-center">
                     ✕
@@ -76,7 +76,7 @@
 
                 <div>
                     <div class="flex items-center justify-between">
-                        <label class="text-xs font-semibold text-slate-600">Exames do protocolo</label>
+                        <label class="text-xs font-semibold text-slate-600">Exames do grupo</label>
                         <span class="text-xs text-slate-500" id="protocoloExamesCount">0 selecionados</span>
                     </div>
                     <div id="protocoloExamesList" class="mt-2 max-h-48 overflow-y-auto border border-slate-200 rounded-xl p-3 space-y-2 text-sm">
@@ -169,7 +169,7 @@
                     renderProtocolos();
                 } catch(e){
                     console.error(e);
-                    alertBox('err','Falha ao carregar protocolos.');
+                    alertBox('err','Falha ao carregar grupos.');
                 }
             }
 
@@ -178,7 +178,7 @@
                 if(!wrap) return;
                 wrap.innerHTML = '';
                 if(!PROTOCOLOS.state.protocolos.length){
-                    wrap.innerHTML = `<div class="text-sm text-slate-500 py-3">Nenhum protocolo cadastrado.</div>`;
+                    wrap.innerHTML = `<div class="text-sm text-slate-500 py-3">Nenhum grupo cadastrado.</div>`;
                     return;
                 }
                 PROTOCOLOS.state.protocolos.forEach(p=>{
@@ -250,7 +250,7 @@
                         .map(cb => Number(cb.value)),
                 };
 
-                if (!payload.titulo) return alertBox('err','Informe o título do protocolo.');
+                if (!payload.titulo) return alertBox('err','Informe o título do grupo.');
 
                 const url = id ? PROTOCOLOS.urls.update(id) : PROTOCOLOS.urls.store;
                 const method = id ? 'PUT' : 'POST';
@@ -270,12 +270,12 @@
                     closeProtocoloForm();
                 } catch(e){
                     console.error(e);
-                    alertBox('err','Falha ao salvar protocolo.');
+                    alertBox('err','Falha ao salvar grupo.');
                 }
             }
 
             async function destroyProtocolo(id){
-                if(!confirm('Deseja remover este protocolo?')) return;
+                if(!confirm('Deseja remover este grupo?')) return;
                 try{
                     const res = await fetch(PROTOCOLOS.urls.destroy(id), {
                         method: 'DELETE',
@@ -285,7 +285,7 @@
                     await loadProtocolos();
                 } catch(e){
                     console.error(e);
-                    alertBox('err','Falha ao excluir protocolo.');
+                    alertBox('err','Falha ao excluir grupo.');
                 }
             }
 
@@ -298,7 +298,7 @@
             window.openProtocoloForm = async function(protocolo){
                 await loadExames();
                 PROTOCOLOS.dom.modalForm?.classList.remove('hidden');
-                PROTOCOLOS.dom.title.textContent = protocolo ? 'Editar Protocolo' : 'Novo Protocolo';
+                PROTOCOLOS.dom.title.textContent = protocolo ? 'Editar Grupo' : 'Novo Grupo';
                 PROTOCOLOS.dom.id.value = protocolo?.id || '';
                 PROTOCOLOS.dom.titulo.value = protocolo?.titulo || '';
                 PROTOCOLOS.dom.descricao.value = protocolo?.descricao || '';

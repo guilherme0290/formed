@@ -53,7 +53,7 @@ class ComissaoService
             ->where('servico_id', $servicoId)
             ->first();
 
-        $isAso = !empty($contratoItem->regras_snapshot['ghes']);
+        $isAso = !empty($contratoItem->regras_snapshot['ghes']) || !empty($contratoItem->regras_snapshot['aso_tipo']);
 
         $valorBase = $isAso && $vendaItem
             ? (float) $vendaItem->preco_unitario_snapshot

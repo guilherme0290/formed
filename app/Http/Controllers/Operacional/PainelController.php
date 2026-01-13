@@ -248,9 +248,8 @@ class PainelController extends Controller
                     ->with('itens')
                     ->latest('vigencia_inicio')
                     ->first();
-                $contratoItem = $contratoAtivo?->itens
-                    ->firstWhere('servico_id', (int) $tarefa->servico_id);
-                $isAso = !empty($contratoItem?->regras_snapshot['ghes']);
+                $asoServicoId = app(\App\Services\AsoGheService::class)->resolveServicoAsoIdFromContrato($contratoAtivo);
+                $isAso = $asoServicoId && (int) $tarefa->servico_id === (int) $asoServicoId;
 
                 $servicoTreinamentoId = (int) Servico::where('empresa_id', $tarefa->empresa_id)
                     ->where('nome', 'Treinamentos NRs')
@@ -409,9 +408,12 @@ class PainelController extends Controller
             ? $contratoAtivo->itens->pluck('servico_id')->filter()->unique()->values()->all()
             : [];
 
-        $asoServicoId = $contratoAtivo?->itens
-            ->first(fn ($item) => !empty($item->regras_snapshot['ghes']))
-            ?->servico_id;
+        $asoService = app(\App\Services\AsoGheService::class);
+        $asoServicoId = $asoService->resolveServicoAsoIdFromContrato($contratoAtivo);
+        $tiposAsoPermitidos = $asoService->resolveTiposAsoContrato($contratoAtivo);
+        if (empty($tiposAsoPermitidos)) {
+            $asoServicoId = null;
+        }
 
         $tipos = [
             'pgr' => ['pgr', 'pgr'],

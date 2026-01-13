@@ -59,5 +59,10 @@ class Proposta extends Model
         return $this->hasMany(PropostaItens::class);
     }
 
+    public function asoGrupos()
+    {
+        return $this->hasMany(PropostaAsoGrupo::class);
+    }
+
 
 }

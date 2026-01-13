@@ -136,7 +136,7 @@
                     <button type="button" data-fechar-modal-baixa class="text-slate-400 hover:text-slate-600">✕</button>
                 </div>
 
-                <form method="POST" action="{{ route('financeiro.contas-receber.baixar', $conta) }}" class="space-y-3">
+                <form method="POST" action="{{ route('financeiro.contas-receber.baixar', $conta) }}" class="space-y-3" enctype="multipart/form-data">
                     @csrf
                     <div>
                         <label class="text-xs font-semibold text-slate-600">Valor recebido</label>
@@ -146,6 +146,26 @@
                     <div>
                         <label class="text-xs font-semibold text-slate-600">Data do pagamento</label>
                         <input type="date" name="pago_em" class="w-full rounded-lg border-slate-200 bg-white text-slate-900 text-sm" />
+                    </div>
+
+                    <div>
+                        <label class="text-xs font-semibold text-slate-600">Meio de pagamento</label>
+                        <select name="meio_pagamento" class="w-full rounded-lg border-slate-200 bg-white text-slate-900 text-sm" required>
+                            <option value="">Selecione...</option>
+                            @foreach($formasPagamento as $formaPagamento)
+                                <option value="{{ $formaPagamento }}">{{ $formaPagamento }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="text-xs font-semibold text-slate-600">Comprovante de pagamento</label>
+                        <input type="file" name="comprovante" accept=".pdf,.jpg,.jpeg,.png" class="w-full rounded-lg border-slate-200 bg-white text-slate-900 text-sm" required />
+                    </div>
+
+                    <div>
+                        <label class="text-xs font-semibold text-slate-600">Observação</label>
+                        <textarea name="observacao" rows="3" class="w-full rounded-lg border-slate-200 bg-white text-slate-900 text-sm" placeholder="Detalhes sobre a baixa"></textarea>
                     </div>
 
                     <button class="w-full px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700">

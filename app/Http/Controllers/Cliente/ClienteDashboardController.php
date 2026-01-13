@@ -7,6 +7,8 @@ use App\Models\Cliente;
 use App\Models\ClienteContrato;
 use App\Models\ClienteTabelaPreco;
 use App\Models\ClienteTabelaPrecoItem;
+use App\Models\ContaReceberBaixa;
+
 use App\Models\ContaReceberItem;
 use App\Models\Servico;
 use App\Models\Tarefa;
@@ -307,10 +309,18 @@ class ClienteDashboardController extends Controller
     private function faturaTotal(Cliente $cliente): float
     {
         $contasAberto = (float) ContaReceberItem::query()
-            ->where('empresa_id', $cliente->empresa_id)
-            ->where('cliente_id', $cliente->id)
-            ->whereNotIn('status', ['BAIXADO', 'CANCELADO'])
-            ->sum('valor');
+            ->where('contas_receber_itens.empresa_id', $cliente->empresa_id)
+            ->where('contas_receber_itens.cliente_id', $cliente->id)
+            ->where('contas_receber_itens.status', '!=', 'CANCELADO')
+            ->selectRaw('COALESCE(SUM(GREATEST(contas_receber_itens.valor - COALESCE(baixas.total_baixado, 0), 0)), 0) as total')
+            ->leftJoinSub(
+                ContaReceberBaixa::query()
+                    ->selectRaw('conta_receber_item_id, SUM(valor) as total_baixado')
+                    ->groupBy('conta_receber_item_id'),
+                'baixas',
+                fn ($join) => $join->on('contas_receber_itens.id', '=', 'baixas.conta_receber_item_id')
+            )
+            ->value('total');
 
         $vendasSemConta = (float) Venda::query()
             ->where('cliente_id', $cliente->id)
@@ -461,9 +471,12 @@ class ClienteDashboardController extends Controller
             ? $contratoAtivo->itens->pluck('servico_id')->filter()->unique()->values()->all()
             : [];
 
-        $asoServicoId = $contratoAtivo?->itens
-            ->first(fn ($item) => !empty($item->regras_snapshot['ghes']))
-            ?->servico_id;
+        $asoService = app(\App\Services\AsoGheService::class);
+        $asoServicoId = $asoService->resolveServicoAsoIdFromContrato($contratoAtivo);
+        $tiposAsoPermitidos = $asoService->resolveTiposAsoContrato($contratoAtivo);
+        if (empty($tiposAsoPermitidos)) {
+            $asoServicoId = null;
+        }
 
         $tipos = [
             'pgr' => ['pgr', 'pgr'],

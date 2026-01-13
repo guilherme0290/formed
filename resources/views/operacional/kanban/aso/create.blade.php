@@ -31,7 +31,7 @@
     $treinamentosDisponiveis = $treinamentosDisponiveis ?? [];
     $treinamentosBloqueados = array_diff(array_keys($treinamentosDisponiveis), $treinamentosPermitidos);
     $temTreinamentosBloqueados = !empty($treinamentosDisponiveis) && !empty($treinamentosBloqueados);
-    $treinamentoAviso = 'Treinamento não configurado para este cliente. Converse com seu comercial.';
+    $treinamentoAviso = 'Serviço não contratado, converse com seu comercial';
     if (!$temTreinamentosPermitidos) {
         $vaiFazerTreinamento = 0;
     }
@@ -55,6 +55,12 @@
         'tipo_aso',
         $aso->tipo_aso ?? null
     );
+
+    $tiposAsoPermitidos = $tiposAsoPermitidos ?? [];
+    $temTiposAsoPermitidos = !empty($tiposAsoPermitidos);
+    $tipoAsoSelecionadoPermitido = $tipoAsoSelected
+        ? in_array($tipoAsoSelected, $tiposAsoPermitidos, true)
+        : true;
 
     // Email para envio do ASO
     $emailAso = old(
@@ -112,6 +118,11 @@
                         </ul>
                     </div>
                 @endif
+                @if(!$temTiposAsoPermitidos || !$tipoAsoSelecionadoPermitido)
+                    <div class="mb-4 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-xs text-amber-800">
+                        ASO não disponível, fale com seu comercial.
+                    </div>
+                @endif
 
                 <form
                     method="POST"
@@ -150,11 +161,18 @@
                             </label>
 
                             <select name="tipo_aso"
+                                    @disabled(!$temTiposAsoPermitidos)
                                     class="w-full rounded-xl border border-slate-200 text-sm py-2.5 px-3 bg-white
                                        focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400">
                                 <option value="">Selecione o tipo de ASO</option>
                                 @foreach($tiposAso as $key => $label)
-                                    <option value="{{ $key }}" @selected($tipoAsoSelected === $key)>
+                                    @php
+                                        $tipoPermitido = in_array($key, $tiposAsoPermitidos, true);
+                                        $tipoSelecionado = $tipoAsoSelected === $key;
+                                    @endphp
+                                    <option value="{{ $key }}"
+                                            @selected($tipoSelecionado)
+                                            @disabled(!$tipoPermitido && !$tipoSelecionado)>
                                         {{ $label }}
                                     </option>
                                 @endforeach
@@ -393,7 +411,8 @@
                         {{-- Botão final --}}
                         <div class="mt-4">
                             <button type="submit"
-                                    class="w-full px-6 py-3 rounded-xl bg-sky-500 hover:bg-sky-600 text-white text-sm font-medium shadow-sm">
+                                    @disabled(!$temTiposAsoPermitidos || !$tipoAsoSelecionadoPermitido)
+                                    class="w-full px-6 py-3 rounded-xl bg-sky-500 hover:bg-sky-600 text-white text-sm font-medium shadow-sm {{ (!$temTiposAsoPermitidos || !$tipoAsoSelecionadoPermitido) ? 'opacity-60 cursor-not-allowed hover:bg-sky-500' : '' }}">
                                 {{ $isEdit ? 'Atualizar Tarefa ASO' : 'Criar Tarefa ASO' }}
                             </button>
                         </div>
@@ -523,7 +542,8 @@
                         {{-- Botão de salvar reaproveita o mesmo da aba Dados --}}
                         <div class="mt-4">
                             <button type="submit"
-                                    class="w-full px-6 py-3 rounded-xl bg-sky-500 hover:bg-sky-600 text-white text-sm font-medium shadow-sm">
+                                    @disabled(!$temTiposAsoPermitidos || !$tipoAsoSelecionadoPermitido)
+                                    class="w-full px-6 py-3 rounded-xl bg-sky-500 hover:bg-sky-600 text-white text-sm font-medium shadow-sm {{ (!$temTiposAsoPermitidos || !$tipoAsoSelecionadoPermitido) ? 'opacity-60 cursor-not-allowed hover:bg-sky-500' : '' }}">
                                 {{ $isEdit ? 'Atualizar Tarefa ASO' : 'Criar Tarefa ASO' }}
                             </button>
                         </div>

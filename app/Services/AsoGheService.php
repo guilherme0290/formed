@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\ClienteContrato;
+use App\Models\ClienteContratoItem;
 use App\Models\ClienteGhe;
 use App\Models\Funcao;
 use Illuminate\Support\Collection;
@@ -30,22 +31,9 @@ class AsoGheService
         }
 
         $itens = $contrato->relationLoaded('itens') ? $contrato->itens : $contrato->itens()->get();
-        $asoItem = $itens->first(fn ($item) => !empty($item->regras_snapshot['ghes']));
+        $asoItem = $itens->first(fn ($item) => $this->isAsoItemContrato($item));
         if ($asoItem?->servico_id) {
             return (int) $asoItem->servico_id;
-        }
-
-        if (!$contrato->cliente_id) {
-            return null;
-        }
-
-        $temGhe = ClienteGhe::query()
-            ->where('empresa_id', $contrato->empresa_id)
-            ->where('cliente_id', $contrato->cliente_id)
-            ->where('ativo', true)
-            ->exists();
-        if (!$temGhe) {
-            return null;
         }
 
         $asoItem = $itens->first(function ($item) {
@@ -56,13 +44,58 @@ class AsoGheService
         return $asoItem?->servico_id ? (int) $asoItem->servico_id : null;
     }
 
+    public function resolveTiposAsoContrato(?ClienteContrato $contrato): array
+    {
+        if (!$contrato) {
+            return [];
+        }
+
+        $itens = $contrato->relationLoaded('itens') ? $contrato->itens : $contrato->itens()->get();
+        $tipos = [];
+
+        foreach ($itens as $item) {
+            $tipo = $item->regras_snapshot['aso_tipo'] ?? null;
+            if (!$tipo) {
+                $tipo = $this->inferTipoAsoFromDescricao($item->descricao_snapshot ?? null);
+            }
+
+            if ($tipo) {
+                $tipos[$tipo] = true;
+            }
+        }
+
+        return array_keys($tipos);
+    }
+
+    public function isAsoItemContrato(?ClienteContratoItem $item): bool
+    {
+        if (!$item) {
+            return false;
+        }
+
+        if (!empty($item->regras_snapshot['ghes']) || !empty($item->regras_snapshot['aso_tipo'])) {
+            return true;
+        }
+
+        $descricao = strtoupper((string) ($item->descricao_snapshot ?? ''));
+        return $descricao !== '' && str_contains($descricao, 'ASO');
+    }
+
     public function buildSnapshotForCliente(int $clienteId, int $empresaId): array
     {
         $ghes = ClienteGhe::query()
             ->where('empresa_id', $empresaId)
             ->where('cliente_id', $clienteId)
             ->where('ativo', true)
-            ->with(['protocolo.itens.exame:id,titulo,preco,ativo', 'funcoes'])
+            ->with([
+                'protocolo.itens.exame:id,titulo,preco,ativo',
+                'protocoloAdmissional.itens.exame:id,titulo,preco,ativo',
+                'protocoloPeriodico.itens.exame:id,titulo,preco,ativo',
+                'protocoloDemissional.itens.exame:id,titulo,preco,ativo',
+                'protocoloMudancaFuncao.itens.exame:id,titulo,preco,ativo',
+                'protocoloRetornoTrabalho.itens.exame:id,titulo,preco,ativo',
+                'funcoes'
+            ])
             ->orderBy('nome')
             ->get();
 
@@ -70,12 +103,20 @@ class AsoGheService
         $funcaoMap = [];
 
         foreach ($ghes as $ghe) {
-            $exames = $ghe->protocolo?->itens
-                ->map(fn ($it) => $it->exame)
-                ->filter(fn ($ex) => $ex && $ex->ativo)
-                ->values() ?? collect();
+            $protocolos = $this->resolveProtocolosPorTipo($ghe);
+            $examesPorTipo = [];
+            $totalExamesPorTipo = [];
 
-            $totalExames = (float) $exames->sum(fn ($ex) => (float) ($ex->preco ?? 0));
+            foreach ($protocolos as $tipo => $protocolo) {
+                $exames = $protocolo?->itens
+                    ->map(fn ($it) => $it->exame)
+                    ->filter(fn ($ex) => $ex && $ex->ativo)
+                    ->values() ?? collect();
+                $examesPorTipo[$tipo] = $exames;
+                $totalExamesPorTipo[$tipo] = (float) $exames->sum(fn ($ex) => (float) ($ex->preco ?? 0));
+            }
+
+            $totalExames = (float) ($totalExamesPorTipo['admissional'] ?? 0);
 
             $base = [
                 'admissional' => (float) $ghe->base_aso_admissional,
@@ -95,9 +136,10 @@ class AsoGheService
 
             $totalPorTipo = [];
             foreach ($base as $tipo => $valorBase) {
+                $totalTipoExames = (float) ($totalExamesPorTipo[$tipo] ?? 0);
                 $totalPorTipo[$tipo] = $fechado[$tipo] !== null
                     ? (float) $fechado[$tipo]
-                    : (float) ($valorBase + $totalExames);
+                    : (float) ($valorBase + $totalTipoExames);
             }
 
             $funcoesIds = $ghe->funcoes->pluck('funcao_id')->filter()->values()->all();
@@ -108,16 +150,30 @@ class AsoGheService
             $snapshotGhes[] = [
                 'id' => $ghe->id,
                 'nome' => $ghe->nome,
-                'protocolo' => $ghe->protocolo ? [
-                    'id' => $ghe->protocolo->id,
-                    'titulo' => $ghe->protocolo->titulo,
+                'protocolo' => $protocolos['admissional'] ? [
+                    'id' => $protocolos['admissional']->id,
+                    'titulo' => $protocolos['admissional']->titulo,
                 ] : null,
-                'exames' => $exames->map(fn ($ex) => [
+                'protocolos' => collect($protocolos)->map(function ($protocolo) {
+                    return $protocolo ? [
+                        'id' => $protocolo->id,
+                        'titulo' => $protocolo->titulo,
+                    ] : null;
+                })->all(),
+                'exames' => ($examesPorTipo['admissional'] ?? collect())->map(fn ($ex) => [
                     'id' => $ex->id,
                     'titulo' => $ex->titulo,
                     'preco' => (float) $ex->preco,
                 ])->all(),
+                'exames_por_tipo' => collect($examesPorTipo)->map(function ($exames) {
+                    return $exames->map(fn ($ex) => [
+                        'id' => $ex->id,
+                        'titulo' => $ex->titulo,
+                        'preco' => (float) $ex->preco,
+                    ])->all();
+                })->all(),
                 'total_exames' => $totalExames,
+                'total_exames_por_tipo' => $totalExamesPorTipo,
                 'base' => $base,
                 'preco_fechado' => $fechado,
                 'total_por_tipo' => $totalPorTipo,
@@ -159,5 +215,45 @@ class AsoGheService
             ->where('ativo', true)
             ->orderBy('nome')
             ->get();
+    }
+
+    private function resolveProtocolosPorTipo(ClienteGhe $ghe): array
+    {
+        return [
+            'admissional' => $ghe->protocoloAdmissional ?: $ghe->protocolo,
+            'periodico' => $ghe->protocoloPeriodico ?: $ghe->protocolo,
+            'demissional' => $ghe->protocoloDemissional ?: $ghe->protocolo,
+            'mudanca_funcao' => $ghe->protocoloMudancaFuncao ?: $ghe->protocolo,
+            'retorno_trabalho' => $ghe->protocoloRetornoTrabalho ?: $ghe->protocolo,
+        ];
+    }
+
+    private function inferTipoAsoFromDescricao(?string $descricao): ?string
+    {
+        $texto = mb_strtolower(trim((string) $descricao));
+        if ($texto === '') {
+            return null;
+        }
+        if (!str_contains($texto, 'aso')) {
+            return null;
+        }
+
+        $map = [
+            'admissional' => ['admissional'],
+            'periodico' => ['periodico', 'periódico'],
+            'demissional' => ['demissional'],
+            'mudanca_funcao' => ['mudanca', 'mudança'],
+            'retorno_trabalho' => ['retorno'],
+        ];
+
+        foreach ($map as $tipo => $keywords) {
+            foreach ($keywords as $keyword) {
+                if (str_contains($texto, $keyword)) {
+                    return $tipo;
+                }
+            }
+        }
+
+        return null;
     }
 }

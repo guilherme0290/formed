@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Financeiro;
 
+use App\Helpers\S3Helper;
 use App\Http\Controllers\Controller;
 use App\Models\Cliente;
 use App\Models\ContaReceber;
@@ -112,6 +113,17 @@ class ContasReceberController extends Controller
                 'status_conta' => $statusConta,
             ],
         ]);
+    }
+
+    private function formasPagamento(): array
+    {
+        return [
+            'Pix',
+            'Boleto',
+            'Cartão de crédito',
+            'Cartão de débito',
+            'Transferência',
+        ];
     }
 
     public function itens(Request $request): View|RedirectResponse
@@ -328,6 +340,7 @@ class ContasReceberController extends Controller
         return view('financeiro.contas-receber.show', [
             'conta' => $contaReceber,
             'servicos' => $servicos,
+            'formasPagamento' => $this->formasPagamento(),
         ]);
     }
 
@@ -337,12 +350,31 @@ class ContasReceberController extends Controller
             abort(403);
         }
 
+        $formasPagamento = $this->formasPagamento();
         $data = $request->validate([
             'valor' => ['required', 'numeric', 'min:0.01'],
             'pago_em' => ['nullable', 'date'],
+            'meio_pagamento' => ['required', 'string', 'in:'.implode(',', $formasPagamento)],
+            'observacao' => ['nullable', 'string', 'max:1000'],
+            'comprovante' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'],
         ]);
 
-        $valorAplicado = $service->aplicarBaixa($contaReceber, (float) $data['valor'], $data['pago_em'] ?? null);
+        $comprovante = $request->file('comprovante');
+        $comprovantePath = S3Helper::upload($comprovante, 'contas-receber/' . $contaReceber->empresa_id);
+
+        $valorAplicado = $service->aplicarBaixa(
+            $contaReceber,
+            (float) $data['valor'],
+            $data['pago_em'] ?? null,
+            [
+                'meio_pagamento' => $data['meio_pagamento'],
+                'observacao' => $data['observacao'] ?? null,
+                'comprovante_path' => $comprovantePath,
+                'comprovante_nome' => $comprovante->getClientOriginalName(),
+                'comprovante_mime' => $comprovante->getClientMimeType(),
+                'comprovante_tamanho' => $comprovante->getSize(),
+            ]
+        );
         if ($valorAplicado <= 0) {
             return back()->with('error', 'Não foi possível aplicar a baixa.');
         }

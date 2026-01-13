@@ -114,7 +114,7 @@
                         <thead class="bg-slate-50">
                         <tr class="text-left text-slate-600">
                             <th class="px-5 py-3 font-semibold">GHE</th>
-                            <th class="px-5 py-3 font-semibold">Protocolo</th>
+                            <th class="px-5 py-3 font-semibold">Grupo de Exames</th>
                             <th class="px-5 py-3 font-semibold">Total Exames</th>
                             <th class="px-5 py-3 font-semibold">Admissional</th>
                             <th class="px-5 py-3 font-semibold">Periódico</th>

@@ -15,6 +15,11 @@ class ClienteGhe extends Model
         'cliente_id',
         'nome',
         'protocolo_id',
+        'protocolo_admissional_id',
+        'protocolo_periodico_id',
+        'protocolo_demissional_id',
+        'protocolo_mudanca_funcao_id',
+        'protocolo_retorno_trabalho_id',
         'base_aso_admissional',
         'base_aso_periodico',
         'base_aso_demissional',
@@ -50,6 +55,31 @@ class ClienteGhe extends Model
     public function protocolo(): BelongsTo
     {
         return $this->belongsTo(ProtocoloExame::class, 'protocolo_id');
+    }
+
+    public function protocoloAdmissional(): BelongsTo
+    {
+        return $this->belongsTo(ProtocoloExame::class, 'protocolo_admissional_id');
+    }
+
+    public function protocoloPeriodico(): BelongsTo
+    {
+        return $this->belongsTo(ProtocoloExame::class, 'protocolo_periodico_id');
+    }
+
+    public function protocoloDemissional(): BelongsTo
+    {
+        return $this->belongsTo(ProtocoloExame::class, 'protocolo_demissional_id');
+    }
+
+    public function protocoloMudancaFuncao(): BelongsTo
+    {
+        return $this->belongsTo(ProtocoloExame::class, 'protocolo_mudanca_funcao_id');
+    }
+
+    public function protocoloRetornoTrabalho(): BelongsTo
+    {
+        return $this->belongsTo(ProtocoloExame::class, 'protocolo_retorno_trabalho_id');
     }
 
     public function funcoes(): HasMany

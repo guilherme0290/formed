@@ -66,7 +66,7 @@ class ContaReceberService
         $venda->update(['status' => 'FECHADA']);
     }
 
-    public function aplicarBaixa(ContaReceber $conta, float $valor, ?string $pagoEm = null): float
+    public function aplicarBaixa(ContaReceber $conta, float $valor, ?string $pagoEm = null, array $extras = []): float
     {
         $restante = $valor;
         if ($restante <= 0) {
@@ -104,6 +104,12 @@ class ContaReceberService
                 'cliente_id' => $conta->cliente_id,
                 'valor' => $aplicar,
                 'pago_em' => $pagoEm,
+                'meio_pagamento' => $extras['meio_pagamento'] ?? null,
+                'observacao' => $extras['observacao'] ?? null,
+                'comprovante_path' => $extras['comprovante_path'] ?? null,
+                'comprovante_nome' => $extras['comprovante_nome'] ?? null,
+                'comprovante_mime' => $extras['comprovante_mime'] ?? null,
+                'comprovante_tamanho' => $extras['comprovante_tamanho'] ?? null,
             ]);
 
             $novoSaldo = $saldo - $aplicar;

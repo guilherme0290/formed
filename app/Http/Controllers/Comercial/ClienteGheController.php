@@ -23,39 +23,71 @@ class ClienteGheController extends Controller
         $ghes = ClienteGhe::query()
             ->where('empresa_id', $empresaId)
             ->where('cliente_id', $cliente->id)
-            ->with(['protocolo.itens.exame:id,titulo,preco,ativo', 'funcoes.funcao:id,nome'])
+            ->with([
+                'protocolo.itens.exame:id,titulo,preco,ativo',
+                'protocoloAdmissional.itens.exame:id,titulo,preco,ativo',
+                'protocoloPeriodico.itens.exame:id,titulo,preco,ativo',
+                'protocoloDemissional.itens.exame:id,titulo,preco,ativo',
+                'protocoloMudancaFuncao.itens.exame:id,titulo,preco,ativo',
+                'protocoloRetornoTrabalho.itens.exame:id,titulo,preco,ativo',
+                'funcoes.funcao:id,nome'
+            ])
             ->orderBy('nome')
             ->get()
             ->map(function (ClienteGhe $ghe) {
-                $exames = $ghe->protocolo?->itens
-                    ->map(fn ($it) => $it->exame)
-                    ->filter()
-                    ->values() ?? collect();
+                $protocolos = $this->resolveProtocolosPorTipo($ghe);
+                $examesPorTipo = [];
+                $totalExamesPorTipo = [];
 
-                $totalExames = $exames->sum(fn ($ex) => (float) ($ex->preco ?? 0));
+                foreach ($protocolos as $tipo => $protocolo) {
+                    $exames = $protocolo?->itens
+                        ->map(fn ($it) => $it->exame)
+                        ->filter()
+                        ->values() ?? collect();
+                    $examesPorTipo[$tipo] = $exames;
+                    $totalExamesPorTipo[$tipo] = (float) $exames->sum(fn ($ex) => (float) ($ex->preco ?? 0));
+                }
+
+                $totalExames = (float) ($totalExamesPorTipo['admissional'] ?? 0);
 
                 return [
                     'id' => $ghe->id,
                     'nome' => $ghe->nome,
                     'ativo' => (bool) $ghe->ativo,
-                    'protocolo' => $ghe->protocolo ? [
-                        'id' => $ghe->protocolo->id,
-                        'titulo' => $ghe->protocolo->titulo,
-                        'descricao' => $ghe->protocolo->descricao,
+                    'protocolo' => $protocolos['admissional'] ? [
+                        'id' => $protocolos['admissional']->id,
+                        'titulo' => $protocolos['admissional']->titulo,
+                        'descricao' => $protocolos['admissional']->descricao,
                     ] : null,
+                    'protocolos' => collect($protocolos)->map(function ($protocolo) {
+                        return $protocolo ? [
+                            'id' => $protocolo->id,
+                            'titulo' => $protocolo->titulo,
+                            'descricao' => $protocolo->descricao,
+                        ] : null;
+                    })->all(),
                     'funcoes' => $ghe->funcoes->map(fn ($f) => [
                         'id' => $f->funcao_id,
                         'nome' => $f->funcao?->nome,
                     ])->filter(fn ($f) => !empty($f['id']))->values()->all(),
                     'base' => $this->formatBase($ghe),
                     'preco_fechado' => $this->formatFechados($ghe),
-                    'exames' => $exames->map(fn ($ex) => [
+                    'exames' => ($examesPorTipo['admissional'] ?? collect())->map(fn ($ex) => [
                         'id' => $ex->id,
                         'titulo' => $ex->titulo,
                         'preco' => (float) $ex->preco,
                         'ativo' => (bool) $ex->ativo,
                     ])->all(),
+                    'exames_por_tipo' => collect($examesPorTipo)->map(function ($exames) {
+                        return $exames->map(fn ($ex) => [
+                            'id' => $ex->id,
+                            'titulo' => $ex->titulo,
+                            'preco' => (float) $ex->preco,
+                            'ativo' => (bool) $ex->ativo,
+                        ])->all();
+                    })->all(),
                     'total_exames' => (float) $totalExames,
+                    'total_exames_por_tipo' => $totalExamesPorTipo,
                 ];
             });
 
@@ -70,6 +102,12 @@ class ClienteGheController extends Controller
             'cliente_id' => ['required', 'integer', 'exists:clientes,id'],
             'nome' => ['required', 'string', 'max:255'],
             'protocolo_id' => ['nullable', 'integer', 'exists:protocolos_exames,id'],
+            'protocolos' => ['array'],
+            'protocolos.admissional' => ['nullable', 'integer', 'exists:protocolos_exames,id'],
+            'protocolos.periodico' => ['nullable', 'integer', 'exists:protocolos_exames,id'],
+            'protocolos.demissional' => ['nullable', 'integer', 'exists:protocolos_exames,id'],
+            'protocolos.mudanca_funcao' => ['nullable', 'integer', 'exists:protocolos_exames,id'],
+            'protocolos.retorno_trabalho' => ['nullable', 'integer', 'exists:protocolos_exames,id'],
             'funcoes' => ['array'],
             'funcoes.*' => ['integer', 'exists:funcoes,id'],
             'base' => ['array'],
@@ -88,15 +126,23 @@ class ClienteGheController extends Controller
         ]);
 
         $this->authorizeCliente($empresaId, (int) $data['cliente_id']);
-        $this->authorizeProtocolo($empresaId, $data['protocolo_id'] ?? null);
+        $protocolos = $this->resolveProtocolosInput($data['protocolos'] ?? [], $data['protocolo_id'] ?? null);
+        foreach ($protocolos as $protocoloId) {
+            $this->authorizeProtocolo($empresaId, $protocoloId);
+        }
         $this->authorizeFuncoes($empresaId, $data['funcoes'] ?? []);
 
-        return DB::transaction(function () use ($data, $empresaId) {
+        return DB::transaction(function () use ($data, $empresaId, $protocolos) {
             $ghe = ClienteGhe::create([
                 'empresa_id' => $empresaId,
                 'cliente_id' => $data['cliente_id'],
                 'nome' => $data['nome'],
                 'protocolo_id' => $data['protocolo_id'] ?? null,
+                'protocolo_admissional_id' => $protocolos['admissional'],
+                'protocolo_periodico_id' => $protocolos['periodico'],
+                'protocolo_demissional_id' => $protocolos['demissional'],
+                'protocolo_mudanca_funcao_id' => $protocolos['mudanca_funcao'],
+                'protocolo_retorno_trabalho_id' => $protocolos['retorno_trabalho'],
                 'base_aso_admissional' => $data['base']['admissional'] ?? 0,
                 'base_aso_periodico' => $data['base']['periodico'] ?? 0,
                 'base_aso_demissional' => $data['base']['demissional'] ?? 0,
@@ -123,6 +169,12 @@ class ClienteGheController extends Controller
         $data = $request->validate([
             'nome' => ['required', 'string', 'max:255'],
             'protocolo_id' => ['nullable', 'integer', 'exists:protocolos_exames,id'],
+            'protocolos' => ['array'],
+            'protocolos.admissional' => ['nullable', 'integer', 'exists:protocolos_exames,id'],
+            'protocolos.periodico' => ['nullable', 'integer', 'exists:protocolos_exames,id'],
+            'protocolos.demissional' => ['nullable', 'integer', 'exists:protocolos_exames,id'],
+            'protocolos.mudanca_funcao' => ['nullable', 'integer', 'exists:protocolos_exames,id'],
+            'protocolos.retorno_trabalho' => ['nullable', 'integer', 'exists:protocolos_exames,id'],
             'funcoes' => ['array'],
             'funcoes.*' => ['integer', 'exists:funcoes,id'],
             'base' => ['array'],
@@ -140,13 +192,19 @@ class ClienteGheController extends Controller
             'ativo' => ['nullable', 'boolean'],
         ]);
 
-        $this->authorizeProtocolo($ghe->empresa_id, $data['protocolo_id'] ?? null);
+        $shouldUpdateProtocolos = $request->has('protocolos') || $request->has('protocolo_id');
+        $protocolos = null;
+        if ($shouldUpdateProtocolos) {
+            $protocolos = $this->resolveProtocolosInput($data['protocolos'] ?? [], $data['protocolo_id'] ?? null);
+            foreach ($protocolos as $protocoloId) {
+                $this->authorizeProtocolo($ghe->empresa_id, $protocoloId);
+            }
+        }
         $this->authorizeFuncoes($ghe->empresa_id, $data['funcoes'] ?? []);
 
-        return DB::transaction(function () use ($data, $ghe) {
-            $ghe->update([
+        return DB::transaction(function () use ($data, $ghe, $protocolos, $shouldUpdateProtocolos) {
+            $updates = [
                 'nome' => $data['nome'],
-                'protocolo_id' => $data['protocolo_id'] ?? null,
                 'base_aso_admissional' => $data['base']['admissional'] ?? 0,
                 'base_aso_periodico' => $data['base']['periodico'] ?? 0,
                 'base_aso_demissional' => $data['base']['demissional'] ?? 0,
@@ -158,7 +216,20 @@ class ClienteGheController extends Controller
                 'preco_fechado_mudanca_funcao' => $data['preco_fechado']['mudanca_funcao'] ?? null,
                 'preco_fechado_retorno_trabalho' => $data['preco_fechado']['retorno_trabalho'] ?? null,
                 'ativo' => $data['ativo'] ?? false,
-            ]);
+            ];
+
+            if ($shouldUpdateProtocolos && $protocolos) {
+                $updates = array_merge($updates, [
+                    'protocolo_id' => $data['protocolo_id'] ?? null,
+                    'protocolo_admissional_id' => $protocolos['admissional'],
+                    'protocolo_periodico_id' => $protocolos['periodico'],
+                    'protocolo_demissional_id' => $protocolos['demissional'],
+                    'protocolo_mudanca_funcao_id' => $protocolos['mudanca_funcao'],
+                    'protocolo_retorno_trabalho_id' => $protocolos['retorno_trabalho'],
+                ]);
+            }
+
+            $ghe->update($updates);
 
             $this->syncFuncoes($ghe, $data['funcoes'] ?? []);
 
@@ -251,6 +322,28 @@ class ClienteGheController extends Controller
             'demissional' => $ghe->preco_fechado_demissional !== null ? (float) $ghe->preco_fechado_demissional : null,
             'mudanca_funcao' => $ghe->preco_fechado_mudanca_funcao !== null ? (float) $ghe->preco_fechado_mudanca_funcao : null,
             'retorno_trabalho' => $ghe->preco_fechado_retorno_trabalho !== null ? (float) $ghe->preco_fechado_retorno_trabalho : null,
+        ];
+    }
+
+    private function resolveProtocolosInput(array $protocolos, ?int $fallback): array
+    {
+        return [
+            'admissional' => $protocolos['admissional'] ?? $fallback,
+            'periodico' => $protocolos['periodico'] ?? $fallback,
+            'demissional' => $protocolos['demissional'] ?? $fallback,
+            'mudanca_funcao' => $protocolos['mudanca_funcao'] ?? $fallback,
+            'retorno_trabalho' => $protocolos['retorno_trabalho'] ?? $fallback,
+        ];
+    }
+
+    private function resolveProtocolosPorTipo(ClienteGhe $ghe): array
+    {
+        return [
+            'admissional' => $ghe->protocoloAdmissional ?: $ghe->protocolo,
+            'periodico' => $ghe->protocoloPeriodico ?: $ghe->protocolo,
+            'demissional' => $ghe->protocoloDemissional ?: $ghe->protocolo,
+            'mudanca_funcao' => $ghe->protocoloMudancaFuncao ?: $ghe->protocolo,
+            'retorno_trabalho' => $ghe->protocoloRetornoTrabalho ?: $ghe->protocolo,
         ];
     }
 }

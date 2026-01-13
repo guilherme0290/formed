@@ -134,10 +134,6 @@
     </nav>
 
     <div class="relative z-10 px-4 py-4 border-t border-slate-800 space-y-2 text-sm">
-        <a href="{{ url('/') }}" class="flex items-center gap-2 text-slate-300 hover:text-white">
-            <span>⏪</span>
-            <span data-sidebar-label>Voltar ao Início</span>
-        </a>
         <form method="POST" action="{{ route('logout') }}">
             @csrf
             <button class="flex items-center gap-2 text-rose-400 hover:text-rose-300">

@@ -97,7 +97,7 @@
         <button type="button"
                 class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-100 text-slate-400 text-xs font-semibold cursor-not-allowed"
                 disabled
-                title="Cadastro de função disponível no Comercial">
+                title="Fale com seu comercial para adicionar uma nova função">
             <span class="text-base leading-none">+</span>
             <span class="leading-none">
                 {{ $label }}

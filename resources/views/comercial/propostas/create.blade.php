@@ -20,6 +20,7 @@
             'esocial' => null,
             'temGhe' => $temGheSnapshot,
             'gheTotal' => $gheTotalExames,
+            'asoGrupos' => [],
         ];
 
         if ($isEdit) {
@@ -48,6 +49,18 @@
                 'qtd' => (int) ($proposta->esocial_qtd_funcionarios ?? 0),
                 'valor' => (float) ($proposta->esocial_valor_mensal ?? 0),
             ];
+        }
+
+        if (!empty($propostaAsoGrupos)) {
+            $initialData['asoGrupos'] = collect($propostaAsoGrupos)
+                ->mapWithKeys(function ($row) {
+                    return [(string) $row->tipo_aso => [
+                        'grupo_id' => (int) ($row->grupo_exames_id ?? 0),
+                        'grupo_titulo' => $row->grupo?->titulo,
+                        'total_exames' => (float) ($row->total_exames ?? 0),
+                    ]];
+                })
+                ->toArray();
         }
     @endphp
     <div class="max-w-5xl mx-auto px-4 md:px-6 py-6">
@@ -98,15 +111,21 @@
 
                         <div>
                             <label class="text-xs font-medium text-slate-600">Cliente Final</label>
-                            <select name="cliente_id" required class="mt-1 w-full border border-slate-200 rounded-xl text-sm px-3 py-2">
-                                <option value="">Selecione...</option>
-                                @foreach($clientes as $cliente)
-                                    <option value="{{ $cliente->id }}"
-                                        @selected((string) old('cliente_id', $isEdit ? $proposta->cliente_id : '') === (string) $cliente->id)>
-                                        {{ $cliente->razao_social }}
-                                    </option>
-                                @endforeach
-                            </select>
+                            <div class="mt-1 flex items-center gap-2">
+                                <select name="cliente_id" required class="w-full border border-slate-200 rounded-xl text-sm px-3 py-2">
+                                    <option value="">Selecione...</option>
+                                    @foreach($clientes as $cliente)
+                                        <option value="{{ $cliente->id }}"
+                                            @selected((string) old('cliente_id', $isEdit ? $proposta->cliente_id : '') === (string) $cliente->id)>
+                                            {{ $cliente->razao_social }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <a href="{{ route('clientes.create') }}"
+                                   class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 whitespace-nowrap">
+                                    + Novo cliente
+                                </a>
+                            </div>
                         </div>
                     </section>
 
@@ -126,6 +145,11 @@
                                         data-tab="ghe">
                                     GHE
                                     <span id="badgeTabGhe" class="hidden absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-amber-400"></span>
+                                </button>
+                                <button type="button"
+                                        class="relative px-4 py-2 rounded-full text-sm font-semibold text-slate-600 hover:bg-slate-100"
+                                        data-tab="aso-tipos">
+                                    ASO
                                 </button>
                                 <button type="button"
                                         class="relative px-4 py-2 rounded-full text-sm font-semibold text-slate-600 hover:bg-slate-100"
@@ -187,13 +211,69 @@
                                 <div class="text-sm font-semibold text-slate-800">GHE do Cliente</div>
                                 <div class="flex items-center justify-between">
                                     <p class="text-xs text-slate-500">
-                                        Defina GHEs, funções e protocolos de exames para este cliente.
+                                        Defina GHEs e funções para este cliente.
                                     </p>
                                     <button type="button"
                                             class="px-3 py-2 rounded-xl border border-amber-200 text-sm bg-amber-50 hover:bg-amber-100 text-amber-800 font-semibold"
                                             id="btnGheCliente">
                                         Gerenciar GHE
                                     </button>
+                                </div>
+                            </div>
+
+                            <div data-tab-panel="aso-tipos" class="hidden space-y-3">
+                                <div class="text-sm font-semibold text-slate-800">ASO por tipo</div>
+                                <p class="text-xs text-slate-500">
+                                    Selecione grupos de exames por tipo de ASO. Cada tipo gera um item separado na proposta.
+                                </p>
+
+                                @php
+                                    $asoTipos = [
+                                        'admissional' => 'Admissional',
+                                        'periodico' => 'Periódico',
+                                        'demissional' => 'Demissional',
+                                        'mudanca_funcao' => 'Mudança de Função',
+                                        'retorno_trabalho' => 'Retorno ao Trabalho',
+                                    ];
+                                @endphp
+
+                                <div class="rounded-xl border border-slate-200 overflow-hidden">
+                                    <div class="hidden md:grid grid-cols-12 gap-2 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600">
+                                        <div class="col-span-2">Tipo</div>
+                                        <div class="col-span-4">Grupo de exames</div>
+                                        <div class="col-span-4"></div>
+                                        <div class="col-span-2 text-right">Total</div>
+                                    </div>
+                                    <div class="divide-y divide-slate-200">
+                                        @foreach($asoTipos as $asoKey => $asoLabel)
+                                            <div class="grid grid-cols-12 gap-2 items-center px-3 py-2 bg-white">
+                                                <div class="col-span-12 md:col-span-2">
+                                                    <div class="text-[11px] font-semibold text-slate-500 md:hidden">Tipo</div>
+                                                    <div class="text-sm font-semibold text-slate-800">{{ $asoLabel }}</div>
+                                                    <button type="button"
+                                                            data-aso-show="{{ $asoKey }}"
+                                                            class="mt-1 text-xs font-semibold text-blue-600 hover:underline">
+                                                        Ver exames
+                                                    </button>
+                                                    <div class="mt-1 hidden text-xs text-slate-600" data-aso-exames="{{ $asoKey }}"></div>
+                                                </div>
+                                                <div class="col-span-12 md:col-span-4">
+                                                    <div class="text-[11px] font-semibold text-slate-500 md:hidden">Grupo de exames</div>
+                                                    <select data-aso-grupo="{{ $asoKey }}"
+                                                            class="w-full rounded-md border-slate-200 text-sm px-2 py-2">
+                                                        <option value="">Selecione...</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-span-12 md:col-span-4"></div>
+                                                <div class="col-span-12 md:col-span-2 text-right">
+                                                    <div class="text-[11px] font-semibold text-slate-500 md:hidden">Total</div>
+                                                    <div class="text-sm font-semibold text-emerald-700">
+                                                        <span data-aso-total="{{ $asoKey }}">R$ 0,00</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
                                 </div>
                             </div>
 
@@ -226,10 +306,20 @@
 
 
 
-                        {{-- Lista cards --}}
+                        {{-- Lista itens (compacto) --}}
                         <div class="mt-5">
                             <h3 class="text-xs font-semibold text-slate-600 mb-2">Serviços Adicionados</h3>
-                            <div id="lista-itens" class="space-y-3"></div>
+                            <div class="rounded-xl border border-slate-200 overflow-hidden">
+                                <div class="hidden md:grid grid-cols-12 gap-1 bg-slate-50 px-2 py-1.5 text-xs font-semibold text-slate-600">
+                                    <div class="col-span-4">Item</div>
+                                    <div class="col-span-2">Valor</div>
+                                    <div class="col-span-2">Prazo</div>
+                                    <div class="col-span-2">Qtd</div>
+                                    <div class="col-span-1 text-right">Total</div>
+                                    <div class="col-span-1 text-center">Ação</div>
+                                </div>
+                                <div id="lista-itens" class="divide-y divide-slate-200"></div>
+                            </div>
                         </div>
                     </section>
 
@@ -417,6 +507,7 @@
                     },
                     treinamentosJson: @json(route('comercial.propostas.treinamentos-nrs.json')),
                     examesJson: @json(route('comercial.exames.indexJson')),
+                    gruposExames: @json(route('comercial.protocolos-exames.indexJson')),
                     esocialPreco: (qtd) => @json(route('comercial.propostas.esocial-preco', ['qtd' => '__QTD__']))
                         .replace('__QTD__', encodeURIComponent(qtd)),
 
@@ -439,6 +530,8 @@
                     itens: [],         // {id, servico_id, tipo, nome, descricao, valor_unitario, quantidade, prazo, acrescimo, desconto, meta, valor_total}
                     exames: { loaded: false, list: [], manualPrice: false }, // [{id, nome, valor}]
                     esocial: { enabled:false, qtd:0, valor:0, aviso:null },
+                    asoGrupos: {},
+                    gruposExames: [],
                 };
 
                 const INITIAL = @json($initialData);
@@ -480,6 +573,25 @@
                     tabsWrap: document.querySelector('[data-tabs="proposta"]'),
                 };
 
+                const ASO_TYPES = [
+                    { key: 'admissional', label: 'Admissional' },
+                    { key: 'periodico', label: 'Periódico' },
+                    { key: 'demissional', label: 'Demissional' },
+                    { key: 'mudanca_funcao', label: 'Mudança de Função' },
+                    { key: 'retorno_trabalho', label: 'Retorno ao Trabalho' },
+                ];
+
+                const asoDom = {};
+                ASO_TYPES.forEach(({ key }) => {
+                    asoDom[key] = {
+                        select: document.querySelector(`[data-aso-grupo="${key}"]`),
+                        resumo: document.querySelector(`[data-aso-resumo="${key}"]`),
+                        total: document.querySelector(`[data-aso-total="${key}"]`),
+                        exames: document.querySelector(`[data-aso-exames="${key}"]`),
+                        showBtn: document.querySelector(`[data-aso-show="${key}"]`),
+                    };
+                });
+
                 // =========================
                 // Hydrate (edit)
                 // =========================
@@ -494,11 +606,17 @@
                         state.esocial.valor = Number(INITIAL.esocial.valor || 0);
                     }
 
+                    if (INITIAL.asoGrupos) {
+                        state.asoGrupos = INITIAL.asoGrupos;
+                    }
+
                     ensureAsoItemForGhe();
                 }
 
                 initTabs();
                 updateTabBadges();
+                bindAsoGrupoEvents();
+                loadGruposExames();
 
                 // =========================
                 // Utils
@@ -509,6 +627,7 @@
                 }
 
                 function ensureAsoItemForGhe() {
+                    if (hasAsoGrupoSelection()) return;
                     if (!gheInfo.has) return;
                     if (state.itens.some(it => hasAsoItem(it))) return;
                     const item = {
@@ -529,6 +648,168 @@
                     state.itens.push(item);
                     applyGheToAsoItems();
                     render();
+                }
+
+                function hasAsoGrupoSelection() {
+                    return Object.values(state.asoGrupos || {}).some(g => Number(g?.grupo_id || 0) > 0);
+                }
+
+                function getGrupoById(id) {
+                    return state.gruposExames.find(g => Number(g.id) === Number(id));
+                }
+
+                async function loadGruposExames() {
+                    try {
+                        const res = await fetch(URLS.gruposExames, { headers: { 'Accept': 'application/json' } });
+                        const json = await res.json();
+                        state.gruposExames = json.data || [];
+                        renderAsoGrupoOptions();
+                        applyInitialAsoGrupos();
+                    } catch (e) {
+                        console.error(e);
+                    }
+                }
+
+                function renderAsoGrupoOptions() {
+                    ASO_TYPES.forEach(({ key }) => {
+                        const sel = asoDom[key]?.select;
+                        if (!sel) return;
+                        sel.innerHTML = '<option value="">Selecione...</option>';
+                        state.gruposExames.forEach(g => {
+                            const opt = document.createElement('option');
+                            opt.value = g.id;
+                            opt.textContent = g.titulo;
+                            sel.appendChild(opt);
+                        });
+                    });
+                }
+
+                function applyInitialAsoGrupos() {
+                    if (!state.asoGrupos) return;
+                    ASO_TYPES.forEach(({ key }) => {
+                        const sel = asoDom[key]?.select;
+                        const grupoId = Number(state.asoGrupos?.[key]?.grupo_id || 0);
+                        if (sel && grupoId) {
+                            sel.value = String(grupoId);
+                        }
+                        updateAsoGrupoResumo(key);
+                    });
+                }
+
+                function updateAsoGrupoResumo(tipo) {
+                    const dom = asoDom[tipo];
+                    if (!dom?.select) return;
+                    const grupoId = Number(dom.select.value || 0);
+                    if (!grupoId) {
+                        if (dom.resumo) dom.resumo.textContent = 'Nenhum grupo selecionado.';
+                        if (dom.total) dom.total.textContent = brl(0);
+                        if (dom.exames && !dom.exames.classList.contains('hidden')) {
+                            dom.exames.innerHTML = '<div class="text-slate-500">Selecione um grupo para ver os exames.</div>';
+                        }
+                        delete state.asoGrupos[tipo];
+                        syncAsoTipoItems();
+                        return;
+                    }
+
+                    const grupo = getGrupoById(grupoId);
+                    const total = Number(state.asoGrupos?.[tipo]?.total_exames ?? grupo?.total ?? 0);
+                    const titulo = grupo?.titulo || state.asoGrupos?.[tipo]?.grupo_titulo || 'Grupo selecionado';
+
+                    state.asoGrupos[tipo] = {
+                        grupo_id: grupoId,
+                        grupo_titulo: titulo,
+                        total_exames: total,
+                    };
+
+                    if (dom.resumo) {
+                        dom.resumo.textContent = `${titulo} • ${grupo?.exames?.length ?? 0} exame(s)`;
+                    }
+                    if (dom.total) dom.total.textContent = brl(total);
+                    if (dom.exames && !dom.exames.classList.contains('hidden')) {
+                        renderAsoExames(tipo);
+                    }
+                    syncAsoTipoItems();
+                }
+
+                function renderAsoExames(tipo) {
+                    const dom = asoDom[tipo];
+                    if (!dom?.exames) return;
+                    const grupoId = Number(dom.select?.value || 0);
+                    if (!grupoId) {
+                        dom.exames.innerHTML = '<div class="text-slate-500">Selecione um grupo para ver os exames.</div>';
+                        return;
+                    }
+                    const grupo = getGrupoById(grupoId);
+                    if (!grupo?.exames?.length) {
+                        dom.exames.innerHTML = '<div class="text-slate-500">Nenhum exame neste grupo.</div>';
+                        return;
+                    }
+                    dom.exames.innerHTML = grupo.exames.map(ex => {
+                        return `<div class="flex items-center justify-between gap-2">
+                            <span class="truncate">${escapeHtml(ex.titulo || 'Exame')}</span>
+                            <span class="text-slate-700 font-semibold">${brl(ex.preco || 0)}</span>
+                        </div>`;
+                    }).join('');
+                }
+
+                function syncAsoTipoItems() {
+                    const tiposSelecionados = new Set(Object.keys(state.asoGrupos || {}));
+
+                    state.itens = state.itens.filter(it => {
+                        const tipo = it?.meta?.aso_tipo;
+                        return !tipo || tiposSelecionados.has(tipo);
+                    });
+
+                    ASO_TYPES.forEach(({ key, label }) => {
+                        const grupo = state.asoGrupos?.[key];
+                        if (!grupo?.grupo_id) return;
+
+                        let item = state.itens.find(it => it?.meta?.aso_tipo === key);
+                        if (!item) {
+                            item = {
+                                id: uid(),
+                                servico_id: SERVICO_ASO_ID ? Number(SERVICO_ASO_ID) : null,
+                                tipo: 'ASO_TIPO',
+                                nome: `ASO - ${label}`,
+                                descricao: null,
+                                valor_unitario: 0,
+                                quantidade: 1,
+                                prazo: '',
+                                acrescimo: 0,
+                                desconto: 0,
+                                meta: {},
+                                valor_total: 0,
+                            };
+                            state.itens.push(item);
+                        }
+
+                        item.nome = `ASO - ${label}`;
+                        item.descricao = `Grupo: ${grupo.grupo_titulo}`;
+                        item.meta = {
+                            ...(item.meta || {}),
+                            aso_tipo: key,
+                            grupo_id: grupo.grupo_id,
+                        };
+                        item.quantidade = 1;
+                        item.valor_unitario = Number(grupo.total_exames || 0);
+                        recalcItemTotal(item);
+                    });
+
+                    render();
+                }
+
+                function bindAsoGrupoEvents() {
+                    ASO_TYPES.forEach(({ key }) => {
+                        const dom = asoDom[key];
+                        dom?.select?.addEventListener('change', () => updateAsoGrupoResumo(key));
+                        dom?.showBtn?.addEventListener('click', () => {
+                            if (!dom.exames) return;
+                            dom.exames.classList.toggle('hidden');
+                            if (!dom.exames.classList.contains('hidden')) {
+                                renderAsoExames(key);
+                            }
+                        });
+                    });
                 }
 
                 function getAsoTotals() {
@@ -647,7 +928,7 @@
                 function applyGheToAsoItems() {
                     const gheTotal = Number(gheInfo.total || 0);
                     if (!gheTotal) return;
-                    const asoItems = state.itens.filter(it => hasAsoItem(it));
+                    const asoItems = state.itens.filter(it => hasAsoItem(it) && !it?.meta?.aso_tipo);
                     if (!asoItems.length) return;
                     const totalAtual = asoItems.reduce((sum, it) => sum + Number(it.valor_total || 0), 0);
                     if (totalAtual > 0) return;
@@ -695,6 +976,7 @@
                     removeEsocialItens();
                     // remove inputs anteriores
                     document.querySelectorAll('[data-hidden-itens]').forEach(n => n.remove());
+                    document.querySelectorAll('[data-hidden-aso-grupos]').forEach(n => n.remove());
 
                     state.itens.forEach((it, idx) => {
                         const base = `itens[${idx}]`;
@@ -755,6 +1037,24 @@
                     // eSocial
                     el.esocialQtdHidden.value = state.esocial.enabled ? (state.esocial.qtd || 0) : '';
                     el.esocialValorHidden.value = state.esocial.enabled ? Number(state.esocial.valor || 0).toFixed(2) : '0.00';
+
+                    Object.entries(state.asoGrupos || {}).forEach(([tipo, grupo]) => {
+                        if (!grupo?.grupo_id) return;
+                        const base = `aso_grupos[${tipo}]`;
+                        const pairs = [
+                            ['grupo_id', grupo.grupo_id],
+                            ['total_exames', Number(grupo.total_exames || 0).toFixed(2)],
+                        ];
+
+                        pairs.forEach(([k,v]) => {
+                            const input = document.createElement('input');
+                            input.type = 'hidden';
+                            input.name = `${base}[${k}]`;
+                            input.value = v;
+                            input.setAttribute('data-hidden-aso-grupos','1');
+                            el.form.appendChild(input);
+                        });
+                    });
                 }
 
                 // =========================
@@ -764,18 +1064,52 @@
                     el.lista.innerHTML = '';
                     removeEsocialItens();
 
-                    state.itens.forEach(item => {
-                        const hasZeroPrice = Number(item.valor_unitario || 0) <= 0;
-                        const card = document.createElement('div');
-                        card.className = hasZeroPrice
-                            ? 'rounded-xl border border-amber-300 bg-amber-50/60 px-4 py-3'
-                            : 'rounded-xl border border-slate-200 bg-white px-4 py-3';
+                    if (!state.itens.length) {
+                        el.lista.innerHTML = '<div class="px-3 py-4 text-sm text-slate-500">Nenhum item adicionado.</div>';
+                        recalcTotals();
+                        syncHiddenInputs();
+                        return;
+                    }
 
-                        card.innerHTML = `
-                <div class="flex items-start justify-between gap-3">
+                    const asoOrder = new Map(ASO_TYPES.map((t, i) => [t.key, i]));
+                    let insertedAsoHeader = false;
+                    const sortedItems = state.itens
+                        .map((it, idx) => ({ it, idx }))
+                        .sort((a, b) => {
+                            const aTipo = a.it?.meta?.aso_tipo;
+                            const bTipo = b.it?.meta?.aso_tipo;
+                            const aIsAso = !!aTipo;
+                            const bIsAso = !!bTipo;
+                            if (aIsAso && !bIsAso) return -1;
+                            if (!aIsAso && bIsAso) return 1;
+                            if (aIsAso && bIsAso) {
+                                return (asoOrder.get(aTipo) ?? 999) - (asoOrder.get(bTipo) ?? 999);
+                            }
+                            return a.idx - b.idx;
+                        })
+                        .map((row) => row.it);
+
+                    sortedItems.forEach(item => {
+                        const hasZeroPrice = Number(item.valor_unitario || 0) <= 0;
+                        const isAsoTipo = !!item?.meta?.aso_tipo;
+                        if (isAsoTipo && !insertedAsoHeader) {
+                            const header = document.createElement('div');
+                            header.className = 'px-3 py-2 bg-slate-50 text-xs font-semibold text-slate-600 uppercase tracking-wide';
+                            header.textContent = 'ASO';
+                            el.lista.appendChild(header);
+                            insertedAsoHeader = true;
+                        }
+                        const row = document.createElement('div');
+                        row.className = hasZeroPrice
+                            ? 'grid grid-cols-12 gap-1 items-center px-2 py-1.5 bg-amber-50/60'
+                            : 'grid grid-cols-12 gap-1 items-center px-2 py-1.5 bg-white';
+
+                        row.innerHTML = `
+                <div class="col-span-12 md:col-span-4">
+                    <div class="text-[11px] font-semibold text-slate-500 md:hidden">Item</div>
                     <div class="min-w-0">
-                        <div class="font-semibold text-slate-800 text-sm">${escapeHtml(item.nome)}</div>
-                        ${item.descricao ? `<div class="text-xs text-slate-500 mt-0.5">${escapeHtml(item.descricao)}</div>` : ``}
+                        <div class="font-semibold text-slate-800 text-sm leading-tight truncate">${escapeHtml(item.nome)}</div>
+                        ${item.descricao ? `<div class="text-[11px] text-slate-500 truncate">${escapeHtml(item.descricao)}</div>` : ``}
                         ${hasZeroPrice ? `<div class="mt-1 flex flex-wrap items-center gap-2 text-[11px]">
                             <span class="inline-flex items-center font-semibold text-amber-700 bg-amber-100/70 px-2 py-0.5 rounded-full">Sem preço definido</span>
                             <a href="{{ route('comercial.tabela-precos.itens.index') }}" target="_blank" rel="noopener"
@@ -784,74 +1118,107 @@
                             </a>
                         </div>` : ``}
                     </div>
+                </div>
 
-                        <div class="flex items-center gap-3">
-                            <button type="button"
-                                    class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 text-lg leading-none"
-                                    data-act="remove"
-                                    aria-label="Remover item">
-                                ×
-                            </button>
-                            <span data-el="valor_total" class="inline-flex items-center rounded-full bg-emerald-600 text-white text-xs font-semibold px-3 py-1">
-                                ${brl(item.valor_total)}
-                            </span>
-                        </div>
-                    </div>
+                <div class="col-span-6 md:col-span-2">
+                    <div class="text-[11px] font-semibold text-slate-500 md:hidden">Valor</div>
+                    <input type="text" class="w-full h-8 rounded-md border border-slate-200 text-sm px-2"
+                           data-act="valor_view" value="${brl(item.valor_unitario)}">
+                </div>
 
-                <div class="mt-3 grid grid-cols-12 gap-3 items-end">
-                    <div class="col-span-12 md:col-span-4">
-                        <label class="text-[11px] font-semibold text-slate-600">Valor</label>
-                        <input type="text" class="w-full mt-1 rounded-lg border border-slate-200 text-sm px-3 py-2"
-                               data-act="valor_view" value="${brl(item.valor_unitario)}">
-                    </div>
+                <div class="col-span-6 md:col-span-2">
+                    <div class="text-[11px] font-semibold text-slate-500 md:hidden">Prazo</div>
+                    <input type="text" class="w-full h-8 rounded-md border border-slate-200 text-sm px-2"
+                           data-act="prazo" placeholder="Ex: 15 dias">
+                </div>
 
-                    <div class="col-span-12 md:col-span-4">
-                        <label class="text-[11px] font-semibold text-slate-600">Prazo</label>
-                        <input type="text"  class="w-full mt-1 rounded-lg border border-slate-200 text-sm px-3 py-2"
-                               data-act="prazo"  placeholder="Ex: 15 dias">
+                <div class="col-span-6 md:col-span-2">
+                    <div class="text-[11px] font-semibold text-slate-500 md:hidden">Qtd</div>
+                    <div class="inline-flex items-center gap-1">
+                        <button type="button" class="h-8 w-8 rounded-md border border-slate-200 hover:bg-slate-50 text-sm" data-act="qtd_minus">−</button>
+                        <input type="text" class="h-8 w-10 text-center rounded-md border border-slate-200 text-sm" data-act="qtd" value="${item.quantidade}">
+                        <button type="button" class="h-8 w-8 rounded-md border border-slate-200 hover:bg-slate-50 text-sm" data-act="qtd_plus">+</button>
                     </div>
+                </div>
 
-                    <div class="col-span-12 md:col-span-4">
-                        <label class="text-[11px] font-semibold text-slate-600">Qtd</label>
-                        <div class="mt-1 inline-flex items-center gap-2">
-                            <button type="button" class="h-9 w-9 rounded-lg border border-slate-200 hover:bg-slate-50" data-act="qtd_minus">−</button>
-                            <input type="text" class="h-9 w-12 text-center rounded-lg border border-slate-200 text-sm" data-act="qtd" value="${item.quantidade}">
-                            <button type="button" class="h-9 w-9 rounded-lg border border-slate-200 hover:bg-slate-50" data-act="qtd_plus">+</button>
-                        </div>
-                    </div>
+                <div class="col-span-4 md:col-span-1 text-right md:text-right">
+                    <div class="text-[11px] font-semibold text-slate-500 md:hidden">Total</div>
+                    <span data-el="valor_total" class="text-sm font-semibold text-emerald-700">
+                        ${brl(item.valor_total)}
+                    </span>
+                </div>
+
+                <div class="col-span-2 md:col-span-1 flex justify-end md:justify-center">
+                    <button type="button"
+                            class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 text-lg leading-none"
+                            data-act="remove"
+                            aria-label="Remover item">
+                        ×
+                    </button>
                 </div>
             `;
 
                         // Actions
-                        card.querySelector('[data-act="remove"]').addEventListener('click', () => removeItem(item.id));
+                        row.querySelector('[data-act="remove"]').addEventListener('click', () => removeItem(item.id));
 
                         // Prazo
-                        card.querySelector('[data-act="prazo"]').addEventListener('input', (e) => {
-                            item.prazo = e.target.value || '';
-                            syncHiddenInputs();
-                        });
+                        const prazoInput = row.querySelector('[data-act="prazo"]');
+                        if (isAsoTipo) {
+                            prazoInput.value = '—';
+                            prazoInput.setAttribute('readonly', 'readonly');
+                            prazoInput.classList.add('bg-slate-100', 'cursor-not-allowed');
+                        } else {
+                            prazoInput.addEventListener('input', (e) => {
+                                item.prazo = e.target.value || '';
+                                syncHiddenInputs();
+                            });
+                        }
 
 	                        // Qtd
-	                        card.querySelector('[data-act="qtd_minus"]').addEventListener('click', () => updateQtd(item.id, -1));
-	                        card.querySelector('[data-act="qtd_plus"]').addEventListener('click', () => updateQtd(item.id, +1));
+                        const qtdMinus = row.querySelector('[data-act="qtd_minus"]');
+                        const qtdPlus = row.querySelector('[data-act="qtd_plus"]');
+                        if (isAsoTipo) {
+                            qtdMinus.setAttribute('disabled', 'disabled');
+                            qtdPlus.setAttribute('disabled', 'disabled');
+                            qtdMinus.classList.add('opacity-50', 'cursor-not-allowed');
+                            qtdPlus.classList.add('opacity-50', 'cursor-not-allowed');
+                        } else {
+                            qtdMinus.addEventListener('click', () => updateQtd(item.id, -1));
+                            qtdPlus.addEventListener('click', () => updateQtd(item.id, +1));
+                        }
 
 	                        // Input qtd (manual)
-	                        card.querySelector('[data-act="qtd"]').addEventListener('input', (e) => {
-	                            const n = parseInt(String(e.target.value || '1').replace(/\D+/g,''), 10) || 1;
-	                            item.quantidade = Math.max(1, n);
-	                            recalcItemTotal(item);
-	                            e.target.value = String(item.quantidade);
-	                            const totalEl = card.querySelector('[data-el="valor_total"]');
-	                            if (totalEl) totalEl.textContent = brl(item.valor_total);
-	                            recalcTotals();
-	                            syncHiddenInputs();
-	                        });
+                        const qtdInput = row.querySelector('[data-act="qtd"]');
+                        if (isAsoTipo) {
+                            qtdInput.setAttribute('readonly', 'readonly');
+                            qtdInput.classList.add('bg-slate-100', 'cursor-not-allowed');
+                            qtdInput.value = '1';
+                        } else {
+                            qtdInput.addEventListener('input', (e) => {
+                                const n = parseInt(String(e.target.value || '1').replace(/\D+/g,''), 10) || 1;
+                                item.quantidade = Math.max(1, n);
+                                recalcItemTotal(item);
+                                e.target.value = String(item.quantidade);
+                                const totalEl = row.querySelector('[data-el="valor_total"]');
+                                if (totalEl) totalEl.textContent = brl(item.valor_total);
+                                recalcTotals();
+                                syncHiddenInputs();
+                            });
+                        }
 
                         // Valor (máscara por centavos)
-                        const valorView = card.querySelector('[data-act="valor_view"]');
+                        const valorView = row.querySelector('[data-act="valor_view"]');
                         valorView.dataset.digits = onlyDigits(Math.round(Number(item.valor_unitario || 0) * 100));
+                        if (isAsoTipo) {
+                            valorView.setAttribute('readonly', 'readonly');
+                            valorView.classList.add('bg-slate-100', 'cursor-not-allowed');
+                        }
 
                         valorView.addEventListener('keydown', (e) => {
+                            if (isAsoTipo) {
+                                e.preventDefault();
+                                return;
+                            }
                             const nav = ['Tab','Escape','Enter','ArrowLeft','ArrowRight','Home','End','Delete'];
                             if (e.ctrlKey || e.metaKey) return;
 
@@ -865,7 +1232,7 @@
 	                                item.valor_unitario = num;
 	                                recalcItemTotal(item);
 	                                valorView.value = brl(num);
-	                                const totalEl = card.querySelector('[data-el="valor_total"]');
+	                                const totalEl = row.querySelector('[data-el="valor_total"]');
 	                                if (totalEl) totalEl.textContent = brl(item.valor_total);
 	                                recalcTotals();
 	                                syncHiddenInputs();
@@ -877,6 +1244,7 @@
                         });
 
                         valorView.addEventListener('input', () => {
+                            if (isAsoTipo) return;
                             const digits = onlyDigits(valorView.value);
                             valorView.dataset.digits = digits;
 
@@ -885,13 +1253,13 @@
 	                            recalcItemTotal(item);
 
 	                            valorView.value = brl(num);
-	                            const totalEl = card.querySelector('[data-el="valor_total"]');
+	                            const totalEl = row.querySelector('[data-el="valor_total"]');
 	                            if (totalEl) totalEl.textContent = brl(item.valor_total);
 	                            recalcTotals();
 	                            syncHiddenInputs();
 	                        });
 
-                        el.lista.appendChild(card);
+                        el.lista.appendChild(row);
                     });
 
                     recalcTotals();
@@ -1099,6 +1467,19 @@
                 }
 
                 function removeItem(itemId) {
+                    const item = state.itens.find(x => x.id === itemId);
+                    if (item?.meta?.aso_tipo) {
+                        const tipo = item.meta.aso_tipo;
+                        if (asoDom[tipo]?.select) {
+                            asoDom[tipo].select.value = '';
+                            updateAsoGrupoResumo(tipo);
+                        } else {
+                            delete state.asoGrupos[tipo];
+                            state.itens = state.itens.filter(x => x.id !== itemId);
+                            render();
+                        }
+                        return;
+                    }
                     state.itens = state.itens.filter(x => x.id !== itemId);
                     render();
                 }
