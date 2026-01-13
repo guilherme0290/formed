@@ -8,7 +8,9 @@ use App\Models\ClienteContratoItem;
 use App\Models\ClienteContratoLog;
 use App\Models\Funcao;
 use App\Models\Proposta;
+use App\Models\PropostaAsoGrupo;
 use App\Models\PropostaItens;
+use App\Models\ProtocoloExame;
 use App\Models\Servico;
 use App\Models\TabelaPrecoItem;
 use App\Models\TabelaPrecoPadrao;
@@ -106,7 +108,9 @@ class PropostaController extends Controller
 
         $user = auth()->user();
 
-        return view('comercial.propostas.create', compact('clientes','servicos','formasPagamento','user','treinamentos','funcoes'));
+        $propostaAsoGrupos = collect();
+
+        return view('comercial.propostas.create', compact('clientes','servicos','formasPagamento','user','treinamentos','funcoes','propostaAsoGrupos'));
     }
 
     public function edit(Proposta $proposta)
@@ -154,8 +158,12 @@ class PropostaController extends Controller
         ];
 
         $proposta->load('itens');
+        $propostaAsoGrupos = \App\Models\PropostaAsoGrupo::query()
+            ->where('proposta_id', $proposta->id)
+            ->with('grupo')
+            ->get();
 
-        return view('comercial.propostas.create', compact('clientes','servicos','formasPagamento','user','treinamentos','proposta','funcoes'));
+        return view('comercial.propostas.create', compact('clientes','servicos','formasPagamento','user','treinamentos','proposta','funcoes','propostaAsoGrupos'));
     }
 
     public function store(Request $request)
@@ -184,6 +192,9 @@ class PropostaController extends Controller
 
         return DB::transaction(function () use ($proposta) {
             $proposta->itens()->delete();
+            PropostaAsoGrupo::query()
+                ->where('proposta_id', $proposta->id)
+                ->delete();
             $proposta->delete();
 
             return redirect()
@@ -299,6 +310,10 @@ class PropostaController extends Controller
             'esocial_qtd_funcionarios' => ['nullable','integer','min:0'],
             'esocial_valor_mensal' => ['nullable','numeric','min:0'],
 
+            'aso_grupos' => ['nullable','array'],
+            'aso_grupos.*.grupo_id' => ['nullable','integer','exists:protocolos_exames,id'],
+            'aso_grupos.*.total_exames' => ['nullable','numeric','min:0'],
+
             'itens' => ['required','array','min:1'],
             'itens.*.servico_id' => ['nullable','integer'],
             'itens.*.tipo' => ['required','string','max:40'],
@@ -333,6 +348,7 @@ class PropostaController extends Controller
 
         $servicoEsocialId = (int) (config('services.esocial_id') ?? 0);
         $servicoExameId = (int) (config('services.exame_id') ?? 0);
+        $servicoAsoId = (int) (config('services.aso_id') ?? 0);
 
         foreach ($data['itens'] as $idx => $it) {
             if (!array_key_exists('meta', $it) || $it['meta'] === null || $it['meta'] === '') {
@@ -352,6 +368,24 @@ class PropostaController extends Controller
             if (in_array($data['itens'][$idx]['tipo'] ?? '', ['EXAME','PACOTE_EXAMES'], true) && $servicoExameId > 0 && empty($data['itens'][$idx]['servico_id'])) {
                 $data['itens'][$idx]['servico_id'] = $servicoExameId;
             }
+
+            if (($data['itens'][$idx]['tipo'] ?? '') === 'ASO_TIPO' && $servicoAsoId > 0 && empty($data['itens'][$idx]['servico_id'])) {
+                $data['itens'][$idx]['servico_id'] = $servicoAsoId;
+            }
+        }
+
+        $asoTipos = ['admissional', 'periodico', 'demissional', 'mudanca_funcao', 'retorno_trabalho'];
+        $asoGruposInput = $data['aso_grupos'] ?? [];
+        $asoGrupos = [];
+        foreach ($asoTipos as $tipo) {
+            $grupoId = isset($asoGruposInput[$tipo]['grupo_id']) ? (int) $asoGruposInput[$tipo]['grupo_id'] : 0;
+            if ($grupoId <= 0) {
+                continue;
+            }
+            $asoGrupos[$tipo] = [
+                'grupo_id' => $grupoId,
+                'total_exames' => (float) ($asoGruposInput[$tipo]['total_exames'] ?? 0),
+            ];
         }
 
         $clienteOk = Cliente::where('id', $data['cliente_id'])
@@ -374,25 +408,45 @@ class PropostaController extends Controller
             }
         }
 
+        foreach ($asoGrupos as $row) {
+            $ok = ProtocoloExame::where('empresa_id', $empresaId)
+                ->where('id', $row['grupo_id'])
+                ->exists();
+            abort_if(!$ok, 403);
+        }
+
         $incluirEsocial = !empty($data['incluir_esocial']);
 
         $isAsoItem = function (array $it): bool {
+            if (strtoupper((string) ($it['tipo'] ?? '')) === 'ASO_TIPO') {
+                return true;
+            }
+
+            if (!empty($it['meta']['aso_tipo'])) {
+                return true;
+            }
+
             $nomeBase = strtoupper((string) ($it['nome'] ?? $it['descricao'] ?? ''));
             return $nomeBase !== '' && str_contains($nomeBase, 'ASO');
         };
+        $hasAsoTipoItems = false;
         $asoIndexes = [];
         foreach ($data['itens'] as $idx => $it) {
             if ($isAsoItem($it)) {
                 $asoIndexes[] = $idx;
             }
+            if (!empty($it['meta']['aso_tipo'])) {
+                $hasAsoTipoItems = true;
+            }
         }
+        $hasAsoGrupos = !empty($asoGrupos);
 
         $gheTotal = 0.0;
-        if (!empty($data['cliente_id'])) {
+        if (!$hasAsoGrupos && !$hasAsoTipoItems && !empty($data['cliente_id'])) {
             $gheSnapshot = app(AsoGheService::class)
                 ->buildSnapshotForCliente((int) $data['cliente_id'], $empresaId);
             foreach (($gheSnapshot['ghes'] ?? []) as $ghe) {
-                $gheTotal += (float) ($ghe['total_exames'] ?? 0);
+                $gheTotal += (float) ($ghe['total_exames_por_tipo']['admissional'] ?? ($ghe['total_exames'] ?? 0));
             }
         }
 
@@ -442,7 +496,7 @@ class PropostaController extends Controller
 
         $codigo = $proposta?->codigo ?? ('PRP-' . now()->format('Ymd') . '-' . Str::upper(Str::random(4)));
 
-        return DB::transaction(function () use ($empresaId, $data, $codigo, $valorTotal, $incluirEsocial, $valorEsocial, $valorEsocialCampo, $proposta) {
+        return DB::transaction(function () use ($empresaId, $data, $codigo, $valorTotal, $incluirEsocial, $valorEsocial, $valorEsocialCampo, $proposta, $asoGrupos) {
             $payload = [
                 'empresa_id' => $empresaId,
                 'cliente_id' => $data['cliente_id'],
@@ -479,6 +533,20 @@ class PropostaController extends Controller
                 $payload['status'] = 'PENDENTE';
                 $payload['pipeline_status'] = 'CONTATO_INICIAL';
                 $proposta = Proposta::create($payload);
+            }
+
+            PropostaAsoGrupo::query()
+                ->where('proposta_id', $proposta->id)
+                ->delete();
+            foreach ($asoGrupos as $tipo => $row) {
+                PropostaAsoGrupo::create([
+                    'empresa_id' => $empresaId,
+                    'cliente_id' => $data['cliente_id'],
+                    'proposta_id' => $proposta->id,
+                    'tipo_aso' => $tipo,
+                    'grupo_exames_id' => $row['grupo_id'],
+                    'total_exames' => $row['total_exames'],
+                ]);
             }
 
             foreach ($data['itens'] as $it) {
@@ -535,6 +603,14 @@ class PropostaController extends Controller
                         return true;
                     }
 
+                    if (strtoupper((string) ($it['tipo'] ?? '')) === 'ASO_TIPO') {
+                        return true;
+                    }
+
+                    if (!empty($it['meta']['aso_tipo'])) {
+                        return true;
+                    }
+
                     $nomeBase = strtoupper((string) ($it['nome'] ?? $it['descricao'] ?? ''));
                     return $nomeBase !== '' && str_contains($nomeBase, 'ASO');
                 };
@@ -553,13 +629,18 @@ class PropostaController extends Controller
                 foreach ($data['itens'] as $it) {
                     $regrasSnapshot = null;
                     if ($isAsoItem($it)) {
-                        $regrasSnapshot = $asoSnapshot;
+                        $regrasSnapshot = $this->buildRegrasSnapshotAso($it, $asoSnapshot);
+                    }
+
+                    $descricaoSnapshot = $it['descricao'] ?? $it['nome'];
+                    if (!empty($it['meta']['aso_tipo'])) {
+                        $descricaoSnapshot = $it['nome'] ?? $it['descricao'];
                     }
 
                     ClienteContratoItem::create([
                         'cliente_contrato_id' => $contratoParaAtualizar->id,
                         'servico_id' => $it['servico_id'] ?? null,
-                        'descricao_snapshot' => $it['descricao'] ?? $it['nome'],
+                        'descricao_snapshot' => $descricaoSnapshot,
                         'preco_unitario_snapshot' => $it['valor_total'] ?? $it['valor_unitario'],
                         'unidade_cobranca' => 'unidade',
                         'regras_snapshot' => $regrasSnapshot,
@@ -790,5 +871,20 @@ class PropostaController extends Controller
         }
 
         return trim($mensagem) . "\n\nAcesse e responda a proposta: {$link}";
+    }
+
+    private function buildRegrasSnapshotAso(array $item, ?array $asoSnapshot): ?array
+    {
+        $meta = $item['meta'] ?? [];
+        $asoTipo = $meta['aso_tipo'] ?? null;
+        if ($asoTipo) {
+            $snapshot = ['aso_tipo' => $asoTipo];
+            if (!empty($meta['grupo_id'])) {
+                $snapshot['grupo_id'] = (int) $meta['grupo_id'];
+            }
+            return $snapshot;
+        }
+
+        return $asoSnapshot;
     }
 }

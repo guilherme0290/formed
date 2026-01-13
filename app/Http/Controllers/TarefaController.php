@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Storage;
 use App\Services\PrecificacaoService;
 use App\Services\VendaService;
 use App\Services\ComissaoService;
+use App\Services\AsoGheService;
 
 class TarefaController extends Controller
 {
@@ -108,9 +109,8 @@ class TarefaController extends Controller
                     ->with('itens')
                     ->latest('vigencia_inicio')
                     ->first();
-                $contratoItem = $contratoAtivo?->itens
-                    ->firstWhere('servico_id', (int) $tarefa->servico_id);
-                $isAso = !empty($contratoItem?->regras_snapshot['ghes']);
+                $asoServicoId = app(AsoGheService::class)->resolveServicoAsoIdFromContrato($contratoAtivo);
+                $isAso = $asoServicoId && (int) $tarefa->servico_id === (int) $asoServicoId;
 
                 $servicoTreinamentoId = (int) Servico::where('empresa_id', $tarefa->empresa_id)
                     ->where('nome', 'Treinamentos NRs')

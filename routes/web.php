@@ -44,19 +44,14 @@ use \App\Http\Controllers\Comercial\PropostaController;
 // ==================== Controllers ====================
 
 
-// Tela pública de seleção de módulos
-Route::get('/entrar', function () {
-    return view('entrar');
-})->name('entrar');
-
 // Proposta pública (sem login)
 Route::get('/proposta/{token}', [PropostaPublicController::class, 'show'])
     ->name('propostas.public.show');
 Route::post('/proposta/{token}/responder', [PropostaPublicController::class, 'responder'])
     ->name('propostas.public.responder');
 
-// ==================== Raiz -> Master ====================
-Route::redirect('/', '/entrar');
+// ==================== Raiz -> Login ====================
+Route::redirect('/', '/login');
 
 // ==================== Área autenticada ====================
 Route::middleware('auth')->group(function () {
@@ -341,6 +336,14 @@ Route::middleware('auth')->group(function () {
             return false;
         }
 
+        if (mb_strtolower($servicoNome) === 'aso') {
+            $tiposAsoPermitidos = app(\App\Services\AsoGheService::class)
+                ->resolveTiposAsoContrato($contrato);
+            if (empty($tiposAsoPermitidos)) {
+                return false;
+            }
+        }
+
         return $contrato->itens()
             ->where('servico_id', $servicoId)
             ->where('ativo', true)
@@ -503,6 +506,10 @@ Route::middleware('auth')->group(function () {
                 ->name('apresentacao.cliente.store');
             Route::get('/apresentacao/segmento', [\App\Http\Controllers\Comercial\ApresentacaoController::class, 'segmento'])
                 ->name('apresentacao.segmento');
+            Route::get('/apresentacao/{segmento}/modelo', [\App\Http\Controllers\Comercial\ApresentacaoController::class, 'modelo'])
+                ->name('apresentacao.modelo');
+            Route::post('/apresentacao/{segmento}/modelo', [\App\Http\Controllers\Comercial\ApresentacaoController::class, 'modeloStore'])
+                ->name('apresentacao.modelo.store');
             Route::get('/apresentacao/{segmento}', [\App\Http\Controllers\Comercial\ApresentacaoController::class, 'show'])
                 ->name('apresentacao.show');
             Route::get('/apresentacao/{segmento}/pdf', [\App\Http\Controllers\Comercial\ApresentacaoController::class, 'pdf'])

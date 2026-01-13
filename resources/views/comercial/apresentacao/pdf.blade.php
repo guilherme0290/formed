@@ -19,6 +19,10 @@
         .list li { margin-bottom: 6px; }
         .benefits { border-radius: 12px; padding: 16px; border: 1px solid #a7f3d0; background: #ecfdf5; }
         .footer { text-align: center; margin-top: 18px; color: #475569; font-size: 10px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 6px 8px; border-bottom: 1px solid #e2e8f0; text-align: left; vertical-align: top; }
+        th { background: #f1f5f9; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: #475569; }
+        .right { text-align: right; }
     </style>
 </head>
 <body>
@@ -51,65 +55,6 @@
         ];
 
         $theme = $themeBySegment[$segmento] ?? $themeBySegment['construcao-civil'];
-
-        $conteudo = [
-            'construcao-civil' => [
-                'intro' => [
-                    'A FORMED apoia empresas da construção civil com uma apresentação clara e objetiva dos serviços de SST, alinhada às exigências legais e à rotina do canteiro.',
-                    'Nosso foco é reduzir riscos, organizar documentação e manter a operação em conformidade de forma simples e contínua.',
-                ],
-                'servicos' => [
-                    'PGR e inventário de riscos',
-                    'PCMSO e gestão de exames ocupacionais',
-                    'ASO (admissional, periódico e demissional)',
-                    'Treinamentos obrigatórios (NRs)',
-                    'Gestão de documentos e laudos (LTCAT, APR, PAE)',
-                ],
-                'beneficios' => 'Organização e previsibilidade no atendimento, redução de riscos e suporte contínuo para manter a obra em conformidade.',
-            ],
-            'industria' => [
-                'intro' => [
-                    'Para operações industriais, a FORMED entrega uma solução robusta de SST com foco em controle de riscos, gestão documental e suporte contínuo.',
-                    'Prontidão para auditorias, conformidade e rotina organizada para a equipe de segurança e RH.',
-                ],
-                'servicos' => [
-                    'PGR (inventário e plano de ação)',
-                    'PCMSO e gestão de ASOs',
-                    'Gestão de exames complementares',
-                    'Laudos técnicos e documentação (LTCAT)',
-                    'Treinamentos e capacitações (NRs)',
-                ],
-                'beneficios' => 'Menos retrabalho, mais controle, prontidão para auditorias e melhoria contínua de segurança e produtividade.',
-            ],
-            'comercio' => [
-                'intro' => [
-                    'A FORMED simplifica a gestão de SST para empresas de comércio e varejo com atendimento objetivo e documentação organizada.',
-                    'Apoio recorrente para manter a empresa regular sem travar a operação.',
-                ],
-                'servicos' => [
-                    'PGR e documentação obrigatória',
-                    'PCMSO e ASO',
-                    'Gestão de exames ocupacionais',
-                    'Treinamentos aplicáveis (NRs)',
-                    'Suporte para rotinas e fiscalizações',
-                ],
-                'beneficios' => 'Regularidade com agilidade, redução de riscos e tranquilidade para o gestor focar na operação.',
-            ],
-            'restaurante' => [
-                'intro' => [
-                    'A FORMED oferece suporte completo em SST para o segmento de alimentação, com foco em conformidade e prevenção de riscos.',
-                    'Documentação em dia e apoio contínuo para manter a operação segura e regular.',
-                ],
-                'servicos' => [
-                    'PGR e documentação de SST',
-                    'PCMSO e ASO',
-                    'Gestão de exames ocupacionais',
-                    'Treinamentos e orientações aplicáveis',
-                    'Suporte contínuo para adequações',
-                ],
-                'beneficios' => 'Atendimento prático, documentação em dia e apoio para manter a operação segura e regular.',
-            ],
-        ][$segmento] ?? [];
     @endphp
 
     <div class="page">
@@ -150,7 +95,7 @@
 
                 <div class="section" style="background: #0f172a; color: #fff; border-radius: 12px; padding: 16px; text-align: center;">
                     <div style="font-weight: bold; letter-spacing: 0.12em; font-size: 12px;">
-                        {{ $theme['titulo'] }}
+                        {{ $tituloSegmento }}
                     </div>
                     <div style="margin-top: 12px; text-align: left;">
                         <div>{{ $conteudo['intro'][0] ?? '' }}</div>
@@ -160,12 +105,157 @@
 
                 <div class="section">
                     <div class="section-title">Serviços Essenciais</div>
-                    <ul class="list">
+                    <table>
+                        <thead>
+                        <tr>
+                            <th>Item</th>
+                        </tr>
+                        </thead>
+                        <tbody>
                         @foreach(($conteudo['servicos'] ?? []) as $s)
-                            <li>{{ $s }}</li>
+                            <tr>
+                                <td>{{ $s }}</td>
+                            </tr>
                         @endforeach
-                    </ul>
+                        </tbody>
+                    </table>
                 </div>
+
+                @if(($precos ?? collect())->count())
+                    <div class="section">
+                        <div class="section-title">Serviços</div>
+                        <table>
+                            <thead>
+                            <tr>
+                                <th>Item</th>
+                                <th class="right">Qtd</th>
+                                <th class="right">Valor unit.</th>
+                                <th class="right">Total</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            @foreach($precos as $preco)
+                                @php
+                                    $item = $preco->tabelaPrecoItem;
+                                    $descricao = $item?->descricao ?: $item?->servico?->nome ?: 'Item';
+                                    $qtd = (float) $preco->quantidade;
+                                    $valor = (float) ($item?->preco ?? 0);
+                                    $total = $qtd * $valor;
+                                @endphp
+                                <tr>
+                                    <td>
+                                        <div style="font-weight: bold;">{{  $item?->codigo}}</div>
+
+                                            <div style="color: #6b7280; font-size: 10px;"> {{  $descricao }}</div>
+
+                                    </td>
+                                    <td class="right">{{ number_format($qtd, 2, ',', '.') }}</td>
+                                    <td class="right">R$ {{ number_format($valor, 2, ',', '.') }}</td>
+                                    <td class="right">R$ {{ number_format($total, 2, ',', '.') }}</td>
+                                </tr>
+                            @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
+
+                @if(($exames ?? collect())->count())
+                    <div class="section">
+                        <div class="section-title">Exames</div>
+                        <table>
+                            <thead>
+                            <tr>
+                                <th>Exame</th>
+                                <th class="right">Qtd</th>
+                                <th class="right">Valor unit.</th>
+                                <th class="right">Total</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            @foreach($exames as $exameRow)
+                                @php
+                                    $exame = $exameRow->exame ?? null;
+                                    $qtd = (float) ($exameRow->quantidade ?? 1);
+                                    $valor = (float) ($exame?->preco ?? 0);
+                                    $total = $qtd * $valor;
+                                @endphp
+                                <tr>
+                                    <td>
+                                        <div style="font-weight: bold;">{{ $exame?->titulo ?? 'Exame' }}</div>
+                                        @if(!empty($exame?->descricao))
+                                            <div style="color: #6b7280; font-size: 10px;">{{ $exame->descricao }}</div>
+                                        @endif
+                                    </td>
+                                    <td class="right">{{ number_format($qtd, 2, ',', '.') }}</td>
+                                    <td class="right">R$ {{ number_format($valor, 2, ',', '.') }}</td>
+                                    <td class="right">R$ {{ number_format($total, 2, ',', '.') }}</td>
+                                </tr>
+                            @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
+
+                @if(($treinamentos ?? collect())->count())
+                    <div class="section">
+                        <div class="section-title">Treinamentos</div>
+                        <table>
+                            <thead>
+                            <tr>
+                                <th>Treinamento</th>
+                                <th class="right">Qtd</th>
+                                <th class="right">Valor unit.</th>
+                                <th class="right">Total</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            @foreach($treinamentos as $treinamentoRow)
+                                @php
+                                    $treinamento = $treinamentoRow->treinamento ?? null;
+                                    $qtd = (float) ($treinamentoRow->quantidade ?? 1);
+                                    $valor = (float) ($treinamentoRow->tabelaItem?->preco ?? 0);
+                                    $total = $qtd * $valor;
+                                @endphp
+                                <tr>
+                                    <td>
+                                        <div style="font-weight: bold;">{{ $treinamento?->codigo ?? 'NR' }} — {{ $treinamento?->titulo ?? 'Treinamento' }}</div>
+                                    </td>
+                                    <td class="right">{{ number_format($qtd, 2, ',', '.') }}</td>
+                                    <td class="right">R$ {{ number_format($valor, 2, ',', '.') }}</td>
+                                    <td class="right">R$ {{ number_format($total, 2, ',', '.') }}</td>
+                                </tr>
+                            @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
+
+                @if(($esocialFaixas ?? collect())->count())
+                    <div class="section">
+                        <div class="section-title">eSocial</div>
+                        @if(!empty($esocialDescricao))
+                            <div style="margin-bottom: 8px;">{!! $esocialDescricao !!}</div>
+                        @endif
+                        <table>
+                            <thead>
+                            <tr>
+                                <th>Faixa</th>
+                                <th>Descrição</th>
+                                <th class="right">Valor</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            @foreach($esocialFaixas as $faixa)
+                                <tr>
+                                    <td>{{ $faixa->inicio }}@if($faixa->fim) - {{ $faixa->fim }}@else+@endif</td>
+                                    <td>{{ $faixa->descricao }}</td>
+                                    <td class="right">R$ {{ number_format((float) $faixa->preco, 2, ',', '.') }}</td>
+                                </tr>
+                            @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
 
                 <div class="section benefits">
                     <div class="section-title" style="color: #065f46;">Benefícios</div>
@@ -174,7 +264,7 @@
 
                 <div class="footer">
                     <div><strong>FORMED</strong> • Medicina e Segurança do Trabalho</div>
-                    <div>comercial@formed.com.br • (00) 0000-0000</div>
+                    <div>{{ $conteudo['rodape'] ?? 'comercial@formed.com.br • (00) 0000-0000' }}</div>
                 </div>
             </div>
         </div>

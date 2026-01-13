@@ -232,14 +232,17 @@ class ContratoController extends Controller
 
             $asoServicoId = app(AsoGheService::class)->resolveServicoAsoIdFromContrato($contrato);
             if ($asoServicoId) {
-                $asoItem = $contrato->itens()->where('servico_id', $asoServicoId)->first();
-                if ($asoItem) {
+                $asoItens = $contrato->itens()->where('servico_id', $asoServicoId)->get();
+                $temTipos = $asoItens->contains(fn ($item) => !empty($item->regras_snapshot['aso_tipo']));
+                if (!$temTipos) {
                     $asoSnapshot = app(AsoGheService::class)
                         ->buildSnapshotForCliente($contrato->cliente_id, $empresaId);
                     if (empty($asoSnapshot['ghes'])) {
                         $asoSnapshot = null;
                     }
-                    $asoItem->update(['regras_snapshot' => $asoSnapshot]);
+                    foreach ($asoItens as $asoItem) {
+                        $asoItem->update(['regras_snapshot' => $asoSnapshot]);
+                    }
                 }
             }
 

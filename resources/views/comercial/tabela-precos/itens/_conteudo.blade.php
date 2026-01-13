@@ -66,7 +66,7 @@
                bg-white hover:bg-slate-50 active:bg-slate-100
                text-slate-700 px-4 py-2 text-sm font-semibold shadow-sm
                ring-1 ring-slate-200 hover:ring-slate-300 transition">
-                <span>Protocolos</span>
+                <span>Grupo de Exames</span>
             </button>
 {{--            <button type="button"--}}
 {{--                    onclick="openGheModal()"--}}
@@ -338,7 +338,6 @@
                                 class="w-full mt-1 rounded-xl border-slate-200 text-sm px-3 py-2">
                             <option value="">— Item livre (sem serviço) —</option>
                             @foreach($servicos as $s)
-
                                 <option value="{{ $s->id }}" @selected(old('servico_id') == $s->id)>
                                     {{ $s->nome }}
                                 </option>

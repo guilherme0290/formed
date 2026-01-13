@@ -40,8 +40,8 @@
                         ['titulo' => 'Faturamento Mensal', 'valor' => 'R$ '.number_format($cards['faturamento_mensal'] ?? 0, 2, ',', '.'), 'sub' => 'Receita recorrente', 'cor' => 'from-emerald-500 to-emerald-600', 'icone' => '💵'],
                         ['titulo' => 'Aprovados', 'valor' => $cards['aprovados'] ?? 0, 'sub' => 'Faturamentos confirmados', 'cor' => 'from-purple-500 to-indigo-600', 'icone' => '✅'],
                         ['titulo' => 'Pendentes', 'valor' => $cards['pendentes'] ?? 0, 'sub' => 'Aguardando aprovação', 'cor' => 'from-amber-500 to-orange-600', 'icone' => '⏳'],
-                        ['titulo' => 'Itens em Aberto', 'valor' => $cards['itens_aberto'] ?? 0, 'sub' => 'Contas a receber pendentes', 'cor' => 'from-slate-600 to-slate-800', 'icone' => '🧾'],
-                        ['titulo' => 'Itens Faturados', 'valor' => $cards['itens_faturado'] ?? 0, 'sub' => 'Recebimentos confirmados', 'cor' => 'from-teal-500 to-emerald-700', 'icone' => '💰'],
+                        ['titulo' => 'Itens em Aberto', 'valor' => 'R$ '.number_format($cards['total_aberto'] ?? 0, 2, ',', '.'), 'sub' => 'Total pendente a receber', 'cor' => 'from-slate-600 to-slate-800', 'icone' => '🧾'],
+                        ['titulo' => 'Recebido em Caixa', 'valor' => 'R$ '.number_format($cards['total_recebido'] ?? 0, 2, ',', '.'), 'sub' => 'Baixas registradas', 'cor' => 'from-teal-500 to-emerald-700', 'icone' => '💰'],
                     ];
                 @endphp
                 @foreach($cards as $card)

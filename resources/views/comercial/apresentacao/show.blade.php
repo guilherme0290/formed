@@ -31,65 +31,6 @@
         ];
 
         $theme = $themeBySegment[$segmento] ?? $themeBySegment['construcao-civil'];
-
-        $conteudo = [
-            'construcao-civil' => [
-                'intro' => [
-                    'A FORMED apoia empresas da construção civil com uma apresentação clara e objetiva dos serviços de SST, alinhada às exigências legais e à rotina do canteiro.',
-                    'Nosso foco é reduzir riscos, organizar documentação e manter a operação em conformidade de forma simples e contínua.',
-                ],
-                'servicos' => [
-                    'PGR e inventário de riscos',
-                    'PCMSO e gestão de exames ocupacionais',
-                    'ASO (admissional, periódico e demissional)',
-                    'Treinamentos obrigatórios (NRs)',
-                    'Gestão de documentos e laudos (LTCAT, APR, PAE)',
-                ],
-                'beneficios' => 'Organização e previsibilidade no atendimento, redução de riscos e suporte contínuo para manter a obra em conformidade.',
-            ],
-            'industria' => [
-                'intro' => [
-                    'Para operações industriais, a FORMED entrega uma solução robusta de SST com foco em controle de riscos, gestão documental e suporte contínuo.',
-                    'Prontidão para auditorias, conformidade e rotina organizada para a equipe de segurança e RH.',
-                ],
-                'servicos' => [
-                    'PGR (inventário e plano de ação)',
-                    'PCMSO e gestão de ASOs',
-                    'Gestão de exames complementares',
-                    'Laudos técnicos e documentação (LTCAT)',
-                    'Treinamentos e capacitações (NRs)',
-                ],
-                'beneficios' => 'Menos retrabalho, mais controle, prontidão para auditorias e melhoria contínua de segurança e produtividade.',
-            ],
-            'comercio' => [
-                'intro' => [
-                    'A FORMED simplifica a gestão de SST para empresas de comércio e varejo com atendimento objetivo e documentação organizada.',
-                    'Apoio recorrente para manter a empresa regular sem travar a operação.',
-                ],
-                'servicos' => [
-                    'PGR e documentação obrigatória',
-                    'PCMSO e ASO',
-                    'Gestão de exames ocupacionais',
-                    'Treinamentos aplicáveis (NRs)',
-                    'Suporte para rotinas e fiscalizações',
-                ],
-                'beneficios' => 'Regularidade com agilidade, redução de riscos e tranquilidade para o gestor focar na operação.',
-            ],
-            'restaurante' => [
-                'intro' => [
-                    'A FORMED oferece suporte completo em SST para o segmento de alimentação, com foco em conformidade e prevenção de riscos.',
-                    'Documentação em dia e apoio contínuo para manter a operação segura e regular.',
-                ],
-                'servicos' => [
-                    'PGR e documentação de SST',
-                    'PCMSO e ASO',
-                    'Gestão de exames ocupacionais',
-                    'Treinamentos e orientações aplicáveis',
-                    'Suporte contínuo para adequações',
-                ],
-                'beneficios' => 'Atendimento prático, documentação em dia e apoio para manter a operação segura e regular.',
-            ],
-        ][$segmento] ?? [];
     @endphp
 
     <div class="min-h-[calc(100vh-64px)] bg-slate-50">
@@ -109,6 +50,10 @@
                            rel="noopener"
                            class="rounded-xl bg-white/95 hover:bg-white border border-white/50 text-slate-800 px-3 py-1.5 text-xs font-semibold">
                             Imprimir
+                        </a>
+                        <a href="{{ route('comercial.apresentacao.modelo', $segmento) }}"
+                           class="rounded-xl bg-white/95 hover:bg-white border border-white/50 text-slate-800 px-3 py-1.5 text-xs font-semibold">
+                            Configurar modelo
                         </a>
                         <a href="{{ route('comercial.apresentacao.segmento') }}"
                            class="rounded-xl bg-white/95 hover:bg-white border border-white/50 text-slate-800 px-3 py-1.5 text-xs font-semibold">
@@ -184,7 +129,7 @@
                             <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-amber-500">
                                 <span class="h-2 w-2 rounded-full bg-white/90"></span>
                             </span>
-                            <span class="text-sm font-extrabold tracking-wide">{{ $theme['titulo'] }}</span>
+                            <span class="text-sm font-extrabold tracking-wide">{{ $tituloSegmento }}</span>
                         </div>
 
                         <div class="mt-4 space-y-2 text-sm text-white/85 text-left md:text-center">
@@ -214,6 +159,179 @@
                         </ul>
                     </div>
 
+                    @if(($precos ?? collect())->count())
+                        <div class="rounded-2xl bg-white border border-slate-200 p-6">
+                            <div class="flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h18M3 12h18M3 17h18"/>
+                                </svg>
+                                <h3 class="text-sm font-semibold text-slate-900">Serviços</h3>
+                            </div>
+
+                            <div class="mt-4 overflow-hidden rounded-2xl border border-slate-200">
+                                <table class="w-full text-sm">
+                                    <thead class="bg-slate-50 text-xs text-slate-500">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left font-semibold">Item</th>
+                                        <th class="px-4 py-3 text-right font-semibold">Qtd</th>
+                                        <th class="px-4 py-3 text-right font-semibold">Valor unit.</th>
+                                        <th class="px-4 py-3 text-right font-semibold">Total</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-100">
+                                    @foreach($precos as $preco)
+                                        @php
+                                            $item = $preco->tabelaPrecoItem;
+                                            $descricao = $item?->descricao ?: $item?->servico?->nome ?: 'Item';
+                                            $qtd = (float) $preco->quantidade;
+                                            $valor = (float) ($item?->preco ?? 0);
+                                            $total = $qtd * $valor;
+                                        @endphp
+                                        <tr>
+                                            <td class="px-4 py-3">
+                                                <div class="font-semibold text-slate-900">{{ $item?->codigo }}</div>
+
+                                                    <div class="text-xs text-slate-500">Código: {{ $descricao }}</div>
+
+                                            </td>
+                                            <td class="px-4 py-3 text-right">{{ number_format($qtd, 2, ',', '.') }}</td>
+                                            <td class="px-4 py-3 text-right">R$ {{ number_format($valor, 2, ',', '.') }}</td>
+                                            <td class="px-4 py-3 text-right">R$ {{ number_format($total, 2, ',', '.') }}</td>
+                                        </tr>
+                                    @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    @endif
+
+                    @if(($exames ?? collect())->count())
+                        <div class="rounded-2xl bg-white border border-slate-200 p-6">
+                            <div class="flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 01-2 2H7a2 2 0 01-2-2m14 0a2 2 0 00-2-2H7a2 2 0 00-2 2"/>
+                                </svg>
+                                <h3 class="text-sm font-semibold text-slate-900">Exames</h3>
+                            </div>
+
+                            <div class="mt-4 overflow-hidden rounded-2xl border border-slate-200">
+                                <table class="w-full text-sm">
+                                    <thead class="bg-slate-50 text-xs text-slate-500">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left font-semibold">Exame</th>
+                                        <th class="px-4 py-3 text-right font-semibold">Qtd</th>
+                                        <th class="px-4 py-3 text-right font-semibold">Valor unit.</th>
+                                        <th class="px-4 py-3 text-right font-semibold">Total</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-100">
+                                    @foreach($exames as $exameRow)
+                                        @php
+                                            $exame = $exameRow->exame ?? null;
+                                            $qtd = (float) ($exameRow->quantidade ?? 1);
+                                            $valor = (float) ($exame?->preco ?? 0);
+                                            $total = $qtd * $valor;
+                                        @endphp
+                                        <tr>
+                                            <td class="px-4 py-3">
+                                                <div class="font-semibold text-slate-900">{{ $exame?->titulo ?? 'Exame' }}</div>
+                                                @if(!empty($exame?->descricao))
+                                                    <div class="text-xs text-slate-500">{{ $exame->descricao }}</div>
+                                                @endif
+                                            </td>
+                                            <td class="px-4 py-3 text-right">{{ number_format($qtd, 2, ',', '.') }}</td>
+                                            <td class="px-4 py-3 text-right">R$ {{ number_format($valor, 2, ',', '.') }}</td>
+                                            <td class="px-4 py-3 text-right">R$ {{ number_format($total, 2, ',', '.') }}</td>
+                                        </tr>
+                                    @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    @endif
+
+                    @if(($treinamentos ?? collect())->count())
+                        <div class="rounded-2xl bg-white border border-slate-200 p-6">
+                            <div class="flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5zM12 14l6.16-3.422M12 14v7m0 0l-9-5m9 5l9-5"/>
+                                </svg>
+                                <h3 class="text-sm font-semibold text-slate-900">Treinamentos</h3>
+                            </div>
+
+                            <div class="mt-4 overflow-hidden rounded-2xl border border-slate-200">
+                                <table class="w-full text-sm">
+                                    <thead class="bg-slate-50 text-xs text-slate-500">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left font-semibold">Treinamento</th>
+                                        <th class="px-4 py-3 text-right font-semibold">Qtd</th>
+                                        <th class="px-4 py-3 text-right font-semibold">Valor unit.</th>
+                                        <th class="px-4 py-3 text-right font-semibold">Total</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-100">
+                                    @foreach($treinamentos as $treinamentoRow)
+                                        @php
+                                            $treinamento = $treinamentoRow->treinamento ?? null;
+                                            $qtd = (float) ($treinamentoRow->quantidade ?? 1);
+                                            $valor = (float) ($treinamentoRow->tabelaItem?->preco ?? 0);
+                                            $total = $qtd * $valor;
+                                        @endphp
+                                        <tr>
+                                            <td class="px-4 py-3">
+                                                <div class="font-semibold text-slate-900">{{ $treinamento?->codigo ?? 'NR' }} — {{ $treinamento?->titulo ?? 'Treinamento' }}</div>
+                                            </td>
+                                            <td class="px-4 py-3 text-right">{{ number_format($qtd, 2, ',', '.') }}</td>
+                                            <td class="px-4 py-3 text-right">R$ {{ number_format($valor, 2, ',', '.') }}</td>
+                                            <td class="px-4 py-3 text-right">R$ {{ number_format($total, 2, ',', '.') }}</td>
+                                        </tr>
+                                    @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    @endif
+
+                    @if(($esocialFaixas ?? collect())->count())
+                        <div class="rounded-2xl bg-white border border-slate-200 p-6">
+                            <div class="flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h18M3 12h18M3 17h18"/>
+                                </svg>
+                                <h3 class="text-sm font-semibold text-slate-900">eSocial</h3>
+                            </div>
+
+                            @if(!empty($esocialDescricao))
+                                <div class="mt-3 prose prose-sm max-w-none text-slate-700">
+                                    {!! $esocialDescricao !!}
+                                </div>
+                            @endif
+
+                            <div class="mt-4 overflow-hidden rounded-2xl border border-slate-200">
+                                <table class="w-full text-sm">
+                                    <thead class="bg-slate-50 text-xs text-slate-500">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left font-semibold">Faixa</th>
+                                        <th class="px-4 py-3 text-left font-semibold">Descrição</th>
+                                        <th class="px-4 py-3 text-right font-semibold">Valor</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-100">
+                                    @foreach($esocialFaixas as $faixa)
+                                        <tr>
+                                            <td class="px-4 py-3">
+                                                {{ $faixa->inicio }}@if($faixa->fim) - {{ $faixa->fim }}@else+@endif
+                                            </td>
+                                            <td class="px-4 py-3">{{ $faixa->descricao }}</td>
+                                            <td class="px-4 py-3 text-right">R$ {{ number_format((float) $faixa->preco, 2, ',', '.') }}</td>
+                                        </tr>
+                                    @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    @endif
+
                     {{-- Benefícios --}}
                     <div class="rounded-2xl bg-emerald-50 border border-emerald-200 overflow-hidden">
                         <div class="grid grid-cols-[6px,1fr]">
@@ -238,7 +356,7 @@
                         <div class="mt-4 text-center text-sm">
                             <div class="font-semibold text-blue-700">FORMED</div>
                             <div class="text-slate-600 text-xs mt-0.5">Medicina e Segurança do Trabalho</div>
-                            <div class="text-slate-500 text-xs mt-2">comercial@formed.com.br • (00) 0000-0000</div>
+                            <div class="text-slate-500 text-xs mt-2">{{ $conteudo['rodape'] ?? 'comercial@formed.com.br • (00) 0000-0000' }}</div>
                         </div>
                     </div>
                 </div>

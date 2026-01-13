@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Financeiro;
 
 use App\Http\Controllers\Controller;
 use App\Models\ClienteContrato;
+use App\Models\ContaReceberBaixa;
 use App\Models\ContaReceberItem;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
@@ -47,23 +48,30 @@ class DashboardController extends Controller
         // Aprovados: contratos marcados como ATIVO (consideramos aprovados = ativos)
         $aprovados = $ativos;
 
-        $itensEmAberto = ContaReceberItem::query()
-            ->where('empresa_id', $empresaId)
-            ->where('status', 'ABERTO')
-            ->count();
+        $totalEmAberto = (float) ContaReceberItem::query()
+            ->where('contas_receber_itens.empresa_id', $empresaId)
+            ->where('contas_receber_itens.status', '!=', 'CANCELADO')
+            ->selectRaw('COALESCE(SUM(GREATEST(contas_receber_itens.valor - COALESCE(baixas.total_baixado, 0), 0)), 0) as total')
+            ->leftJoinSub(
+                ContaReceberBaixa::query()
+                    ->selectRaw('conta_receber_item_id, SUM(valor) as total_baixado')
+                    ->groupBy('conta_receber_item_id'),
+                'baixas',
+                fn ($join) => $join->on('contas_receber_itens.id', '=', 'baixas.conta_receber_item_id')
+            )
+            ->value('total');
 
-        $itensFaturados = ContaReceberItem::query()
+        $totalRecebido = (float) ContaReceberBaixa::query()
             ->where('empresa_id', $empresaId)
-            ->where('status', 'BAIXADO')
-            ->count();
+            ->sum('valor');
 
         $cards = [
             'contratos_ativos' => $ativos,
             'faturamento_mensal' => $faturamentoMensal,
             'aprovados' => $aprovados,
             'pendentes' => $pendentes,
-            'itens_aberto' => $itensEmAberto,
-            'itens_faturado' => $itensFaturados,
+            'total_aberto' => $totalEmAberto,
+            'total_recebido' => $totalRecebido,
         ];
 
         return view('financeiro.dashboard', [

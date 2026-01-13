@@ -16,11 +16,18 @@ class ContaReceberBaixa extends Model
         'cliente_id',
         'valor',
         'pago_em',
+        'meio_pagamento',
+        'observacao',
+        'comprovante_path',
+        'comprovante_nome',
+        'comprovante_mime',
+        'comprovante_tamanho',
     ];
 
     protected $casts = [
         'valor' => 'decimal:2',
         'pago_em' => 'date',
+        'comprovante_tamanho' => 'integer',
     ];
 
     public function contaReceber(): BelongsTo

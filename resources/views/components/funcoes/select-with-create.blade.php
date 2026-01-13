@@ -80,7 +80,7 @@
                     disabled
                     class="inline-flex items-center justify-center w-9 h-9 rounded-full border border-slate-200
                            bg-slate-100 text-slate-400 text-lg leading-none cursor-not-allowed"
-                    title="Cadastro de função disponível no Comercial"
+                    title="Fale com seu comercial para adicionar uma nova função"
                 >
                     +
                 </button>

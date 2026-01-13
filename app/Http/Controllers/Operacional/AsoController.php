@@ -18,6 +18,7 @@ use App\Models\TarefaLog;
 use App\Models\TabelaPrecoItem;
 use App\Models\TabelaPrecoPadrao;
 use App\Services\AsoGheService;
+use App\Services\ContratoClienteService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -56,9 +57,21 @@ class AsoController extends Controller
             'email_aso' => ['nullable', 'email'],
         ], $this->mensagensValidacao(), $this->atributosValidacao());
 
+        $tiposAsoPermitidos = $this->tiposAsoPermitidos($cliente->id, $empresaId);
+        if (empty($tiposAsoPermitidos)) {
+            throw ValidationException::withMessages([
+                'tipo_aso' => 'ASO não disponível para este cliente. Fale com seu comercial.',
+            ]);
+        }
+        if (!in_array($data['tipo_aso'], $tiposAsoPermitidos, true)) {
+            throw ValidationException::withMessages([
+                'tipo_aso' => 'ASO não disponível para este tipo. Fale com seu comercial.',
+            ]);
+        }
+
         if (!empty($data['vai_fazer_treinamento']) && empty($treinamentosPermitidos)) {
             throw ValidationException::withMessages([
-                'treinamentos' => 'Treinamento não configurado para este cliente. Converse com seu comercial.',
+                'treinamentos' => 'Serviço não contratado converse com seu comercial',
             ]);
         }
 
@@ -276,10 +289,17 @@ class AsoController extends Controller
             $vaiFazerTreinamento = 1;
         }
 
+        $tiposAsoPermitidos = $this->tiposAsoPermitidos($cliente->id, $empresaId);
+        $tipoAsoAtual = $aso?->tipo_aso;
+        if ($tipoAsoAtual && !in_array($tipoAsoAtual, $tiposAsoPermitidos, true)) {
+            $tiposAsoPermitidos[] = $tipoAsoAtual;
+        }
+
         return view('operacional.kanban.aso.create', [
             'cliente' => $cliente,
             'tarefa' => $tarefa,
             'tiposAso' => $tiposAso,
+            'tiposAsoPermitidos' => $tiposAsoPermitidos,
             'funcionarios' => $funcionarios,
             'funcoes' => $funcoes,
             'unidades' => $unidades,
@@ -321,9 +341,21 @@ class AsoController extends Controller
             'email_aso' => ['nullable', 'email'],
         ], $this->mensagensValidacao(), $this->atributosValidacao());
 
+        $tiposAsoPermitidos = $this->tiposAsoPermitidos($cliente->id, $empresaId);
+        if (empty($tiposAsoPermitidos)) {
+            throw ValidationException::withMessages([
+                'tipo_aso' => 'ASO não disponível para este cliente. Fale com seu comercial.',
+            ]);
+        }
+        if (!in_array($data['tipo_aso'], $tiposAsoPermitidos, true)) {
+            throw ValidationException::withMessages([
+                'tipo_aso' => 'ASO não disponível para este tipo. Fale com seu comercial.',
+            ]);
+        }
+
         if (!empty($data['vai_fazer_treinamento']) && empty($treinamentosPermitidos)) {
             throw ValidationException::withMessages([
-                'treinamentos' => 'Treinamento não configurado para este cliente. Converse com seu comercial.',
+                'treinamentos' => 'Serviço não contratado converse com seu comercial',
             ]);
         }
 
@@ -480,12 +512,15 @@ class AsoController extends Controller
         $dataAso                  = null;
         $unidadeSelecionada       = null;
 
+        $tiposAsoPermitidos = $this->tiposAsoPermitidos($cliente->id, $empresaId);
+
         return view('operacional.kanban.aso.create', [
             'cliente'                  => $cliente,
             'tarefa'                   => null, // importante pra view saber que é create
             'funcionarios'             => $funcionarios,
             'unidades'                 => $unidades,
             'tiposAso'                 => $tiposAso,
+            'tiposAsoPermitidos'       => $tiposAsoPermitidos,
             'funcoes'                  => $funcoes,
             'treinamentosDisponiveis'  => $treinamentosDisponiveis,
             'treinamentosPermitidos'   => $treinamentosPermitidos,
@@ -662,6 +697,16 @@ class AsoController extends Controller
         $disponiveis = array_keys($treinamentosDisponiveis);
 
         return array_values(array_intersect($disponiveis, $codigos));
+    }
+
+    private function tiposAsoPermitidos(int $clienteId, int $empresaId): array
+    {
+        $contrato = app(ContratoClienteService::class)->getContratoAtivo($clienteId, $empresaId, null);
+        if ($contrato && !$contrato->relationLoaded('itens')) {
+            $contrato->load('itens');
+        }
+
+        return app(AsoGheService::class)->resolveTiposAsoContrato($contrato);
     }
 
     private function mensagensValidacao(): array

@@ -39,9 +39,13 @@ class PropostaService
         $asoGheService = app(AsoGheService::class);
         $gheSnapshot = $asoGheService->buildSnapshotForCliente($proposta->cliente_id, $proposta->empresa_id);
         $temGhe = !empty($gheSnapshot['ghes']);
-        $isAsoItem = function (PropostaItens $item) use ($temGhe): bool {
-            if (!$temGhe) {
-                return false;
+        $isAsoItem = function (PropostaItens $item): bool {
+            if (strtoupper((string) $item->tipo) === 'ASO_TIPO') {
+                return true;
+            }
+
+            if (!empty($item->meta['aso_tipo'])) {
+                return true;
             }
 
             $nomeBase = strtoupper((string) ($item->nome ?? $item->descricao ?? ''));
@@ -118,13 +122,18 @@ class PropostaService
                             ]);
                         }
                     }
-                    $regrasSnapshot = $asoSnapshot;
+                    $regrasSnapshot = $this->buildRegrasSnapshotAso($it, $asoSnapshot);
+                }
+
+                $descricaoSnapshot = $it->descricao ?? $it->nome;
+                if ($isAsoItem($it) && !empty($it->meta['aso_tipo'])) {
+                    $descricaoSnapshot = $it->nome ?? $it->descricao;
                 }
 
                 ClienteContratoItem::create([
                     'cliente_contrato_id' => $contrato->id,
                     'servico_id' => $servicoId,
-                    'descricao_snapshot' => $it->descricao ?? $it->nome,
+                    'descricao_snapshot' => $descricaoSnapshot,
                     'preco_unitario_snapshot' => $it->valor_total ?? $it->valor_unitario,
                     'unidade_cobranca' => 'unidade',
                     'regras_snapshot' => $regrasSnapshot,
@@ -154,5 +163,20 @@ class PropostaService
 
             return $proposta->fresh(['itens']);
         });
+    }
+
+    private function buildRegrasSnapshotAso(PropostaItens $item, ?array $asoSnapshot): ?array
+    {
+        $meta = $item->meta ?? [];
+        $asoTipo = $meta['aso_tipo'] ?? null;
+        if ($asoTipo) {
+            $snapshot = ['aso_tipo' => $asoTipo];
+            if (!empty($meta['grupo_id'])) {
+                $snapshot['grupo_id'] = (int) $meta['grupo_id'];
+            }
+            return $snapshot;
+        }
+
+        return $asoSnapshot;
     }
 }
