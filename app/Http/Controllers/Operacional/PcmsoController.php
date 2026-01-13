@@ -6,6 +6,7 @@ use App\Helpers\S3Helper;
 use App\Http\Controllers\Controller;
 use App\Models\Anexos;
 use App\Models\Cliente;
+use App\Models\Funcao;
 use App\Models\KanbanColuna;
 use App\Models\PcmsoSolicitacoes;
 use App\Models\Servico;
@@ -64,6 +65,7 @@ class PcmsoController extends Controller
 
         $funcoes = app(AsoGheService::class)
             ->funcoesDisponiveisParaCliente($usuario->empresa_id, $cliente->id);
+        $funcoes = $this->mergeFuncoesDisponiveis($funcoes, $request, null, $usuario->empresa_id);
 
         if ($tipo === 'matriz') {
             return view('operacional.kanban.pcmso.form_matriz', [
@@ -254,6 +256,7 @@ class PcmsoController extends Controller
 
         $funcoes = app(AsoGheService::class)
             ->funcoesDisponiveisParaCliente($empresaId, $cliente->id);
+        $funcoes = $this->mergeFuncoesDisponiveis($funcoes, $request, $pcmso->funcoes ?? null, $empresaId);
 
         if ($tipo === 'matriz') {
             return view('operacional.kanban.pcmso.form_matriz', [
@@ -391,6 +394,43 @@ class PcmsoController extends Controller
         return redirect()
             ->route('operacional.kanban')
             ->with('ok', 'PCMSO atualizado com sucesso!');
+    }
+
+    private function mergeFuncoesDisponiveis($funcoes, Request $request, ?array $funcoesSalvas, int $empresaId)
+    {
+        $ids = collect($request->old('funcoes', $funcoesSalvas ?? []))
+            ->pluck('funcao_id')
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($ids->isEmpty()) {
+            return $funcoes;
+        }
+
+        $presentIds = collect($funcoes)->pluck('id')->map(function ($id) {
+            return (int) $id;
+        });
+
+        $missingIds = $ids->diff($presentIds);
+
+        if ($missingIds->isEmpty()) {
+            return $funcoes;
+        }
+
+        $extras = Funcao::query()
+            ->daEmpresa($empresaId)
+            ->whereIn('id', $missingIds)
+            ->get();
+
+        if ($extras->isEmpty()) {
+            return $funcoes;
+        }
+
+        return collect($funcoes)
+            ->concat($extras)
+            ->unique('id')
+            ->values();
     }
 
 }

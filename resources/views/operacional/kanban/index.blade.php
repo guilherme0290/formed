@@ -1721,6 +1721,12 @@
                         return;
                     }
 
+                    const abrirWhatsapp = finalizarNotificar && finalizarNotificar.checked;
+                    const whatsappPopup = abrirWhatsapp ? window.open('about:blank', '_blank') : null;
+                    if (whatsappPopup) {
+                        whatsappPopup.document.write('Aguarde, preparando o envio...');
+                    }
+
                     const formData = new FormData();
                     formData.append('arquivo_cliente', finalizarArquivo.files[0]);
                     if (finalizarNotificar && finalizarNotificar.checked) {
@@ -1735,10 +1741,30 @@
                         },
                         body: formData,
                     })
-                        .then(r => r.json())
+                        .then(async (r) => {
+                            const contentType = r.headers.get('content-type') || '';
+                            const isJson = contentType.includes('application/json');
+                            const data = isJson ? await r.json() : null;
+
+                            if (!r.ok) {
+                                const error =
+                                    data?.error
+                                    || data?.message
+                                    || (data?.errors ? Object.values(data.errors).flat()[0] : null)
+                                    || 'Erro ao finalizar tarefa.';
+                                throw new Error(error);
+                            }
+
+                            return data;
+                        })
                         .then(data => {
                             if (!data || !data.ok) {
-                                alert(data.error || 'Erro ao finalizar tarefa.');
+                                const error =
+                                    data?.error
+                                    || data?.message
+                                    || (data?.errors ? Object.values(data.errors).flat()[0] : null)
+                                    || 'Erro ao finalizar tarefa.';
+                                alert(error);
                                 return;
                             }
 
@@ -1756,12 +1782,54 @@
                                 statusSpan.textContent = statusName;
                             }
 
+                            if (finalizarNotificar && finalizarNotificar.checked) {
+                                const telefone = (finalizarCurrentCard.dataset.telefone || '').replace(/\D/g, '');
+                                const arquivoUrl = data.arquivo_url || '';
+
+                                if (telefone) {
+                                    const servico = finalizarCurrentCard.dataset.servico || 'tarefa';
+                                    const tarefaId = finalizarCurrentCard.dataset.id || '';
+                                    let links = [];
+                                    if (arquivoUrl) {
+                                        links.push(arquivoUrl);
+                                    }
+
+                                    try {
+                                        const anexos = JSON.parse(finalizarCurrentCard.dataset.anexos || '[]');
+                                        anexos.forEach((anexo) => {
+                                            if (anexo && anexo.url) {
+                                                links.push(anexo.url);
+                                            }
+                                        });
+                                    } catch (e) {
+                                        // ignora erro de parse
+                                    }
+
+                                    links = Array.from(new Set(links));
+                                    const linksTexto = links.length ? `\n\nLinks:\n${links.join('\n')}` : '';
+
+                                    const mensagem = `Olá! Segue abaixo o anexo de documentos.\n\nEnviado pela Formed.${linksTexto}`;
+                                    const whatsappUrl = `https://wa.me/${telefone}?text=${encodeURIComponent(mensagem)}`;
+
+                                    if (whatsappPopup && !whatsappPopup.closed) {
+                                        whatsappPopup.location.href = whatsappUrl;
+                                    } else {
+                                        window.location.href = whatsappUrl;
+                                    }
+                                } else if (whatsappPopup && !whatsappPopup.closed) {
+                                    whatsappPopup.close();
+                                }
+                            }
+
                             closeFinalizarModal();
                             // Para evitar descompasso de contadores/ordem, recarrega a página
                             window.location.reload();
                         })
-                        .catch(() => {
-                            alert('Erro ao finalizar tarefa.');
+                        .catch((error) => {
+                            if (whatsappPopup && !whatsappPopup.closed) {
+                                whatsappPopup.close();
+                            }
+                            alert(error?.message || 'Erro ao finalizar tarefa.');
                         });
                 });
             }

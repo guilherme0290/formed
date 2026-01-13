@@ -54,7 +54,7 @@
             ],
             [
                 'label' => 'Agenda Vendedores',
-                'icon' => '??',
+                'icon' => '📅',
                 'route' => route('master.agenda-vendedores.index'),
                 'active' => request()->routeIs('master.agenda-vendedores.*'),
             ],            [
@@ -147,8 +147,6 @@
         </form>
     </div>
 </aside>
-
-
 
 
 

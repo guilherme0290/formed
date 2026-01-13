@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Operacional;
 use App\Http\Controllers\Controller;
 use App\Models\Anexos;
 use App\Models\Cliente;
+use App\Models\Funcao;
 use App\Services\AsoGheService;
 use App\Models\KanbanColuna;
 use App\Models\PgrSolicitacoes;
@@ -48,6 +49,7 @@ class PgrController extends Controller
 
         $funcoes = app(AsoGheService::class)
             ->funcoesDisponiveisParaCliente($empresaId, $cliente->id);
+        $funcoes = $this->mergeFuncoesDisponiveis($funcoes, $request, null, $empresaId);
 
         if (!in_array($tipo, ['matriz', 'especifico'], true)) {
             abort(404);
@@ -90,6 +92,7 @@ class PgrController extends Controller
 
         $funcoes = app(AsoGheService::class)
             ->funcoesDisponiveisParaCliente($empresaId, $cliente->id);
+        $funcoes = $this->mergeFuncoesDisponiveis($funcoes, $request, $pgr->funcoes ?? null, $empresaId);
 
         // se quiser manter o valor já salvo, senão usa fixo
         $artInfo = $this->artInfoParaCliente($cliente);
@@ -535,5 +538,42 @@ class PgrController extends Controller
             'disponivel' => true,
             'valor' => (float) $item->preco_unitario_snapshot,
         ];
+    }
+
+    private function mergeFuncoesDisponiveis($funcoes, Request $request, ?array $funcoesSalvas, int $empresaId)
+    {
+        $ids = collect($request->old('funcoes', $funcoesSalvas ?? []))
+            ->pluck('funcao_id')
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($ids->isEmpty()) {
+            return $funcoes;
+        }
+
+        $presentIds = collect($funcoes)->pluck('id')->map(function ($id) {
+            return (int) $id;
+        });
+
+        $missingIds = $ids->diff($presentIds);
+
+        if ($missingIds->isEmpty()) {
+            return $funcoes;
+        }
+
+        $extras = Funcao::query()
+            ->daEmpresa($empresaId)
+            ->whereIn('id', $missingIds)
+            ->get();
+
+        if ($extras->isEmpty()) {
+            return $funcoes;
+        }
+
+        return collect($funcoes)
+            ->concat($extras)
+            ->unique('id')
+            ->values();
     }
 }
