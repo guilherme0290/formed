@@ -25,6 +25,11 @@
             <a href="{{ route('master.dashboard') }}" class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900">
                 Voltar ao Painel
             </a>
+            <button type="button"
+                    id="btnAbrirModalAgenda"
+                    class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-orange-500 text-white text-sm font-semibold shadow hover:bg-orange-600">
+                Nova Tarefa
+            </button>
         </div>
 
         <header class="flex flex-wrap items-center justify-between gap-3">
@@ -63,6 +68,17 @@
                 </div>
             </div>
         </header>
+
+        @if(session('ok'))
+            <div class="rounded-2xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700">
+                {{ session('ok') }}
+            </div>
+        @endif
+        @if(session('erro'))
+            <div class="rounded-2xl bg-rose-50 border border-rose-200 px-4 py-3 text-sm text-rose-700">
+                {{ session('erro') }}
+            </div>
+        @endif
 
         <div class="grid md:grid-cols-3 gap-4">
             @php
@@ -223,6 +239,37 @@
                                     <div>Vendedor: {{ $tarefa->usuario?->name ?? 'Nao informado' }}</div>
                                 @endif
                             </div>
+                            <div class="flex items-center justify-end gap-2 text-sm">
+                                @if (!$isConcluida)
+                                    <form method="POST" action="{{ route('master.agenda-vendedores.concluir', $tarefa) }}">
+                                        @csrf
+                                        @method('PATCH')
+                                        <button class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700">
+                                            Concluir
+                                        </button>
+                                    </form>
+                                    <button type="button"
+                                            class="js-editar-agenda inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-900 text-white hover:bg-slate-800"
+                                            data-id="{{ $tarefa->id }}"
+                                            data-titulo="{{ $tarefa->titulo }}"
+                                            data-descricao="{{ $tarefa->descricao }}"
+                                            data-tipo="{{ $tarefa->tipo }}"
+                                            data-prioridade="{{ $tarefa->prioridade }}"
+                                            data-data="{{ $tarefa->data?->toDateString() }}"
+                                            data-hora="{{ $tarefa->hora?->format('H:i') }}"
+                                            data-cliente="{{ $tarefa->cliente }}"
+                                            data-vendedor="{{ $tarefa->user_id }}">
+                                        Editar
+                                    </button>
+                                    <form method="POST" action="{{ route('master.agenda-vendedores.destroy', $tarefa) }}" onsubmit="return confirm('Remover esta tarefa?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white border border-rose-200 text-rose-700 hover:bg-rose-50">
+                                            Excluir
+                                        </button>
+                                    </form>
+                                @endif
+                            </div>
                         </div>
                     @empty
                         <div class="text-sm text-slate-500">Sem compromissos.</div>
@@ -244,6 +291,165 @@
             <div class="p-5 space-y-3" id="agendaDiaConteudo"></div>
         </div>
     </div>
+
+    <div id="agendaModal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/40 p-4">
+        <div class="bg-white w-full max-w-lg rounded-2xl shadow-xl overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                <h2 class="text-lg font-semibold text-slate-900" id="agendaModalTitle">Nova Tarefa</h2>
+                <button type="button" id="btnFecharAgendaModal" class="h-9 w-9 flex items-center justify-center rounded-xl hover:bg-slate-100 text-slate-500">X</button>
+            </div>
+            <form method="POST" action="{{ route('master.agenda-vendedores.store') }}" class="p-5 space-y-4" id="agendaForm">
+                @csrf
+                <input type="hidden" name="_method" id="agendaFormMethod" value="POST">
+                <div class="space-y-1">
+                    <label class="text-xs font-semibold text-slate-600">Vendedor *</label>
+                    <select name="user_id" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" required>
+                        <option value="">Selecione um vendedor</option>
+                        @foreach ($vendedores as $vendedor)
+                            <option value="{{ $vendedor->id }}">{{ $vendedor->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="space-y-1">
+                    <label class="text-xs font-semibold text-slate-600">Titulo *</label>
+                    <input name="titulo" required class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" placeholder="Ex: Retorno com cliente XPTO">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-xs font-semibold text-slate-600">Descricao</label>
+                    <textarea name="descricao" rows="2" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" placeholder="Detalhes ou observacoes"></textarea>
+                </div>
+                <div class="grid md:grid-cols-2 gap-3">
+                    <div class="space-y-1">
+                        <label class="text-xs font-semibold text-slate-600">Tipo *</label>
+                        <select name="tipo" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                            <option>Retorno Cliente</option>
+                            <option>Reuniao</option>
+                            <option>Follow-up</option>
+                            <option selected>Tarefa</option>
+                            <option>Outro</option>
+                        </select>
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-xs font-semibold text-slate-600">Prioridade *</label>
+                        <select name="prioridade" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                            <option value="Baixa">Baixa</option>
+                            <option value="Media" selected>Media</option>
+                            <option value="Alta">Alta</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid md:grid-cols-2 gap-3">
+                    <div class="space-y-1">
+                        <label class="text-xs font-semibold text-slate-600">Data *</label>
+                        <input type="date" name="data" value="{{ $dataSelecionada->toDateString() }}" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" required>
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-xs font-semibold text-slate-600">Hora</label>
+                        <input type="time" name="hora" value="{{ now()->format('H:i') }}" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                    </div>
+                </div>
+                <div class="space-y-1">
+                    <label class="text-xs font-semibold text-slate-600">Cliente (opcional)</label>
+                    <input name="cliente" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" placeholder="Nome do cliente">
+                </div>
+
+                <div class="flex items-center justify-end gap-3">
+                    <button type="button" id="btnCancelarAgenda" class="px-4 py-2 rounded-xl border border-slate-200 text-sm text-slate-700 hover:bg-slate-50">Cancelar</button>
+                    <button class="px-4 py-2 rounded-xl bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600" id="agendaSubmitBtn">Criar Tarefa</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            const modal = document.getElementById('agendaModal');
+            const form = document.getElementById('agendaForm');
+            const btnAbrir = document.getElementById('btnAbrirModalAgenda');
+            const btnFechar = document.getElementById('btnFecharAgendaModal');
+            const btnCancelar = document.getElementById('btnCancelarAgenda');
+            const title = document.getElementById('agendaModalTitle');
+            const submitBtn = document.getElementById('agendaSubmitBtn');
+            const methodInput = document.getElementById('agendaFormMethod');
+            const storeAction = @json(route('master.agenda-vendedores.store'));
+            const updateActionTemplate = @json(route('master.agenda-vendedores.update', ['tarefa' => '__ID__']));
+            const vendedorSelecionado = @json($vendedorSelecionado);
+
+            function openModal() {
+                if (!modal) return;
+                modal.classList.remove('hidden');
+            }
+
+            function closeModal() {
+                if (!modal) return;
+                modal.classList.add('hidden');
+                if (form) {
+                    form.reset();
+                    const dataInput = form.querySelector('[name="data"]');
+                    const horaInput = form.querySelector('[name="hora"]');
+                    const vendedorInput = form.querySelector('[name="user_id"]');
+                    if (dataInput) dataInput.value = '{{ $dataSelecionada->toDateString() }}';
+                    if (horaInput) horaInput.value = '{{ now()->format('H:i') }}';
+                    if (vendedorInput && vendedorSelecionado && vendedorSelecionado !== 'todos') {
+                        vendedorInput.value = vendedorSelecionado;
+                    }
+                }
+                if (form) form.action = storeAction;
+                if (methodInput) methodInput.value = 'POST';
+                if (title) title.textContent = 'Nova Tarefa';
+                if (submitBtn) submitBtn.textContent = 'Criar Tarefa';
+            }
+
+            btnAbrir?.addEventListener('click', openModal);
+            btnFechar?.addEventListener('click', closeModal);
+            btnCancelar?.addEventListener('click', closeModal);
+            modal?.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    closeModal();
+                }
+            });
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    closeModal();
+                }
+            });
+
+            document.addEventListener('click', (e) => {
+                const target = e.target;
+                if (!(target instanceof HTMLElement)) return;
+                const btn = target.closest('.js-editar-agenda');
+                if (!btn) return;
+                const data = btn.dataset;
+                if (!form) return;
+
+                form.action = updateActionTemplate.replace('__ID__', data.id || '');
+                if (methodInput) methodInput.value = 'PUT';
+                if (title) title.textContent = 'Editar Tarefa';
+                if (submitBtn) submitBtn.textContent = 'Salvar Alteracoes';
+
+                const vendedorInput = form.querySelector('[name="user_id"]');
+                if (vendedorInput) vendedorInput.value = data.vendedor || '';
+                const titulo = form.querySelector('[name="titulo"]');
+                if (titulo) titulo.value = data.titulo || '';
+                const descricao = form.querySelector('[name="descricao"]');
+                if (descricao) descricao.value = data.descricao || '';
+                const tipo = form.querySelector('[name="tipo"]');
+                if (tipo) tipo.value = data.tipo || 'Tarefa';
+                const prioridade = form.querySelector('[name="prioridade"]');
+                if (prioridade) prioridade.value = data.prioridade || 'Media';
+                const dataInput = form.querySelector('[name="data"]');
+                if (dataInput) dataInput.value = data.data || '{{ $dataSelecionada->toDateString() }}';
+                const horaInput = form.querySelector('[name="hora"]');
+                if (horaInput) horaInput.value = data.hora || '';
+                const cliente = form.querySelector('[name="cliente"]');
+                if (cliente) cliente.value = data.cliente || '';
+
+                openModal();
+            });
+
+            closeModal();
+        })();
+    </script>
 
     <script>
         (function () {

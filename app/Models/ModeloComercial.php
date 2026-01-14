@@ -50,4 +50,9 @@ class ModeloComercial extends Model
     {
         return $this->hasMany(ModeloComercialTreinamento::class, 'modelo_comercial_id');
     }
+
+    public function tabelas()
+    {
+        return $this->hasMany(ModeloComercialTabela::class, 'modelo_comercial_id');
+    }
 }

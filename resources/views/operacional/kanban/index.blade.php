@@ -401,6 +401,18 @@
 
                                     {{-- PGR --}}
                                     @if($pgr)
+                                        @php
+                                            $pgrFuncoesDetalhes = collect($pgr->funcoes ?? [])->map(function ($item) {
+                                                $funcao = \App\Models\Funcao::find($item['funcao_id'] ?? null);
+                                                return [
+                                                    'nome' => $funcao?->nome ?? 'Funcao',
+                                                    'quantidade' => (int) ($item['quantidade'] ?? 0),
+                                                    'nr_altura' => (bool) ($item['nr_altura'] ?? false),
+                                                    'nr_eletricidade' => (bool) ($item['nr_eletricidade'] ?? false),
+                                                    'nr_espaco_confinado' => (bool) ($item['nr_espaco_confinado'] ?? false),
+                                                ];
+                                            })->values();
+                                        @endphp
                                         data-pgr-tipo="{{ $pgr->tipo }}"
                                         data-pgr-com-art="{{ $pgr->com_art ? '1' : '0' }}"
                                         data-pgr-qtd-homens="{{ $pgr->qtd_homens }}"
@@ -414,6 +426,7 @@
                                         data-pgr-obra-cej-cno="{{ $pgr->obra_cej_cno }}"
                                         data-pgr-obra-turno="{{ $pgr->obra_turno_trabalho }}"
                                         data-pgr-funcoes="{{ $pgr->funcoes_resumo }}"
+                                        data-pgr-funcoes-json='@json($pgrFuncoesDetalhes)'
                                     @endif
                                     @if($tarefa->documento_link)
                                         data-arquivo-cliente-url="{{ $tarefa->documento_link }}"
@@ -1415,7 +1428,33 @@
                         spanPgrObraTurno.textContent = card.dataset.pgrObraTurno || '—';
 
                         if (ulPgrFuncoes) {
-                            ulPgrFuncoes.textContent = card.dataset.pgrFuncoes || '—';
+                            let funcoesJson = [];
+                            try {
+                                funcoesJson = card.dataset.pgrFuncoesJson
+                                    ? JSON.parse(card.dataset.pgrFuncoesJson)
+                                    : [];
+                            } catch (e) {
+                                funcoesJson = [];
+                            }
+
+                            if (Array.isArray(funcoesJson) && funcoesJson.length) {
+                                const html = funcoesJson.map(item => {
+                                    const nome = item.nome || 'Funcao';
+                                    const qtd = typeof item.quantidade === 'number' ? item.quantidade : 0;
+                                    const nrs = [];
+                                    if (item.nr_altura) nrs.push('NR-35');
+                                    if (item.nr_eletricidade) nrs.push('NR-10');
+                                    if (item.nr_espaco_confinado) nrs.push('NR-33');
+                                    const nrsHtml = nrs.length
+                                        ? `<span class="ml-2 text-[11px] text-slate-500">${nrs.join(' · ')}</span>`
+                                        : `<span class="ml-2 text-[11px] text-slate-400">Sem NRs</span>`;
+                                    const content = `<span class="font-medium">${nome} (${qtd})</span>${nrsHtml}`;
+                                    return ulPgrFuncoes.tagName === 'UL' ? `<li>${content}</li>` : `<div>${content}</div>`;
+                                }).join('');
+                                ulPgrFuncoes.innerHTML = html;
+                            } else {
+                                ulPgrFuncoes.textContent = card.dataset.pgrFuncoes || '—';
+                            }
                         }
                     } else {
                         blocoPgr.classList.add('hidden');

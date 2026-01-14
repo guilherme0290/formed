@@ -217,6 +217,159 @@
                 @endforelse
             </div>
 
+            @php
+                $manualTablesOld = old('manual_tables');
+                if (is_array($manualTablesOld)) {
+                    $manualTables = $manualTablesOld;
+                    $manualTablesOrder = old('manual_tables_order', array_keys($manualTables));
+                } else {
+                    $manualTables = ($tabelasManuais ?? collect())
+                        ->mapWithKeys(function ($tabela) {
+                            $rows = $tabela->linhas
+                                ->sortBy('ordem')
+                                ->mapWithKeys(function ($linha) {
+                                    return [(string) $linha->id => $linha->valores ?? []];
+                                })
+                                ->all();
+
+                            return [(string) $tabela->id => [
+                                'titulo' => $tabela->titulo,
+                                'subtitulo' => $tabela->subtitulo,
+                                'columns' => $tabela->colunas ?? [],
+                                'rows' => $rows,
+                            ]];
+                        })
+                        ->all();
+                    $manualTablesOrder = ($tabelasManuais ?? collect())
+                        ->sortBy('ordem')
+                        ->pluck('id')
+                        ->map(fn ($id) => (string) $id)
+                        ->all();
+                }
+            @endphp
+
+            <div class="px-6 py-4 border-t bg-slate-50">
+                <h3 class="text-sm font-semibold text-slate-800">Tabelas manuais</h3>
+                <p class="text-xs text-slate-500 mt-1">Crie tabelas livres e organize a ordem arrastando.</p>
+            </div>
+
+            <div class="p-6 space-y-4">
+                <div id="manual-tables-wrapper" class="space-y-4">
+                    @foreach($manualTablesOrder as $tableId)
+                        @php
+                            $table = $manualTables[$tableId] ?? [];
+                            $columns = $table['columns'] ?? [];
+                            $rows = $table['rows'] ?? [];
+                            $rowsOrder = $table['rows_order'] ?? array_keys($rows);
+                        @endphp
+                        <div class="manual-table rounded-2xl border border-slate-200 bg-slate-50/40 p-4 space-y-4"
+                             draggable="true"
+                             data-table-id="{{ $tableId }}">
+                            <div class="flex items-center justify-between gap-3">
+                                <div class="inline-flex items-center gap-2 text-xs font-semibold text-slate-700">
+                                    <span class="manual-table-handle cursor-move rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px]">Arrastar</span>
+                                    <span>Tabela manual</span>
+                                </div>
+                                <button type="button"
+                                        class="btn-remove-table text-xs text-rose-600 hover:text-rose-700">
+                                    Remover tabela
+                                </button>
+                            </div>
+
+                            <div class="grid md:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="text-xs font-semibold text-slate-600">Título da tabela</label>
+                                    <input type="text"
+                                           name="manual_tables[{{ $tableId }}][titulo]"
+                                           value="{{ old('manual_tables.' . $tableId . '.titulo', $table['titulo'] ?? '') }}"
+                                           class="mt-1 w-full rounded-xl border border-slate-200 text-sm px-3 py-2"
+                                           placeholder="Ex: Programas">
+                                </div>
+                                <div>
+                                    <label class="text-xs font-semibold text-slate-600">Subtítulo (opcional)</label>
+                                    <input type="text"
+                                           name="manual_tables[{{ $tableId }}][subtitulo]"
+                                           value="{{ old('manual_tables.' . $tableId . '.subtitulo', $table['subtitulo'] ?? '') }}"
+                                           class="mt-1 w-full rounded-xl border border-slate-200 text-sm px-3 py-2"
+                                           placeholder="Texto auxiliar da tabela">
+                                </div>
+                            </div>
+
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <label class="text-xs font-semibold text-slate-600">Colunas</label>
+                                    <button type="button"
+                                            class="btn-add-col text-xs text-slate-600 hover:text-slate-800">
+                                        + Adicionar coluna
+                                    </button>
+                                </div>
+                                <div class="manual-columns grid md:grid-cols-3 gap-2">
+                                    @foreach($columns as $colIndex => $column)
+                                        <div class="manual-column flex items-center gap-2" data-col-index="{{ $colIndex }}">
+                                            <input type="text"
+                                                   name="manual_tables[{{ $tableId }}][columns][]"
+                                                   value="{{ $column }}"
+                                                   class="w-full rounded-xl border border-slate-200 text-sm px-3 py-2"
+                                                   placeholder="Ex: Programa">
+                                            <button type="button"
+                                                    class="btn-remove-col text-xs text-rose-600 hover:text-rose-700">
+                                                ✕
+                                            </button>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <label class="text-xs font-semibold text-slate-600">Linhas</label>
+                                    <button type="button"
+                                            class="btn-add-row text-xs text-slate-600 hover:text-slate-800">
+                                        + Adicionar linha
+                                    </button>
+                                </div>
+                                <div class="manual-rows space-y-2">
+                                    @foreach($rowsOrder as $rowKey)
+                                        @php
+                                            $rowValues = $rows[$rowKey] ?? [];
+                                        @endphp
+                                        <div class="manual-row rounded-xl border border-slate-200 bg-white p-3 space-y-2"
+                                             data-row-id="{{ $rowKey }}">
+                                            <div class="grid gap-2 manual-row-cells"
+                                                 style="grid-template-columns: repeat({{ max(count($columns), 1) }}, minmax(0, 1fr));">
+                                                @foreach($columns as $colIndex => $column)
+                                                    <div class="manual-cell" data-col-index="{{ $colIndex }}">
+                                                        <input type="text"
+                                                               name="manual_tables[{{ $tableId }}][rows][{{ $rowKey }}][]"
+                                                               value="{{ $rowValues[$colIndex] ?? '' }}"
+                                                               class="w-full rounded-xl border border-slate-200 text-sm px-3 py-2"
+                                                               placeholder="Valor">
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                            <div class="flex justify-end">
+                                                <button type="button"
+                                                        class="btn-remove-row text-xs text-rose-600 hover:text-rose-700">
+                                                    Remover linha
+                                                </button>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                                <div class="manual-rows-order"></div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+
+                <div id="manual-tables-order"></div>
+
+                <button type="button" id="btn-add-manual-table"
+                        class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                    + Nova tabela manual
+                </button>
+            </div>
+
             <div class="px-6 py-4 border-t bg-slate-50">
                 <h3 class="text-sm font-semibold text-slate-800">eSocial</h3>
                 <p class="text-xs text-slate-500 mt-1">Texto livre e tabela de faixas vigente.</p>
@@ -284,6 +437,265 @@
                 }).catch((error) => {
                     console.error(error);
                 });
+            })();
+        </script>
+        <template id="manual-table-template">
+            <div class="manual-table rounded-2xl border border-slate-200 bg-slate-50/40 p-4 space-y-4"
+                 draggable="true"
+                 data-table-id="__ID__">
+                <div class="flex items-center justify-between gap-3">
+                    <div class="inline-flex items-center gap-2 text-xs font-semibold text-slate-700">
+                        <span class="manual-table-handle cursor-move rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px]">Arrastar</span>
+                        <span>Tabela manual</span>
+                    </div>
+                    <button type="button"
+                            class="btn-remove-table text-xs text-rose-600 hover:text-rose-700">
+                        Remover tabela
+                    </button>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-xs font-semibold text-slate-600">Título da tabela</label>
+                        <input type="text"
+                               name="manual_tables[__ID__][titulo]"
+                               class="mt-1 w-full rounded-xl border border-slate-200 text-sm px-3 py-2"
+                               placeholder="Ex: Programas">
+                    </div>
+                    <div>
+                        <label class="text-xs font-semibold text-slate-600">Subtítulo (opcional)</label>
+                        <input type="text"
+                               name="manual_tables[__ID__][subtitulo]"
+                               class="mt-1 w-full rounded-xl border border-slate-200 text-sm px-3 py-2"
+                               placeholder="Texto auxiliar da tabela">
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between">
+                        <label class="text-xs font-semibold text-slate-600">Colunas</label>
+                        <button type="button"
+                                class="btn-add-col text-xs text-slate-600 hover:text-slate-800">
+                            + Adicionar coluna
+                        </button>
+                    </div>
+                    <div class="manual-columns grid md:grid-cols-3 gap-2"></div>
+                </div>
+
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between">
+                        <label class="text-xs font-semibold text-slate-600">Linhas</label>
+                        <button type="button"
+                                class="btn-add-row text-xs text-slate-600 hover:text-slate-800">
+                            + Adicionar linha
+                        </button>
+                    </div>
+                    <div class="manual-rows space-y-2"></div>
+                    <div class="manual-rows-order"></div>
+                </div>
+            </div>
+        </template>
+
+        <script>
+            (function () {
+                const wrapper = document.getElementById('manual-tables-wrapper');
+                const orderWrap = document.getElementById('manual-tables-order');
+                const btnAdd = document.getElementById('btn-add-manual-table');
+                const template = document.getElementById('manual-table-template');
+                if (!wrapper || !orderWrap || !btnAdd || !template) return;
+
+                let draggedTable = null;
+
+                function syncTablesOrder() {
+                    orderWrap.innerHTML = '';
+                    wrapper.querySelectorAll('.manual-table').forEach((table) => {
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'manual_tables_order[]';
+                        input.value = table.dataset.tableId || '';
+                        orderWrap.appendChild(input);
+                    });
+                }
+
+                function syncRowsOrder(table) {
+                    const rowsWrap = table.querySelector('.manual-rows-order');
+                    if (!rowsWrap) return;
+                    rowsWrap.innerHTML = '';
+                    table.querySelectorAll('.manual-row').forEach((row) => {
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = `manual_tables[${table.dataset.tableId}][rows_order][]`;
+                        input.value = row.dataset.rowId || '';
+                        rowsWrap.appendChild(input);
+                    });
+                }
+
+                function reindexColumns(table) {
+                    const columns = table.querySelectorAll('.manual-column');
+                    columns.forEach((col, idx) => {
+                        col.dataset.colIndex = String(idx);
+                    });
+                    table.querySelectorAll('.manual-row').forEach((row) => {
+                        row.querySelectorAll('.manual-cell').forEach((cell, idx) => {
+                            cell.dataset.colIndex = String(idx);
+                        });
+                        const cols = Math.max(columns.length, 1);
+                        const cellsWrap = row.querySelector('.manual-row-cells');
+                        if (cellsWrap) {
+                            cellsWrap.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
+                        }
+                    });
+                }
+
+                function addColumn(table) {
+                    const columnsWrap = table.querySelector('.manual-columns');
+                    if (!columnsWrap) return;
+                    const colIndex = columnsWrap.querySelectorAll('.manual-column').length;
+
+                    const col = document.createElement('div');
+                    col.className = 'manual-column flex items-center gap-2';
+                    col.dataset.colIndex = String(colIndex);
+                    col.innerHTML = `
+                        <input type="text"
+                               name="manual_tables[${table.dataset.tableId}][columns][]"
+                               class="w-full rounded-xl border border-slate-200 text-sm px-3 py-2"
+                               placeholder="Ex: Coluna">
+                        <button type="button"
+                                class="btn-remove-col text-xs text-rose-600 hover:text-rose-700">
+                            ✕
+                        </button>
+                    `;
+                    columnsWrap.appendChild(col);
+
+                    table.querySelectorAll('.manual-row').forEach((row) => {
+                        const cellsWrap = row.querySelector('.manual-row-cells');
+                        if (!cellsWrap) return;
+                        const cell = document.createElement('div');
+                        cell.className = 'manual-cell';
+                        cell.dataset.colIndex = String(colIndex);
+                        cell.innerHTML = `
+                            <input type="text"
+                                   name="manual_tables[${table.dataset.tableId}][rows][${row.dataset.rowId}][]"
+                                   class="w-full rounded-xl border border-slate-200 text-sm px-3 py-2"
+                                   placeholder="Valor">
+                        `;
+                        cellsWrap.appendChild(cell);
+                    });
+                    reindexColumns(table);
+                }
+
+                function addRow(table) {
+                    const rowsWrap = table.querySelector('.manual-rows');
+                    const columns = table.querySelectorAll('.manual-column');
+                    if (!rowsWrap) return;
+                    const rowId = `new_${Date.now()}`;
+                    const row = document.createElement('div');
+                    row.className = 'manual-row rounded-xl border border-slate-200 bg-white p-3 space-y-2';
+                    row.dataset.rowId = rowId;
+
+                    const cols = Math.max(columns.length, 1);
+                    const cells = Array.from({ length: cols }).map((_, idx) => {
+                        return `
+                            <div class="manual-cell" data-col-index="${idx}">
+                                <input type="text"
+                                       name="manual_tables[${table.dataset.tableId}][rows][${rowId}][]"
+                                       class="w-full rounded-xl border border-slate-200 text-sm px-3 py-2"
+                                       placeholder="Valor">
+                            </div>
+                        `;
+                    }).join('');
+
+                    row.innerHTML = `
+                        <div class="grid gap-2 manual-row-cells" style="grid-template-columns: repeat(${cols}, minmax(0, 1fr));">${cells}</div>
+                        <div class="flex justify-end">
+                            <button type="button"
+                                    class="btn-remove-row text-xs text-rose-600 hover:text-rose-700">
+                                Remover linha
+                            </button>
+                        </div>
+                    `;
+                    rowsWrap.appendChild(row);
+                    syncRowsOrder(table);
+                }
+
+                function initTable(table) {
+                    table.addEventListener('dragstart', (e) => {
+                        draggedTable = table;
+                        e.dataTransfer.effectAllowed = 'move';
+                    });
+                    table.addEventListener('dragover', (e) => {
+                        e.preventDefault();
+                    });
+                    table.addEventListener('drop', (e) => {
+                        e.preventDefault();
+                        if (!draggedTable || draggedTable === table) return;
+                        const tables = Array.from(wrapper.querySelectorAll('.manual-table'));
+                        const draggedIndex = tables.indexOf(draggedTable);
+                        const targetIndex = tables.indexOf(table);
+                        if (draggedIndex < targetIndex) {
+                            wrapper.insertBefore(draggedTable, table.nextSibling);
+                        } else {
+                            wrapper.insertBefore(draggedTable, table);
+                        }
+                        syncTablesOrder();
+                    });
+
+                    table.querySelector('.btn-remove-table')?.addEventListener('click', () => {
+                        table.remove();
+                        syncTablesOrder();
+                    });
+
+                    table.querySelector('.btn-add-col')?.addEventListener('click', () => {
+                        addColumn(table);
+                    });
+
+                    table.querySelector('.btn-add-row')?.addEventListener('click', () => {
+                        addRow(table);
+                    });
+
+                    table.addEventListener('click', (e) => {
+                        const btnRemoveCol = e.target.closest('.btn-remove-col');
+                        if (btnRemoveCol) {
+                            const col = btnRemoveCol.closest('.manual-column');
+                            if (!col) return;
+                            const colIndex = Number(col.dataset.colIndex || 0);
+                            col.remove();
+                            table.querySelectorAll('.manual-row').forEach((row) => {
+                                const cell = row.querySelector(`.manual-cell[data-col-index=\"${colIndex}\"]`);
+                                cell?.remove();
+                            });
+                            reindexColumns(table);
+                            return;
+                        }
+
+                        const btnRemoveRow = e.target.closest('.btn-remove-row');
+                        if (btnRemoveRow) {
+                            const row = btnRemoveRow.closest('.manual-row');
+                            row?.remove();
+                            syncRowsOrder(table);
+                        }
+                    });
+
+                    syncRowsOrder(table);
+                    reindexColumns(table);
+                }
+
+                btnAdd.addEventListener('click', () => {
+                    const id = `new_${Date.now()}`;
+                    const html = template.innerHTML.replaceAll('__ID__', id);
+                    const wrapperDiv = document.createElement('div');
+                    wrapperDiv.innerHTML = html;
+                    const table = wrapperDiv.firstElementChild;
+                    if (!table) return;
+                    wrapper.appendChild(table);
+                    initTable(table);
+                    syncTablesOrder();
+                    addColumn(table);
+                    addRow(table);
+                });
+
+                wrapper.querySelectorAll('.manual-table').forEach(initTable);
+                syncTablesOrder();
             })();
         </script>
     @endpush
