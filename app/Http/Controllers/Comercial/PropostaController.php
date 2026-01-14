@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Cliente;
 use App\Models\ClienteContratoItem;
 use App\Models\ClienteContratoLog;
+use App\Models\Empresa;
 use App\Models\Funcao;
 use App\Models\Proposta;
 use App\Models\PropostaAsoGrupo;
