@@ -230,6 +230,44 @@
                     </div>
                 @endif
 
+                @if(($tabelasManuais ?? collect())->count())
+                    @foreach($tabelasManuais as $tabela)
+                        @php
+                            $colunas = $tabela->colunas ?? [];
+                            $linhas = $tabela->linhas ?? collect();
+                        @endphp
+                        <div class="section">
+                            <div class="section-title">{{ $tabela->titulo ?: 'Tabela' }}</div>
+                            @if(!empty($tabela->subtitulo))
+                                <div style="margin-bottom: 6px; color: #64748b;">{{ $tabela->subtitulo }}</div>
+                            @endif
+                            @if(!empty($colunas))
+                                <table>
+                                    <thead>
+                                    <tr>
+                                        @foreach($colunas as $col)
+                                            <th>{{ $col }}</th>
+                                        @endforeach
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    @foreach($linhas as $linha)
+                                        @php $valores = $linha->valores ?? []; @endphp
+                                        <tr>
+                                            @foreach($colunas as $index => $col)
+                                                <td>{{ $valores[$index] ?? '' }}</td>
+                                            @endforeach
+                                        </tr>
+                                    @endforeach
+                                    </tbody>
+                                </table>
+                            @else
+                                <div style="color: #94a3b8;">Sem colunas definidas.</div>
+                            @endif
+                        </div>
+                    @endforeach
+                @endif
+
                 @if(($esocialFaixas ?? collect())->count())
                     <div class="section">
                         <div class="section-title">eSocial</div>

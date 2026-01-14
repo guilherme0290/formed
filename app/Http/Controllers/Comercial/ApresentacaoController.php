@@ -7,6 +7,8 @@ use App\Models\ModeloComercial;
 use App\Models\ModeloComercialExame;
 use App\Models\ModeloComercialItem;
 use App\Models\ModeloComercialPreco;
+use App\Models\ModeloComercialTabela;
+use App\Models\ModeloComercialTabelaLinha;
 use App\Models\ModeloComercialTreinamento;
 use App\Models\ExamesTabPreco;
 use App\Models\EsocialTabPreco;
@@ -124,6 +126,7 @@ class ApresentacaoController extends Controller
             'treinamentos' => $this->treinamentosParaSegmento($request, $segmento),
             'esocialFaixas' => $this->esocialFaixas($request),
             'esocialDescricao' => $this->esocialDescricao($request, $segmento),
+            'tabelasManuais' => $this->tabelasManuaisParaSegmento($request, $segmento),
         ]);
     }
 
@@ -153,6 +156,7 @@ class ApresentacaoController extends Controller
             'treinamentos' => $this->treinamentosParaSegmento($request, $segmento),
             'esocialFaixas' => $this->esocialFaixas($request),
             'esocialDescricao' => $this->esocialDescricao($request, $segmento),
+            'tabelasManuais' => $this->tabelasManuaisParaSegmento($request, $segmento),
         ])->setPaper('a4');
 
         return $pdf->stream('apresentacao-' . $segmento . '.pdf');
@@ -182,6 +186,7 @@ class ApresentacaoController extends Controller
         $treinamentos = $this->treinamentosParaSegmento($request, $segmento);
         $treinamentosSelecionados = $treinamentos->pluck('treinamento_nr_tab_preco_id')->all();
         $treinamentosQuantidades = $treinamentos->pluck('quantidade', 'treinamento_nr_tab_preco_id')->all();
+        $tabelasManuais = $this->tabelasManuaisParaSegmento($request, $segmento);
 
         return view('comercial.apresentacao.modelo', [
             'segmento' => $segmento,
@@ -202,6 +207,7 @@ class ApresentacaoController extends Controller
             'treinamentosQuantidades' => $treinamentosQuantidades,
             'esocialDescricao' => $modelo?->esocial_descricao,
             'esocialFaixas' => $this->esocialFaixas($request),
+            'tabelasManuais' => $tabelasManuais,
         ]);
     }
 
@@ -230,6 +236,8 @@ class ApresentacaoController extends Controller
             'treinamentos_qtd' => ['nullable', 'array'],
             'treinamentos_qtd.*' => ['nullable', 'numeric', 'min:0'],
             'esocial_descricao' => ['nullable', 'string'],
+            'manual_tables' => ['nullable', 'array'],
+            'manual_tables_order' => ['nullable', 'array'],
         ]);
 
         $empresaId = $request->user()->empresa_id;
@@ -258,7 +266,20 @@ class ApresentacaoController extends Controller
             ->filter(fn ($id) => in_array($id, $treinamentosAllowedIds, true))
             ->values();
 
-        DB::transaction(function () use ($empresaId, $segmento, $data, $linhas, $selecionados, $examesSelecionados, $treinamentosSelecionados) {
+        $tablesPayload = $request->input('manual_tables', []);
+        $tablesOrder = $request->input('manual_tables_order', array_keys($tablesPayload));
+
+        DB::transaction(function () use (
+            $empresaId,
+            $segmento,
+            $data,
+            $linhas,
+            $selecionados,
+            $examesSelecionados,
+            $treinamentosSelecionados,
+            $tablesPayload,
+            $tablesOrder
+        ) {
             $modelo = ModeloComercial::updateOrCreate(
                 ['empresa_id' => $empresaId, 'segmento' => $segmento],
                 [
@@ -335,6 +356,69 @@ class ApresentacaoController extends Controller
                     'ativo' => true,
                 ]);
             });
+
+            $modelo->tabelas()->delete();
+            $orderIds = collect($tablesOrder)
+                ->filter(fn ($id) => isset($tablesPayload[$id]))
+                ->values();
+
+            if ($orderIds->isEmpty()) {
+                $orderIds = collect(array_keys($tablesPayload));
+            }
+
+            $orderIds->each(function ($tableKey, int $index) use ($modelo, $tablesPayload) {
+                $tableData = $tablesPayload[$tableKey] ?? [];
+                $titulo = trim((string) ($tableData['titulo'] ?? ''));
+                $subtitulo = trim((string) ($tableData['subtitulo'] ?? ''));
+                $colunas = collect($tableData['columns'] ?? [])
+                    ->map(fn ($c) => trim((string) $c))
+                    ->filter()
+                    ->values()
+                    ->all();
+
+                if (empty($colunas)) {
+                    return;
+                }
+
+                $tabela = ModeloComercialTabela::create([
+                    'modelo_comercial_id' => $modelo->id,
+                    'titulo' => $titulo ?: null,
+                    'subtitulo' => $subtitulo ?: null,
+                    'colunas' => $colunas,
+                    'ordem' => $index + 1,
+                    'ativo' => true,
+                ]);
+
+                $rows = $tableData['rows'] ?? [];
+                $rowsOrder = $tableData['rows_order'] ?? array_keys($rows);
+                $rowIndex = 0;
+
+                foreach ($rowsOrder as $rowKey) {
+                    $row = $rows[$rowKey] ?? null;
+                    if ($row === null) {
+                        continue;
+                    }
+
+                    $values = collect($row)
+                        ->map(fn ($v) => trim((string) $v))
+                        ->values()
+                        ->all();
+
+                    $values = array_slice(array_pad($values, count($colunas), ''), 0, count($colunas));
+                    $hasContent = collect($values)->filter(fn ($v) => $v !== '')->isNotEmpty();
+                    if (!$hasContent) {
+                        continue;
+                    }
+
+                    $rowIndex++;
+                    ModeloComercialTabelaLinha::create([
+                        'modelo_comercial_tabela_id' => $tabela->id,
+                        'valores' => $values,
+                        'ordem' => $rowIndex,
+                        'ativo' => true,
+                    ]);
+                }
+            });
         });
 
         return redirect()
@@ -352,6 +436,8 @@ class ApresentacaoController extends Controller
                 'precos' => fn ($q) => $q->where('ativo', true),
                 'exames' => fn ($q) => $q->where('ativo', true),
                 'treinamentos' => fn ($q) => $q->where('ativo', true),
+                'tabelas' => fn ($q) => $q->where('ativo', true)->orderBy('ordem'),
+                'tabelas.linhas' => fn ($q) => $q->where('ativo', true)->orderBy('ordem'),
             ])
             ->where('empresa_id', $empresaId)
             ->where('segmento', $segmento)
@@ -460,6 +546,20 @@ class ApresentacaoController extends Controller
         });
 
         return $rows;
+    }
+
+    private function tabelasManuaisParaSegmento(Request $request, string $segmento)
+    {
+        $modelo = $this->findModelo($request, $segmento);
+
+        if (!$modelo) {
+            return collect();
+        }
+
+        return $modelo->tabelas
+            ->where('ativo', true)
+            ->sortBy('ordem')
+            ->values();
     }
 
     private function esocialDescricao(Request $request, string $segmento): ?string

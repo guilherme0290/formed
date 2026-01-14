@@ -800,9 +800,17 @@ Route::middleware('auth')->group(function () {
         // Dashboard Master
         Route::get('/', [DashboardMaster::class, 'index'])->name('dashboard');
 
-        // Agenda de Vendedores (somente leitura)
+        // Agenda de Vendedores
         Route::get('/agenda-vendedores', [AgendaVendedorController::class, 'index'])
             ->name('agenda-vendedores.index');
+        Route::post('/agenda-vendedores', [AgendaVendedorController::class, 'store'])
+            ->name('agenda-vendedores.store');
+        Route::put('/agenda-vendedores/{tarefa}', [AgendaVendedorController::class, 'update'])
+            ->name('agenda-vendedores.update');
+        Route::patch('/agenda-vendedores/{tarefa}/concluir', [AgendaVendedorController::class, 'concluir'])
+            ->name('agenda-vendedores.concluir');
+        Route::delete('/agenda-vendedores/{tarefa}', [AgendaVendedorController::class, 'destroy'])
+            ->name('agenda-vendedores.destroy');
 
         // Empresa (dados cadastrais)
         Route::prefix('empresa')->name('empresa.')->group(function () {

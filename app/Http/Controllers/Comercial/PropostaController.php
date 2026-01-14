@@ -8,6 +8,7 @@ use App\Models\ClienteContratoItem;
 use App\Models\ClienteContratoLog;
 use App\Models\Funcao;
 use App\Models\Proposta;
+use App\Models\PropostaAsoGrupo;
 use App\Models\PropostaItens;
 use App\Models\Servico;
 use App\Models\TabelaPrecoItem;

@@ -15,7 +15,7 @@
         };
     @endphp
 
-    <div class="max-w-5xl mx-auto px-4 md:px-6 py-6 space-y-6">
+    <div class="max-w-6xl mx-auto px-4 md:px-6 py-6 space-y-6">
         <div>
             <a href="{{ route('comercial.propostas.edit', $proposta) }}"
                class="inline-flex items-center text-sm text-slate-600 hover:text-slate-800">
@@ -236,6 +236,16 @@
                             id="btnEnviarEmail">
                         Enviar E-mail
                     </button>
+                    <form method="POST"
+                          action="{{ route('comercial.propostas.destroy', $proposta) }}"
+                          onsubmit="return confirm('Deseja excluir esta proposta?')">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit"
+                                class="px-4 py-2 rounded-xl border border-red-200 bg-red-50 text-red-700 text-sm font-semibold hover:bg-red-100">
+                            Excluir proposta
+                        </button>
+                    </form>
                     <a href="{{ route('comercial.propostas.pdf', $proposta) }}"
                        class="px-4 py-2 rounded-xl bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800">
                         Baixar PDF

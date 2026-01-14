@@ -84,7 +84,7 @@
                         <th class="px-5 py-3 font-semibold">Status</th>
                         <th class="px-5 py-3 font-semibold">Valor Total</th>
                         <th class="px-5 py-3 font-semibold">Criada em</th>
-                        <th class="px-5 py-3 font-semibold w-[170px]">Ações</th>
+                        <th class="px-5 py-3 font-semibold w-[220px]">Ações</th>
                     </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
@@ -139,8 +139,8 @@
                                 {{ optional($proposta->created_at)->format('d/m/Y H:i') ?? '—' }}
                             </td>
 
-                            <td class="px-5 py-3">
-                                <div class="flex flex-wrap gap-2">
+                            <td class="px-5 py-3 whitespace-nowrap">
+                                <div class="flex items-center gap-2 flex-nowrap">
                                     <button type="button"
                                             class="inline-flex items-center justify-center h-9 w-9 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
                                             title="Enviar por WhatsApp"

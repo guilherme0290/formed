@@ -237,7 +237,16 @@
                                         $funcoesForm = $pgr->funcoes;
                                     } else {
                                         $funcoesForm = [
-                                            ['funcao_id' => null, 'quantidade' => 1, 'cbo' => null, 'descricao' => null],
+                                            [
+                                                'funcao_id' => null,
+                                                'quantidade' => 1,
+                                                'cbo' => null,
+                                                'descricao' => null,
+                                                'nr_altura' => 0,
+                                                'nr_eletricidade' => 0,
+                                                'nr_espaco_confinado' => 0,
+                                                'nr_definido' => 0,
+                                            ],
                                         ];
                                     }
                                 }
@@ -300,6 +309,30 @@
                                                    class="w-full rounded-lg border-slate-200 text-sm px-3 py-2"
                                                    value="{{ old('funcoes.'.$idx.'.descricao', $f['descricao'] ?? '') }}"
                                                    placeholder="Atividades...">
+                                        </div>
+
+                                        <div class="col-span-12">
+                                            <div class="flex flex-wrap items-center gap-2 text-xs">
+                                                <span class="text-slate-500">NRs:</span>
+                                                <div class="flex flex-wrap gap-1" data-nr-tags></div>
+                                                <span class="text-slate-400" data-nr-empty>Nenhuma definida</span>
+                                                <button type="button"
+                                                        class="btn-definir-nr inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-50">
+                                                    Definir NRs
+                                                </button>
+                                            </div>
+                                            <input type="hidden"
+                                                   name="funcoes[{{ $idx }}][nr_altura]"
+                                                   value="{{ old('funcoes.'.$idx.'.nr_altura', $f['nr_altura'] ?? 0) }}">
+                                            <input type="hidden"
+                                                   name="funcoes[{{ $idx }}][nr_eletricidade]"
+                                                   value="{{ old('funcoes.'.$idx.'.nr_eletricidade', $f['nr_eletricidade'] ?? 0) }}">
+                                            <input type="hidden"
+                                                   name="funcoes[{{ $idx }}][nr_espaco_confinado]"
+                                                   value="{{ old('funcoes.'.$idx.'.nr_espaco_confinado', $f['nr_espaco_confinado'] ?? 0) }}">
+                                            <input type="hidden"
+                                                   name="funcoes[{{ $idx }}][nr_definido]"
+                                                   value="{{ old('funcoes.'.$idx.'.nr_definido', $f['nr_definido'] ?? 0) }}">
                                         </div>
                                     </div>
                                 </div>
@@ -475,6 +508,47 @@
         @endif
     </div>
 
+    <div id="nrModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 p-4">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-xl overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate-100 bg-slate-900 text-white flex items-center justify-between">
+                <div>
+                    <h2 class="text-sm font-semibold">Atividades especiais (NR)</h2>
+                    <p class="text-xs text-slate-300">Selecione se esta funcao exige alguma NR.</p>
+                </div>
+                <button type="button" id="btnFecharNrModal"
+                        class="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-slate-800 text-white">X</button>
+            </div>
+            <div class="p-5 space-y-3">
+                <label class="flex items-center gap-2 text-sm">
+                    <input type="checkbox" class="nr-option" data-nr="altura">
+                    <span>Trabalho em altura (NR-35)</span>
+                </label>
+                <label class="flex items-center gap-2 text-sm">
+                    <input type="checkbox" class="nr-option" data-nr="eletricidade">
+                    <span>Eletricidade (NR-10)</span>
+                </label>
+                <label class="flex items-center gap-2 text-sm">
+                    <input type="checkbox" class="nr-option" data-nr="espaco_confinado">
+                    <span>Espaço confinado (NR-33)</span>
+                </label>
+                <label class="flex items-center gap-2 text-sm pt-2 border-t border-slate-100">
+                    <input type="checkbox" class="nr-option" data-nr="nenhuma">
+                    <span>Nenhuma</span>
+                </label>
+            </div>
+            <div class="px-5 py-4 border-t border-slate-100 flex items-center justify-end gap-2">
+                <button type="button" id="btnCancelarNrModal"
+                        class="px-3 py-2 text-xs rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50">
+                    Cancelar
+                </button>
+                <button type="button" id="btnSalvarNrModal"
+                        class="px-4 py-2 text-xs rounded-lg bg-emerald-600 text-white font-semibold hover:bg-emerald-700">
+                    Salvar
+                </button>
+            </div>
+        </div>
+    </div>
+
     @push('scripts')
         <script>
             document.addEventListener('DOMContentLoaded', function () {
@@ -563,6 +637,87 @@
                 // ========= FUNÇÕES DINÂMICAS =========
                 const wrapper = document.getElementById('funcoes-wrapper');
                 const btnAdd = document.getElementById('btn-add-funcao');
+                const nrModal = document.getElementById('nrModal');
+                const btnFecharNrModal = document.getElementById('btnFecharNrModal');
+                const btnCancelarNrModal = document.getElementById('btnCancelarNrModal');
+                const btnSalvarNrModal = document.getElementById('btnSalvarNrModal');
+                const nrOptions = nrModal ? nrModal.querySelectorAll('.nr-option') : [];
+                let nrItemAtual = null;
+
+                function getNrInputs(item) {
+                    return {
+                        altura: item.querySelector('input[name$="[nr_altura]"]'),
+                        eletricidade: item.querySelector('input[name$="[nr_eletricidade]"]'),
+                        espacoConfinado: item.querySelector('input[name$="[nr_espaco_confinado]"]'),
+                        definido: item.querySelector('input[name$="[nr_definido]"]'),
+                    };
+                }
+
+                function renderNrTags(item) {
+                    const tags = item.querySelector('[data-nr-tags]');
+                    const empty = item.querySelector('[data-nr-empty]');
+                    const inputs = getNrInputs(item);
+                    if (!tags || !inputs.altura || !inputs.eletricidade || !inputs.espacoConfinado) {
+                        return;
+                    }
+
+                    const ativos = [];
+                    if (inputs.altura.value === '1') ativos.push('NR-35');
+                    if (inputs.eletricidade.value === '1') ativos.push('NR-10');
+                    if (inputs.espacoConfinado.value === '1') ativos.push('NR-33');
+
+                    tags.innerHTML = '';
+                    if (!ativos.length) {
+                        const definido = inputs.definido?.value === '1';
+                        if (empty) {
+                            empty.textContent = definido ? 'Nenhuma' : 'Nenhuma definida';
+                            empty.classList.remove('hidden');
+                        }
+                        return;
+                    }
+
+                    if (empty) empty.classList.add('hidden');
+                    ativos.forEach(label => {
+                        const span = document.createElement('span');
+                        span.className = 'inline-flex items-center rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-semibold text-slate-700';
+                        span.textContent = label;
+                        tags.appendChild(span);
+                    });
+                }
+
+                function resetNr(item) {
+                    const inputs = getNrInputs(item);
+                    if (inputs.altura) inputs.altura.value = '0';
+                    if (inputs.eletricidade) inputs.eletricidade.value = '0';
+                    if (inputs.espacoConfinado) inputs.espacoConfinado.value = '0';
+                    if (inputs.definido) inputs.definido.value = '0';
+                    renderNrTags(item);
+                }
+
+                function abrirNrModal(item) {
+                    if (!nrModal || !item) return;
+                    nrItemAtual = item;
+                    const inputs = getNrInputs(item);
+                    nrOptions.forEach(opt => {
+                        const nr = opt.getAttribute('data-nr');
+                        if (nr === 'altura') opt.checked = inputs.altura?.value === '1';
+                        if (nr === 'eletricidade') opt.checked = inputs.eletricidade?.value === '1';
+                        if (nr === 'espaco_confinado') opt.checked = inputs.espacoConfinado?.value === '1';
+                        if (nr === 'nenhuma') {
+                            const nenhum = (inputs.altura?.value !== '1' && inputs.eletricidade?.value !== '1' && inputs.espacoConfinado?.value !== '1');
+                            opt.checked = nenhum;
+                        }
+                    });
+                    nrModal.classList.remove('hidden');
+                    nrModal.classList.add('flex');
+                }
+
+                function fecharNrModal() {
+                    if (!nrModal) return;
+                    nrModal.classList.add('hidden');
+                    nrModal.classList.remove('flex');
+                    nrItemAtual = null;
+                }
 
                 if (wrapper && btnAdd) {
                     btnAdd.addEventListener('click', function () {
@@ -573,6 +728,7 @@
                         const clone = base.cloneNode(true);
 
                         clone.dataset.funcaoIndex = String(novoIndex);
+                        clone.removeAttribute('data-funcao-ultimo');
 
                         clone.querySelectorAll('input, select').forEach(function (el) {
                             if (el.name && el.name.includes('funcoes[')) {
@@ -583,6 +739,8 @@
                                 el.value = '';
                             } else if (el.name.includes('[quantidade]')) {
                                 el.value = '1';
+                            } else if (el.name.includes('[nr_')) {
+                                el.value = '0';
                             } else {
                                 el.value = '';
                             }
@@ -598,6 +756,7 @@
                         }
 
                         wrapper.appendChild(clone);
+                        renderNrTags(clone);
                     });
 
                     // 🔹 NOVO: remover função com delegação de evento
@@ -618,6 +777,103 @@
                         }
                     });
                 }
+
+                if (wrapper) {
+                    wrapper.querySelectorAll('.funcao-item').forEach(renderNrTags);
+
+                    wrapper.addEventListener('change', function (e) {
+                        const target = e.target;
+                        if (!(target instanceof HTMLSelectElement)) return;
+                        if (!target.name || !target.name.includes('[funcao_id]')) return;
+
+                        const item = target.closest('.funcao-item');
+                        if (!item) return;
+
+                        const valor = target.value || '';
+                        const ultimo = item.getAttribute('data-funcao-ultimo') || '';
+                        if (!valor) {
+                            resetNr(item);
+                            item.setAttribute('data-funcao-ultimo', '');
+                            return;
+                        }
+
+                        if (ultimo !== valor) {
+                            resetNr(item);
+                            item.setAttribute('data-funcao-ultimo', valor);
+                        }
+
+                        const definido = item.querySelector('input[name$="[nr_definido]"]')?.value;
+                        if (definido !== '1') {
+                            abrirNrModal(item);
+                        }
+                    });
+
+                    wrapper.addEventListener('click', function (e) {
+                        const btn = e.target.closest('.btn-definir-nr');
+                        if (!btn) return;
+                        const item = btn.closest('.funcao-item');
+                        if (!item) return;
+                        abrirNrModal(item);
+                    });
+                }
+
+                if (nrModal) {
+                    nrModal.addEventListener('click', function (e) {
+                        if (e.target === nrModal) {
+                            fecharNrModal();
+                        }
+                    });
+                }
+
+                btnFecharNrModal?.addEventListener('click', fecharNrModal);
+                btnCancelarNrModal?.addEventListener('click', fecharNrModal);
+
+                nrOptions.forEach(opt => {
+                    opt.addEventListener('change', function () {
+                        const nr = this.getAttribute('data-nr');
+                        if (nr === 'nenhuma' && this.checked) {
+                            nrOptions.forEach(o => {
+                                if (o.getAttribute('data-nr') !== 'nenhuma') {
+                                    o.checked = false;
+                                }
+                            });
+                        }
+                        if (nr !== 'nenhuma' && this.checked) {
+                            const none = nrModal.querySelector('.nr-option[data-nr="nenhuma"]');
+                            if (none) none.checked = false;
+                        }
+                    });
+                });
+
+                btnSalvarNrModal?.addEventListener('click', function () {
+                    if (!nrItemAtual) return;
+                    const inputs = getNrInputs(nrItemAtual);
+                    if (!inputs.altura || !inputs.eletricidade || !inputs.espacoConfinado || !inputs.definido) {
+                        fecharNrModal();
+                        return;
+                    }
+
+                    const selecionados = {
+                        altura: nrModal.querySelector('.nr-option[data-nr="altura"]')?.checked,
+                        eletricidade: nrModal.querySelector('.nr-option[data-nr="eletricidade"]')?.checked,
+                        espacoConfinado: nrModal.querySelector('.nr-option[data-nr="espaco_confinado"]')?.checked,
+                        nenhuma: nrModal.querySelector('.nr-option[data-nr="nenhuma"]')?.checked,
+                    };
+
+                    if (selecionados.nenhuma) {
+                        inputs.altura.value = '0';
+                        inputs.eletricidade.value = '0';
+                        inputs.espacoConfinado.value = '0';
+                    } else {
+                        inputs.altura.value = selecionados.altura ? '1' : '0';
+                        inputs.eletricidade.value = selecionados.eletricidade ? '1' : '0';
+                        inputs.espacoConfinado.value = selecionados.espacoConfinado ? '1' : '0';
+                    }
+
+                    inputs.definido.value = '1';
+                    renderNrTags(nrItemAtual);
+                    fecharNrModal();
+                });
 
                 // função auxiliar para reindexar os índices/names/labels
                 function reindexFuncoes(wrapper) {

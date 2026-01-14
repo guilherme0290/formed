@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\AgendaTarefa;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class AgendaVendedorController extends Controller
@@ -152,6 +154,102 @@ class AgendaVendedorController extends Controller
         ));
     }
 
+    public function store(Request $request): RedirectResponse
+    {
+        $empresaId = $request->user()->empresa_id ?? 1;
+        $data = $this->validateTarefa($request, $empresaId);
+        $vendedor = $this->buscarVendedor($empresaId, (int) $data['user_id']);
+
+        if (!$vendedor) {
+            return back()->withInput()->with('erro', 'Vendedor inválido.');
+        }
+
+        AgendaTarefa::create([
+            'empresa_id' => $empresaId,
+            'user_id' => $vendedor->id,
+            'titulo' => $data['titulo'],
+            'descricao' => $data['descricao'] ?? null,
+            'tipo' => $data['tipo'],
+            'prioridade' => $data['prioridade'],
+            'data' => $data['data'],
+            'hora' => $data['hora'] ?? null,
+            'cliente' => $data['cliente'] ?? null,
+            'status' => 'PENDENTE',
+        ]);
+
+        return redirect()
+            ->route('master.agenda-vendedores.index', ['data' => $data['data']])
+            ->with('ok', 'Tarefa criada.');
+    }
+
+    public function update(Request $request, AgendaTarefa $tarefa): RedirectResponse
+    {
+        $empresaId = $request->user()->empresa_id ?? 1;
+        $this->authorizeEmpresa($tarefa, $empresaId);
+
+        if ($tarefa->status !== 'PENDENTE') {
+            return back()->with('erro', 'Só é possível editar tarefas pendentes.');
+        }
+
+        $data = $this->validateTarefa($request, $empresaId);
+        $vendedor = $this->buscarVendedor($empresaId, (int) $data['user_id']);
+
+        if (!$vendedor) {
+            return back()->withInput()->with('erro', 'Vendedor inválido.');
+        }
+
+        $tarefa->update([
+            'user_id' => $vendedor->id,
+            'titulo' => $data['titulo'],
+            'descricao' => $data['descricao'] ?? null,
+            'tipo' => $data['tipo'],
+            'prioridade' => $data['prioridade'],
+            'data' => $data['data'],
+            'hora' => $data['hora'] ?? null,
+            'cliente' => $data['cliente'] ?? null,
+        ]);
+
+        return redirect()
+            ->route('master.agenda-vendedores.index', [
+                'data' => $data['data'],
+                'periodo' => $request->query('periodo', 'mes'),
+                'vendedor' => $request->query('vendedor', 'todos'),
+            ])
+            ->with('ok', 'Tarefa atualizada.');
+    }
+
+    public function concluir(Request $request, AgendaTarefa $tarefa): RedirectResponse
+    {
+        $empresaId = $request->user()->empresa_id ?? 1;
+        $this->authorizeEmpresa($tarefa, $empresaId);
+
+        $tarefa->update([
+            'status' => 'CONCLUIDA',
+            'concluida_em' => now(),
+        ]);
+
+        return redirect()
+            ->route('master.agenda-vendedores.index', ['data' => $tarefa->data->toDateString()])
+            ->with('ok', 'Tarefa concluída.');
+    }
+
+    public function destroy(Request $request, AgendaTarefa $tarefa): RedirectResponse
+    {
+        $empresaId = $request->user()->empresa_id ?? 1;
+        $this->authorizeEmpresa($tarefa, $empresaId);
+
+        if ($tarefa->status !== 'PENDENTE') {
+            return back()->with('erro', 'Só é possível remover tarefas pendentes.');
+        }
+
+        $data = $tarefa->data->toDateString();
+        $tarefa->delete();
+
+        return redirect()
+            ->route('master.agenda-vendedores.index', ['data' => $data])
+            ->with('ok', 'Tarefa removida.');
+    }
+
     private function dataSelecionada(Request $request): Carbon
     {
         $data = $request->query('data');
@@ -185,5 +283,41 @@ class AgendaVendedorController extends Controller
         $inicio = $base->copy()->startOfMonth();
         $fim = $base->copy()->endOfMonth();
         return [$inicio, $fim];
+    }
+
+    private function validateTarefa(Request $request, int $empresaId): array
+    {
+        return $request->validate([
+            'user_id' => [
+                'required',
+                'integer',
+                Rule::exists('users', 'id')->where('empresa_id', $empresaId),
+            ],
+            'titulo' => ['required', 'string', 'max:255'],
+            'descricao' => ['nullable', 'string'],
+            'tipo' => ['required', 'string', 'max:50'],
+            'prioridade' => ['required', 'string', 'max:20'],
+            'data' => ['required', 'date'],
+            'hora' => ['nullable', 'date_format:H:i'],
+            'cliente' => ['nullable', 'string', 'max:255'],
+        ]);
+    }
+
+    private function buscarVendedor(int $empresaId, int $userId): ?User
+    {
+        return User::query()
+            ->where('empresa_id', $empresaId)
+            ->where('id', $userId)
+            ->whereHas('papel', function ($q) {
+                $q->whereRaw('LOWER(nome) = ?', ['comercial']);
+            })
+            ->first();
+    }
+
+    private function authorizeEmpresa(AgendaTarefa $tarefa, int $empresaId): void
+    {
+        if ($tarefa->empresa_id !== $empresaId) {
+            abort(403);
+        }
     }
 }

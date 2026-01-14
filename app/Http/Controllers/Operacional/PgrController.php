@@ -166,6 +166,10 @@ class PgrController extends Controller
             'funcoes.*.quantidade'    => ['required', 'integer', 'min:1'],
             'funcoes.*.cbo'           => ['nullable', 'string', 'max:20'],
             'funcoes.*.descricao'     => ['nullable', 'string'],
+            'funcoes.*.nr_altura'     => ['nullable', 'boolean'],
+            'funcoes.*.nr_eletricidade' => ['nullable', 'boolean'],
+            'funcoes.*.nr_espaco_confinado' => ['nullable', 'boolean'],
+            'funcoes.*.nr_definido'   => ['nullable', 'boolean'],
         
         ], $messages);
 
@@ -314,6 +318,10 @@ class PgrController extends Controller
             'funcoes.*.quantidade'    => ['required', 'integer', 'min:1'],
             'funcoes.*.cbo'           => ['nullable', 'string', 'max:20'],
             'funcoes.*.descricao'     => ['nullable', 'string'],
+            'funcoes.*.nr_altura'     => ['nullable', 'boolean'],
+            'funcoes.*.nr_eletricidade' => ['nullable', 'boolean'],
+            'funcoes.*.nr_espaco_confinado' => ['nullable', 'boolean'],
+            'funcoes.*.nr_definido'   => ['nullable', 'boolean'],
         
         ], $messages);
 
