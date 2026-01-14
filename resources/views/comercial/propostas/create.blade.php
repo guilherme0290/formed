@@ -535,6 +535,7 @@
                 };
 
                 const INITIAL = @json($initialData);
+                const LAST_BY_CLIENTE = @json($ultimaPropostaPorCliente ?? []);
                 const gheInfo = {
                     has: !!INITIAL?.temGhe,
                     total: Number(INITIAL?.gheTotal || 0),
@@ -617,6 +618,7 @@
                 updateTabBadges();
                 bindAsoGrupoEvents();
                 loadGruposExames();
+                bindClienteAutoLoad();
 
                 // =========================
                 // Utils
@@ -648,6 +650,24 @@
                     state.itens.push(item);
                     applyGheToAsoItems();
                     render();
+                }
+
+                function bindClienteAutoLoad() {
+                    if (!el.clienteSelect || INITIAL?.isEdit) return;
+                    el.clienteSelect.addEventListener('change', () => {
+                        const clienteId = el.clienteSelect.value;
+                        if (!clienteId) return;
+                        const info = LAST_BY_CLIENTE[clienteId];
+                        if (!info) return;
+                        if (!info.can_edit) {
+                            alert('Já existe uma proposta para este cliente. Solicite ao responsável ou ao master para editar.');
+                            el.clienteSelect.value = '';
+                            return;
+                        }
+                        if (info.edit_url) {
+                            window.location.href = info.edit_url;
+                        }
+                    });
                 }
 
                 function hasAsoGrupoSelection() {

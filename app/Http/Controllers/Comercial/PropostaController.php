@@ -69,7 +69,9 @@ class PropostaController extends Controller
 
     public function create()
     {
-        $empresaId = auth()->user()->empresa_id ?? 1;
+        $user = auth()->user();
+        $empresaId = $user->empresa_id ?? 1;
+        $isMaster = $user->hasPapel('Master');
 
         $esocialId = config('services.esocial_id');
 
@@ -105,11 +107,34 @@ class PropostaController extends Controller
             'Transferência',
         ];
 
-        $user = auth()->user();
+        $ultimaPropostaPorCliente = Proposta::query()
+            ->where('empresa_id', $empresaId)
+            ->orderByDesc('id')
+            ->get(['id', 'cliente_id', 'vendedor_id'])
+            ->groupBy('cliente_id')
+            ->map(function ($rows) use ($isMaster, $user) {
+                $proposta = $rows->first();
+                $canEdit = $isMaster || ((int) $proposta->vendedor_id === (int) $user->id);
+                return [
+                    'id' => $proposta->id,
+                    'can_edit' => $canEdit,
+                    'edit_url' => $canEdit ? route('comercial.propostas.edit', $proposta) : null,
+                ];
+            })
+            ->all();
 
         $propostaAsoGrupos = collect();
 
-        return view('comercial.propostas.create', compact('clientes','servicos','formasPagamento','user','treinamentos','funcoes','propostaAsoGrupos'));
+        return view('comercial.propostas.create', compact(
+            'clientes',
+            'servicos',
+            'formasPagamento',
+            'user',
+            'treinamentos',
+            'funcoes',
+            'propostaAsoGrupos',
+            'ultimaPropostaPorCliente'
+        ));
     }
 
     public function edit(Proposta $proposta)
@@ -334,6 +359,8 @@ class PropostaController extends Controller
     private function saveProposta(Request $request, ?Proposta $proposta = null)
     {
         $empresaId = auth()->user()->empresa_id;
+        $user = auth()->user();
+        $isMaster = $user->hasPapel('Master');
 
         if ($request->boolean('incluir_esocial')) {
             $itensInput = $request->input('itens', []);
@@ -416,6 +443,26 @@ class PropostaController extends Controller
                 $fail('Meta inválida.');
             }],
         ]);
+
+        if (!$proposta) {
+            $propostaExistente = Proposta::query()
+                ->where('empresa_id', $empresaId)
+                ->where('cliente_id', $data['cliente_id'])
+                ->orderByDesc('id')
+                ->first();
+
+            if ($propostaExistente) {
+                $canEdit = $isMaster || ((int) $propostaExistente->vendedor_id === (int) $user->id);
+                if (!$canEdit) {
+                    return redirect()
+                        ->back()
+                        ->withInput()
+                        ->with('erro', 'Já existe uma proposta para este cliente. Solicite ao responsável ou ao master para editar.');
+                }
+
+                $proposta = $propostaExistente;
+            }
+        }
 
         $servicoEsocialId = (int) (config('services.esocial_id') ?? 0);
         $servicoExameId = (int) (config('services.exame_id') ?? 0);
