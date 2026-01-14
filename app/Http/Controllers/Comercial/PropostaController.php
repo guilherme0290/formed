@@ -616,7 +616,7 @@ class PropostaController extends Controller
         $prazoDias = (int) ($data['prazo_dias'] ?? ($proposta?->prazo_dias ?? 7));
         $vencimentoServicos = $data['vencimento_servicos'] ?? ($proposta?->vencimento_servicos ?? null);
 
-        return DB::transaction(function () use ($empresaId, $data, $codigo, $valorTotal, $incluirEsocial, $valorEsocial, $valorEsocialCampo, $proposta, $prazoDias, $vencimentoServicos) {
+        return DB::transaction(function () use ($empresaId, $data, $codigo, $valorTotal, $incluirEsocial, $valorEsocial, $valorEsocialCampo, $proposta, $prazoDias, $vencimentoServicos,$asoGrupos) {
             $payload = [
                 'empresa_id' => $empresaId,
                 'cliente_id' => $data['cliente_id'],
