@@ -1,8 +1,9 @@
 @extends('layouts.comercial')
 @section('title', 'Painel Comercial')
+@section('page-container', 'w-full px-0 py-6')
 
 @section('content')
-    <div class="max-w-7xl mx-auto px-4 md:px-6 py-6 space-y-8">
+    <div class="w-full px-4 md:px-6 lg:px-10 py-6 space-y-8">
 
         {{-- Título --}}
         <header>

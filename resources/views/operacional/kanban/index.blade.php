@@ -55,9 +55,9 @@
         </div>
 
         {{-- Título --}}
-        <div class="mb-3">
-            <h1 class="text-lg md:text-xl font-semibold text-slate-700">
-                Painel operacional
+        <div class="mb-3 space-y-2">
+            <h1 class="text-2xl md:text-3xl font-semibold tracking-tight text-slate-900">
+                Painel Operacional
             </h1>
             <p class="mt-0.5 text-xs md:text-sm text-slate-500">
                 Suas tarefas atribuídas ·
@@ -415,8 +415,8 @@
                                         data-pgr-obra-turno="{{ $pgr->obra_turno_trabalho }}"
                                         data-pgr-funcoes="{{ $pgr->funcoes_resumo }}"
                                     @endif
-                                    @if($tarefa->arquivo_cliente_url)
-                                        data-arquivo-cliente-url="{{ $tarefa->arquivo_cliente_url }}"
+                                    @if($tarefa->documento_link)
+                                        data-arquivo-cliente-url="{{ $tarefa->documento_link }}"
                                     @endif
 
                                     {{-- APR --}}
@@ -1769,8 +1769,8 @@
                             }
 
                             // Atualiza dataset do card com a URL do arquivo, se voltou do backend
-                            if (data.arquivo_url) {
-                                finalizarCurrentCard.dataset.arquivoClienteUrl = data.arquivo_url;
+                            if (data.documento_url) {
+                                finalizarCurrentCard.dataset.arquivoClienteUrl = data.documento_url;
                             }
 
                             // atualiza status do card
@@ -1784,10 +1784,10 @@
 
                             if (finalizarNotificar && finalizarNotificar.checked) {
                                 const telefone = (finalizarCurrentCard.dataset.telefone || '').replace(/\D/g, '');
-                                const arquivoUrl = data.arquivo_url || '';
+                                const arquivoUrl = data.documento_url || '';
 
                                 if (telefone) {
-                                    const servico = finalizarCurrentCard.dataset.servico || 'tarefa';
+                                    const servico = finalizarCurrentCard.dataset.servico || 'documento';
                                     const tarefaId = finalizarCurrentCard.dataset.id || '';
                                     let links = [];
                                     if (arquivoUrl) {
@@ -1808,7 +1808,7 @@
                                     links = Array.from(new Set(links));
                                     const linksTexto = links.length ? `\n\nLinks:\n${links.join('\n')}` : '';
 
-                                    const mensagem = `Olá! Segue abaixo o anexo de documentos.\n\nEnviado pela Formed.${linksTexto}`;
+                                    const mensagem = `Olá! Segue abaixo o anexo do ${servico}.\n\nEnviado pela Formed.${linksTexto}`;
                                     const whatsappUrl = `https://wa.me/${telefone}?text=${encodeURIComponent(mensagem)}`;
 
                                     if (whatsappPopup && !whatsappPopup.closed) {

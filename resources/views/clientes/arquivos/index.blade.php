@@ -47,8 +47,8 @@
                                     </span>
                                 </td>
                                 <td class="px-5 py-3 text-center">
-                                    @if($tarefa->arquivo_cliente_url)
-                                        <a href="{{ $tarefa->arquivo_cliente_url }}"
+                                    @if($tarefa->documento_link)
+                                        <a href="{{ $tarefa->documento_link }}"
                                            class="px-3 py-2 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700"
                                            target="_blank" rel="noopener">
                                             Ver / Baixar

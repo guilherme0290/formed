@@ -4,13 +4,9 @@
 @section('content')
     <div class="max-w-7xl mx-auto px-4 md:px-8 py-6 space-y-6">
         <div class="flex flex-col gap-2">
-            <div class="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-orange-500">
-                <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-orange-100 text-orange-600">$</span>
-                Comissões - Visão Master
-            </div>
-            <div class="flex flex-wrap items-center gap-3">
+            <div class="flex flex-col gap-1">
                 <h1 class="text-2xl md:text-3xl font-semibold text-slate-900">Visão geral por vendedor</h1>
-                <span class="text-sm text-slate-500">Real time por ano, com filtro de vendedor</span>
+                <p class="text-sm text-slate-500">Real time por ano, com filtro de vendedor.</p>
             </div>
         </div>
 

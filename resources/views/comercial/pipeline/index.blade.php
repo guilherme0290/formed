@@ -5,7 +5,7 @@
     <div class="min-h-[calc(100vh-64px)] bg-slate-50">
         {{-- Barra topo FORMED --}}
         <div class="bg-slate-900">
-            <div class="max-w-7xl mx-auto px-4 md:px-6 py-3 flex items-center justify-between text-white text-xs">
+            <div class="w-full px-4 sm:px-6 lg:px-10 py-3 flex items-center justify-between text-white text-xs">
                 <div>
                     <div class="text-sm font-semibold leading-tight">FORMED</div>
                     <div class="text-[11px] text-slate-200">Medicina e Segurança do Trabalho</div>
@@ -17,7 +17,7 @@
             </div>
         </div>
 
-        <div class="max-w-7xl mx-auto px-4 md:px-6 py-6 space-y-6">
+        <div class="w-full px-4 md:px-6 lg:px-10 py-6 space-y-6">
 
             <div>
                 <a href="{{ route('comercial.dashboard') }}"

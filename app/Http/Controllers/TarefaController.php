@@ -12,6 +12,7 @@ use App\Models\Servico;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use App\Services\PrecificacaoService;
 use App\Services\VendaService;
 use App\Services\ComissaoService;
@@ -160,12 +161,18 @@ class TarefaController extends Controller
                 ], 422);
             }
 
-            $path = S3Helper::upload( $request->file('arquivo_cliente'), 'tarefas');
+            $path = S3Helper::upload($request->file('arquivo_cliente'), 'tarefas');
+
+            $token = Str::uuid()->toString();
+            while (Tarefa::where('documento_token', $token)->exists()) {
+                $token = Str::uuid()->toString();
+            }
 
             $tarefa->update([
                 'coluna_id'               => $colunaFinalizada->id,
                 'finalizado_em'           => now(),
                 'path_documento_cliente'  => $path,
+                'documento_token'         => $token,
             ]);
 
             $log = TarefaLog::create([
@@ -186,13 +193,7 @@ class TarefaController extends Controller
             return response()->json([
                 'ok'           => true,
                 'status_label' => $colunaFinalizada->nome,
-
-                // 🔁 URL já vinda do S3
-                'arquivo_url'  => $path ? Storage::disk('s3')->temporaryUrl(
-                    $path,
-                    now()->addMinutes(10)
-                ) : null,
-
+                'documento_url' => $tarefa->documento_link,
                 'log'          => [
                     'de'   => optional($log->deColuna)->nome ?? 'Início',
                     'para' => optional($log->paraColuna)->nome ?? '-',
@@ -200,6 +201,7 @@ class TarefaController extends Controller
                     'data' => optional($log->created_at)->format('d/m H:i'),
                 ],
             ]);
+
         } catch (\Throwable $e) {
             DB::rollBack();
 
@@ -208,6 +210,20 @@ class TarefaController extends Controller
                 'error' => 'Erro ao finalizar a tarefa.',
             ], 500);
         }
+    }
+
+    public function downloadDocumento(string $token)
+    {
+        $tarefa = Tarefa::where('documento_token', $token)
+            ->whereNotNull('path_documento_cliente')
+            ->firstOrFail();
+
+        $url = Storage::disk('s3')->temporaryUrl(
+            $tarefa->path_documento_cliente,
+            now()->addMinutes(10)
+        );
+
+        return redirect()->away($url);
     }
 
 }

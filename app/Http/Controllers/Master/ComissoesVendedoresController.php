@@ -58,6 +58,17 @@ class ComissoesVendedoresController extends Controller
 
     private function vendedoresDaEmpresa(?int $empresaId): Collection
     {
+        $comerciais = User::query()
+            ->when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId))
+            ->whereHas('papel', fn ($q) => $q->whereRaw('LOWER(nome) LIKE ?', ['%comercial%']))
+            ->orderBy('name')
+            ->get()
+            ->keyBy('id');
+
+        if ($comerciais->isNotEmpty()) {
+            return $comerciais;
+        }
+
         $ids = Comissao::query()
             ->when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId))
             ->distinct()
@@ -105,17 +116,26 @@ class ComissoesVendedoresController extends Controller
 
     private function rankingVendedores(?int $empresaId, int $ano): Collection
     {
-        return Comissao::query()
+        $comerciais = $this->vendedoresDaEmpresa($empresaId);
+        $ids = $comerciais->keys()->filter()->toArray();
+
+        $totais = Comissao::query()
             ->when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId))
             ->whereYear(DB::raw('COALESCE(gerada_em, created_at)'), $ano)
+            ->when(!empty($ids), fn ($q) => $q->whereIn('vendedor_id', $ids))
             ->select('vendedor_id')
             ->selectRaw("SUM(CASE WHEN status != 'CANCELADA' THEN valor_comissao ELSE 0 END) as total")
             ->groupBy('vendedor_id')
-            ->orderByDesc('total')
             ->get()
-            ->map(function ($row) {
-                $row->vendedor = $row->vendedor_id ? \App\Models\User::find($row->vendedor_id) : null;
-                return $row;
-            });
+            ->keyBy('vendedor_id');
+
+        return $comerciais->map(function ($user) use ($totais) {
+            $row = (object) [
+                'vendedor_id' => $user->id,
+                'total' => $totais[$user->id]->total ?? 0,
+            ];
+            $row->vendedor = $user;
+            return $row;
+        })->sortByDesc('total')->values();
     }
 }

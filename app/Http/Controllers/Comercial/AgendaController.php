@@ -15,6 +15,9 @@ class AgendaController extends Controller
     {
         $this->middleware(function (Request $request, $next) {
             $user = $request->user();
+            if ($user?->isMaster()) {
+                return redirect()->route('master.agenda-vendedores.index');
+            }
             if (!$user || mb_strtolower(optional($user->papel)->nome ?? '') !== 'comercial') {
                 abort(403);
             }

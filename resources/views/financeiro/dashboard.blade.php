@@ -1,17 +1,14 @@
 @extends('layouts.financeiro')
 @section('title', 'Painel Financeiro')
+@section('page-container', 'w-full px-4 sm:px-6 lg:px-8 py-6')
 
 @section('content')
-    <div class="max-w-7xl mx-auto px-4 md:px-8 py-6 space-y-8">
+    <div class="space-y-8">
         {{-- Header --}}
         <div class="flex flex-col gap-2">
-            <div class="inline-flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-indigo-400">
-                <span class="inline-flex h-7 w-7 items-center justify-center rounded-2xl bg-indigo-500/20 text-pink-100 text-lg">$</span>
-                Painel Financeiro
-            </div>
-            <div class="flex flex-wrap items-center gap-3">
+            <div>
                 <h1 class="text-3xl font-semibold text-slate-900">Dashboard Financeiro</h1>
-                <span class="text-sm text-slate-500">Gerencie contratos, faturamento e documentos fiscais</span>
+                <p class="text-sm text-slate-500 mt-1">Gerencie contratos, faturamento e documentos fiscais.</p>
             </div>
         </div>
 

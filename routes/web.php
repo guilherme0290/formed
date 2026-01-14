@@ -57,6 +57,52 @@ Route::redirect('/', '/login');
 
 // ==================== Área autenticada ====================
 Route::middleware('auth')->group(function () {
+    Route::get('/dashboard', function (Request $request) {
+        $user = $request->user();
+        $papelNome = mb_strtolower(optional($user->papel)->nome ?? '');
+
+        if ($user->must_change_password ?? false) {
+            return redirect()->route('password.force');
+        }
+
+        if ($papelNome === 'master') {
+            return redirect()->route('master.dashboard');
+        }
+
+        if ($papelNome === 'operacional') {
+            return redirect()->route('operacional.kanban');
+        }
+
+        if ($papelNome === 'financeiro') {
+            return redirect()->route('financeiro.dashboard');
+        }
+
+        if ($papelNome === 'comercial') {
+            return redirect()->route('comercial.dashboard');
+        }
+
+        if ($papelNome === 'cliente') {
+            if ($user->cliente_id) {
+                $request->session()->put('portal_cliente_id', $user->cliente_id);
+                return redirect()->route('cliente.dashboard');
+            }
+
+            auth()->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect()
+                ->route('login', ['redirect' => 'cliente'])
+                ->with('error', 'Seu usuario nao esta vinculado a nenhum cliente.');
+        }
+
+        auth()->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return response()
+            ->view('errors.perfil-nao-suportado', ['papel' => $papelNome ?: 'desconhecido'], 403);
+    })->name('dashboard');
 
     // ---------- Perfil ----------
     Route::get('/profile',  [ProfileController::class, 'edit'])->name('profile.edit');
@@ -979,5 +1025,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/servicos', [ServicosApiController::class, 'index'])->name('servicos.index');
     });
 });
+
+Route::get('operacional/tarefas/documento/{token}', [TarefaController::class, 'downloadDocumento'])
+    ->name('operacional.tarefas.documento');
 
 require __DIR__.'/auth.php';

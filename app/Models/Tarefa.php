@@ -32,7 +32,8 @@ class Tarefa extends Model
         'fim_previsto',
         'finalizado_em',
         'data_prevista',
-        'path_documento_cliente'
+        'path_documento_cliente',
+        'documento_token'
     ];
 
     protected $casts = [
@@ -82,6 +83,15 @@ class Tarefa extends Model
             $this->path_documento_cliente,
             now()->addMinutes(10)
         );
+    }
+
+    public function getDocumentoLinkAttribute(): ?string
+    {
+        if ($this->documento_token) {
+            return route('operacional.tarefas.documento', ['token' => $this->documento_token]);
+        }
+
+        return $this->arquivo_cliente_url;
     }
 
     public function ultimoLogMovimentacao(): ?TarefaLog

@@ -5,7 +5,7 @@
     <div class="max-w-4xl mx-auto px-4 md:px-6 py-6 space-y-6">
         <div>
             <a href="{{ route('master.dashboard') }}"
-               class="inline-flex items-center text-sm text-slate-600 hover:text-slate-800">
+               class="inline-flex items-center text-sm text-slate-700 bg-white border border-slate-200 rounded-lg px-3 py-1.5 shadow-sm hover:bg-slate-50">
                 ← Voltar ao Painel
             </a>
         </div>
@@ -321,3 +321,4 @@
         });
     </script>
 @endsection
+

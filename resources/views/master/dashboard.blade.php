@@ -62,7 +62,7 @@
 
             <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <a href="{{ route('master.acessos') }}" class="rounded-2xl border border-slate-100 bg-slate-50/70 hover:bg-slate-100 transition shadow-sm p-4 flex items-center gap-3">
-                    <span class="h-10 w-10 rounded-xl bg-slate-900/5 text-slate-900 grid place-items-center text-xl">🧑‍💼</span>
+                    <span class="h-10 w-10 rounded-xl bg-slate-900/5 text-slate-900 grid place-items-center text-xl">&#128274;</span>
                     <div>
                         <div class="font-semibold text-slate-900">Acessos & Usuários</div>
                         <div class="text-sm text-slate-500">Perfis, permissões e senhas</div>
@@ -173,3 +173,5 @@
         </div>
     </div>
 @endsection
+
+

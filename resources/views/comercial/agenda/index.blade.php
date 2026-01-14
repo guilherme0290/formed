@@ -31,9 +31,16 @@
 @section('content')
     <div class="max-w-7xl mx-auto px-4 md:px-6 py-6 space-y-6">
         <div class="flex items-center justify-between flex-wrap gap-3">
-            <a href="{{ route('comercial.dashboard') }}" class="text-sm text-slate-600 hover:text-slate-800 inline-flex items-center gap-2">
+            <a href="{{ route('comercial.dashboard') }}"
+               class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 shadow-sm">
                 Voltar ao Painel
             </a>
+            @if(auth()->user()?->isMaster())
+                <a href="{{ route('master.agenda-vendedores') }}"
+                   class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 shadow-sm">
+                    Agenda de Vendedores
+                </a>
+            @endif
             <button type="button"
                     id="btnAbrirModalAgenda"
                     class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-orange-500 text-white text-sm font-semibold shadow hover:bg-orange-600">

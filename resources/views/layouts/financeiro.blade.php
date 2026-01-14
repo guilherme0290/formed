@@ -86,7 +86,9 @@
 
         <main class="flex-1 relative overflow-hidden">
             <div class="relative z-10">
-                @yield('content')
+                <div class="@yield('page-container', 'w-full px-4 sm:px-6 lg:px-8 py-6')">
+                    @yield('content')
+                </div>
             </div>
         </main>
     </div>

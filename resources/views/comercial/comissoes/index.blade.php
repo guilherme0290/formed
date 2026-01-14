@@ -3,6 +3,12 @@
 
 @section('content')
     <div class="max-w-7xl mx-auto px-4 md:px-6 py-6 space-y-6">
+        <div class="flex items-center justify-between flex-wrap gap-3">
+            <a href="{{ route('comercial.dashboard') }}"
+               class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 shadow-sm">
+                Voltar ao Painel
+            </a>
+        </div>
         <header class="flex flex-col gap-2">
             <div class="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-orange-500">
                 <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-orange-100 text-orange-600">$</span>

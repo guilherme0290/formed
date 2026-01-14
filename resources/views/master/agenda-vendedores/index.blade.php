@@ -30,7 +30,7 @@
         <header class="flex flex-wrap items-center justify-between gap-3">
             <div>
                 <h1 class="text-2xl md:text-3xl font-semibold text-slate-900">Agenda de Vendedores</h1>
-                <p class="text-sm text-slate-500 mt-1">Visao ampla da agenda comercial por data.</p>
+                <p class="text-sm text-slate-500 mt-1">Visão ampla da agenda comercial por data.</p>
             </div>
 
             <div class="flex flex-wrap items-center gap-3">
@@ -42,11 +42,11 @@
                 <form method="GET" action="{{ route('master.agenda-vendedores.index') }}" class="flex flex-wrap items-center gap-2">
                     <input type="date" name="data" value="{{ $dataSelecionada->toDateString() }}"
                            class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
-                    <select name="periodo" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                    <select name="periodo" class="rounded-xl border border-slate-200 bg-white px-3 py-2 pr-9 text-sm">
                         <option value="mes" @selected($periodo === 'mes')>Mes</option>
                         <option value="ano" @selected($periodo === 'ano')>Ano</option>
                     </select>
-                    <select name="vendedor" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                    <select name="vendedor" class="rounded-xl border border-slate-200 bg-white px-3 py-2 pr-9 text-sm">
                         <option value="todos" @selected($vendedorSelecionado === 'todos')>Todos os vendedores</option>
                         @foreach ($vendedores as $vendedor)
                             <option value="{{ $vendedor->id }}" @selected($vendedorSelecionado == $vendedor->id)>

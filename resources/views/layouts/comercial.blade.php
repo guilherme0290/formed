@@ -77,7 +77,7 @@
                 <span data-sidebar-label>Minhas Comissões</span>
             </a>
 
-            <a href="{{ route('comercial.agenda.index') }}"
+            <a href="{{ route($isMaster ? 'master.agenda-vendedores.index' : 'comercial.agenda.index') }}"
                class="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-200 hover:bg-slate-800 text-sm">
                 <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-200">
                     🗓️
@@ -192,7 +192,9 @@
 
             {{-- Conteúdo das telas comerciais fica por cima --}}
             <div class="relative z-10">
-                @yield('content')
+                <div class="@yield('page-container', 'w-full px-4 sm:px-6 lg:px-8 py-6')">
+                    @yield('content')
+                </div>
             </div>
         </main>
     </div>
