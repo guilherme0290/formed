@@ -182,13 +182,19 @@
                 </div>
             </div>
 
+            @php
+                $treinamentosComPreco = ($treinamentosList ?? collect())
+                    ->filter(fn($treinamento) => !empty($treinamento->tabelaItem)
+                        && $treinamento->tabelaItem->preco !== null);
+            @endphp
+
             <div class="px-6 py-4 border-t bg-slate-50">
                 <h3 class="text-sm font-semibold text-slate-800">Treinamentos</h3>
                 <p class="text-xs text-slate-500 mt-1">Selecione treinamentos e informe a quantidade.</p>
             </div>
 
             <div class="p-6 space-y-2">
-                @forelse($treinamentosList as $treinamento)
+                @forelse($treinamentosComPreco as $treinamento)
                     @php
                         $quantidadeValue = old('treinamentos_qtd.' . $treinamento->id, $treinamentosQuantidades[$treinamento->id] ?? 1);
                     @endphp
@@ -204,6 +210,7 @@
                             </div>
                         </label>
                         <div class="flex items-center gap-3 md:ml-auto">
+                            <div class="text-xs text-slate-500">R$ {{ number_format((float) ($treinamento->tabelaItem?->preco ?? 0), 2, ',', '.') }}</div>
                             <input type="number"
                                    name="treinamentos_qtd[{{ $treinamento->id }}]"
                                    min="0"
@@ -213,7 +220,7 @@
                         </div>
                     </div>
                 @empty
-                    <div class="text-sm text-slate-500">Nenhum treinamento ativo cadastrado.</div>
+                    <div class="text-sm text-slate-500">Nenhum treinamento com preço cadastrado.</div>
                 @endforelse
             </div>
 

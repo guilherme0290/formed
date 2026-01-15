@@ -72,6 +72,40 @@ class ComissaoController extends Controller
             ->with('ok', 'Regra cadastrada com sucesso.');
     }
 
+    public function bulkUpdate(Request $request): RedirectResponse
+    {
+        $empresaId = $request->user()->empresa_id ?? 1;
+
+        $data = $request->validate([
+            'regras'                   => ['required', 'array'],
+            'regras.*.percentual'      => ['required', 'numeric', 'min:0', 'max:100'],
+            'regras.*.vigencia_inicio' => ['required', 'date'],
+            'regras.*.vigencia_fim'    => ['nullable', 'date', 'after_or_equal:vigencia_inicio'],
+        ]);
+
+        $regraIds = array_map('intval', array_keys($data['regras']));
+        $regras = ServicoComissao::whereIn('id', $regraIds)->get()->keyBy('id');
+
+        foreach ($data['regras'] as $regraId => $payload) {
+            $regra = $regras->get((int) $regraId);
+            if (! $regra) {
+                continue;
+            }
+
+            $this->assertEmpresa($regra, $empresaId);
+
+            $regra->update([
+                'percentual'      => $payload['percentual'],
+                'vigencia_inicio' => $payload['vigencia_inicio'],
+                'vigencia_fim'    => $payload['vigencia_fim'] ?: null,
+            ]);
+        }
+
+        return redirect()
+            ->route('master.comissoes.index')
+            ->with('ok', 'Regras atualizadas com sucesso.');
+    }
+
     public function update(Request $request, ServicoComissao $servicoComissao): RedirectResponse
     {
         $empresaId = $request->user()->empresa_id ?? 1;

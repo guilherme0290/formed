@@ -11,6 +11,7 @@ use App\Models\Funcao;
 use App\Models\Proposta;
 use App\Models\PropostaAsoGrupo;
 use App\Models\PropostaItens;
+use App\Models\ProtocoloExame;
 use App\Models\Servico;
 use App\Models\TabelaPrecoItem;
 use App\Models\TabelaPrecoPadrao;
@@ -857,7 +858,7 @@ class PropostaController extends Controller
             abort_unless((int) $proposta->vendedor_id === (int) $user->id, 403);
         }
 
-        $proposta->load(['cliente', 'empresa', 'vendedor', 'itens']);
+        $proposta->load(['cliente', 'empresa', 'vendedor', 'itens', 'asoGrupos.grupo.itens.exame']);
         $unidades = UnidadeClinica::where('empresa_id', $user->empresa_id)
             ->where('ativo', true)
             ->get();
@@ -891,7 +892,7 @@ class PropostaController extends Controller
         $unidades = UnidadeClinica::where('empresa_id', $user->empresa_id)
             ->where('ativo', true)
             ->get();
-        $proposta->load(['cliente', 'empresa', 'vendedor', 'itens']);
+        $proposta->load(['cliente', 'empresa', 'vendedor', 'itens', 'asoGrupos.grupo.itens.exame']);
         $proposta['unidades'] = $unidades;
         $gheSnapshot = [];
         if ($proposta->cliente_id) {
@@ -929,7 +930,7 @@ class PropostaController extends Controller
         $unidades = UnidadeClinica::where('empresa_id', $user->empresa_id)
             ->where('ativo', true)
             ->get();
-        $proposta->load(['cliente', 'empresa', 'vendedor', 'itens']);
+        $proposta->load(['cliente', 'empresa', 'vendedor', 'itens', 'asoGrupos.grupo.itens.exame']);
         $proposta['unidades'] = $unidades;
         $gheSnapshot = [];
         if ($proposta->cliente_id) {

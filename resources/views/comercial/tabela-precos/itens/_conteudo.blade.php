@@ -198,8 +198,8 @@
                                 </td>
 
                                 <td class="px-5 py-3">
-                                    <div class="font-medium text-slate-800">{{ $item->descricao }}</div>
-                                    <div class="text-xs text-slate-500">{{ $item->codigo }}</div>
+                                    <div class="font-medium text-slate-800">{{$item->codigo  }}</div>
+                                    <div class="text-xs text-slate-500">{{ $item->descricao }}</div>
                                 </td>
 
                                 <td class="px-5 py-3 font-semibold text-slate-800">
@@ -585,6 +585,20 @@
             // ============================
             // EXIBIR / FECHAR MODAL
             // ============================
+            function resetNovoItemForm() {
+                if (!el.form) return;
+                el.form.reset();
+                if (el.servico) el.servico.value = '';
+                if (el.codigo) el.codigo.value = '';
+                if (el.descricao) el.descricao.value = '';
+                if (el.precoHidden) el.precoHidden.value = '0.00';
+                setPrecoFromNumber(0);
+                if (el.ativo) el.ativo.checked = true;
+                syncAtivoLabel();
+                if (el.nrContainer) el.nrContainer.classList.add('hidden');
+                if (el.nrWrap) el.nrWrap.innerHTML = '';
+            }
+
             window.openNovoItemModal = function () {
                 if (!el.modalItem) return;
 
@@ -593,13 +607,13 @@
                 el.title.textContent = 'Novo Item';
                 el.submit.textContent = 'Salvar';
 
-                setPrecoFromNumber(el.precoHidden.value || 0);
-                syncAtivoLabel();
+                resetNovoItemForm();
 
                 el.modalItem.classList.remove('hidden');
             }
 
             window.closeNovoItemModal = function () {
+                resetNovoItemForm();
                 el.modalItem?.classList.add('hidden');
             }
 

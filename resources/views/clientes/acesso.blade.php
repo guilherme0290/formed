@@ -29,7 +29,7 @@
                     <h1 class="text-xl font-semibold text-slate-900">Criar acesso para {{ $cliente->razao_social }}</h1>
                     <p class="text-sm text-slate-500">O usuário deverá trocar a senha no primeiro login.</p>
                 </div>
-                <a href="{{ route($routePrefix.'.show', $cliente) }}" class="text-sm text-slate-600 hover:text-slate-800">← Voltar</a>
+                <a href="{{ route($routePrefix.'.index') }}" class="text-sm text-slate-600 hover:text-slate-800">← Voltar</a>
             </div>
 
             @if($userExistente)
@@ -60,12 +60,12 @@
                     <button type="submit" class="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 w-full">
                         Criar acesso
                     </button>
-                    <a id="btnWhatsapp" href="#" target="_blank" class="px-4 py-2 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 text-sm font-semibold text-center hover:bg-emerald-100 w-full">
-                        Enviar no WhatsApp
-                    </a>
-                    <button type="button" id="btnEmail" class="px-4 py-2 rounded-xl bg-slate-50 text-slate-700 border border-slate-200 text-sm font-semibold text-center hover:bg-slate-100 w-full">
-                        Enviar por e-mail
-                    </button>
+{{--                    <a id="btnWhatsapp" href="#" target="_blank" class="px-4 py-2 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 text-sm font-semibold text-center hover:bg-emerald-100 w-full">--}}
+{{--                        Enviar no WhatsApp--}}
+{{--                    </a>--}}
+{{--                    <button type="button" id="btnEmail" class="px-4 py-2 rounded-xl bg-slate-50 text-slate-700 border border-slate-200 text-sm font-semibold text-center hover:bg-slate-100 w-full">--}}
+{{--                        Enviar por e-mail--}}
+{{--                    </button>--}}
                 </div>
             </form>
         </div>

@@ -29,6 +29,17 @@
     @php
         $status = strtoupper((string) ($proposta->status ?? 'PENDENTE'));
         $hasEsocialItem = $proposta->itens->contains(fn ($it) => strtoupper((string) ($it->tipo ?? '')) === 'ESOCIAL');
+        $asoServicoId = (int) (config('services.aso_id') ?? 0);
+        $hasAsoItem = $proposta->itens->contains(function ($it) use ($asoServicoId) {
+            if ($asoServicoId && (int) ($it->servico_id ?? 0) === $asoServicoId) {
+                return true;
+            }
+
+            $tipo = strtoupper((string) ($it->tipo ?? ''));
+            $nome = strtoupper((string) ($it->nome ?? ''));
+
+            return $tipo === 'ASO' || str_contains($nome, 'ASO');
+        });
     @endphp
 
     <div class="header">
@@ -121,6 +132,36 @@
             </tbody>
         </table>
     </div>
+
+    @if($hasAsoItem && $proposta->asoGrupos->count())
+        @php
+            $examesAso = $proposta->asoGrupos
+                ->flatMap(fn ($grupoRow) => $grupoRow->grupo?->itens?->map(fn ($it) => $it->exame)->filter() ?? collect())
+                ->unique('id')
+                ->values();
+        @endphp
+        <div class="section box">
+            <div class="muted">Exames vinculados ao ASO</div>
+            @if($examesAso->count())
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Exame</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @foreach($examesAso as $exame)
+                        <tr>
+                            <td>{{ $exame->titulo ?? 'Exame' }}</td>
+                        </tr>
+                    @endforeach
+                    </tbody>
+                </table>
+            @else
+                <div style="margin-top: 6px; color: #6b7280;">Nenhum exame vinculado.</div>
+            @endif
+        </div>
+    @endif
 
     @if($proposta->incluir_esocial)
         <div class="section box" style="border-color: #fcd34d; background: #fffbeb;">

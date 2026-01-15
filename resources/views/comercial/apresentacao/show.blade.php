@@ -44,6 +44,23 @@
                         <div class="text-xs text-white/80">Medicina e Segurança do Trabalho</div>
                     </div>
 
+                    <div class="flex items-center gap-3">
+                        <img id="clienteLogoPreview"
+                             alt="Logo do cliente"
+                             class="{{ $clienteLogoData ? '' : 'hidden' }} h-12 w-auto rounded-lg bg-white/90 p-1"
+                             src="{{ $clienteLogoData ?? '' }}" />
+                        <div class="flex items-center gap-2 print:hidden">
+                            <label for="clienteLogoInput"
+                                   class="rounded-xl bg-white/95 hover:bg-white border border-white/50 text-slate-800 px-3 py-1.5 text-xs font-semibold cursor-pointer">
+                                Logo do cliente
+                            </label>
+                            <button type="button" id="clienteLogoRemove"
+                                    class="rounded-xl bg-white/95 hover:bg-white border border-white/50 text-slate-800 px-3 py-1.5 text-xs font-semibold">
+                                Remover logo
+                            </button>
+                        </div>
+                    </div>
+
                     <div class="flex items-center gap-2 print:hidden">
                         <a href="{{ route('comercial.apresentacao.pdf', $segmento) }}"
                            target="_blank"
@@ -73,6 +90,12 @@
                         </div>
 
                         <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="md:col-span-2">
+                                <label class="text-xs font-semibold text-slate-600">Logo do cliente</label>
+                                <input id="clienteLogoInput" type="file" accept="image/*"
+                                       class="mt-1 w-full rounded-xl border border-slate-200 text-sm px-3 py-2">
+                                <p class="mt-1 text-[11px] text-slate-500">A logo aparece apenas nesta apresentação.</p>
+                            </div>
                             <div>
                                 <label class="text-xs font-semibold text-slate-600">CNPJ</label>
                                 <div class="mt-1 flex gap-2">
@@ -250,7 +273,13 @@
                         </div>
                     @endif
 
-                    @if(($treinamentos ?? collect())->count())
+                    @php
+                        $treinamentosComPreco = ($treinamentos ?? collect())
+                            ->filter(fn($treinamentoRow) => !empty($treinamentoRow->tabelaItem)
+                                && $treinamentoRow->tabelaItem->preco !== null);
+                    @endphp
+
+                    @if($treinamentosComPreco->count())
                         <div class="rounded-2xl bg-white border border-slate-200 p-6">
                             <div class="flex items-center gap-2">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -270,7 +299,7 @@
                                     </tr>
                                     </thead>
                                     <tbody class="divide-y divide-slate-100">
-                                    @foreach($treinamentos as $treinamentoRow)
+                                    @foreach($treinamentosComPreco as $treinamentoRow)
                                         @php
                                             $treinamento = $treinamentoRow->treinamento ?? null;
                                             $qtd = (float) ($treinamentoRow->quantidade ?? 1);
@@ -373,6 +402,12 @@
                 const telefone = document.getElementById('telefone');
                 const btnBuscar = document.getElementById('btnBuscarCnpj');
                 const cnpjMsg = document.getElementById('cnpjMsg');
+                const logoInput = document.getElementById('clienteLogoInput');
+                const logoPreview = document.getElementById('clienteLogoPreview');
+                const logoUploadUrl = @json(route('comercial.apresentacao.logo'));
+                const logoRemoveUrl = @json(route('comercial.apresentacao.logo.destroy'));
+                const logoRemoveButton = document.getElementById('clienteLogoRemove');
+                const csrfToken = @json(csrf_token());
 
                 const viewRazao = document.getElementById('view_razao_social');
                 const viewCnpj = document.getElementById('view_cnpj');
@@ -436,6 +471,58 @@
                     } finally {
                         btnBuscar.disabled = false;
                         btnBuscar.textContent = 'Buscar';
+                    }
+                });
+
+                logoInput?.addEventListener('change', async () => {
+                    const file = logoInput.files?.[0];
+                    if (!file || !logoPreview) {
+                        return;
+                    }
+
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        logoPreview.src = String(reader.result || '');
+                        logoPreview.classList.remove('hidden');
+                    };
+                    reader.readAsDataURL(file);
+
+                    const formData = new FormData();
+                    formData.append('logo', file);
+
+                    try {
+                        await fetch(logoUploadUrl, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json',
+                            },
+                            body: formData,
+                        });
+                    } catch (e) {
+                        console.error(e);
+                    }
+                });
+
+                logoRemoveButton?.addEventListener('click', async () => {
+                    if (logoPreview) {
+                        logoPreview.src = '';
+                        logoPreview.classList.add('hidden');
+                    }
+                    if (logoInput) {
+                        logoInput.value = '';
+                    }
+
+                    try {
+                        await fetch(logoRemoveUrl, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json',
+                            },
+                        });
+                    } catch (e) {
+                        console.error(e);
                     }
                 });
             })();

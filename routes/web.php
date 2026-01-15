@@ -557,6 +557,10 @@ Route::middleware('auth')->group(function () {
                 ->name('apresentacao.cliente.store');
             Route::get('/apresentacao/segmento', [\App\Http\Controllers\Comercial\ApresentacaoController::class, 'segmento'])
                 ->name('apresentacao.segmento');
+            Route::post('/apresentacao/logo', [\App\Http\Controllers\Comercial\ApresentacaoController::class, 'clienteLogoStore'])
+                ->name('apresentacao.logo');
+            Route::post('/apresentacao/logo/remover', [\App\Http\Controllers\Comercial\ApresentacaoController::class, 'clienteLogoDestroy'])
+                ->name('apresentacao.logo.destroy');
             Route::get('/apresentacao/{segmento}/modelo', [\App\Http\Controllers\Comercial\ApresentacaoController::class, 'modelo'])
                 ->name('apresentacao.modelo');
             Route::post('/apresentacao/{segmento}/modelo', [\App\Http\Controllers\Comercial\ApresentacaoController::class, 'modeloStore'])
@@ -932,6 +936,8 @@ Route::middleware('auth')->group(function () {
                 ->name('index');
             Route::post('/', [\App\Http\Controllers\Master\ComissaoController::class, 'store'])
                 ->name('store');
+            Route::post('/bulk', [\App\Http\Controllers\Master\ComissaoController::class, 'bulkUpdate'])
+                ->name('bulk');
             Route::put('/{servicoComissao}', [\App\Http\Controllers\Master\ComissaoController::class, 'update'])
                 ->name('update');
             Route::delete('/{servicoComissao}', [\App\Http\Controllers\Master\ComissaoController::class, 'destroy'])

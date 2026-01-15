@@ -131,11 +131,19 @@
 
                         <td class="px-4 py-3 text-center">
                             @if($cliente->userCliente)
-                                <span class="inline-flex items-center justify-center w-9 h-9 text-emerald-700 bg-emerald-100 rounded-full text-base"
-                                      title="Acesso criado"
-                                      aria-label="Acesso criado">
+                                <button type="button"
+                                        class="inline-flex items-center justify-center w-9 h-9 text-emerald-700 bg-emerald-100 rounded-full text-base"
+                                        title="Acesso criado"
+                                        aria-label="Acesso criado"
+                                        onclick="openAcessoModal(this)"
+                                        data-cliente-nome="{{ $cliente->razao_social }}"
+                                        data-user-id="{{ $cliente->userCliente->id }}"
+                                        data-user-name="{{ $cliente->userCliente->name }}"
+                                        data-user-email="{{ $cliente->userCliente->email }}"
+                                        data-user-status="{{ $cliente->userCliente->ativo ? 'Ativo' : 'Inativo' }}"
+                                        data-user-created="{{ optional($cliente->userCliente->created_at)->format('d/m/Y H:i') }}">
                                     🔓
-                                </span>
+                                </button>
                             @else
                                 <span class="inline-flex items-center justify-center w-9 h-9 text-slate-600 bg-slate-100 rounded-full text-base"
                                       title="Sem acesso"
@@ -182,9 +190,18 @@
 
                                 <a href="{{ route($routePrefix.'.acesso.form', $cliente) }}"
                                    class="px-3 py-2 text-indigo-700 bg-indigo-100 rounded-lg text-xs {{ $cliente->email ? '' : 'opacity-50 cursor-not-allowed' }}"
-                                   title="Criar acesso"
-                                   aria-label="Criar acesso"
-                                   {{ $cliente->email ? '' : 'aria-disabled=true tabindex=-1' }}>
+                                   title="{{ $cliente->userCliente ? 'Ver acesso' : 'Criar acesso' }}"
+                                   aria-label="{{ $cliente->userCliente ? 'Ver acesso' : 'Criar acesso' }}"
+                                   {{ $cliente->email ? '' : 'aria-disabled=true tabindex=-1' }}
+                                   @if($cliente->userCliente)
+                                       onclick="openAcessoModal(this); return false;"
+                                       data-cliente-nome="{{ $cliente->razao_social }}"
+                                       data-user-id="{{ $cliente->userCliente->id }}"
+                                       data-user-name="{{ $cliente->userCliente->name }}"
+                                       data-user-email="{{ $cliente->userCliente->email }}"
+                                       data-user-status="{{ $cliente->userCliente->ativo ? 'Ativo' : 'Inativo' }}"
+                                       data-user-created="{{ optional($cliente->userCliente->created_at)->format('d/m/Y H:i') }}"
+                                   @endif>
                                     🔑
                                 </a>
                             </div>
@@ -205,6 +222,70 @@
             </div>
         </div>
     </div>
+
+    <div id="modalAcessoCliente" class="fixed inset-0 z-50 hidden bg-black/40">
+        <div class="min-h-full flex items-center justify-center p-4">
+            <div class="bg-white w-full max-w-lg rounded-2xl shadow-xl overflow-hidden">
+                <div class="px-6 py-4 border-b flex items-center justify-between">
+                    <h3 class="text-lg font-semibold text-slate-800">Acesso do cliente</h3>
+                    <button type="button" class="h-9 w-9 rounded-xl hover:bg-slate-100 text-slate-500"
+                            onclick="closeAcessoModal()">✕</button>
+                </div>
+
+                <div class="p-6 space-y-4">
+                    <div class="space-y-2 text-sm text-slate-700">
+                        <div><span class="text-slate-500">Cliente:</span> <span id="acessoClienteNome">-</span></div>
+                        <div><span class="text-slate-500">Usuário:</span> <span id="acessoUserNome">-</span></div>
+                        <div><span class="text-slate-500">E-mail:</span> <span id="acessoUserEmail">-</span></div>
+                        <div><span class="text-slate-500">Status:</span> <span id="acessoUserStatus">-</span></div>
+                        <div><span class="text-slate-500">Criado em:</span> <span id="acessoUserCreated">-</span></div>
+                    </div>
+
+                    <form id="acessoResetForm" method="POST" action="" onsubmit="return confirm('Enviar link de redefinição de senha para este usuário?')">
+                        @csrf
+                        <button type="submit"
+                                class="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 text-sm font-semibold">
+                            Redefinir senha
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            const modal = document.getElementById('modalAcessoCliente');
+            const resetForm = document.getElementById('acessoResetForm');
+            const resetRouteTemplate = @json(route('master.usuarios.reset', ['user' => '__id__']));
+
+            function openAcessoModal(button) {
+                const data = button.dataset;
+
+                document.getElementById('acessoClienteNome').textContent = data.clienteNome || '-';
+                document.getElementById('acessoUserNome').textContent = data.userName || '-';
+                document.getElementById('acessoUserEmail').textContent = data.userEmail || '-';
+                document.getElementById('acessoUserStatus').textContent = data.userStatus || '-';
+                document.getElementById('acessoUserCreated').textContent = data.userCreated || '-';
+
+                resetForm.action = resetRouteTemplate.replace('__id__', data.userId || '');
+                modal.classList.remove('hidden');
+            }
+
+            function closeAcessoModal() {
+                modal.classList.add('hidden');
+            }
+
+            modal.addEventListener('click', function (event) {
+                if (event.target === modal) {
+                    closeAcessoModal();
+                }
+            });
+
+            window.openAcessoModal = openAcessoModal;
+            window.closeAcessoModal = closeAcessoModal;
+        })();
+    </script>
 @endsection
 
 @push('scripts')

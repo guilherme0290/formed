@@ -119,6 +119,7 @@ class ApresentacaoController extends Controller
             'cliente' => $cliente,
             'segmento' => $segmento,
             'segmentoNome' => self::SEGMENTOS[$segmento],
+            'clienteLogoData' => $request->session()->get(self::SESSION_KEY . '.cliente_logo'),
             'conteudo' => $this->conteudoParaSegmento($request, $segmento),
             'tituloSegmento' => $this->tituloParaSegmento($request, $segmento),
             'precos' => $this->precosParaSegmento($request, $segmento),
@@ -149,6 +150,7 @@ class ApresentacaoController extends Controller
             'segmento' => $segmento,
             'segmentoNome' => self::SEGMENTOS[$segmento],
             'logoData' => $logoData,
+            'clienteLogoData' => $request->session()->get(self::SESSION_KEY . '.cliente_logo'),
             'conteudo' => $this->conteudoParaSegmento($request, $segmento),
             'tituloSegmento' => $this->tituloParaSegmento($request, $segmento),
             'precos' => $this->precosParaSegmento($request, $segmento),
@@ -160,6 +162,28 @@ class ApresentacaoController extends Controller
         ])->setPaper('a4');
 
         return $pdf->stream('apresentacao-' . $segmento . '.pdf');
+    }
+
+    public function clienteLogoStore(Request $request)
+    {
+        $data = $request->validate([
+            'logo' => ['required', 'image', 'max:2048'],
+        ]);
+
+        $file = $data['logo'];
+        $mime = $file->getMimeType() ?: 'image/png';
+        $base64 = base64_encode(file_get_contents($file->getRealPath()));
+
+        $request->session()->put(self::SESSION_KEY . '.cliente_logo', "data:{$mime};base64,{$base64}");
+
+        return response()->json(['ok' => true]);
+    }
+
+    public function clienteLogoDestroy(Request $request)
+    {
+        $request->session()->forget(self::SESSION_KEY . '.cliente_logo');
+
+        return response()->json(['ok' => true]);
     }
 
     public function cancelar(Request $request)
@@ -603,12 +627,25 @@ class ApresentacaoController extends Controller
     {
         $empresaId = $request->user()->empresa_id;
 
-        return TreinamentoNrsTabPreco::query()
+        $precos = $this->treinamentoPrecosPorCodigo($empresaId);
+        if (empty($precos)) {
+            return collect();
+        }
+
+        $rows = TreinamentoNrsTabPreco::query()
             ->where('empresa_id', $empresaId)
             ->where('ativo', true)
+            ->whereNotNull('codigo')
+            ->whereIn('codigo', array_keys($precos))
             ->orderBy('ordem')
             ->orderBy('titulo')
             ->get();
+
+        $rows->each(function ($row) use ($precos) {
+            $row->tabelaItem = $precos[$row->codigo] ?? null;
+        });
+
+        return $rows;
     }
 
     private function treinamentoServicoId(int $empresaId): ?int

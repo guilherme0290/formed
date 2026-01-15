@@ -5,6 +5,17 @@
     @php
         $status = strtoupper((string) ($proposta->status ?? 'PENDENTE'));
         $hasEsocialItem = $proposta->itens->contains(fn ($it) => strtoupper((string) ($it->tipo ?? '')) === 'ESOCIAL');
+        $asoServicoId = (int) (config('services.aso_id') ?? 0);
+        $hasAsoItem = $proposta->itens->contains(function ($it) use ($asoServicoId) {
+            if ($asoServicoId && (int) ($it->servico_id ?? 0) === $asoServicoId) {
+                return true;
+            }
+
+            $tipo = strtoupper((string) ($it->tipo ?? ''));
+            $nome = strtoupper((string) ($it->nome ?? ''));
+
+            return $tipo === 'ASO' || str_contains($nome, 'ASO');
+        });
         $propostaSequencial = str_pad((int) $proposta->id, 2, '0', STR_PAD_LEFT);
         $statusBadge = match ($status) {
             'PENDENTE' => 'bg-amber-50 text-amber-800 border-amber-200',
@@ -192,6 +203,31 @@
                         </table>
                     </div>
                 </div>
+
+                @if($hasAsoItem && $proposta->asoGrupos->count())
+                    @php
+                        $examesAso = $proposta->asoGrupos
+                            ->flatMap(fn ($grupoRow) => $grupoRow->grupo?->itens?->map(fn ($it) => $it->exame)->filter() ?? collect())
+                            ->unique('id')
+                            ->values();
+                    @endphp
+                    <div class="rounded-2xl border border-slate-200 overflow-hidden">
+                        <div class="px-4 py-3 bg-slate-50 border-b border-slate-200">
+                            <h2 class="text-sm font-semibold text-slate-700">Exames vinculados ao ASO</h2>
+                        </div>
+                        <div class="p-4 space-y-4">
+                            @if($examesAso->count())
+                                <ul class="text-sm text-slate-700 space-y-1">
+                                    @foreach($examesAso as $exame)
+                                        <li>{{ $exame->titulo ?? 'Exame' }}</li>
+                                    @endforeach
+                                </ul>
+                            @else
+                                <div class="text-xs text-slate-500">Nenhum exame vinculado.</div>
+                            @endif
+                        </div>
+                    </div>
+                @endif
 
                 @if($proposta->incluir_esocial)
                     <div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">

@@ -2,7 +2,7 @@
 @section('title', 'Parametrização de Comissões')
 
 @section('content')
-    @php $regraEmEdicaoId = (int) old('regra_id'); @endphp
+    @php $isBulkUpdate = (bool) old('bulk_update'); @endphp
 
     <div class="w-full mx-auto px-4 md:px-6 xl:px-8 py-6 space-y-6">
         <div class="flex items-center justify-between">
@@ -18,7 +18,7 @@
             </div>
         @endif
 
-        @if ($errors->any() && !$regraEmEdicaoId)
+        @if ($errors->any() && !$isBulkUpdate)
             <div class="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-xl text-sm space-y-1">
                 <p class="font-semibold">Houve um problema ao salvar a regra.</p>
                 <ul class="list-disc list-inside text-xs space-y-1">
@@ -26,6 +26,13 @@
                         <li>{{ $error }}</li>
                     @endforeach
                 </ul>
+            </div>
+        @endif
+
+        @if ($errors->any() && $isBulkUpdate)
+            <div class="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-xl text-sm space-y-1">
+                <p class="font-semibold">Houve um problema ao salvar as regras.</p>
+                <p class="text-xs">Revise os campos destacados e tente novamente.</p>
             </div>
         @endif
 
@@ -87,7 +94,7 @@
                                 </option>
                             @endforeach
                         </select>
-                        @if (!$regraEmEdicaoId)
+                        @if (!$isBulkUpdate)
                             @error('servico_id')
                                 <p class="text-xs text-rose-600">{{ $message }}</p>
                             @enderror
@@ -97,7 +104,7 @@
                         <label class="text-xs font-semibold text-slate-600">Percentual (%)</label>
                         <input type="number" name="percentual" step="0.01" min="0" max="100" class="w-full rounded-xl border border-slate-200 px-3 py-2"
                                value="{{ old('percentual') }}" placeholder="Ex: 5,00">
-                        @if (!$regraEmEdicaoId)
+                        @if (!$isBulkUpdate)
                             @error('percentual')
                                 <p class="text-xs text-rose-600">{{ $message }}</p>
                             @enderror
@@ -107,7 +114,7 @@
                         <label class="text-xs font-semibold text-slate-600">Vigência início</label>
                         <input type="date" name="vigencia_inicio" class="w-full rounded-xl border border-slate-200 px-3 py-2"
                                value="{{ old('vigencia_inicio', now()->toDateString()) }}">
-                        @if (!$regraEmEdicaoId)
+                        @if (!$isBulkUpdate)
                             @error('vigencia_inicio')
                                 <p class="text-xs text-rose-600">{{ $message }}</p>
                             @enderror
@@ -117,7 +124,7 @@
                         <label class="text-xs font-semibold text-slate-600">Vigência fim (opcional)</label>
                         <input type="date" name="vigencia_fim" class="w-full rounded-xl border border-slate-200 px-3 py-2"
                                value="{{ old('vigencia_fim') }}">
-                        @if (!$regraEmEdicaoId)
+                        @if (!$isBulkUpdate)
                             @error('vigencia_fim')
                                 <p class="text-xs text-rose-600">{{ $message }}</p>
                             @enderror
@@ -151,99 +158,77 @@
                 <span class="text-xs bg-slate-100 text-slate-700 px-3 py-1 rounded-full">{{ $totalRegras }} regra(s)</span>
             </div>
 
-            <div class="space-y-4">
+            <form method="POST" action="{{ route('master.comissoes.bulk') }}" class="space-y-4">
+                @csrf
+                <input type="hidden" name="bulk_update" value="1">
                 @forelse ($servicos as $servico)
                     @php $regras = $regrasPorServico[$servico->id] ?? collect(); @endphp
                     <div class="border border-slate-100 rounded-xl p-4 space-y-3 bg-slate-50/60">
-                        <div class="flex flex-wrap items-center justify-between gap-2">
-                            <div>
-                                <p class="text-sm font-semibold text-slate-800">{{ $servico->nome }}</p>
-                                <p class="text-[11px] text-slate-500">{{ $servico->ativo ? 'Serviço ativo' : 'Serviço inativo' }}</p>
-                            </div>
-                            <div class="text-xs text-slate-600">
-                                {{ $regras->count() }} regra(s)
-                            </div>
-                        </div>
-
                         <div class="space-y-3">
                             @forelse ($regras as $regra)
                                 @php
-                                    $isEditing = $regraEmEdicaoId === $regra->id;
-                                    $percentual = $isEditing ? old('percentual') : $regra->percentual;
-                                    $vigenciaInicio = $isEditing ? old('vigencia_inicio') : optional($regra->vigencia_inicio)->toDateString();
-                                    $vigenciaFim = $isEditing ? old('vigencia_fim') : optional($regra->vigencia_fim)->toDateString();
-                                    $ativoMarcado = $isEditing
-                                        ? (string) old('ativo', $regra->ativo ? '1' : '0') === '1'
-                                        : (bool) $regra->ativo;
+                                    $percentual = old('regras.'.$regra->id.'.percentual', $regra->percentual);
+                                    $vigenciaInicio = old('regras.'.$regra->id.'.vigencia_inicio', optional($regra->vigencia_inicio)->toDateString());
+                                    $vigenciaFim = old('regras.'.$regra->id.'.vigencia_fim', optional($regra->vigencia_fim)->toDateString());
                                 @endphp
 
-                                @if ($isEditing && $errors->any())
-                                    <div class="bg-rose-50 border border-rose-200 text-rose-700 px-3 py-2 rounded-lg text-xs">
-                                        <p class="font-semibold">Revise os campos desta regra:</p>
-                                        <ul class="list-disc list-inside space-y-1">
-                                            @foreach ($errors->all() as $error)
-                                                <li>{{ $error }}</li>
-                                            @endforeach
-                                        </ul>
-                                    </div>
-                                @endif
-
-                                <div class="bg-white border border-slate-100 rounded-lg p-3 space-y-3">
-                                    <form id="update-{{ $regra->id }}" method="POST" action="{{ route('master.comissoes.update', $regra) }}" class="grid md:grid-cols-6 gap-3 text-sm">
-                                        @csrf
-                                        @method('PUT')
-                                        <input type="hidden" name="regra_id" value="{{ $regra->id }}">
-
-                                        <div class="md:col-span-2 space-y-1">
-                                            <label class="text-xs font-semibold text-slate-600">Vigência</label>
-                                            <div class="grid grid-cols-2 gap-2">
-                                                <input type="date" name="vigencia_inicio" class="w-full rounded-xl border border-slate-200 px-3 py-2"
-                                                       value="{{ $vigenciaInicio }}">
-                                                <input type="date" name="vigencia_fim" class="w-full rounded-xl border border-slate-200 px-3 py-2"
-                                                       value="{{ $vigenciaFim }}">
+                                <div class="bg-white border border-slate-100 rounded-lg p-3">
+                                    <div class="grid grid-cols-1 md:grid-cols-5 gap-3 text-sm items-end">
+                                        <div class="space-y-1">
+                                            <label class="text-xs font-semibold text-slate-600">Serviço</label>
+                                            <div class="h-10 flex items-center rounded-xl border border-slate-200 px-3 py-2 bg-slate-50 text-slate-700">
+                                                {{ $servico->nome }}
                                             </div>
                                         </div>
 
                                         <div class="space-y-1">
-                                            <label class="text-xs font-semibold text-slate-600">Percentual (%)</label>
-                                            <input type="number" name="percentual" step="0.01" min="0" max="100" class="w-full rounded-xl border border-slate-200 px-3 py-2"
+                                            <label class="text-xs font-semibold text-slate-600">Comissão (%)</label>
+                                            <input type="number" name="regras[{{ $regra->id }}][percentual]" step="0.01" min="0" max="100"
+                                                   class="w-full rounded-xl border border-slate-200 px-3 py-2"
                                                    value="{{ $percentual }}">
                                         </div>
 
-                                        <div class="flex items-center gap-2">
-                                            <input type="hidden" name="ativo" value="0">
-                                            <label class="inline-flex items-center gap-2 text-slate-700">
-                                                <input type="checkbox" name="ativo" value="1" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                                                       {{ $ativoMarcado ? 'checked' : '' }}>
-                                                Ativo
-                                            </label>
+                                        <div class="space-y-1">
+                                            <label class="text-xs font-semibold text-slate-600">Vigência início</label>
+                                            <input type="date" name="regras[{{ $regra->id }}][vigencia_inicio]"
+                                                   class="w-full rounded-xl border border-slate-200 px-3 py-2"
+                                                   value="{{ $vigenciaInicio }}">
                                         </div>
 
-                                        <div class="md:col-span-2 flex items-center justify-end gap-2">
-                                            <button type="submit" form="update-{{ $regra->id }}" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700">
-                                                Salvar
-                                            </button>
-                                            <button type="submit" form="delete-{{ $regra->id }}" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-rose-50 text-rose-700 text-sm font-semibold border border-rose-200 hover:bg-rose-100"
-                                                    onclick="return confirm('Excluir esta regra de comissão?')">
-                                                Excluir
-                                            </button>
+                                        <div class="space-y-1">
+                                            <label class="text-xs font-semibold text-slate-600">Vigência fim</label>
+                                            <input type="date" name="regras[{{ $regra->id }}][vigencia_fim]"
+                                                   class="w-full rounded-xl border border-slate-200 px-3 py-2"
+                                                   value="{{ $vigenciaFim }}">
                                         </div>
-                                    </form>
-                                    <form id="delete-{{ $regra->id }}" method="POST" action="{{ route('master.comissoes.destroy', $regra) }}">
-                                        @csrf
-                                        @method('DELETE')
-                                        <input type="hidden" name="regra_id" value="{{ $regra->id }}">
-                                    </form>
+                                    </div>
                                 </div>
                             @empty
-                                <p class="text-sm text-slate-500">Nenhuma regra cadastrada para este serviço.</p>
+                                <div class="bg-white border border-slate-100 rounded-lg p-3">
+                                    <div class="grid grid-cols-1 md:grid-cols-5 gap-3 text-sm items-end">
+                                        <div class="space-y-1">
+                                            <label class="text-xs font-semibold text-slate-600">Serviço</label>
+                                            <div class="h-10 flex items-center rounded-xl border border-slate-200 px-3 py-2 bg-slate-50 text-slate-700">
+                                                {{ $servico->nome }}
+                                            </div>
+                                        </div>
+                                        <div class="md:col-span-4 flex items-center text-slate-500">
+                                            Nenhuma regra cadastrada para este serviço.
+                                        </div>
+                                    </div>
+                                </div>
                             @endforelse
                         </div>
                     </div>
                 @empty
                     <div class="text-sm text-slate-600">Nenhum serviço encontrado para esta empresa.</div>
                 @endforelse
-            </div>
+                <div class="flex items-center justify-end">
+                    <button type="submit" class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700">
+                        Salvar
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 @endsection

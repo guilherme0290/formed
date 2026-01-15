@@ -67,6 +67,9 @@
                             <div class="subtitle">Medicina e Segurança do Trabalho</div>
                         </td>
                         <td style="width: 35%; text-align: right;">
+                            @if($clienteLogoData)
+                                <img src="{{ $clienteLogoData }}" alt="Logo do cliente" style="height: 36px; margin-left: 8px;">
+                            @endif
                             @if($logoData)
                                 <img src="{{ $logoData }}" alt="Formed" style="height: 36px;">
                             @endif
