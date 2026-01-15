@@ -31,9 +31,13 @@
         </div>
     @endif
 
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-">
-        <div class="flex items-center justify-between mb-6">
-            <h1 class="text-2xl font-semibold text-gray-800">
+    <div class="w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div class="mb-6">
+            <a href="{{ route($routePrefix.'.index') }}"
+               class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900">
+                Voltar
+            </a>
+            <h1 class="mt-3 text-2xl font-semibold text-gray-800">
                 {{ $cliente->exists ? 'Editar Cliente' : 'Cadastrar Cliente' }}
             </h1>
         </div>

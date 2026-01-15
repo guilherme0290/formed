@@ -2,7 +2,7 @@
 @section('title', 'Dados da Empresa')
 
 @section('content')
-    <div class="max-w-4xl mx-auto px-4 md:px-6 py-6 space-y-6">
+    <div class="w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         <div>
             <a href="{{ route('master.dashboard') }}"
                class="inline-flex items-center text-sm text-slate-700 bg-white border border-slate-200 rounded-lg px-3 py-1.5 shadow-sm hover:bg-slate-50">
@@ -321,4 +321,3 @@
         });
     </script>
 @endsection
-

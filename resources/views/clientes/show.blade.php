@@ -14,7 +14,7 @@
 @extends($layout)
 
 @section('content')
-    @php($routePrefix = $routePrefix ?? 'clientes')@endphp
+@php($routePrefix = $routePrefix ?? 'clientes')@endphp
     <div class="max-w-3xl mx-auto px-4 py-6">
 
         @if (session('ok'))
