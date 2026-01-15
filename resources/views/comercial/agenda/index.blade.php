@@ -29,7 +29,7 @@
 @endphp
 
 @section('content')
-    <div class="max-w-7xl mx-auto px-4 md:px-6 py-6 space-y-6">
+    <div class="w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         <div class="flex items-center justify-between flex-wrap gap-3">
             <a href="{{ route('comercial.dashboard') }}"
                class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 shadow-sm">
@@ -68,9 +68,7 @@
                 <form method="GET" action="{{ route('comercial.agenda.index') }}" class="flex flex-wrap items-center gap-2">
                     <input type="date" name="data" value="{{ $dataSelecionada->toDateString() }}"
                            class="px-3 py-2 rounded-xl border border-slate-200 text-sm text-slate-700 bg-white">
-                    <select name="periodo" class="px-3 py-2 rounded-xl border border-slate-200 text-sm text-slate-600 bg-white">
-                        <option value="dia" @selected($periodo === 'dia')>Dia</option>
-                        <option value="semana" @selected($periodo === 'semana')>Semana</option>
+                    <select name="periodo" class="h-11 min-w-[140px] px-4 rounded-xl border border-slate-200 text-sm leading-tight text-slate-600 bg-white">
                         <option value="mes" @selected($periodo === 'mes')>Mes</option>
                         <option value="ano" @selected($periodo === 'ano')>Ano</option>
                     </select>

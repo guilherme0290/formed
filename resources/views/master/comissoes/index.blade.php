@@ -6,7 +6,11 @@
 
     <div class="w-full mx-auto px-4 md:px-6 xl:px-8 py-6 space-y-6">
         <div class="flex items-center justify-between">
-            <div>
+            <div class="space-y-1">
+                <a href="{{ route('master.dashboard') }}"
+                   class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900">
+                    Voltar ao Painel
+                </a>
                 <h1 class="text-2xl font-semibold text-slate-900">Parametrização de Comissões</h1>
                 <p class="text-slate-500 text-sm mt-1">Defina percentuais por serviço e vigências para o cálculo automático.</p>
             </div>

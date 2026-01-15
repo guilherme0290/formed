@@ -2,7 +2,7 @@
 @section('title', 'Minhas Comissões')
 
 @section('content')
-    <div class="max-w-7xl mx-auto px-4 md:px-6 py-6 space-y-6">
+    <div class="w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         <div class="flex items-center justify-between flex-wrap gap-3">
             <a href="{{ route('comercial.dashboard') }}"
                class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 shadow-sm">
