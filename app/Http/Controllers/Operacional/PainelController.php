@@ -155,6 +155,12 @@ class PainelController extends Controller
             ->get();
 
         $responsaveis = User::where('empresa_id', $empresaId)
+            ->whereHas('papel', function ($query) {
+                $query->where('nome', 'Operacional');
+            })
+            ->whereHas('tarefas', function ($query) use ($empresaId) {
+                $query->where('empresa_id', $empresaId);
+            })
             ->orderBy('name')
             ->get();
 

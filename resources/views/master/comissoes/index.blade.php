@@ -4,7 +4,7 @@
 @section('content')
     @php $regraEmEdicaoId = (int) old('regra_id'); @endphp
 
-    <div class="max-w-6xl mx-auto px-4 md:px-6 py-6 space-y-6">
+    <div class="w-full mx-auto px-4 md:px-6 xl:px-8 py-6 space-y-6">
         <div class="flex items-center justify-between">
             <div>
                 <h1 class="text-2xl font-semibold text-slate-900">Parametrização de Comissões</h1>

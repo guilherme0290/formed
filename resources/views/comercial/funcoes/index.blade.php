@@ -3,7 +3,14 @@
 @section('title', 'Funções')
 
 @section('content')
-    <div class="max-w-6xl mx-auto px-4 md:px-6 py-6 space-y-6">
+    <div class="w-full mx-auto px-4 md:px-6 xl:px-8 py-6 space-y-6">
+        <div>
+            <a href="{{ route('master.dashboard') }}"
+               class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900">
+                Voltar ao Painel
+            </a>
+        </div>
+
         <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
                 <h1 class="text-xl font-semibold text-slate-900">Funções</h1>
