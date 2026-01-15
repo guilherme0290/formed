@@ -63,11 +63,11 @@
                 ->toArray();
         }
     @endphp
-    <div class="max-w-5xl mx-auto px-4 md:px-6 py-6">
+    <div class="w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
 
         <div class="mb-4">
             <a href="{{ route('comercial.dashboard') }}"
-               class="inline-flex items-center text-sm text-slate-600 hover:text-slate-800">
+               class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900">
                 ← Voltar ao Painel
             </a>
         </div>
