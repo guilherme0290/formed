@@ -29,7 +29,9 @@
 
             <form method="GET" class="ml-auto flex items-center gap-2">
                 <input type="hidden" name="ano" value="{{ $anoSelecionado }}">
-                <label class="text-xs text-slate-500">Vendedor</label>
+                <span class="inline-flex items-center rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-700">
+                    Vendedor
+                </span>
                 <select name="vendedor"
                         class="rounded-lg border-slate-300 text-sm px-3 py-2 focus:ring-2 focus:ring-orange-500">
                     <option value="">Todos</option>
@@ -45,8 +47,25 @@
 
         {{-- Grid de meses --}}
         <div class="grid gap-4 md:grid-cols-3">
+            @php
+                $cardsCores = [
+                    'bg-blue-50 border-blue-100',
+                    'bg-emerald-50 border-emerald-100',
+                    'bg-amber-50 border-amber-100',
+                    'bg-rose-50 border-rose-100',
+                    'bg-indigo-50 border-indigo-100',
+                    'bg-teal-50 border-teal-100',
+                    'bg-cyan-50 border-cyan-100',
+                    'bg-lime-50 border-lime-100',
+                    'bg-sky-50 border-sky-100',
+                    'bg-orange-50 border-orange-100',
+                    'bg-violet-50 border-violet-100',
+                    'bg-fuchsia-50 border-fuchsia-100',
+                ];
+            @endphp
             @foreach($meses as $mes)
-                <div class="rounded-2xl border border-slate-100 bg-white shadow-sm p-4 flex flex-col gap-3">
+                @php $cardCor = $cardsCores[$loop->index % count($cardsCores)]; @endphp
+                <div class="rounded-2xl border shadow-sm p-4 flex flex-col gap-3 {{ $cardCor }}">
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-xs font-semibold uppercase tracking-wide text-orange-500">{{ $mes->nome }}</p>
@@ -64,11 +83,11 @@
                     </div>
                     <div class="grid grid-cols-2 gap-2 text-xs text-slate-600">
                         <div class="rounded-lg bg-slate-50 border border-slate-100 p-2">
-                            <div class="text-[11px] uppercase tracking-wide text-slate-400">Previsto</div>
+                            <div class="text-[11px] uppercase tracking-wide text-amber-600">Previsto</div>
                             <div class="font-semibold text-slate-900">R$ {{ number_format($mes->total_previsto, 2, ',', '.') }}</div>
                         </div>
                         <div class="rounded-lg bg-slate-50 border border-slate-100 p-2">
-                            <div class="text-[11px] uppercase tracking-wide text-slate-400">Efetivado</div>
+                            <div class="text-[11px] uppercase tracking-wide text-emerald-600">Efetivado</div>
                             <div class="font-semibold text-slate-900">R$ {{ number_format($mes->total_efetivado, 2, ',', '.') }}</div>
                         </div>
                     </div>
@@ -77,24 +96,24 @@
         </div>
 
         {{-- Ranking por vendedor (ano selecionado) --}}
-        <section class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-            <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-                <h2 class="text-sm font-semibold text-slate-800">Ranking de vendedores ({{ $anoSelecionado }})</h2>
-                <span class="text-xs text-slate-500">Comissão total (prevista + paga)</span>
+        <section class="bg-blue-50/60 rounded-2xl shadow-sm border border-blue-100 overflow-hidden">
+            <div class="px-5 py-4 border-b border-blue-100 flex items-center justify-between">
+                <h2 class="text-sm font-semibold text-slate-900">Ranking de vendedores ({{ $anoSelecionado }})</h2>
+                <span class="text-xs font-semibold text-slate-900">Comissão total (prevista + paga)</span>
             </div>
 
             <div class="overflow-x-auto">
-                <table class="min-w-full text-sm">
-                    <thead class="bg-slate-50 text-slate-600">
+                <table class="min-w-full text-sm text-slate-900">
+                    <thead class="bg-blue-50 text-slate-900">
                         <tr>
                             <th class="px-5 py-3 text-left font-semibold">Vendedor</th>
                             <th class="px-5 py-3 text-right font-semibold">Total</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-100">
+                    <tbody class="divide-y divide-blue-100">
                         @forelse($ranking as $row)
-                            <tr class="hover:bg-slate-50/60">
-                                <td class="px-5 py-3 text-slate-800">
+                            <tr class="hover:bg-blue-50/60">
+                                <td class="px-5 py-3 text-slate-900">
                                     {{ $row->vendedor->name ?? 'ID '.$row->vendedor_id }}
                                 </td>
                                 <td class="px-5 py-3 text-right font-semibold text-slate-900">
@@ -103,7 +122,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="2" class="px-5 py-4 text-center text-slate-500">
+                                <td colspan="2" class="px-5 py-4 text-center text-slate-900">
                                     Nenhuma comissão registrada neste ano.
                                 </td>
                             </tr>

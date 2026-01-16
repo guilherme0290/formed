@@ -2,11 +2,11 @@
 @section('title', 'Nova vigência - Contrato #' . $contrato->id)
 
 @section('content')
-    <div class="max-w-5xl mx-auto px-4 md:px-6 py-6 space-y-6">
+    <div class="max-w-[1800px] mx-auto px-3 sm:px-4 lg:px-8 py-6 space-y-6">
         <div class="flex items-center justify-between">
             <div>
                 <a href="{{ route('comercial.contratos.show', $contrato) }}"
-                   class="inline-flex items-center text-sm text-slate-600 hover:text-slate-800">
+                   class="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900">
                     ← Voltar
                 </a>
                 <h1 class="text-2xl font-semibold text-slate-900 mt-1">Nova vigência</h1>

@@ -32,8 +32,10 @@ class DashboardController extends Controller
         $rows = Venda::query()
             ->join('clientes', 'clientes.id', '=', 'vendas.cliente_id')
             ->join('users', 'users.id', '=', 'clientes.vendedor_id')
+            ->join('papeis', 'papeis.id', '=', 'users.papel_id')
             ->where('vendas.empresa_id', $empresaId)
             ->whereBetween(DB::raw('DATE(vendas.created_at)'), [$inicioMes, $fimMes])
+            ->whereRaw('LOWER(papeis.nome) LIKE ?', ['%comercial%'])
             ->select(
                 'users.id as vendedor_id',
                 'users.name as vendedor_nome',
