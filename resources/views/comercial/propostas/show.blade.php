@@ -39,8 +39,7 @@
                 <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <div class="flex items-center gap-4">
                         <div class="h-12 w-12 rounded-2xl bg-white/15 flex items-center justify-center overflow-hidden">
-                            <img src="{{ asset('storage/logo.svg') }}
-                            " alt="Formed" class="h-9 w-auto">
+                            <img src="{{ asset('storage/logo.svg') }}" alt="Formed" class="h-9 w-auto">
                         </div>
                         <div>
                             <div class="text-xs uppercase tracking-[0.2em] text-emerald-100">Proposta Comercial</div>

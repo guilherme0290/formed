@@ -376,19 +376,19 @@
 
                     {{-- 5. Prazo da proposta --}}
                     <section class="space-y-3">
-                        <h2 class="text-sm font-semibold text-slate-700">5. Prazo da proposta (dias)</h2>
+                        <h2 class="text-sm font-semibold text-slate-700">5. Prazo da proposta (dias) *</h2>
 
-                        <input type="number" name="prazo_dias" min="1" max="365"
-                               value="{{ old('prazo_dias', $isEdit ? ($proposta->prazo_dias ?? 7) : 7) }}"
+                        <input type="number" name="prazo_dias" min="1" max="365" required
+                               value="{{ old('prazo_dias', $isEdit ? ($proposta->prazo_dias ?? '') : '') }}"
                                class="w-full border border-slate-200 rounded-xl text-sm px-3 py-2">
-                        <p class="text-xs text-slate-500">Padrao: 7 dias.</p>
+                        <p class="text-xs text-slate-500">Informe o prazo de vencimento da proposta.</p>
                     </section>
 
                     {{-- 6. Data de vencimento --}}
                     <section class="space-y-3">
-                        <h2 class="text-sm font-semibold text-slate-700">6. Data de vencimento</h2>
+                        <h2 class="text-sm font-semibold text-slate-700">6. Data de vencimento *</h2>
 
-                        <input type="number" min="1" max="31" name="vencimento_servicos"
+                        <input type="number" min="1" max="31" name="vencimento_servicos" required
                                value="{{ old('vencimento_servicos', $isEdit ? ($proposta->vencimento_servicos ?? '') : '') }}"
                                class="w-full border border-slate-200 rounded-xl text-sm px-3 py-2">
 
@@ -1860,6 +1860,35 @@
                     updateEsocial(state.esocial.qtd);
                 } else {
                     applyEsocialUI();
+                }
+
+                // Mensagem customizada para prazo da proposta
+                const prazoInput = document.querySelector('input[name="prazo_dias"]');
+                if (prazoInput) {
+                    prazoInput.addEventListener('invalid', () => {
+                        if (!prazoInput.value) {
+                            prazoInput.setCustomValidity('Insira um prazo para proposta');
+                        } else {
+                            prazoInput.setCustomValidity('');
+                        }
+                    });
+                    prazoInput.addEventListener('input', () => {
+                        prazoInput.setCustomValidity('');
+                    });
+                }
+
+                const vencimentoInput = document.querySelector('input[name="vencimento_servicos"]');
+                if (vencimentoInput) {
+                    vencimentoInput.addEventListener('invalid', () => {
+                        if (!vencimentoInput.value) {
+                            vencimentoInput.setCustomValidity('Preencha o campo de vencimento');
+                        } else {
+                            vencimentoInput.setCustomValidity('');
+                        }
+                    });
+                    vencimentoInput.addEventListener('input', () => {
+                        vencimentoInput.setCustomValidity('');
+                    });
                 }
 
                 // =========================

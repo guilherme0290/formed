@@ -403,8 +403,8 @@ class PropostaController extends Controller
         $data = $request->validate([
             'cliente_id' => ['required','integer'],
             'forma_pagamento' => ['required','string','max:80'],
-            'prazo_dias' => ['nullable','integer','min:1','max:365'],
-            'vencimento_servicos' => ['nullable','integer','min:1','max:31'],
+            'prazo_dias' => ['required','integer','min:1','max:365'],
+            'vencimento_servicos' => ['required','integer','min:1','max:31'],
 
             'incluir_esocial' => ['nullable','boolean'],
             'esocial_qtd_funcionarios' => ['nullable','integer','min:0'],
@@ -615,8 +615,8 @@ class PropostaController extends Controller
         $valorTotal = $valorItens + $valorEsocial;
 
         $codigo = $proposta?->codigo ?? ('PRP-' . now()->format('Ymd') . '-' . Str::upper(Str::random(4)));
-        $prazoDias = (int) ($data['prazo_dias'] ?? ($proposta?->prazo_dias ?? 7));
-        $vencimentoServicos = $data['vencimento_servicos'] ?? ($proposta?->vencimento_servicos ?? null);
+        $prazoDias = (int) $data['prazo_dias'];
+        $vencimentoServicos = $data['vencimento_servicos'];
 
         return DB::transaction(function () use ($empresaId, $data, $codigo, $valorTotal, $incluirEsocial, $valorEsocial, $valorEsocialCampo, $proposta, $prazoDias, $vencimentoServicos,$asoGrupos) {
             $payload = [
