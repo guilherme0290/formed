@@ -659,13 +659,12 @@
                         if (!clienteId) return;
                         const info = LAST_BY_CLIENTE[clienteId];
                         if (!info) return;
-                        if (!info.can_edit) {
-                            alert('Já existe uma proposta para este cliente. Solicite ao responsável ou ao master para editar.');
-                            el.clienteSelect.value = '';
+                        if (info.can_edit && info.edit_url) {
+                            window.location.href = info.edit_url;
                             return;
                         }
-                        if (info.edit_url) {
-                            window.location.href = info.edit_url;
+                        if (info.show_url) {
+                            window.location.href = info.show_url;
                         }
                     });
                 }

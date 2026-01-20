@@ -121,6 +121,7 @@ class PropostaController extends Controller
                     'id' => $proposta->id,
                     'can_edit' => $canEdit,
                     'edit_url' => $canEdit ? route('comercial.propostas.edit', $proposta) : null,
+                    'show_url' => route('comercial.propostas.show', $proposta),
                 ];
             })
             ->all();
@@ -143,9 +144,6 @@ class PropostaController extends Controller
     {
         $user = auth()->user();
         abort_unless($proposta->empresa_id === $user->empresa_id, 403);
-        if (!$user->hasPapel('Master')) {
-            abort_unless((int) $proposta->vendedor_id === (int) $user->id, 403);
-        }
 
         $empresaId = $user->empresa_id ?? 1;
 
@@ -201,9 +199,6 @@ class PropostaController extends Controller
     {
         $user = auth()->user();
         abort_unless($proposta->empresa_id === $user->empresa_id, 403);
-        if (!$user->hasPapel('Master')) {
-            abort_unless((int) $proposta->vendedor_id === (int) $user->id, 403);
-        }
 
         return $this->saveProposta($request, $proposta);
     }
@@ -212,9 +207,6 @@ class PropostaController extends Controller
     {
         $user = auth()->user();
         abort_unless($proposta->empresa_id === $user->empresa_id, 403);
-        if (!$user->hasPapel('Master')) {
-            abort_unless((int) $proposta->vendedor_id === (int) $user->id, 403);
-        }
 
         return DB::transaction(function () use ($proposta) {
             $proposta->itens()->delete();
@@ -233,9 +225,6 @@ class PropostaController extends Controller
     {
         $user = auth()->user();
         abort_unless($proposta->empresa_id === $user->empresa_id, 403);
-        if (!$user->hasPapel('Master')) {
-            abort_unless((int) $proposta->vendedor_id === (int) $user->id, 403);
-        }
 
         $data = $request->validate([
             'telefone' => ['required', 'string', 'max:30'],
@@ -267,9 +256,6 @@ class PropostaController extends Controller
     {
         $user = auth()->user();
         abort_unless($proposta->empresa_id === $user->empresa_id, 403);
-        if (!$user->hasPapel('Master')) {
-            abort_unless((int) $proposta->vendedor_id === (int) $user->id, 403);
-        }
 
         $data = $request->validate([
             'email' => ['required', 'email', 'max:255'],
@@ -457,9 +443,8 @@ class PropostaController extends Controller
                 $canEdit = $isMaster || ((int) $propostaExistente->vendedor_id === (int) $user->id);
                 if (!$canEdit) {
                     return redirect()
-                        ->back()
-                        ->withInput()
-                        ->with('erro', 'Já existe uma proposta para este cliente. Solicite ao responsável ou ao master para editar.');
+                        ->route('comercial.propostas.show', $propostaExistente)
+                        ->with('ok', 'Já existe uma proposta para este cliente. Abrindo a proposta existente.');
                 }
 
                 $proposta = $propostaExistente;
@@ -854,9 +839,7 @@ class PropostaController extends Controller
     {
         $user = auth()->user();
         abort_unless($proposta->empresa_id === $user->empresa_id, 403);
-        if (!$user->hasPapel('Master')) {
-            abort_unless((int) $proposta->vendedor_id === (int) $user->id, 403);
-        }
+        $canEdit = $user->hasPapel('Master') || ((int) $proposta->vendedor_id === (int) $user->id);
 
         $proposta->load(['cliente', 'empresa', 'vendedor', 'itens', 'asoGrupos.grupo.itens.exame']);
         $unidades = UnidadeClinica::where('empresa_id', $user->empresa_id)
@@ -878,6 +861,7 @@ class PropostaController extends Controller
             'publicLink' => $publicLink,
             'unidades' => $unidades,
             'gheSnapshot' => $gheSnapshot,
+            'canEdit' => $canEdit,
         ]);
     }
 
