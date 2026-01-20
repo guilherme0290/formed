@@ -28,10 +28,17 @@
 
     <div class="max-w-6xl mx-auto px-4 md:px-6 py-6 space-y-6">
         <div>
-            <a href="{{ route('comercial.propostas.edit', $proposta) }}"
-               class="inline-flex items-center text-sm text-slate-600 hover:text-slate-800">
-                ← Voltar
-            </a>
+            @if($canEdit)
+                <a href="{{ route('comercial.propostas.edit', $proposta) }}"
+                   class="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900">
+                    ← Voltar
+                </a>
+            @else
+                <a href="{{ route('comercial.propostas.index') }}"
+                   class="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900">
+                    ← Voltar para propostas
+                </a>
+            @endif
         </div>
 
         <div class="bg-white rounded-2xl shadow border border-slate-200 overflow-hidden">
@@ -69,6 +76,19 @@
                 @if (session('erro'))
                     <div class="rounded-2xl bg-rose-50 border border-rose-200 px-4 py-3 text-sm text-rose-700">
                         {{ session('erro') }}
+                    </div>
+                @endif
+                @if(!$canEdit)
+                    @php
+                        $solicitEmail = $proposta->vendedor->email ?? '';
+                        $solicitSubject = rawurlencode('Solicitação de acesso à proposta #' . $propostaSequencial);
+                        $solicitBody = rawurlencode('Olá, poderia liberar o acesso para eu editar esta proposta? Obrigado.');
+                        $mailTo = $solicitEmail ? "mailto:{$solicitEmail}?subject={$solicitSubject}&body={$solicitBody}" : null;
+                    @endphp
+                    <div class="rounded-2xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800 flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            Já existe uma proposta para este cliente. Solicite ao responsável ou ao Master para editar.
+                        </div>
                     </div>
                 @endif
 
@@ -255,13 +275,14 @@
 
                 <div class="pt-4 border-t flex flex-wrap items-center justify-end gap-2">
                     <a href="{{ route('comercial.propostas.index') }}"
-                       class="px-4 py-2 rounded-xl border border-slate-200 text-sm text-slate-700 hover:bg-slate-50">
+                       class="px-4 py-2 rounded-xl border border-slate-200 bg-white text-sm text-slate-700 hover:bg-slate-50">
                         Voltar para propostas
                     </a>
                     <a href="{{ route('comercial.propostas.create') }}"
                        class="px-4 py-2 rounded-xl border border-slate-200 text-sm text-slate-700 hover:bg-slate-50">
                         Nova proposta
                     </a>
+                    @if($canEdit)
                     <button type="button"
                             class="px-4 py-2 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 text-sm font-semibold hover:bg-emerald-100"
                             id="btnEnviarWhatsapp">
@@ -292,11 +313,13 @@
                        class="px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700">
                         Imprimir
                     </a>
+                    @endif
                 </div>
             </div>
         </div>
     </div>
 
+    @if($canEdit)
     {{-- Modal WhatsApp --}}
     <div id="modalWhatsapp" class="fixed inset-0 z-50 hidden bg-black/40">
         <div class="min-h-full flex items-center justify-center p-4">
@@ -395,6 +418,7 @@
             </div>
         </div>
     </div>
+    @endif
 
     @push('scripts')
         <script>

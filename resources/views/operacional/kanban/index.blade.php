@@ -520,6 +520,9 @@
                                             } else {
                                                 $tituloCard    = 'PGR - ' . $clienteNome;
                                             }
+                                            if ($pgr && !empty($pgr->com_pcms0)) {
+                                                $badgeLabel = 'PGR + PCMSO';
+                                            }
 
                                         // -------- PCMSO --------
                                         } elseif ($servicoNome === 'PCMSO') {
@@ -597,8 +600,9 @@
                                         <div class="flex flex-col items-end gap-1">
                                             <span
                                                 class="inline-flex items-center px-2 py-0.5 rounded-full
-                                                       text-[11px] font-semibold bg-slate-100 border border-slate-200
-                                                       text-slate-600">
+                                                       text-[11px] font-semibold border"
+                                                data-role="card-responsavel-badge"
+                                                style="border-color: {{ $coluna->cor }}; color: #0f172a; background-color: {{ $coluna->cor }}20;">
                                                 {{ $badgeLabel }}
                                             </span>
 
@@ -1131,6 +1135,14 @@
                                  hover:text-emerald-900 underline">
                             📎 Abrir arquivo anexado
                         </a>
+                        <button
+                            type="button"
+                            id="btn-notificar-cliente"
+                            class="mt-3 w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg
+                               bg-emerald-600 text-white text-sm font-semibold shadow-sm
+                               hover:bg-emerald-700 transition hidden">
+                            Notificar cliente (WhatsApp)
+                        </button>
                     </section>
                     {{-- 5b. Documentos da tarefa (ASO, PGR, PCMSO etc) --}}
                     <section id="modal-docs-wrapper"
@@ -1259,10 +1271,41 @@
             // Link do documento da tarefa (arquivo_cliente_path)
             const arquivoWrapper = document.getElementById('modal-arquivo-wrapper');
             const arquivoLink = document.getElementById('modal-arquivo-link');
+            const btnNotificarCliente = document.getElementById('btn-notificar-cliente');
+            let detalhesCurrentCard = null;
+
+            function buildWhatsappMensagem(card, arquivoUrl) {
+                const telefone = (card?.dataset?.telefone || '').replace(/\D/g, '');
+                if (!telefone) return null;
+
+                const servico = card?.dataset?.servico || 'documento';
+                let links = [];
+                if (arquivoUrl) {
+                    links.push(arquivoUrl);
+                }
+
+                try {
+                    const anexos = JSON.parse(card?.dataset?.anexos || '[]');
+                    anexos.forEach((anexo) => {
+                        if (anexo && anexo.url) {
+                            links.push(anexo.url);
+                        }
+                    });
+                } catch (e) {
+                    // ignora erro de parse
+                }
+
+                links = Array.from(new Set(links));
+                const linksTexto = links.length ? `\n\nLinks:\n${links.join('\n')}` : '';
+                const mensagem = `Olá! Segue abaixo o anexo do ${servico}.\n\nEnviado pela Formed.${linksTexto}`;
+
+                return { telefone, mensagem };
+            }
 
 
             function openDetalhesModal(card) {
                 if (!card) return;
+                detalhesCurrentCard = card;
 
                 const isCancelada = card.dataset.cancelada === '1';
                 modal.dataset.cancelada = isCancelada ? '1' : '0';
@@ -1295,9 +1338,15 @@
                     if (urlArquivo) {
                         arquivoLink.href = urlArquivo;
                         arquivoWrapper.classList.remove('hidden');
+                        if (btnNotificarCliente) {
+                            btnNotificarCliente.classList.remove('hidden');
+                        }
                     } else {
                         arquivoLink.href = '#';
                         arquivoWrapper.classList.add('hidden');
+                        if (btnNotificarCliente) {
+                            btnNotificarCliente.classList.add('hidden');
+                        }
                     }
                 }
                 // ===============================
@@ -1676,6 +1725,26 @@
                 }
             });
 
+            if (btnNotificarCliente) {
+                btnNotificarCliente.addEventListener('click', function () {
+                    if (!detalhesCurrentCard) return;
+                    const arquivoUrl = detalhesCurrentCard.dataset.arquivoClienteUrl || '';
+                    if (!arquivoUrl) {
+                        alert('Nenhum documento anexado para enviar.');
+                        return;
+                    }
+
+                    const payload = buildWhatsappMensagem(detalhesCurrentCard, arquivoUrl);
+                    if (!payload) {
+                        alert('Telefone do cliente não informado.');
+                        return;
+                    }
+
+                    const whatsappUrl = `https://wa.me/${payload.telefone}?text=${encodeURIComponent(payload.mensagem)}`;
+                    window.open(whatsappUrl, '_blank');
+                });
+            }
+
             // Clique no card -> abre APENAS o modal de detalhes
             document.addEventListener('click', function (e) {
                 const card = e.target.closest('.kanban-card');
@@ -1822,34 +1891,11 @@
                             }
 
                             if (finalizarNotificar && finalizarNotificar.checked) {
-                                const telefone = (finalizarCurrentCard.dataset.telefone || '').replace(/\D/g, '');
                                 const arquivoUrl = data.documento_url || '';
+                                const payload = buildWhatsappMensagem(finalizarCurrentCard, arquivoUrl);
 
-                                if (telefone) {
-                                    const servico = finalizarCurrentCard.dataset.servico || 'documento';
-                                    const tarefaId = finalizarCurrentCard.dataset.id || '';
-                                    let links = [];
-                                    if (arquivoUrl) {
-                                        links.push(arquivoUrl);
-                                    }
-
-                                    try {
-                                        const anexos = JSON.parse(finalizarCurrentCard.dataset.anexos || '[]');
-                                        anexos.forEach((anexo) => {
-                                            if (anexo && anexo.url) {
-                                                links.push(anexo.url);
-                                            }
-                                        });
-                                    } catch (e) {
-                                        // ignora erro de parse
-                                    }
-
-                                    links = Array.from(new Set(links));
-                                    const linksTexto = links.length ? `\n\nLinks:\n${links.join('\n')}` : '';
-
-                                    const mensagem = `Olá! Segue abaixo o anexo do ${servico}.\n\nEnviado pela Formed.${linksTexto}`;
-                                    const whatsappUrl = `https://wa.me/${telefone}?text=${encodeURIComponent(mensagem)}`;
-
+                                if (payload) {
+                                    const whatsappUrl = `https://wa.me/${payload.telefone}?text=${encodeURIComponent(payload.mensagem)}`;
                                     if (whatsappPopup && !whatsappPopup.closed) {
                                         whatsappPopup.location.href = whatsappUrl;
                                     } else {
@@ -1977,7 +2023,8 @@
                                     const respBadge = card.querySelector('[data-role="card-responsavel-badge"]');
                                     if (respBadge && colunaCor) {
                                         respBadge.style.borderColor = colunaCor;
-                                        respBadge.style.color = colunaCor;
+                                        respBadge.style.color = '#0f172a';
+                                        respBadge.style.backgroundColor = colunaCor + '20';
                                     }
 
                                     if (data.log) {
