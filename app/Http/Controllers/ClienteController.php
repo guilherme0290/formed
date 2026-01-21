@@ -17,24 +17,28 @@ class ClienteController extends Controller
     {
         $q      = trim((string) $r->query('q', ''));
         $status = $r->query('status', 'todos'); // todos|ativo|inativo
+        $qText  = trim(preg_replace('/\d+/', ' ', $q));
+        $qText  = preg_replace('/\s+/', ' ', $qText);
+        $doc    = preg_replace('/\D+/', '', $q);
 
         $empresaId = $r->user()->empresa_id ?? 1;
 
         $clientes = Cliente::query()
             ->with('userCliente')
             ->where('empresa_id', $empresaId)
-            ->when($q, function ($w) use ($q) {
-                $doc = preg_replace('/\D+/', '', $q);
-
-                $w->where(function ($x) use ($q, $doc) {
-                    $x->where('razao_social', 'like', "%{$q}%")
-                        ->orWhere('nome_fantasia', 'like', "%{$q}%")
-                        ->orWhere('email', 'like', "%{$q}%")
-                        ->orWhere('telefone', 'like', "%{$q}%");
+            ->when($qText !== '' || $doc !== '', function ($w) use ($qText, $doc) {
+                $w->where(function ($x) use ($qText, $doc) {
+                    if ($qText !== '') {
+                        $x->where('razao_social', 'like', "%{$qText}%")
+                            ->orWhere('nome_fantasia', 'like', "%{$qText}%")
+                            ->orWhere('email', 'like', "%{$qText}%")
+                            ->orWhere('telefone', 'like', "%{$qText}%");
+                    }
 
                     // Só filtra por CNPJ se tiver número na busca
                     if ($doc !== '') {
-                        $x->orWhere('cnpj', 'like', "%{$doc}%");
+                        $x->orWhere('cnpj', 'like', "%{$doc}%")
+                            ->orWhere('telefone', 'like', "%{$doc}%");
                     }
                 });
             })

@@ -305,10 +305,16 @@
                 .replace(/\p{Diacritic}/gu, '');
 
             const onlyDigits = (value) => (value || '').toString().replace(/\D+/g, '');
+            const onlyText = (value) => (value || '')
+                .toString()
+                .replace(/\d+/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
 
             const filterRows = () => {
-                const term = normalize(input.value.trim());
-                const termDigits = onlyDigits(term);
+                const raw = input.value.trim();
+                const term = normalize(onlyText(raw));
+                const termDigits = onlyDigits(raw);
 
                 rows.forEach((row) => {
                     const razao = normalize(row.dataset.razao);
