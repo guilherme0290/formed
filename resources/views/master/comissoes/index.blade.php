@@ -40,45 +40,7 @@
             </div>
         @endif
 
-        <div class="grid md:grid-cols-2 gap-4">
-            <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-3">
-                <div class="flex items-center gap-2">
-                    <div class="h-8 w-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-sm font-semibold">?</div>
-                    <div>
-                        <h3 class="text-sm font-semibold text-slate-800">Como funciona a vigência</h3>
-                        <p class="text-xs text-slate-500">Aplicamos a regra com <strong>vigência início &lt;= data de conclusão</strong> e <strong>vigência fim em branco ou &gt;= data</strong>. A mais recente vence.</p>
-                    </div>
-                </div>
-                <div class="bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs text-slate-700 leading-relaxed">
-                    <p class="font-semibold text-slate-800 mb-1">Exemplo prático</p>
-                    <ul class="list-disc list-inside space-y-1">
-                        <li>01/01/2025 a 31/01/2025 · ASO · 5%</li>
-                        <li>01/02/2025 em diante · ASO · 6%</li>
-                    </ul>
-                    <p class="mt-2">Se concluir em 15/01/2025, aplica 5%. Em 10/02/2025, aplica 6%.</p>
-                </div>
-            </div>
-
-            <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-3">
-                <div class="flex items-center gap-2">
-                    <div class="h-8 w-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-sm font-semibold">i</div>
-                    <div>
-                        <h3 class="text-sm font-semibold text-slate-800">Sem regra vigente = comissão zerada</h3>
-                        <p class="text-xs text-slate-500">Se não houver regra para a data, geramos comissão com 0% para manter rastreabilidade. Mantenha sempre uma regra “em aberto”.</p>
-                    </div>
-                </div>
-                <div class="bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs text-slate-700 leading-relaxed">
-                    <p class="font-semibold text-slate-800 mb-1">Boas práticas</p>
-                    <ul class="list-disc list-inside space-y-1">
-                        <li>Evite sobreposição de vigências no mesmo serviço.</li>
-                        <li>Use o campo “Fim” apenas quando houver troca planejada.</li>
-                        <li>Desative regras antigas para preservar histórico.</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-
-        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-4">
+        <div class="bg-blue-50/60 rounded-2xl border border-blue-100 shadow-sm p-5 space-y-4">
             <div class="flex items-center justify-between">
                 <div>
                     <h2 class="text-sm font-semibold text-slate-800">Nova regra de comissão</h2>
@@ -87,9 +49,15 @@
             </div>
             <form method="POST" action="{{ route('master.comissoes.store') }}" class="space-y-3">
                 @csrf
+                <div class="hidden md:grid grid-cols-5 gap-3 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+                    <div class="col-span-2 pl-3">Serviço</div>
+                    <div class="pl-3">Percentual (%)</div>
+                    <div class="pl-3">Vigência início</div>
+                    <div class="pl-3">Vigência fim</div>
+                </div>
                 <div class="grid md:grid-cols-5 gap-3 text-sm">
                     <div class="space-y-1 md:col-span-2">
-                        <label class="text-xs font-semibold text-slate-600">Serviço</label>
+                        <label class="text-xs font-semibold text-slate-600 md:sr-only">Serviço</label>
                         <select name="servico_id" class="w-full rounded-xl border border-slate-200 px-3 py-2">
                             <option value="">Selecione</option>
                             @foreach ($servicos as $servico)
@@ -105,7 +73,7 @@
                         @endif
                     </div>
                     <div class="space-y-1">
-                        <label class="text-xs font-semibold text-slate-600">Percentual (%)</label>
+                        <label class="text-xs font-semibold text-slate-600 md:sr-only">Percentual (%)</label>
                         <input type="number" name="percentual" step="0.01" min="0" max="100" class="w-full rounded-xl border border-slate-200 px-3 py-2"
                                value="{{ old('percentual') }}" placeholder="Ex: 5,00">
                         @if (!$isBulkUpdate)
@@ -115,7 +83,7 @@
                         @endif
                     </div>
                     <div class="space-y-1">
-                        <label class="text-xs font-semibold text-slate-600">Vigência início</label>
+                        <label class="text-xs font-semibold text-slate-600 md:sr-only">Vigência início</label>
                         <input type="date" name="vigencia_inicio" class="w-full rounded-xl border border-slate-200 px-3 py-2"
                                value="{{ old('vigencia_inicio', now()->toDateString()) }}">
                         @if (!$isBulkUpdate)
@@ -125,7 +93,7 @@
                         @endif
                     </div>
                     <div class="space-y-1">
-                        <label class="text-xs font-semibold text-slate-600">Vigência fim (opcional)</label>
+                        <label class="text-xs font-semibold text-slate-600 md:sr-only">Vigência fim (opcional)</label>
                         <input type="date" name="vigencia_fim" class="w-full rounded-xl border border-slate-200 px-3 py-2"
                                value="{{ old('vigencia_fim') }}">
                         @if (!$isBulkUpdate)
@@ -153,7 +121,7 @@
 
         @php $totalRegras = $regrasPorServico?->flatten(1)->count() ?? 0; @endphp
 
-        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-4">
+        <div class="bg-blue-50/60 rounded-2xl border border-blue-100 shadow-sm p-5 space-y-4">
             <div class="flex items-center justify-between">
                 <div>
                     <h2 class="text-sm font-semibold text-slate-800">Regras por serviço</h2>
@@ -165,11 +133,19 @@
             <form method="POST" action="{{ route('master.comissoes.bulk') }}" class="space-y-4">
                 @csrf
                 <input type="hidden" name="bulk_update" value="1">
+                <div class="hidden md:grid grid-cols-5 gap-3 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-100 rounded-lg mx-1 px-3 py-2">
+                    <div class="pl-3">Serviço</div>
+                    <div class="pl-3">Comissão (%)</div>
+                    <div class="pl-3">Vigência início</div>
+                    <div class="pl-3">Vigência fim</div>
+                    <div class="text-right pr-3">Ações</div>
+                </div>
                 @forelse ($servicos as $servico)
                     @php $regras = $regrasPorServico[$servico->id] ?? collect(); @endphp
-                    <div class="border border-slate-100 rounded-xl p-4 space-y-3 bg-slate-50/60">
-                        <div class="space-y-3">
-                            @forelse ($regras as $regra)
+                    @if ($regras->isNotEmpty())
+                        <div class="rounded-xl p-3 space-y-1">
+                            <div class="space-y-1">
+                                @foreach ($regras as $regra)
                                 @php
                                     $percentual = old('regras.'.$regra->id.'.percentual', $regra->percentual);
                                     $vigenciaInicio = old('regras.'.$regra->id.'.vigencia_inicio', optional($regra->vigencia_inicio)->toDateString());
@@ -179,51 +155,46 @@
                                 <div class="bg-white border border-slate-100 rounded-lg p-3">
                                     <div class="grid grid-cols-1 md:grid-cols-5 gap-3 text-sm items-end">
                                         <div class="space-y-1">
-                                            <label class="text-xs font-semibold text-slate-600">Serviço</label>
-                                            <div class="h-10 flex items-center rounded-xl border border-slate-200 px-3 py-2 bg-slate-50 text-slate-700">
+                                            <label class="text-xs font-semibold text-slate-600 md:sr-only">Serviço</label>
+                                            <div class="h-10 flex items-center rounded-xl border border-slate-200 px-3 py-2 bg-white text-slate-700">
                                                 {{ $servico->nome }}
                                             </div>
                                         </div>
 
                                         <div class="space-y-1">
-                                            <label class="text-xs font-semibold text-slate-600">Comissão (%)</label>
+                                            <label class="text-xs font-semibold text-slate-600 md:sr-only">Comissão (%)</label>
                                             <input type="number" name="regras[{{ $regra->id }}][percentual]" step="0.01" min="0" max="100"
                                                    class="w-full rounded-xl border border-slate-200 px-3 py-2"
                                                    value="{{ $percentual }}">
                                         </div>
 
                                         <div class="space-y-1">
-                                            <label class="text-xs font-semibold text-slate-600">Vigência início</label>
+                                            <label class="text-xs font-semibold text-slate-600 md:sr-only">Vigência início</label>
                                             <input type="date" name="regras[{{ $regra->id }}][vigencia_inicio]"
                                                    class="w-full rounded-xl border border-slate-200 px-3 py-2"
                                                    value="{{ $vigenciaInicio }}">
                                         </div>
 
                                         <div class="space-y-1">
-                                            <label class="text-xs font-semibold text-slate-600">Vigência fim</label>
+                                            <label class="text-xs font-semibold text-slate-600 md:sr-only">Vigência fim</label>
                                             <input type="date" name="regras[{{ $regra->id }}][vigencia_fim]"
                                                    class="w-full rounded-xl border border-slate-200 px-3 py-2"
                                                    value="{{ $vigenciaFim }}">
                                         </div>
-                                    </div>
-                                </div>
-                            @empty
-                                <div class="bg-white border border-slate-100 rounded-lg p-3">
-                                    <div class="grid grid-cols-1 md:grid-cols-5 gap-3 text-sm items-end">
-                                        <div class="space-y-1">
-                                            <label class="text-xs font-semibold text-slate-600">Serviço</label>
-                                            <div class="h-10 flex items-center rounded-xl border border-slate-200 px-3 py-2 bg-slate-50 text-slate-700">
-                                                {{ $servico->nome }}
-                                            </div>
-                                        </div>
-                                        <div class="md:col-span-4 flex items-center text-slate-500">
-                                            Nenhuma regra cadastrada para este serviço.
+
+                                        <div class="flex md:justify-end">
+                                            <button type="submit"
+                                                    form="delete-regra-{{ $regra->id }}"
+                                                    class="inline-flex items-center justify-center rounded-lg border border-rose-200 bg-white px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-50">
+                                                Excluir
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
-                            @endforelse
+                                @endforeach
+                            </div>
                         </div>
-                    </div>
+                    @endif
                 @empty
                     <div class="text-sm text-slate-600">Nenhum serviço encontrado para esta empresa.</div>
                 @endforelse
@@ -233,6 +204,18 @@
                     </button>
                 </div>
             </form>
+            @foreach ($servicos as $servico)
+                @php $regras = $regrasPorServico[$servico->id] ?? collect(); @endphp
+                @foreach ($regras as $regra)
+                    <form id="delete-regra-{{ $regra->id }}"
+                          method="POST"
+                          action="{{ route('master.comissoes.destroy', $regra) }}"
+                          class="hidden">
+                        @csrf
+                        @method('DELETE')
+                    </form>
+                @endforeach
+            @endforeach
         </div>
     </div>
 @endsection

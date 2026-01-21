@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="utf-8">
@@ -23,6 +23,7 @@
         th, td { padding: 6px 8px; border-bottom: 1px solid #e2e8f0; text-align: left; vertical-align: top; }
         th { background: #f1f5f9; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: #475569; }
         .right { text-align: right; }
+        .zebra tbody tr:nth-child(odd) { background: #f8fafc; }
     </style>
 </head>
 <body>
@@ -59,19 +60,29 @@
 
     <div class="page">
         <div class="card">
+            @php
+                $logoPngData = null;
+                $logoSvgPath = storage_path('app/public/logo.svg');
+                if (is_file($logoSvgPath)) {
+                    $svg = file_get_contents($logoSvgPath);
+                    if (preg_match('/data:image\/png;base64,([^"]+)/', $svg, $match)) {
+                        $logoPngData = $match[1];
+                    }
+                }
+                $canRenderLogo = extension_loaded('gd') && !empty($logoPngData);
+            @endphp
             <div class="header" style="background: {{ $theme['header'] }}">
                 <table class="grid">
                     <tr>
-                        <td style="width: 65%;">
-                            <div class="title">FORMED</div>
-                            <div class="subtitle">Medicina e Segurança do Trabalho</div>
+                        <td style="width: 70%; text-align: left;">
+                            <div style="display: inline-block; vertical-align: middle;">
+                                <div class="title">FORMED</div>
+                                <div class="subtitle">Medicina e Segurança do Trabalho</div>
+                            </div>
                         </td>
-                        <td style="width: 35%; text-align: right;">
+                        <td style="width: 30%; text-align: right;">
                             @if($clienteLogoData)
                                 <img src="{{ $clienteLogoData }}" alt="Logo do cliente" style="height: 36px; margin-left: 8px;">
-                            @endif
-                            @if($logoData)
-                                <img src="{{ $logoData }}" alt="Formed" style="height: 36px;">
                             @endif
                         </td>
                     </tr>
@@ -108,7 +119,7 @@
 
                 <div class="section">
                     <div class="section-title">Serviços Essenciais</div>
-                    <table>
+                    <table class="zebra">
                         <thead>
                         <tr>
                             <th>Item</th>
@@ -127,12 +138,11 @@
                 @if(($precos ?? collect())->count())
                     <div class="section">
                         <div class="section-title">Serviços</div>
-                        <table>
+                        <table class="zebra">
                             <thead>
                             <tr>
                                 <th>Item</th>
                                 <th class="right">Qtd</th>
-                                <th class="right">Valor unit.</th>
                                 <th class="right">Total</th>
                             </tr>
                             </thead>
@@ -153,7 +163,6 @@
 
                                     </td>
                                     <td class="right">{{ number_format($qtd, 2, ',', '.') }}</td>
-                                    <td class="right">R$ {{ number_format($valor, 2, ',', '.') }}</td>
                                     <td class="right">R$ {{ number_format($total, 2, ',', '.') }}</td>
                                 </tr>
                             @endforeach
@@ -165,12 +174,11 @@
                 @if(($exames ?? collect())->count())
                     <div class="section">
                         <div class="section-title">Exames</div>
-                        <table>
+                        <table class="zebra">
                             <thead>
                             <tr>
                                 <th>Exame</th>
                                 <th class="right">Qtd</th>
-                                <th class="right">Valor unit.</th>
                                 <th class="right">Total</th>
                             </tr>
                             </thead>
@@ -190,7 +198,6 @@
                                         @endif
                                     </td>
                                     <td class="right">{{ number_format($qtd, 2, ',', '.') }}</td>
-                                    <td class="right">R$ {{ number_format($valor, 2, ',', '.') }}</td>
                                     <td class="right">R$ {{ number_format($total, 2, ',', '.') }}</td>
                                 </tr>
                             @endforeach
@@ -202,12 +209,11 @@
                 @if(($treinamentos ?? collect())->count())
                     <div class="section">
                         <div class="section-title">Treinamentos</div>
-                        <table>
+                        <table class="zebra">
                             <thead>
                             <tr>
                                 <th>Treinamento</th>
                                 <th class="right">Qtd</th>
-                                <th class="right">Valor unit.</th>
                                 <th class="right">Total</th>
                             </tr>
                             </thead>
@@ -224,7 +230,6 @@
                                         <div style="font-weight: bold;">{{ $treinamento?->codigo ?? 'NR' }} — {{ $treinamento?->titulo ?? 'Treinamento' }}</div>
                                     </td>
                                     <td class="right">{{ number_format($qtd, 2, ',', '.') }}</td>
-                                    <td class="right">R$ {{ number_format($valor, 2, ',', '.') }}</td>
                                     <td class="right">R$ {{ number_format($total, 2, ',', '.') }}</td>
                                 </tr>
                             @endforeach
@@ -245,7 +250,7 @@
                                 <div style="margin-bottom: 6px; color: #64748b;">{{ $tabela->subtitulo }}</div>
                             @endif
                             @if(!empty($colunas))
-                                <table>
+                                <table class="zebra">
                                     <thead>
                                     <tr>
                                         @foreach($colunas as $col)
@@ -277,7 +282,7 @@
                         @if(!empty($esocialDescricao))
                             <div style="margin-bottom: 8px;">{!! $esocialDescricao !!}</div>
                         @endif
-                        <table>
+                        <table class="zebra">
                             <thead>
                             <tr>
                                 <th>Faixa</th>
@@ -312,3 +317,4 @@
     </div>
 </body>
 </html>
+

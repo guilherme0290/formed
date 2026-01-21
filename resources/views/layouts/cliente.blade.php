@@ -30,6 +30,18 @@
         @php
             $temTabelaSidebar = $temTabela ?? false;
             $precosSidebar = $precos ?? [];
+            $contratoAtivoSidebar = $contratoAtivo ?? null;
+            $servicosContratoSidebar = $servicosContrato ?? [];
+            $servicosIdsSidebar = $servicosIds ?? [];
+            $temContratoAtivoSidebar = (bool) $contratoAtivoSidebar;
+            $permitidosSidebar = [
+                'aso' => $temContratoAtivoSidebar && in_array($servicosIdsSidebar['aso'] ?? null, $servicosContratoSidebar),
+                'pgr' => $temContratoAtivoSidebar && in_array($servicosIdsSidebar['pgr'] ?? null, $servicosContratoSidebar),
+                'pcmso' => $temContratoAtivoSidebar && in_array($servicosIdsSidebar['pcmso'] ?? null, $servicosContratoSidebar),
+                'ltcat' => $temContratoAtivoSidebar && in_array($servicosIdsSidebar['ltcat'] ?? null, $servicosContratoSidebar),
+                'apr' => $temContratoAtivoSidebar && in_array($servicosIdsSidebar['apr'] ?? null, $servicosContratoSidebar),
+                'treinamentos' => $temContratoAtivoSidebar && in_array($servicosIdsSidebar['treinamentos'] ?? null, $servicosContratoSidebar),
+            ];
             $linksRapidos = [
                 [
                     'titulo' => 'Painel do Cliente',
@@ -48,37 +60,37 @@
                     'titulo' => 'Agendar ASO',
                     'icone' => '📅',
                     'rota' => route('cliente.servicos.aso'),
-                    'disabled' => !$temTabelaSidebar || !($precosSidebar['aso'] ?? null),
+                    'disabled' => !($permitidosSidebar['aso'] ?? false),
                 ],
                 [
                     'titulo' => 'Solicitar PGR',
                     'icone' => '📋',
                     'rota' => route('cliente.servicos.pgr'),
-                    'disabled' => !$temTabelaSidebar || !($precosSidebar['pgr'] ?? null),
+                    'disabled' => !($permitidosSidebar['pgr'] ?? false),
                 ],
                 [
                     'titulo' => 'Solicitar PCMSO',
                     'icone' => '📑',
                     'rota' => route('cliente.servicos.pcmso'),
-                    'disabled' => !$temTabelaSidebar || !($precosSidebar['pcmso'] ?? null),
+                    'disabled' => !($permitidosSidebar['pcmso'] ?? false),
                 ],
                 [
                     'titulo' => 'Solicitar LTCAT',
                     'icone' => '📄',
                     'rota' => route('cliente.servicos.ltcat'),
-                    'disabled' => !$temTabelaSidebar || !($precosSidebar['ltcat'] ?? null),
+                    'disabled' => !($permitidosSidebar['ltcat'] ?? false),
                 ],
                 [
                     'titulo' => 'Solicitar APR',
                     'icone' => '⚠️',
                     'rota' => route('cliente.servicos.apr'),
-                    'disabled' => !$temTabelaSidebar || !($precosSidebar['apr'] ?? null),
+                    'disabled' => !($permitidosSidebar['apr'] ?? false),
                 ],
                 [
                     'titulo' => 'Treinamentos',
                     'icone' => '🎓',
                     'rota' => route('cliente.servicos.treinamentos'),
-                    'disabled' => !$temTabelaSidebar || !($precosSidebar['treinamentos'] ?? null),
+                    'disabled' => !($permitidosSidebar['treinamentos'] ?? false),
                 ],
             ];
         @endphp
@@ -114,12 +126,6 @@
         </nav>
 
         <div class="relative z-10 px-4 py-4 border-t border-slate-800 space-y-2 text-sm">
-            {{-- AQUI: Voltar ao Início -> Clientes Dashboard --}}
-            <a href="{{ route('cliente.dashboard') }}"
-               class="flex items-center gap-2 text-slate-300 hover:text-white">
-                <span>⏪</span> <span>Voltar ao Início</span>
-            </a>
-
             <form method="POST" action="{{ route('logout') }}">
                 @csrf
                 <button class="flex items-center gap-2 text-rose-400 hover:text-rose-300">

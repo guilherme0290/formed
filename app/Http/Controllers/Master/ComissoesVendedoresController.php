@@ -25,8 +25,9 @@ class ComissoesVendedoresController extends Controller
             $vendedorId = null;
         }
 
-        $meses = $this->mesesResumo($empresaId, $anoSelecionado, $vendedorId);
-        $ranking = $this->rankingVendedores($empresaId, $anoSelecionado);
+        $vendedoresIds = $vendedores->keys()->filter()->values()->all();
+        $meses = $this->mesesResumo($empresaId, $anoSelecionado, $vendedorId, $vendedoresIds);
+        $ranking = $this->rankingVendedores($empresaId, $anoSelecionado, $vendedorId, $vendedoresIds);
 
         return view('master.comissoes.vendedores', [
             'anos' => $anos,
@@ -77,14 +78,29 @@ class ComissoesVendedoresController extends Controller
         return User::whereIn('id', $ids)->get()->keyBy('id');
     }
 
-    private function mesesResumo(?int $empresaId, int $ano, ?int $vendedorId = null): Collection
+    private function mesesResumo(?int $empresaId, int $ano, ?int $vendedorId = null, array $vendedoresIds = []): Collection
     {
+        if (!$vendedorId && empty($vendedoresIds)) {
+            return collect(range(1, 12))->map(function ($mes) use ($ano) {
+                return (object) [
+                    'mes' => $mes,
+                    'nome' => Carbon::createFromDate($ano, $mes, 1)->locale('pt_BR')->isoFormat('MMM'),
+                    'total' => 0,
+                    'total_efetivado' => 0,
+                    'total_previsto' => 0,
+                    'status' => 'FECHADO',
+                ];
+            });
+        }
+
         $base = Comissao::query()
             ->when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId))
             ->whereYear(DB::raw('COALESCE(gerada_em, created_at)'), $ano);
 
         if ($vendedorId) {
             $base->where('vendedor_id', $vendedorId);
+        } elseif (!empty($vendedoresIds)) {
+            $base->whereIn('vendedor_id', $vendedoresIds);
         }
 
         $data = $base
@@ -114,10 +130,18 @@ class ComissoesVendedoresController extends Controller
         });
     }
 
-    private function rankingVendedores(?int $empresaId, int $ano): Collection
+    private function rankingVendedores(?int $empresaId, int $ano, ?int $vendedorId = null, array $vendedoresIds = []): Collection
     {
         $comerciais = $this->vendedoresDaEmpresa($empresaId);
-        $ids = $comerciais->keys()->filter()->toArray();
+        $ids = !empty($vendedoresIds)
+            ? $vendedoresIds
+            : $comerciais->keys()->filter()->toArray();
+        if ($vendedorId) {
+            $ids = array_values(array_intersect($ids, [$vendedorId]));
+        }
+        if (empty($ids)) {
+            return collect();
+        }
 
         $totais = Comissao::query()
             ->when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId))

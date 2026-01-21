@@ -2,14 +2,14 @@
 @section('title', 'Contrato #' . $contrato->id)
 
 @section('content')
-    <div class="max-w-6xl mx-auto px-4 md:px-6 py-6 space-y-6">
+    <div class="max-w-[1800px] mx-auto px-3 sm:px-4 lg:px-8 py-6 space-y-6">
         <div>
             <a href="{{ route('comercial.contratos.index') }}"
-               class="inline-flex items-center text-sm text-slate-600 hover:text-slate-800">
+               class="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900">
                 ← Voltar
             </a>
             <a href="{{ route('comercial.contratos.vigencia', $contrato) }}"
-               class="ml-3 inline-flex items-center text-sm text-indigo-600 hover:text-indigo-800 font-semibold">
+               class="ml-3 inline-flex items-center rounded-lg border border-indigo-200 bg-white px-3 py-1.5 text-sm font-semibold text-indigo-700 shadow-sm hover:bg-indigo-50 hover:text-indigo-900">
                 ➕ Nova vigência
             </a>
         </div>

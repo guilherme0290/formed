@@ -21,7 +21,7 @@
 
             <div>
                 <a href="{{ route('comercial.dashboard') }}"
-                   class="inline-flex items-center text-sm text-slate-600 hover:text-slate-800">
+                   class="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900">
                     ← Voltar ao Painel
                 </a>
             </div>
@@ -105,14 +105,7 @@
                         </select>
                     </div>
 
-                    <div>
-                        <label class="text-xs font-semibold text-slate-600">Visualização</label>
-                        <select disabled class="mt-1 w-full rounded-xl border border-slate-200 text-sm px-3 py-2 bg-slate-50 text-slate-500">
-                            <option>Kanban</option>
-                        </select>
-                    </div>
-
-                    <div class="md:col-span-4 flex items-center justify-end gap-2">
+                    <div class="md:col-span-3 flex items-center justify-end gap-2">
                         <a href="{{ route('comercial.pipeline.index') }}"
                            class="rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
                             Limpar

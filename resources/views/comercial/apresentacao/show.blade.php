@@ -35,6 +35,12 @@
 
     <div class="min-h-[calc(100vh-64px)] bg-slate-50">
         <div class="max-w-7xl mx-auto px-4 md:px-6 py-6">
+            <div class="mb-3 flex items-center justify-start print:hidden">
+                <a href="{{ route('comercial.dashboard') }}"
+                   class="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900">
+                    Painel comercial
+                </a>
+            </div>
             <div class="max-w-4xl mx-auto bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
 
                 {{-- Header do documento --}}
@@ -73,7 +79,7 @@
                             Configurar modelo
                         </a>
                         <a href="{{ route('comercial.apresentacao.segmento') }}"
-                           class="rounded-xl bg-white/95 hover:bg-white border border-white/50 text-slate-800 px-3 py-1.5 text-xs font-semibold">
+                           class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900">
                             Voltar
                         </a>
                     </div>
@@ -197,7 +203,6 @@
                                     <tr>
                                         <th class="px-4 py-3 text-left font-semibold">Item</th>
                                         <th class="px-4 py-3 text-right font-semibold">Qtd</th>
-                                        <th class="px-4 py-3 text-right font-semibold">Valor unit.</th>
                                         <th class="px-4 py-3 text-right font-semibold">Total</th>
                                     </tr>
                                     </thead>
@@ -218,7 +223,6 @@
 
                                             </td>
                                             <td class="px-4 py-3 text-right">{{ number_format($qtd, 2, ',', '.') }}</td>
-                                            <td class="px-4 py-3 text-right">R$ {{ number_format($valor, 2, ',', '.') }}</td>
                                             <td class="px-4 py-3 text-right">R$ {{ number_format($total, 2, ',', '.') }}</td>
                                         </tr>
                                     @endforeach
@@ -243,7 +247,6 @@
                                     <tr>
                                         <th class="px-4 py-3 text-left font-semibold">Exame</th>
                                         <th class="px-4 py-3 text-right font-semibold">Qtd</th>
-                                        <th class="px-4 py-3 text-right font-semibold">Valor unit.</th>
                                         <th class="px-4 py-3 text-right font-semibold">Total</th>
                                     </tr>
                                     </thead>
@@ -263,7 +266,6 @@
                                                 @endif
                                             </td>
                                             <td class="px-4 py-3 text-right">{{ number_format($qtd, 2, ',', '.') }}</td>
-                                            <td class="px-4 py-3 text-right">R$ {{ number_format($valor, 2, ',', '.') }}</td>
                                             <td class="px-4 py-3 text-right">R$ {{ number_format($total, 2, ',', '.') }}</td>
                                         </tr>
                                     @endforeach
@@ -294,7 +296,6 @@
                                     <tr>
                                         <th class="px-4 py-3 text-left font-semibold">Treinamento</th>
                                         <th class="px-4 py-3 text-right font-semibold">Qtd</th>
-                                        <th class="px-4 py-3 text-right font-semibold">Valor unit.</th>
                                         <th class="px-4 py-3 text-right font-semibold">Total</th>
                                     </tr>
                                     </thead>
@@ -311,7 +312,6 @@
                                                 <div class="font-semibold text-slate-900">{{ $treinamento?->codigo ?? 'NR' }} — {{ $treinamento?->titulo ?? 'Treinamento' }}</div>
                                             </td>
                                             <td class="px-4 py-3 text-right">{{ number_format($qtd, 2, ',', '.') }}</td>
-                                            <td class="px-4 py-3 text-right">R$ {{ number_format($valor, 2, ',', '.') }}</td>
                                             <td class="px-4 py-3 text-right">R$ {{ number_format($total, 2, ',', '.') }}</td>
                                         </tr>
                                     @endforeach

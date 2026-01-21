@@ -6,12 +6,13 @@
         <div class="flex items-center justify-between gap-3">
             <div>
                 <a href="{{ route('comercial.apresentacao.show', $segmento) }}"
-                   class="inline-flex items-center text-sm text-slate-600 hover:text-slate-800">
+                   class="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900">
                     ← Voltar para apresentação
                 </a>
                 <h1 class="text-2xl font-semibold text-slate-900 mt-2">Modelo Comercial</h1>
                 <p class="text-sm text-slate-500">Segmento: <span class="font-semibold text-slate-700">{{ $segmentoNome }}</span></p>
             </div>
+            <div class="flex items-center gap-2"></div>
         </div>
 
         @if (session('ok'))
@@ -30,7 +31,7 @@
               class="bg-white rounded-2xl shadow border border-slate-100 overflow-hidden">
             @csrf
 
-            <div class="px-6 py-4 border-b bg-slate-50">
+            <div class="px-6 py-4 border-b border-emerald-300 bg-emerald-100">
                 <h2 class="text-sm font-semibold text-slate-800">Textos da apresentação</h2>
                 <p class="text-xs text-slate-500 mt-1">Edite os blocos exibidos no PDF e na tela.</p>
             </div>
@@ -75,7 +76,7 @@
                 </div>
             </div>
 
-            <div class="px-6 py-4 border-t bg-slate-50">
+            <div class="px-6 py-4 border-t border-emerald-300 bg-emerald-100">
                 <h3 class="text-sm font-semibold text-slate-800">Serviços essenciais</h3>
                 <p class="text-xs text-slate-500 mt-1">Digite um serviço por linha. Linhas vazias são ignoradas.</p>
             </div>
@@ -86,7 +87,7 @@
                           placeholder="Ex: PCMSO e gestão de exames ocupacionais">{{ old('servicos', $servicos) }}</textarea>
             </div>
 
-            <div class="px-6 py-4 border-t bg-slate-50">
+            <div class="px-6 py-4 border-t border-emerald-300 bg-emerald-100">
                 <h3 class="text-sm font-semibold text-slate-800">Serviços</h3>
                 <p class="text-xs text-slate-500 mt-1">Selecione serviços da tabela de preço padrão e informe a quantidade.</p>
             </div>
@@ -134,7 +135,7 @@
                 @endforelse
             </div>
 
-            <div class="px-6 py-4 border-t bg-slate-50">
+            <div class="px-6 py-4 border-t border-emerald-300 bg-emerald-100">
                 <h3 class="text-sm font-semibold text-slate-800">Exames</h3>
                 <p class="text-xs text-slate-500 mt-1">Selecione exames ou marque para incluir todos.</p>
             </div>
@@ -188,7 +189,7 @@
                         && $treinamento->tabelaItem->preco !== null);
             @endphp
 
-            <div class="px-6 py-4 border-t bg-slate-50">
+            <div class="px-6 py-4 border-t border-emerald-300 bg-emerald-100">
                 <h3 class="text-sm font-semibold text-slate-800">Treinamentos</h3>
                 <p class="text-xs text-slate-500 mt-1">Selecione treinamentos e informe a quantidade.</p>
             </div>
@@ -255,7 +256,7 @@
                 }
             @endphp
 
-            <div class="px-6 py-4 border-t bg-slate-50">
+            <div class="px-6 py-4 border-t border-emerald-300 bg-emerald-100">
                 <h3 class="text-sm font-semibold text-slate-800">Tabelas manuais</h3>
                 <p class="text-xs text-slate-500 mt-1">Crie tabelas livres e organize a ordem arrastando.</p>
             </div>
@@ -377,7 +378,7 @@
                 </button>
             </div>
 
-            <div class="px-6 py-4 border-t bg-slate-50">
+            <div class="px-6 py-4 border-t border-emerald-300 bg-emerald-100">
                 <h3 class="text-sm font-semibold text-slate-800">eSocial</h3>
                 <p class="text-xs text-slate-500 mt-1">Texto livre e tabela de faixas vigente.</p>
             </div>
@@ -428,6 +429,10 @@
                         class="rounded-xl bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 text-sm font-semibold">
                     Salvar modelo
                 </button>
+                <a href="{{ route('comercial.apresentacao.show', $segmento) }}"
+                   class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900">
+                    Visualizar apresentação
+                </a>
             </div>
         </form>
     </div>
