@@ -13,7 +13,7 @@
             <a href="{{ $origem === 'cliente'
                     ? route('cliente.dashboard')
                     : route('operacional.kanban.servicos', $cliente) }}"
-               class="inline-flex items-center gap-2 text-xs text-slate-600">
+               class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
                 ← Voltar
             </a>
         </div>
@@ -169,6 +169,7 @@
                 {{-- 2. Selecione os Treinamentos --}}
                 @php
                     $treinamentosSelecionados = old('treinamentos', $detalhes->treinamentos ?? []);
+                    $treinamentosFinalizados = $treinamentosFinalizados ?? [];
                 @endphp
 
                 <section class="space-y-3 pt-4 border-t border-slate-100 mt-4">
@@ -176,17 +177,23 @@
 
                     @if($treinamentosDisponiveis->isEmpty())
                         <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[11px] text-amber-800">
-                            Não há treinamentos cadastrados na tabela de preços para esta empresa.
+                            Não há treinamentos contratados para este cliente.
                         </div>
                     @else
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-64 overflow-y-auto pr-1">
                             @foreach($treinamentosDisponiveis as $treinamento)
+                                @php
+                                    $codigoTreinamento = (string) $treinamento->codigo;
+                                    $isSelecionado = in_array($codigoTreinamento, $treinamentosSelecionados, true);
+                                    $isFinalizado = in_array(strtoupper(trim($codigoTreinamento)), $treinamentosFinalizados, true);
+                                @endphp
                                 <label class="block border rounded-xl px-3 py-3 text-xs cursor-pointer bg-slate-50 hover:bg-slate-100">
-                                    <div class="flex items-start gap-2">
+                                    <div class="flex items-start gap-2 {{ $isFinalizado && !$isSelecionado ? 'opacity-60' : '' }}">
                                         <input type="checkbox"
                                                name="treinamentos[]"
                                                value="{{ $treinamento->codigo }}"
                                                class="mt-1 h-3 w-3 text-indigo-600 border-slate-300 rounded"
+                                               @disabled($isFinalizado && !$isSelecionado)
                                             @checked(in_array($treinamento->codigo, $treinamentosSelecionados))>
                                         <div>
                                             <p class="font-semibold text-slate-800 text-sm">
@@ -195,6 +202,11 @@
                                             <p class="text-[11px] text-slate-500">
                                                 {{ $treinamento->descricao ?? 'Treinamento NR' }}
                                             </p>
+                                            @if($isFinalizado && !$isSelecionado)
+                                                <p class="mt-1 text-[11px] font-semibold text-amber-700">
+                                                    Serviço finalizado
+                                                </p>
+                                            @endif
                                         </div>
                                     </div>
                                 </label>
@@ -241,7 +253,7 @@
                     {{-- Na Clínica: select unidade --}}
                     <div id="bloco-clinica" class="space-y-2">
                         <label class="block text-xs font-medium text-slate-600">
-                            Selecione a Unidade
+                            Unidade Credenciada
                         </label>
                         <select name="unidade_id"
                                 class="w-full rounded-xl border-slate-200 text-sm px-3 py-2">

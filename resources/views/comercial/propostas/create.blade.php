@@ -107,10 +107,10 @@
 
                     {{-- 1. Cliente Final --}}
                     <section class="space-y-3">
-                        <h2 class="text-sm font-semibold text-slate-700">1. Cliente Final</h2>
+                        <h2 class="text-sm font-semibold text-black">1. Cliente Final</h2>
 
                         <div>
-                            <label class="text-xs font-medium text-slate-600">Cliente Final</label>
+                            <label class="text-sm font-semibold text-black">Cliente Final</label>
                             <div class="mt-1 flex items-center gap-2">
                                 <select name="cliente_id" required class="w-full border border-slate-200 rounded-xl text-sm px-3 py-2">
                                     <option value="">Selecione...</option>
@@ -122,7 +122,7 @@
                                     @endforeach
                                 </select>
                                 <a href="{{ route('clientes.create') }}"
-                                   class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 whitespace-nowrap">
+                                   class="inline-flex items-center gap-2 rounded-xl border border-blue-600 bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 whitespace-nowrap">
                                     + Novo cliente
                                 </a>
                             </div>
@@ -131,9 +131,9 @@
 
                     {{-- 2. Serviços --}}
                     <section class="space-y-3">
-                        <h2 class="text-sm font-semibold text-slate-700">2. Serviços</h2>
+                        <h2 class="text-sm font-semibold text-black">2. Serviços</h2>
 
-                        <div class="rounded-2xl border border-slate-200 p-4">
+                        <div class="rounded-2xl border border-blue-100 bg-blue-50/50 p-4">
                             <div class="flex flex-wrap gap-2 border-b border-slate-100 pb-3 mb-4" data-tabs="proposta">
                                 <button type="button"
                                         class="px-4 py-2 rounded-full text-sm font-semibold bg-blue-600 text-white"
@@ -160,7 +160,7 @@
                             </div>
 
                             <div data-tab-panel="servicos" class="space-y-3">
-                                <div class="text-sm font-semibold text-slate-800">Serviços</div>
+                                <div class="text-sm font-semibold text-black">Serviços</div>
                                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
                                     @php
                                         $servicoTreinamentoId = (int) config('services.treinamento_id');
@@ -308,9 +308,9 @@
 
                         {{-- Lista itens (compacto) --}}
                         <div class="mt-5">
-                            <h3 class="text-xs font-semibold text-slate-600 mb-2">Serviços Adicionados</h3>
+                            <h3 class="text-sm font-semibold text-black mb-2">Serviços Adicionados</h3>
                             <div class="rounded-xl border border-slate-200 overflow-hidden">
-                                <div class="hidden md:grid grid-cols-12 gap-1 bg-slate-50 px-2 py-1.5 text-xs font-semibold text-slate-600">
+                                <div class="hidden md:grid grid-cols-12 gap-1 bg-slate-50 px-2 py-1.5 text-sm font-semibold text-black">
                                     <div class="col-span-4">Item</div>
                                     <div class="col-span-2">Valor</div>
                                     <div class="col-span-2">Prazo</div>
@@ -326,9 +326,9 @@
 
                     {{-- 3. E-Social --}}
                     <section class="space-y-3">
-                        <h2 class="text-sm font-semibold text-slate-700">3. E-Social (Opcional)</h2>
+                        <h2 class="text-sm font-semibold text-black">3. E-Social (Opcional)</h2>
 
-                        <label class="inline-flex items-center gap-2 text-sm text-slate-700">
+                        <label class="inline-flex items-center gap-2 text-sm font-semibold text-black">
                             <input type="checkbox" id="chkEsocial" name="incluir_esocial" value="1"
                                    class="rounded border-slate-300"
                                    @checked(old('incluir_esocial', $isEdit ? $proposta->incluir_esocial : false))>
@@ -361,7 +361,7 @@
 
                     {{-- 4. Forma de Pagamento --}}
                     <section class="space-y-3">
-                        <h2 class="text-sm font-semibold text-slate-700">4. Forma de Pagamento *</h2>
+                        <h2 class="text-sm font-semibold text-black">4. Forma de Pagamento *</h2>
 
                         <select name="forma_pagamento" required class="w-full border border-slate-200 rounded-xl text-sm px-3 py-2">
                             <option value="">Selecione...</option>
@@ -376,7 +376,7 @@
 
                     {{-- 5. Prazo da proposta --}}
                     <section class="space-y-3">
-                        <h2 class="text-sm font-semibold text-slate-700">5. Prazo da proposta (dias) *</h2>
+                        <h2 class="text-sm font-semibold text-black">5. Prazo da proposta (dias) *</h2>
 
                         <input type="number" name="prazo_dias" min="1" max="365" required
                                value="{{ old('prazo_dias', $isEdit ? ($proposta->prazo_dias ?? '') : '') }}"
@@ -386,7 +386,7 @@
 
                     {{-- 6. Data de vencimento --}}
                     <section class="space-y-3">
-                        <h2 class="text-sm font-semibold text-slate-700">6. Data de vencimento *</h2>
+                        <h2 class="text-sm font-semibold text-black">6. Data de vencimento *</h2>
 
                         <input type="number" min="1" max="31" name="vencimento_servicos" required
                                value="{{ old('vencimento_servicos', $isEdit ? ($proposta->vencimento_servicos ?? '') : '') }}"
@@ -1108,6 +1108,7 @@
                         })
                         .map((row) => row.it);
 
+                    let rowIndex = 0;
                     sortedItems.forEach(item => {
                         const hasZeroPrice = Number(item.valor_unitario || 0) <= 0;
                         const isAsoTipo = !!item?.meta?.aso_tipo;
@@ -1118,10 +1119,12 @@
                             el.lista.appendChild(header);
                             insertedAsoHeader = true;
                         }
+                        const stripeClass = rowIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50/60';
                         const row = document.createElement('div');
                         row.className = hasZeroPrice
                             ? 'grid grid-cols-12 gap-1 items-center px-2 py-1.5 bg-amber-50/60'
-                            : 'grid grid-cols-12 gap-1 items-center px-2 py-1.5 bg-white';
+                            : `grid grid-cols-12 gap-1 items-center px-2 py-1.5 ${stripeClass}`;
+                        rowIndex += 1;
 
                         row.innerHTML = `
                 <div class="col-span-12 md:col-span-4">

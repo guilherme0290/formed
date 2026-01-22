@@ -124,6 +124,14 @@ class PropostaService
                     }
                     $regrasSnapshot = $this->buildRegrasSnapshotAso($it, $asoSnapshot);
                 }
+                if (!$servicoId && strtoupper((string) $it->tipo) === 'ESOCIAL') {
+                    $servicoId = (int) (config('services.esocial_id') ?? 0);
+                    if ($servicoId <= 0) {
+                        throw ValidationException::withMessages([
+                            'itens' => 'ServiÃ§o eSocial nÃ£o configurado. Defina FORMED_SERVICO_ESOCIAL_ID.',
+                        ]);
+                    }
+                }
 
                 $descricaoSnapshot = $it->descricao ?? $it->nome;
                 if ($isAsoItem($it) && !empty($it->meta['aso_tipo'])) {

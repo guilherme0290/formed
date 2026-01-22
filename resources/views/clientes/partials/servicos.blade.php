@@ -19,14 +19,27 @@
         $servicosContrato = $servicosContrato ?? [];
         $servicosIds = $servicosIds ?? [];
         $temContratoAtivo = (bool) $contratoAtivo;
+        $servicosExecutados = $servicosExecutados ?? [];
 
         $permitidos = [
-            'aso' => $temContratoAtivo && in_array($servicosIds['aso'] ?? null, $servicosContrato),
-            'pgr' => $temContratoAtivo && in_array($servicosIds['pgr'] ?? null, $servicosContrato),
-            'pcmso' => $temContratoAtivo && in_array($servicosIds['pcmso'] ?? null, $servicosContrato),
-            'ltcat' => $temContratoAtivo && in_array($servicosIds['ltcat'] ?? null, $servicosContrato),
-            'apr' => $temContratoAtivo && in_array($servicosIds['apr'] ?? null, $servicosContrato),
-            'treinamentos' => $temContratoAtivo && in_array($servicosIds['treinamentos'] ?? null, $servicosContrato),
+            'aso' => $temContratoAtivo
+                && in_array($servicosIds['aso'] ?? null, $servicosContrato)
+                && !in_array($servicosIds['aso'] ?? null, $servicosExecutados, true),
+            'pgr' => $temContratoAtivo
+                && in_array($servicosIds['pgr'] ?? null, $servicosContrato)
+                && !in_array($servicosIds['pgr'] ?? null, $servicosExecutados, true),
+            'pcmso' => $temContratoAtivo
+                && in_array($servicosIds['pcmso'] ?? null, $servicosContrato)
+                && !in_array($servicosIds['pcmso'] ?? null, $servicosExecutados, true),
+            'ltcat' => $temContratoAtivo
+                && in_array($servicosIds['ltcat'] ?? null, $servicosContrato)
+                && !in_array($servicosIds['ltcat'] ?? null, $servicosExecutados, true),
+            'apr' => $temContratoAtivo
+                && in_array($servicosIds['apr'] ?? null, $servicosContrato)
+                && !in_array($servicosIds['apr'] ?? null, $servicosExecutados, true),
+            'treinamentos' => $temContratoAtivo
+                && in_array($servicosIds['treinamentos'] ?? null, $servicosContrato)
+                && !in_array($servicosIds['treinamentos'] ?? null, $servicosExecutados, true),
         ];
 
         $vendedorTelefone = preg_replace('/\D+/', '', $vendedorTelefone ?? optional($cliente->vendedor)->telefone ?? '');
@@ -169,6 +182,8 @@
                 @php
                     $disabled = $card['disabled'] ?? false;
                     $badge = $card['badge'] ?? null;
+                    $servicoIdAtual = $servicosIds[$card['slug']] ?? null;
+                    $executado = $servicoIdAtual && in_array($servicoIdAtual, $servicosExecutados, true);
                     if (!$badge && array_key_exists('preco', $card)) {
                         $badge = $card['preco'] ? 'R$ '.number_format($card['preco'], 2, ',', '.') : '';
                     }

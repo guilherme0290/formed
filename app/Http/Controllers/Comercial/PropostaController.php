@@ -363,8 +363,9 @@ class PropostaController extends Controller
                 }
             }
 
+            $servicoEsocialId = (int) (config('services.esocial_id') ?? 0);
             $esocialItem = [
-                'servico_id' => null,
+                'servico_id' => $servicoEsocialId > 0 ? $servicoEsocialId : null,
                 'tipo' => 'ESOCIAL',
                 'nome' => 'eSocial',
                 'descricao' => 'eSocial',

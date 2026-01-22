@@ -15,39 +15,38 @@
                 Visão centralizada das principais áreas: acessos, clientes, preços e comissões. Tudo em um só lugar.
             </p>
         </div>
-
-        {{-- Cards métricas --}}
+        {{-- Cards m&eacute;tricas --}}
         <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            <div class="bg-white rounded-2xl shadow-md border border-slate-100 p-5 text-center">
-                <div class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 mx-auto">👥</div>
-                <div class="mt-2 text-xs uppercase tracking-wide text-slate-500">Clientes Ativos</div>
-                <div class="text-3xl font-bold text-slate-900 mt-1">
+            <div class="rounded-2xl shadow-lg border border-indigo-400/40 p-5 text-center text-white bg-gradient-to-br from-indigo-700 via-blue-600 to-sky-500">
+                <div class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 text-white mx-auto">&#128101;</div>
+                <div class="mt-2 text-xs uppercase tracking-wide text-indigo-100">Clientes Ativos</div>
+                <div class="text-3xl font-bold text-white mt-1">
                     {{ $visaoEmpresa['clientes_ativos'] ?? 0 }}
                 </div>
-                <div class="text-emerald-600 text-xs mt-1">Ativos</div>
+                <div class="text-emerald-200 text-xs mt-1">Ativos</div>
             </div>
-            <div class="bg-white rounded-2xl shadow-md border border-slate-100 p-5 text-center">
-                <div class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 mx-auto">💵</div>
-                <div class="mt-2 text-xs uppercase tracking-wide text-slate-500">Faturamento Global</div>
-                <div class="text-3xl font-bold text-slate-900 mt-1">
+            <div class="rounded-2xl shadow-lg border border-emerald-400/40 p-5 text-center text-white bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-500">
+                <div class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 text-white mx-auto">&#128181;</div>
+                <div class="mt-2 text-xs uppercase tracking-wide text-emerald-100">Faturamento Global</div>
+                <div class="text-3xl font-bold text-white mt-1">
                     R$ {{ number_format($visaoEmpresa['faturamento_global'] ?? 0, 2, ',', '.') }}
                 </div>
-                <div class="text-emerald-600 text-xs mt-1">Atualizado</div>
+                <div class="text-emerald-100 text-xs mt-1">Atualizado</div>
             </div>
-            <div class="bg-white rounded-2xl shadow-md border border-slate-100 p-5 text-center">
-                <div class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 text-violet-600 mx-auto">⏱️</div>
-                <div class="mt-2 text-xs uppercase tracking-wide text-slate-500">Tempo Médio</div>
-                <div class="text-3xl font-bold text-slate-900 mt-1">
-                    {{ $visaoEmpresa['tempo_medio'] ?? '—' }}
+            <div class="rounded-2xl shadow-lg border border-amber-400/40 p-5 text-center text-white bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500">
+                <div class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 text-white mx-auto">&#9201;</div>
+                <div class="mt-2 text-xs uppercase tracking-wide text-amber-100">Tempo M&eacute;dio</div>
+                <div class="text-3xl font-bold text-white mt-1">
+                    {{ $visaoEmpresa['tempo_medio'] ?? '-' }}
                 </div>
             </div>
-            <div class="bg-white rounded-2xl shadow-md border border-slate-100 p-5 text-center">
-                <div class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-sky-50 text-sky-600 mx-auto">📈</div>
-                <div class="mt-2 text-xs uppercase tracking-wide text-slate-500">Serviços Consumidos</div>
-                <div class="text-3xl font-bold text-slate-900 mt-1">
+            <div class="rounded-2xl shadow-lg border border-sky-400/40 p-5 text-center text-white bg-gradient-to-br from-sky-600 via-cyan-600 to-blue-500">
+                <div class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 text-white mx-auto">&#128200;</div>
+                <div class="mt-2 text-xs uppercase tracking-wide text-sky-100">Servi&ccedil;os Consumidos</div>
+                <div class="text-3xl font-bold text-white mt-1">
                     {{ $visaoEmpresa['servicos_consumidos'] ?? 0 }}
                 </div>
-                <div class="text-emerald-600 text-xs mt-1">Total de itens</div>
+                <div class="text-sky-100 text-xs mt-1">Total de itens</div>
             </div>
         </div>
 
