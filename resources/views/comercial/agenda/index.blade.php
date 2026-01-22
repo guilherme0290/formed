@@ -129,9 +129,20 @@
             @if ($periodo === 'ano')
                 <div class="grid gap-4 md:grid-cols-3 xl:grid-cols-4">
                     @foreach ($calendariosAno as $calendario)
-                        <div class="rounded-2xl border border-slate-100 bg-slate-50/60 p-4 space-y-3">
-                            <div class="text-sm font-semibold text-slate-800">{{ $calendario['titulo'] }}</div>
-                            <div class="grid grid-cols-7 text-[10px] uppercase tracking-wide font-semibold text-slate-900">
+                        @php
+                            $cardCores = [
+                                ['bg' => 'bg-indigo-50/70', 'border' => 'border-indigo-100', 'text' => 'text-indigo-900'],
+                                ['bg' => 'bg-emerald-50/70', 'border' => 'border-emerald-100', 'text' => 'text-emerald-900'],
+                                ['bg' => 'bg-amber-50/70', 'border' => 'border-amber-100', 'text' => 'text-amber-900'],
+                                ['bg' => 'bg-sky-50/70', 'border' => 'border-sky-100', 'text' => 'text-sky-900'],
+                                ['bg' => 'bg-rose-50/70', 'border' => 'border-rose-100', 'text' => 'text-rose-900'],
+                                ['bg' => 'bg-teal-50/70', 'border' => 'border-teal-100', 'text' => 'text-teal-900'],
+                            ];
+                            $cor = $cardCores[$loop->index % count($cardCores)];
+                        @endphp
+                        <div class="rounded-2xl border p-4 space-y-3 {{ $cor['bg'] }} {{ $cor['border'] }}">
+                            <div class="text-sm font-semibold {{ $cor['text'] }}">{{ $calendario['titulo'] }}</div>
+                            <div class="grid grid-cols-7 text-[10px] uppercase tracking-wide font-semibold {{ $cor['text'] }}">
                                 <div class="text-center">D</div>
                                 <div class="text-center">S</div>
                                 <div class="text-center">T</div>

@@ -139,6 +139,11 @@ class ApresentacaoController extends Controller
         }
 
         abort_unless(array_key_exists($segmento, self::SEGMENTOS), 404);
+        if (function_exists('set_time_limit')) {
+            @set_time_limit(180);
+        }
+        @ini_set('max_execution_time', '180');
+        @ini_set('memory_limit', '512M');
 
         $logoPath = public_path('storage/logo.png');
         $logoData = is_file($logoPath)

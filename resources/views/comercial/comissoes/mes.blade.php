@@ -15,10 +15,16 @@
                 </div>
                 <h1 class="text-2xl md:text-3xl font-semibold text-slate-900">{{ ucfirst($mesNome) }}</h1>
             </div>
-            <a href="{{ route('comercial.comissoes.ano', ['ano' => $anoSelecionado]) }}"
-               class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900">
-                ← Voltar para meses
-            </a>
+            <div class="flex flex-wrap items-center gap-2">
+                <a href="{{ route('comercial.dashboard') }}"
+                   class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900">
+                    &larr; Painel Comercial
+                </a>
+                <a href="{{ route('comercial.comissoes.ano', ['ano' => $anoSelecionado]) }}"
+                   class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900">
+                    &larr; Voltar para meses
+                </a>
+            </div>
         </div>
 
         <div class="grid md:grid-cols-3 gap-4">
