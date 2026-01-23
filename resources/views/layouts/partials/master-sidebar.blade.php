@@ -64,6 +64,12 @@
                 'active' => request()->routeIs('comercial.*'),
             ],
             [
+                'label' => 'Propostas',
+                'icon' => '📑',
+                'route' => route('comercial.propostas.index'),
+                'active' => request()->routeIs('comercial.propostas.*'),
+            ],
+            [
                 'label' => 'Operacional',
                 'icon' => '🛠️',
                 'route' => route('operacional.kanban'),
@@ -111,6 +117,12 @@
                 'route' => route('comercial.funcoes.index'),
                 'active' => request()->routeIs('comercial.funcoes.*'),
             ],
+            [
+                'label' => 'Configuração',
+                'icon' => '⚙️',
+                'route' => route('master.email-caixas.index'),
+                'active' => request()->routeIs('master.email-caixas.*'),
+            ],
         ];
     @endphp
 
@@ -143,11 +155,6 @@
         </form>
     </div>
 </aside>
-
-
-
-
-
 
 
 

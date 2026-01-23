@@ -50,67 +50,6 @@
             </div>
         </div>
 
-        {{-- Acessos rápidos --}}
-        <div class="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-5">
-            <div class="flex items-center justify-between flex-wrap gap-3">
-                <div>
-                    <h2 class="text-lg font-semibold text-slate-900">Acessos Rápidos</h2>
-                    <p class="text-sm text-slate-500">Principais áreas de gestão do Master</p>
-                </div>
-            </div>
-
-            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <a href="{{ route('master.acessos') }}" class="rounded-2xl border border-slate-100 bg-slate-50/70 hover:bg-slate-100 transition shadow-sm p-4 flex items-center gap-3">
-                    <span class="h-10 w-10 rounded-xl bg-slate-900/5 text-slate-900 grid place-items-center text-xl">&#128274;</span>
-                    <div>
-                        <div class="font-semibold text-slate-900">Acessos & Usuários</div>
-                        <div class="text-sm text-slate-500">Perfis, permissões e senhas</div>
-                    </div>
-                </a>
-
-                <a href="{{ route('master.tabela-precos.itens.index') }}" class="rounded-2xl border border-amber-100 bg-amber-50/80 hover:bg-amber-100 transition shadow-sm p-4 flex items-center gap-3">
-                    <span class="h-10 w-10 rounded-xl bg-yellow-500/10 text-yellow-600 grid place-items-center text-xl">💰</span>
-                    <div>
-                        <div class="font-semibold text-slate-900">Tabela de Preços</div>
-                        <div class="text-sm text-slate-500">Cadastro e políticas de preço</div>
-                    </div>
-                </a>
-
-                <a href="{{ route('master.comissoes.index') }}" class="rounded-2xl border border-emerald-100 bg-emerald-50/80 hover:bg-emerald-100 transition shadow-sm p-4 flex items-center gap-3">
-                    <span class="h-10 w-10 rounded-xl bg-emerald-500/10 text-emerald-600 grid place-items-center text-xl">💸</span>
-                    <div>
-                        <div class="font-semibold text-slate-900">Comissões</div>
-                        <div class="text-sm text-slate-500">Regras de % e vigências</div>
-                    </div>
-                </a>
-
-                <a href="{{ route('master.email-caixas.index') }}" class="rounded-2xl border border-sky-100 bg-sky-50/80 hover:bg-sky-100 transition shadow-sm p-4 flex items-center gap-3">
-                    <span class="h-10 w-10 rounded-xl bg-sky-500/10 text-sky-600 grid place-items-center text-xl">@</span>
-                    <div>
-                        <div class="font-semibold text-slate-900">Configuração de Email</div>
-                        <div class="text-sm text-slate-500">SMTP e caixas salvas</div>
-                    </div>
-                </a>
-
-                <a href="{{ route('clientes.index') }}"
-                   class="rounded-2xl border border-blue-100 bg-blue-50/80 hover:bg-blue-100 transition shadow-sm p-4 flex items-center gap-3">
-                    <span class="h-10 w-10 rounded-xl bg-blue-500/10 text-blue-600 grid place-items-center text-xl">👤</span>
-                    <div>
-                        <div class="font-semibold text-slate-900">Clientes</div>
-                        <div class="text-sm text-slate-500">Cadastro e gestão</div>
-                    </div>
-                </a>
-
-                <a href="{{ route('master.dashboard') }}" class="rounded-2xl border border-indigo-100 bg-indigo-50/80 hover:bg-indigo-100 transition shadow-sm p-4 flex items-center gap-3">
-                    <span class="h-10 w-10 rounded-xl bg-indigo-500/10 text-indigo-600 grid place-items-center text-xl">📊</span>
-                    <div>
-                        <div class="font-semibold text-slate-900">Painel Master</div>
-                        <div class="text-sm text-slate-500">Visão geral e relatórios</div>
-                    </div>
-                </a>
-            </div>
-        </div>
-
         {{-- Relatórios avançados --}}
         <div class="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 space-y-5">
             <div class="flex items-center justify-between gap-3 flex-wrap">

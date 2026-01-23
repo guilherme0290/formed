@@ -59,7 +59,7 @@ class DashboardController extends Controller
         }
 
         return [
-            'mesAtual' => $hoje->translatedFormat('F Y'),
+            'mesAtual' => $hoje->locale('pt_BR')->translatedFormat('F Y'),
             'itens' => $posicoes,
             'semDados' => $rows->isEmpty(),
         ];

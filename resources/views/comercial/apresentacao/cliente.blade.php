@@ -6,8 +6,8 @@
 
         <div>
             <a href="{{ route('comercial.dashboard') }}"
-               class="inline-flex items-center text-sm text-slate-600 hover:text-slate-800">
-                ← Voltar ao Painel
+               class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 shadow-sm">
+                &larr; Voltar ao Painel
             </a>
         </div>
 
@@ -28,13 +28,13 @@
             </div>
         @endif
 
-        <section class="bg-white rounded-2xl shadow border border-slate-100 overflow-hidden">
-            <div class="px-6 py-4 border-b bg-slate-50">
-                <h2 class="text-sm font-semibold text-slate-800">1. Dados do Cliente</h2>
-                <p class="text-xs text-slate-500 mt-1">Selecione uma proposta ou informe manualmente.</p>
+        <section class="bg-emerald-600 rounded-2xl shadow border border-emerald-700 overflow-hidden">
+            <div class="px-6 py-4 border-b border-emerald-700 bg-emerald-600">
+                <h2 class="text-sm font-semibold text-white">1. Dados do Cliente</h2>
+                <p class="text-xs text-emerald-100 mt-1">Selecione uma proposta ou informe manualmente.</p>
             </div>
 
-            <form method="POST" action="{{ route('comercial.apresentacao.cliente.store') }}" class="p-6 space-y-5" id="formApresentacaoCliente">
+            <form method="POST" action="{{ route('comercial.apresentacao.cliente.store') }}" class="p-6 space-y-5 bg-white" id="formApresentacaoCliente">
                 @csrf
 
                 <div>

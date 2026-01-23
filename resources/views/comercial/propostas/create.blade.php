@@ -1,4 +1,4 @@
-@extends('layouts.comercial')
+﻿@extends('layouts.comercial')
 @section('title', 'Criar Proposta Comercial')
 
 @section('content')
@@ -66,9 +66,9 @@
     <div class="w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
 
         <div class="mb-4">
-            <a href="{{ route('comercial.dashboard') }}"
+            <a href="{{ route('comercial.propostas.index') }}"
                class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900">
-                ← Voltar ao Painel
+                &larr; Voltar
             </a>
         </div>
 
@@ -82,7 +82,7 @@
             <div class="fixed top-20 left-4 right-4 sm:left-auto sm:right-6 z-40">
                 <div id="itemToast" class="hidden pointer-events-auto rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 shadow-lg flex items-start gap-3 transition-all duration-200 opacity-0 translate-y-2">
                     <div class="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-600 text-white text-xs font-semibold">
-                        ✓
+                        ?
                     </div>
                     <div class="min-w-0">
                         <div class="font-semibold">Item adicionado</div>
@@ -384,9 +384,9 @@
                         <p class="text-xs text-slate-500">Informe o prazo de vencimento da proposta.</p>
                     </section>
 
-                    {{-- 6. Data de vencimento --}}
+                    {{-- 6. Dia de Vencimento --}}
                     <section class="space-y-3">
-                        <h2 class="text-sm font-semibold text-black">6. Data de vencimento *</h2>
+                        <h2 class="text-sm font-semibold text-black">6. Dia de Vencimento *</h2>
 
                         <input type="number" min="1" max="31" name="vencimento_servicos" required
                                value="{{ old('vencimento_servicos', $isEdit ? ($proposta->vencimento_servicos ?? '') : '') }}"
@@ -421,7 +421,7 @@
             <div class="bg-white w-full max-w-2xl rounded-2xl shadow-xl overflow-hidden">
                 <div class="px-5 py-4 border-b flex items-center justify-between">
                     <h3 class="font-semibold text-slate-800">Selecionar Treinamento (NR)</h3>
-                    <button type="button" class="h-9 w-9 rounded-xl hover:bg-slate-100" onclick="closeTreinamentosModal()">✕</button>
+                    <button type="button" class="h-9 w-9 rounded-xl hover:bg-slate-100" onclick="closeTreinamentosModal()">?</button>
                 </div>
                 <div class="p-5">
                     <div id="nrChips" class="flex flex-wrap gap-2"></div>
@@ -443,7 +443,7 @@
             <div class="bg-white w-full max-w-2xl rounded-2xl shadow-xl overflow-hidden">
                 <div class="px-5 py-4 border-b bg-blue-700 text-white flex items-center justify-between">
                     <h3 class="font-semibold">Criar Pacote de Exames</h3>
-                    <button type="button" class="h-9 w-9 rounded-xl hover:bg-white/10" onclick="closeExamesModal()">✕</button>
+                    <button type="button" class="h-9 w-9 rounded-xl hover:bg-white/10" onclick="closeExamesModal()">?</button>
                 </div>
 
                 <div class="p-5 space-y-4">
@@ -1157,7 +1157,7 @@
                 <div class="col-span-6 md:col-span-2">
                     <div class="text-[11px] font-semibold text-slate-500 md:hidden">Qtd</div>
                     <div class="inline-flex items-center gap-1">
-                        <button type="button" class="h-8 w-8 rounded-md border border-slate-200 hover:bg-slate-50 text-sm" data-act="qtd_minus">−</button>
+                        <button type="button" class="h-8 w-8 rounded-md border border-slate-200 hover:bg-slate-50 text-sm" data-act="qtd_minus">-</button>
                         <input type="text" class="h-8 w-10 text-center rounded-md border border-slate-200 text-sm" data-act="qtd" value="${item.quantidade}">
                         <button type="button" class="h-8 w-8 rounded-md border border-slate-200 hover:bg-slate-50 text-sm" data-act="qtd_plus">+</button>
                     </div>
@@ -1951,3 +1951,8 @@
         </script>
     @endpush
 @endsection
+
+
+
+
+
