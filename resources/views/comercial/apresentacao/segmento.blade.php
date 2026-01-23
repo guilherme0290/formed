@@ -43,6 +43,12 @@
         </div>
 
         <div class="max-w-7xl mx-auto px-4 md:px-6 py-8">
+            <div class="mb-4">
+                <a href="{{ route('comercial.apresentacao.cliente') }}"
+                   class="inline-flex items-center gap-2 rounded-xl bg-white border border-slate-200 text-slate-700 px-3 py-2 text-sm hover:bg-slate-50">
+                    &larr; Voltar
+                </a>
+            </div>
             <div class="max-w-3xl mx-auto bg-white rounded-3xl shadow-lg border border-slate-100 overflow-hidden">
 
                 <div class="bg-blue-600 px-6 py-4">
@@ -92,13 +98,7 @@
                         @endforeach
                     </div>
 
-                    <div class="pt-1">
-                        <a href="{{ route('comercial.apresentacao.cliente') }}"
-                           class="inline-flex items-center gap-2 rounded-xl bg-white border border-slate-200 text-slate-700 px-3 py-2 text-sm hover:bg-slate-50">
-                            ← Voltar
-                        </a>
-                    </div>
-                </div>
+                    
             </div>
         </div>
     </div>

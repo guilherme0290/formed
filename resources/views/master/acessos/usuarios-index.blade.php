@@ -69,7 +69,6 @@
         </form>
     </div>
 
-
 {{-- Tabela --}}
     <div class="overflow-hidden rounded-xl border">
         <table class="w-full text-sm">
@@ -120,6 +119,20 @@
                                         action: '{{ route('master.usuarios.password', $u) }}',
                                         name: @js($u->name),
                                     })">🔑</button>
+
+                            <form method="POST" action="{{ route('master.usuarios.destroy', $u) }}" class="js-delete-user">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="hover:text-red-700 text-gray-600" title="Excluir usuário" aria-label="Excluir usuário">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="#111827" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M3 6h18"/>
+                                        <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/>
+                                        <path d="M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14"/>
+                                        <path d="M10 11v6"/>
+                                        <path d="M14 11v6"/>
+                                    </svg>
+                                </button>
+                            </form>
 
                             {{-- Ativar/Desativar agora fica no popup de edição --}}
                         </div>
@@ -250,3 +263,48 @@
     </div>
 </div>
 
+@push('scripts')
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const flashErro = @json(session('erro'));
+            const flashOk = @json(session('ok'));
+
+            if (flashErro) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Não foi possível excluir',
+                    text: flashErro,
+                    confirmButtonText: 'Ok',
+                });
+            } else if (flashOk) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Concluído',
+                    text: flashOk,
+                    confirmButtonText: 'Ok',
+                });
+            }
+
+            document.querySelectorAll('.js-delete-user').forEach(function (form) {
+                form.addEventListener('submit', function (event) {
+                    event.preventDefault();
+
+                    Swal.fire({
+                        title: 'Excluir usuário?',
+                        text: 'Se houver vínculos, recomendamos inativar em vez de excluir.',
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: 'Excluir',
+                        cancelButtonText: 'Cancelar',
+                        confirmButtonColor: '#dc2626',
+                    }).then(function (result) {
+                        if (result.isConfirmed) {
+                            form.submit();
+                        }
+                    });
+                });
+            });
+        });
+    </script>
+@endpush

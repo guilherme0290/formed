@@ -1,4 +1,4 @@
-@extends('layouts.comercial')
+﻿@extends('layouts.comercial')
 @section('title', 'Criar Proposta Comercial')
 
 @section('content')
@@ -66,9 +66,9 @@
     <div class="w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
 
         <div class="mb-4">
-            <a href="{{ route('comercial.dashboard') }}"
+            <a href="{{ route('comercial.propostas.index') }}"
                class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900">
-                ← Voltar ao Painel
+                &larr; Voltar
             </a>
         </div>
 
@@ -82,7 +82,7 @@
             <div class="fixed top-20 left-4 right-4 sm:left-auto sm:right-6 z-40">
                 <div id="itemToast" class="hidden pointer-events-auto rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 shadow-lg flex items-start gap-3 transition-all duration-200 opacity-0 translate-y-2">
                     <div class="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-600 text-white text-xs font-semibold">
-                        ✓
+                        ?
                     </div>
                     <div class="min-w-0">
                         <div class="font-semibold">Item adicionado</div>
@@ -107,10 +107,10 @@
 
                     {{-- 1. Cliente Final --}}
                     <section class="space-y-3">
-                        <h2 class="text-sm font-semibold text-slate-700">1. Cliente Final</h2>
+                        <h2 class="text-sm font-semibold text-black">1. Cliente Final</h2>
 
                         <div>
-                            <label class="text-xs font-medium text-slate-600">Cliente Final</label>
+                            <label class="text-sm font-semibold text-black">Cliente Final</label>
                             <div class="mt-1 flex items-center gap-2">
                                 <select name="cliente_id" required class="w-full border border-slate-200 rounded-xl text-sm px-3 py-2">
                                     <option value="">Selecione...</option>
@@ -122,7 +122,7 @@
                                     @endforeach
                                 </select>
                                 <a href="{{ route('clientes.create') }}"
-                                   class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 whitespace-nowrap">
+                                   class="inline-flex items-center gap-2 rounded-xl border border-blue-600 bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 whitespace-nowrap">
                                     + Novo cliente
                                 </a>
                             </div>
@@ -131,9 +131,9 @@
 
                     {{-- 2. Serviços --}}
                     <section class="space-y-3">
-                        <h2 class="text-sm font-semibold text-slate-700">2. Serviços</h2>
+                        <h2 class="text-sm font-semibold text-black">2. Serviços</h2>
 
-                        <div class="rounded-2xl border border-slate-200 p-4">
+                        <div class="rounded-2xl border border-blue-100 bg-blue-50/50 p-4">
                             <div class="flex flex-wrap gap-2 border-b border-slate-100 pb-3 mb-4" data-tabs="proposta">
                                 <button type="button"
                                         class="px-4 py-2 rounded-full text-sm font-semibold bg-blue-600 text-white"
@@ -160,7 +160,7 @@
                             </div>
 
                             <div data-tab-panel="servicos" class="space-y-3">
-                                <div class="text-sm font-semibold text-slate-800">Serviços</div>
+                                <div class="text-sm font-semibold text-black">Serviços</div>
                                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
                                     @php
                                         $servicoTreinamentoId = (int) config('services.treinamento_id');
@@ -308,9 +308,9 @@
 
                         {{-- Lista itens (compacto) --}}
                         <div class="mt-5">
-                            <h3 class="text-xs font-semibold text-slate-600 mb-2">Serviços Adicionados</h3>
+                            <h3 class="text-sm font-semibold text-black mb-2">Serviços Adicionados</h3>
                             <div class="rounded-xl border border-slate-200 overflow-hidden">
-                                <div class="hidden md:grid grid-cols-12 gap-1 bg-slate-50 px-2 py-1.5 text-xs font-semibold text-slate-600">
+                                <div class="hidden md:grid grid-cols-12 gap-1 bg-slate-50 px-2 py-1.5 text-sm font-semibold text-black">
                                     <div class="col-span-4">Item</div>
                                     <div class="col-span-2">Valor</div>
                                     <div class="col-span-2">Prazo</div>
@@ -326,9 +326,9 @@
 
                     {{-- 3. E-Social --}}
                     <section class="space-y-3">
-                        <h2 class="text-sm font-semibold text-slate-700">3. E-Social (Opcional)</h2>
+                        <h2 class="text-sm font-semibold text-black">3. E-Social (Opcional)</h2>
 
-                        <label class="inline-flex items-center gap-2 text-sm text-slate-700">
+                        <label class="inline-flex items-center gap-2 text-sm font-semibold text-black">
                             <input type="checkbox" id="chkEsocial" name="incluir_esocial" value="1"
                                    class="rounded border-slate-300"
                                    @checked(old('incluir_esocial', $isEdit ? $proposta->incluir_esocial : false))>
@@ -361,7 +361,7 @@
 
                     {{-- 4. Forma de Pagamento --}}
                     <section class="space-y-3">
-                        <h2 class="text-sm font-semibold text-slate-700">4. Forma de Pagamento *</h2>
+                        <h2 class="text-sm font-semibold text-black">4. Forma de Pagamento *</h2>
 
                         <select name="forma_pagamento" required class="w-full border border-slate-200 rounded-xl text-sm px-3 py-2">
                             <option value="">Selecione...</option>
@@ -376,7 +376,7 @@
 
                     {{-- 5. Prazo da proposta --}}
                     <section class="space-y-3">
-                        <h2 class="text-sm font-semibold text-slate-700">5. Prazo da proposta (dias) *</h2>
+                        <h2 class="text-sm font-semibold text-black">5. Prazo da proposta (dias) *</h2>
 
                         <input type="number" name="prazo_dias" min="1" max="365" required
                                value="{{ old('prazo_dias', $isEdit ? ($proposta->prazo_dias ?? '') : '') }}"
@@ -384,9 +384,9 @@
                         <p class="text-xs text-slate-500">Informe o prazo de vencimento da proposta.</p>
                     </section>
 
-                    {{-- 6. Data de vencimento --}}
+                    {{-- 6. Dia de Vencimento --}}
                     <section class="space-y-3">
-                        <h2 class="text-sm font-semibold text-slate-700">6. Data de vencimento *</h2>
+                        <h2 class="text-sm font-semibold text-black">6. Dia de Vencimento *</h2>
 
                         <input type="number" min="1" max="31" name="vencimento_servicos" required
                                value="{{ old('vencimento_servicos', $isEdit ? ($proposta->vencimento_servicos ?? '') : '') }}"
@@ -421,7 +421,7 @@
             <div class="bg-white w-full max-w-2xl rounded-2xl shadow-xl overflow-hidden">
                 <div class="px-5 py-4 border-b flex items-center justify-between">
                     <h3 class="font-semibold text-slate-800">Selecionar Treinamento (NR)</h3>
-                    <button type="button" class="h-9 w-9 rounded-xl hover:bg-slate-100" onclick="closeTreinamentosModal()">✕</button>
+                    <button type="button" class="h-9 w-9 rounded-xl hover:bg-slate-100" onclick="closeTreinamentosModal()">?</button>
                 </div>
                 <div class="p-5">
                     <div id="nrChips" class="flex flex-wrap gap-2"></div>
@@ -443,7 +443,7 @@
             <div class="bg-white w-full max-w-2xl rounded-2xl shadow-xl overflow-hidden">
                 <div class="px-5 py-4 border-b bg-blue-700 text-white flex items-center justify-between">
                     <h3 class="font-semibold">Criar Pacote de Exames</h3>
-                    <button type="button" class="h-9 w-9 rounded-xl hover:bg-white/10" onclick="closeExamesModal()">✕</button>
+                    <button type="button" class="h-9 w-9 rounded-xl hover:bg-white/10" onclick="closeExamesModal()">?</button>
                 </div>
 
                 <div class="p-5 space-y-4">
@@ -1108,6 +1108,7 @@
                         })
                         .map((row) => row.it);
 
+                    let rowIndex = 0;
                     sortedItems.forEach(item => {
                         const hasZeroPrice = Number(item.valor_unitario || 0) <= 0;
                         const isAsoTipo = !!item?.meta?.aso_tipo;
@@ -1118,10 +1119,12 @@
                             el.lista.appendChild(header);
                             insertedAsoHeader = true;
                         }
+                        const stripeClass = rowIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50/60';
                         const row = document.createElement('div');
                         row.className = hasZeroPrice
                             ? 'grid grid-cols-12 gap-1 items-center px-2 py-1.5 bg-amber-50/60'
-                            : 'grid grid-cols-12 gap-1 items-center px-2 py-1.5 bg-white';
+                            : `grid grid-cols-12 gap-1 items-center px-2 py-1.5 ${stripeClass}`;
+                        rowIndex += 1;
 
                         row.innerHTML = `
                 <div class="col-span-12 md:col-span-4">
@@ -1154,7 +1157,7 @@
                 <div class="col-span-6 md:col-span-2">
                     <div class="text-[11px] font-semibold text-slate-500 md:hidden">Qtd</div>
                     <div class="inline-flex items-center gap-1">
-                        <button type="button" class="h-8 w-8 rounded-md border border-slate-200 hover:bg-slate-50 text-sm" data-act="qtd_minus">−</button>
+                        <button type="button" class="h-8 w-8 rounded-md border border-slate-200 hover:bg-slate-50 text-sm" data-act="qtd_minus">-</button>
                         <input type="text" class="h-8 w-10 text-center rounded-md border border-slate-200 text-sm" data-act="qtd" value="${item.quantidade}">
                         <button type="button" class="h-8 w-8 rounded-md border border-slate-200 hover:bg-slate-50 text-sm" data-act="qtd_plus">+</button>
                     </div>
@@ -1948,3 +1951,8 @@
         </script>
     @endpush
 @endsection
+
+
+
+
+

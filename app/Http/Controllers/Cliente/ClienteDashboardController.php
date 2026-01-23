@@ -54,6 +54,8 @@ class ClienteDashboardController extends Controller
         $tarefasEmAndamento = $this->tarefasEmAndamento($cliente, false);
         $totalEmAndamento = $this->totalEmAndamento($contratoAtivo, $tarefasEmAndamento);
 
+        $servicosExecutados = $this->servicosExecutadosNoContrato($contratoAtivo, $cliente);
+
         return view('clientes.dashboard', [
             'user'         => $user,
             'cliente'      => $cliente,
@@ -65,6 +67,7 @@ class ClienteDashboardController extends Controller
             'servicosContrato' => $servicosContrato,
             'servicosIds' => $servicosIds,
             'vendedorTelefone' => $vendedorTelefone,
+            'servicosExecutados' => $servicosExecutados,
         ]);
     }
 
@@ -524,6 +527,15 @@ class ClienteDashboardController extends Controller
                 continue;
             }
 
+            if ($slug === 'treinamentos') {
+                $totalTreinamentos = (float) $contrato->itens()
+                    ->where('servico_id', $servicoId)
+                    ->where('ativo', true)
+                    ->sum('preco_unitario_snapshot');
+                $precos[$slug] = $totalTreinamentos > 0 ? $totalTreinamentos : null;
+                continue;
+            }
+
             $item = $contrato->itens()
                 ->where('servico_id', $servicoId)
                 ->where('ativo', true)
@@ -546,5 +558,49 @@ class ClienteDashboardController extends Controller
         }
 
         return preg_replace('/\D+/', '', optional($cliente->vendedor)->telefone ?? '');
+    }
+
+    private function servicosExecutadosNoContrato(?ClienteContrato $contratoAtivo, Cliente $cliente): array
+    {
+        if (!$contratoAtivo) {
+            return [];
+        }
+
+        $itensPorServico = $contratoAtivo->itens
+            ->where('ativo', true)
+            ->filter(fn ($it) => !empty($it->servico_id))
+            ->groupBy('servico_id')
+            ->map(fn ($rows) => $rows->count());
+
+        if ($itensPorServico->isEmpty()) {
+            return [];
+        }
+
+        $query = Tarefa::query()
+            ->where('empresa_id', $cliente->empresa_id)
+            ->where('cliente_id', $cliente->id)
+            ->whereNotNull('finalizado_em')
+            ->whereIn('servico_id', $itensPorServico->keys()->all());
+
+        if (!empty($contratoAtivo->vigencia_inicio)) {
+            $query->whereDate('finalizado_em', '>=', $contratoAtivo->vigencia_inicio);
+        } elseif (!empty($contratoAtivo->created_at)) {
+            $query->whereDate('finalizado_em', '>=', $contratoAtivo->created_at);
+        }
+
+        $executadosPorServico = $query
+            ->select('servico_id', DB::raw('COUNT(*) as total'))
+            ->groupBy('servico_id')
+            ->pluck('total', 'servico_id');
+
+        $bloqueados = [];
+        foreach ($itensPorServico as $servicoId => $qtdContratada) {
+            $qtdExecutada = (int) ($executadosPorServico[$servicoId] ?? 0);
+            if ($qtdExecutada >= $qtdContratada) {
+                $bloqueados[] = (int) $servicoId;
+            }
+        }
+
+        return $bloqueados;
     }
 }

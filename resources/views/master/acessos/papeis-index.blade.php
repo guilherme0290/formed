@@ -24,7 +24,7 @@
         </thead>
         <tbody>
         @forelse($papeis as $papel)
-            <tr class="border-t">
+            <tr @class(['border-t', 'bg-slate-50' => $loop->odd])>
                 <td class="py-2">{{ $papel->nome }}</td>
                 <td class="py-2 text-gray-500">{{ $papel->descricao }}</td>
                 <td class="py-2">{{ $papel->ativo ? 'ativo' : 'inativo' }}</td>

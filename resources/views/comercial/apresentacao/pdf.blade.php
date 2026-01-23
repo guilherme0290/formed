@@ -69,6 +69,11 @@
                         $logoPngData = $match[1];
                     }
                 }
+                $logoFormedPath = storage_path('app/public/logo (1)-transparente.png');
+                $logoFormedData = null;
+                if (is_file($logoFormedPath)) {
+                    $logoFormedData = base64_encode(file_get_contents($logoFormedPath));
+                }
                 $canRenderLogo = extension_loaded('gd') && !empty($logoPngData);
             @endphp
             <div class="header" style="background: {{ $theme['header'] }}">
@@ -76,13 +81,18 @@
                     <tr>
                         <td style="width: 70%; text-align: left;">
                             <div style="display: inline-block; vertical-align: middle;">
-                                <div class="title">FORMED</div>
-                                <div class="subtitle">Medicina e Segurança do Trabalho</div>
+                                @if($logoFormedData)
+                                    <img src="data:image/png;base64,{{ $logoFormedData }}" alt="Formed" style="height: 80px; vertical-align: middle; margin-right: 12px;">
+                                @endif
+                                <div style="display: inline-block; vertical-align: middle;">
+                                    <div class="title">FORMED</div>
+                                    <div class="subtitle">Medicina e Segurança do Trabalho</div>
+                                </div>
                             </div>
                         </td>
                         <td style="width: 30%; text-align: right;">
                             @if($clienteLogoData)
-                                <img src="{{ $clienteLogoData }}" alt="Logo do cliente" style="height: 36px; margin-left: 8px;">
+                                <img src="{{ $clienteLogoData }}" alt="Logo do cliente" style="height: 80px; margin-left: 8px;">
                             @endif
                         </td>
                     </tr>
@@ -317,4 +327,3 @@
     </div>
 </body>
 </html>
-

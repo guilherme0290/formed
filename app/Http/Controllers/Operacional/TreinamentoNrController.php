@@ -38,7 +38,9 @@ class TreinamentoNrController extends Controller
         // Unidades da FORMED (ou o que fizer sentido aí)
         $unidades = UnidadeClinica::where('empresa_id', $empresaId)->orderBy('nome')->get();
 
-        $treinamentosDisponiveis = $this->getTreinamentosDisponiveis($empresaId);
+        $treinamentosDisponiveis = $this->getTreinamentosDisponiveis($empresaId, $cliente);
+        $contratoAtivo = $this->contratoAtivo($cliente);
+        $treinamentosFinalizados = $this->getTreinamentosFinalizados($empresaId, $cliente, $contratoAtivo);
 
         return view('operacional.kanban.treinamentos-nr.create', [
             'cliente'      => $cliente,
@@ -50,6 +52,7 @@ class TreinamentoNrController extends Controller
             'detalhes'     => null,
             'selecionados' => [],
             'treinamentosDisponiveis' => $treinamentosDisponiveis,
+            'treinamentosFinalizados' => $treinamentosFinalizados,
             'isEdit'       => false,
         ]);
     }
@@ -60,11 +63,11 @@ class TreinamentoNrController extends Controller
         $empresaId = $usuario->empresa_id;
 
         // Validação única
-        $treinamentosDisponiveis = $this->getTreinamentosDisponiveis($empresaId);
+        $treinamentosDisponiveis = $this->getTreinamentosDisponiveis($empresaId, $cliente);
         $treinamentosCodigos = $treinamentosDisponiveis->pluck('codigo')->filter()->values()->all();
         if (empty($treinamentosCodigos)) {
             return back()
-                ->withErrors(['treinamentos' => 'Nenhum treinamento disponível na tabela de preços para esta empresa.'])
+                ->withErrors(['treinamentos' => 'Nenhum treinamento contratado para este cliente.'])
                 ->withInput();
         }
 
@@ -207,7 +210,9 @@ class TreinamentoNrController extends Controller
 
         $unidades = UnidadeClinica::where('empresa_id', $empresaId)->orderBy('nome')->get();
 
-        $treinamentosDisponiveis = $this->getTreinamentosDisponiveis($empresaId);
+        $treinamentosDisponiveis = $this->getTreinamentosDisponiveis($empresaId, $cliente);
+        $contratoAtivo = $this->contratoAtivo($cliente);
+        $treinamentosFinalizados = $this->getTreinamentosFinalizados($empresaId, $cliente, $contratoAtivo);
 
         return view('operacional.kanban.treinamentos-nr.create', [
             'cliente'      => $cliente,
@@ -219,6 +224,7 @@ class TreinamentoNrController extends Controller
             'detalhes'     => $detalhes,
             'selecionados' => $selecionados,
             'treinamentosDisponiveis' => $treinamentosDisponiveis,
+            'treinamentosFinalizados' => $treinamentosFinalizados,
             'isEdit'       => true,
         ]);
     }
@@ -235,11 +241,11 @@ class TreinamentoNrController extends Controller
 
         $cliente = $tarefa->cliente;
 
-        $treinamentosDisponiveis = $this->getTreinamentosDisponiveis($empresaId);
+        $treinamentosDisponiveis = $this->getTreinamentosDisponiveis($empresaId, $cliente);
         $treinamentosCodigos = $treinamentosDisponiveis->pluck('codigo')->filter()->values()->all();
         if (empty($treinamentosCodigos)) {
             return back()
-                ->withErrors(['treinamentos' => 'Nenhum treinamento disponível na tabela de preços para esta empresa.'])
+                ->withErrors(['treinamentos' => 'Nenhum treinamento contratado para este cliente.'])
                 ->withInput();
         }
 
@@ -304,7 +310,7 @@ class TreinamentoNrController extends Controller
             ->with('ok', 'Treinamento de NRs atualizado com sucesso.');
     }
 
-    private function getTreinamentosDisponiveis(int $empresaId)
+    private function getTreinamentosDisponiveis(int $empresaId, ?Cliente $cliente = null)
     {
         $servicoTreinamentoId = Servico::where('empresa_id', $empresaId)
             ->where('nome', 'Treinamentos NRs')
@@ -322,12 +328,121 @@ class TreinamentoNrController extends Controller
             return collect();
         }
 
-        return TabelaPrecoItem::query()
+        $treinamentos = TabelaPrecoItem::query()
             ->where('tabela_preco_padrao_id', $padrao->id)
             ->where('servico_id', $servicoTreinamentoId)
             ->where('ativo', true)
             ->whereNotNull('codigo')
             ->orderBy('codigo')
             ->get(['codigo', 'descricao']);
+
+        if (!$cliente) {
+            return $treinamentos;
+        }
+
+        $contrato = \App\Models\ClienteContrato::query()
+            ->where('empresa_id', $empresaId)
+            ->where('cliente_id', $cliente->id)
+            ->where('status', 'ATIVO')
+            ->latest('id')
+            ->first();
+
+        if (!$contrato || !$contrato->propostaOrigem) {
+            return collect();
+        }
+
+        $contrato->loadMissing('propostaOrigem.itens');
+
+        $codigosContratados = $contrato->propostaOrigem->itens
+            ->filter(fn ($it) => strtoupper((string) $it->tipo) === 'TREINAMENTO_NR')
+            ->map(function ($it) {
+                $codigo = $it->meta['codigo'] ?? null;
+                if (!$codigo) {
+                    $nome = (string) ($it->nome ?? '');
+                    if ($nome !== '' && preg_match('/^(NR[-\\s]?\\d+[A-Z]?)/i', $nome, $m)) {
+                        $codigo = str_replace(' ', '-', $m[1]);
+                    }
+                }
+                $codigo = strtoupper(trim((string) $codigo));
+                return $codigo !== '' ? $codigo : null;
+            })
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        if (empty($codigosContratados)) {
+            return collect();
+        }
+
+        return $treinamentos
+            ->filter(function ($treinamento) use ($codigosContratados) {
+                $codigo = strtoupper(trim((string) $treinamento->codigo));
+                return $codigo !== '' && in_array($codigo, $codigosContratados, true);
+            })
+            ->values();
+    }
+
+    private function contratoAtivo(Cliente $cliente): ?\App\Models\ClienteContrato
+    {
+        $hoje = now()->toDateString();
+
+        return \App\Models\ClienteContrato::query()
+            ->where('empresa_id', $cliente->empresa_id)
+            ->where('cliente_id', $cliente->id)
+            ->where('status', 'ATIVO')
+            ->where(function ($q) use ($hoje) {
+                $q->whereNull('vigencia_inicio')->orWhereDate('vigencia_inicio', '<=', $hoje);
+            })
+            ->where(function ($q) use ($hoje) {
+                $q->whereNull('vigencia_fim')->orWhereDate('vigencia_fim', '>=', $hoje);
+            })
+            ->first();
+    }
+
+    private function getTreinamentosFinalizados(int $empresaId, Cliente $cliente, ?\App\Models\ClienteContrato $contratoAtivo): array
+    {
+        if (!$contratoAtivo) {
+            return [];
+        }
+
+        $servicoTreinamentoId = Servico::where('empresa_id', $empresaId)
+            ->where('nome', 'Treinamentos NRs')
+            ->value('id');
+
+        if (!$servicoTreinamentoId) {
+            return [];
+        }
+
+        $query = Tarefa::query()
+            ->where('empresa_id', $empresaId)
+            ->where('cliente_id', $cliente->id)
+            ->where('servico_id', $servicoTreinamentoId)
+            ->whereNotNull('finalizado_em');
+
+        if (!empty($contratoAtivo->vigencia_inicio)) {
+            $query->whereDate('finalizado_em', '>=', $contratoAtivo->vigencia_inicio);
+        } elseif (!empty($contratoAtivo->created_at)) {
+            $query->whereDate('finalizado_em', '>=', $contratoAtivo->created_at);
+        }
+
+        $tarefaIds = $query->pluck('id')->all();
+        if (empty($tarefaIds)) {
+            return [];
+        }
+
+        return TreinamentoNrDetalhes::query()
+            ->whereIn('tarefa_id', $tarefaIds)
+            ->get(['treinamentos'])
+            ->flatMap(function ($row) {
+                return array_map(
+                    fn ($codigo) => strtoupper(trim((string) $codigo)),
+                    (array) ($row->treinamentos ?? [])
+                );
+            })
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
     }
 }

@@ -95,7 +95,13 @@ class MinhasComissoesController extends Controller
             ->pluck('ano')
             ->values();
 
-        $anoSelecionado = $ano ?? (int) ($request->integer('ano') ?: now()->year);
+        $anoAtual = now()->year;
+        if (!$anos->contains($anoAtual)) {
+            $anos->push($anoAtual);
+        }
+        $anos = $anos->unique()->sortDesc()->values();
+
+        $anoSelecionado = $ano ?? (int) ($request->integer('ano') ?: $anoAtual);
         if ($anos->isNotEmpty() && !$anos->contains($anoSelecionado)) {
             $anoSelecionado = (int) $anos->first();
         }

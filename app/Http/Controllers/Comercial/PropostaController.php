@@ -363,8 +363,9 @@ class PropostaController extends Controller
                 }
             }
 
+            $servicoEsocialId = (int) (config('services.esocial_id') ?? 0);
             $esocialItem = [
-                'servico_id' => null,
+                'servico_id' => $servicoEsocialId > 0 ? $servicoEsocialId : null,
                 'tipo' => 'ESOCIAL',
                 'nome' => 'eSocial',
                 'descricao' => 'eSocial',
@@ -872,6 +873,11 @@ class PropostaController extends Controller
         if (!$user->hasPapel('Master')) {
             abort_unless((int) $proposta->vendedor_id === (int) $user->id, 403);
         }
+        if (function_exists('set_time_limit')) {
+            @set_time_limit(180);
+        }
+        @ini_set('max_execution_time', '180');
+        @ini_set('memory_limit', '512M');
 
         $unidades = UnidadeClinica::where('empresa_id', $user->empresa_id)
             ->where('ativo', true)
@@ -910,6 +916,11 @@ class PropostaController extends Controller
         if (!$user->hasPapel('Master')) {
             abort_unless((int) $proposta->vendedor_id === (int) $user->id, 403);
         }
+        if (function_exists('set_time_limit')) {
+            @set_time_limit(180);
+        }
+        @ini_set('max_execution_time', '180');
+        @ini_set('memory_limit', '512M');
 
         $unidades = UnidadeClinica::where('empresa_id', $user->empresa_id)
             ->where('ativo', true)

@@ -8,6 +8,13 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use App\Models\User;
 use App\Models\Papel;
+use App\Models\Cliente;
+use App\Models\ClienteContrato;
+use App\Models\Comissao;
+use App\Models\ContaReceberItem;
+use App\Models\Proposta;
+use App\Models\Tarefa;
+use App\Models\Venda;
 
 use Illuminate\Support\Facades\Password;
 
@@ -69,7 +76,7 @@ class AcessosController extends Controller
         User::create($data);
 
         return redirect()->route('master.acessos', ['tab' => 'usuarios'])
-            ->with('ok', 'Usuario criado com sucesso');
+            ->with('ok', 'Usuário criado com sucesso');
     }
 
     public function usuariosUpdate(Request $r, User $user)
@@ -103,6 +110,70 @@ class AcessosController extends Controller
 
     public function usuariosDestroy(User $user)
     {
+        $reasons = [];
+
+        if (auth()->id() === $user->id) {
+            $reasons[] = 'não é possível excluir o próprio usuário';
+        }
+
+        $papelNome = mb_strtolower(optional($user->papel)->nome ?? '');
+
+        if ($papelNome === 'cliente') {
+            $clienteId = $user->cliente_id;
+            if ($clienteId) {
+                $hoje = now()->toDateString();
+                $temContratoAtivo = ClienteContrato::query()
+                    ->where('cliente_id', $clienteId)
+                    ->where('status', 'ATIVO')
+                    ->where(function ($q) use ($hoje) {
+                        $q->whereNull('vigencia_inicio')
+                            ->orWhereDate('vigencia_inicio', '<=', $hoje);
+                    })
+                    ->where(function ($q) use ($hoje) {
+                        $q->whereNull('vigencia_fim')
+                            ->orWhereDate('vigencia_fim', '>=', $hoje);
+                    })
+                    ->exists();
+
+                if ($temContratoAtivo) {
+                    $reasons[] = 'cliente possui contrato ativo';
+                }
+
+                if (Venda::where('cliente_id', $clienteId)->exists()) {
+                    $reasons[] = 'cliente possui vendas vinculadas';
+                }
+
+                if (ContaReceberItem::where('cliente_id', $clienteId)->where('status', '!=', 'CANCELADO')->exists()) {
+                    $reasons[] = 'cliente possui contas a receber vinculadas';
+                }
+            } else {
+                $reasons[] = 'usuário cliente sem vínculo de cliente';
+            }
+        } else {
+            if (Tarefa::where('responsavel_id', $user->id)->exists()) {
+                $reasons[] = 'usuário possui tarefas vinculadas';
+            }
+            if (Proposta::where('vendedor_id', $user->id)->exists()) {
+                $reasons[] = 'usuário possui propostas vinculadas';
+            }
+            if (Comissao::where('vendedor_id', $user->id)->exists()) {
+                $reasons[] = 'usuário possui comissões vinculadas';
+            }
+            if (Cliente::where('vendedor_id', $user->id)->exists()) {
+                $reasons[] = 'usuário possui clientes vinculados';
+            }
+            if (ClienteContrato::where('vendedor_id', $user->id)->exists()) {
+                $reasons[] = 'usuário possui contratos vinculados';
+            }
+        }
+
+        if (!empty($reasons)) {
+            return back()->with(
+                'erro',
+                'Não é possível excluir este usuário. Considere desativar o usuário.'
+            );
+        }
+
         $user->delete();
 
         return redirect()->route('master.acessos', ['tab' => 'usuarios'])
@@ -118,10 +189,10 @@ class AcessosController extends Controller
 
     public function usuariosReset(User $user)
     {
-        // Envia link de redefinição usando o Password Broker
+        // Envia link de redefiniÃ§Ã£o usando o Password Broker
         $status = \Illuminate\Support\Facades\Password::sendResetLink(['email' => $user->email]);
 
-        // Quando dá certo o broker retorna Password::RESET_LINK_SENT
+        // Quando dÃ¡ certo o broker retorna Password::RESET_LINK_SENT
         return back()->with(
             $status === \Illuminate\Support\Facades\Password::RESET_LINK_SENT ? 'ok' : 'err',
             $status === \Illuminate\Support\Facades\Password::RESET_LINK_SENT
@@ -130,7 +201,7 @@ class AcessosController extends Controller
         );
     }
 
-    public function usuariosSetPassword(Request $r, User $user)  // ✅ tipos corretos
+    public function usuariosSetPassword(Request $r, User $user)  // â tipos corretos
     {
         $data = $r->validate([
             'password' => ['required','string','min:6'],
