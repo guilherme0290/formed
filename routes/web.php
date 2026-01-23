@@ -845,10 +845,11 @@ Route::middleware('auth')->group(function () {
     // ======================================================
     //                     MASTER
     // ======================================================
-    Route::prefix('master')->name('master.')->group(function () {
+        Route::prefix('master')->name('master.')->group(function () {
 
         // Dashboard Master
         Route::get('/', [DashboardMaster::class, 'index'])->name('dashboard');
+        Route::get('/agendamentos', [DashboardMaster::class, 'agendamentos'])->name('agendamentos');
 
         // Agenda de Vendedores
         Route::get('/agenda-vendedores', [AgendaVendedorController::class, 'index'])

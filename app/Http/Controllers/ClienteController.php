@@ -122,7 +122,28 @@ class ClienteController extends Controller
 
 
         try {
-            Cliente::create($data);
+            $cliente = Cliente::create($data);
+            $afterAction = $r->input('after_action');
+
+            if ($afterAction === 'proposta') {
+                return redirect()
+                    ->route('comercial.propostas.create', ['cliente_id' => $cliente->id])
+                    ->with('ok', 'Cliente cadastrado com sucesso!');
+            }
+
+            if ($afterAction === 'apresentacao') {
+                $r->session()->put('apresentacao_proposta.cliente', [
+                    'proposta_id' => null,
+                    'cnpj' => $cliente->cnpj,
+                    'razao_social' => $cliente->razao_social,
+                    'contato' => $cliente->nome_fantasia ?: $cliente->razao_social,
+                    'telefone' => $cliente->telefone,
+                ]);
+
+                return redirect()
+                    ->route('comercial.apresentacao.cliente')
+                    ->with('ok', 'Cliente cadastrado com sucesso!');
+            }
 
             return redirect()
                 ->route($this->routeName('index'))

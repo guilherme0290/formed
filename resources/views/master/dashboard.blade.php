@@ -48,6 +48,17 @@
                 </div>
                 <div class="text-sky-100 text-xs mt-1">Total de itens</div>
             </div>
+            <a href="{{ route('master.agendamentos') }}"
+               class="rounded-2xl shadow-lg border border-emerald-400/40 p-5 text-center text-white bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-500 hover:opacity-95 transition">
+                <div class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 text-white mx-auto">&#128197;</div>
+                <div class="mt-2 text-xs uppercase tracking-wide text-emerald-100">Agendamentos do dia</div>
+                <div class="text-3xl font-bold text-white mt-1">
+                    {{ $agendamentosHoje['total'] ?? 0 }}
+                </div>
+                <div class="text-emerald-100 text-xs mt-1">
+                    Abertas: {{ $agendamentosHoje['abertas'] ?? 0 }} • Fechadas: {{ $agendamentosHoje['fechadas'] ?? 0 }}
+                </div>
+            </a>
         </div>
 
         {{-- Relatórios avançados --}}
@@ -111,5 +122,3 @@
         </div>
     </div>
 @endsection
-
-

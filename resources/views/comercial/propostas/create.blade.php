@@ -116,7 +116,7 @@
                                     <option value="">Selecione...</option>
                                     @foreach($clientes as $cliente)
                                         <option value="{{ $cliente->id }}"
-                                            @selected((string) old('cliente_id', $isEdit ? $proposta->cliente_id : '') === (string) $cliente->id)>
+                                            @selected((string) old('cliente_id', $isEdit ? $proposta->cliente_id : ($clienteSelecionadoId ?? '')) === (string) $cliente->id)>
                                             {{ $cliente->razao_social }}
                                         </option>
                                     @endforeach
@@ -1951,7 +1951,6 @@
         </script>
     @endpush
 @endsection
-
 
 
 
