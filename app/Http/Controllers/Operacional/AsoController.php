@@ -19,6 +19,7 @@ use App\Models\TabelaPrecoItem;
 use App\Models\TabelaPrecoPadrao;
 use App\Services\AsoGheService;
 use App\Services\ContratoClienteService;
+use App\Services\TempoTarefaService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -143,6 +144,10 @@ class AsoController extends Controller
                 $descricao .= ' | Treinamentos: ' . implode(', ', $labels);
             }
 
+            $inicioPrevisto = Carbon::parse($data['data_aso']);
+            $fimPrevisto = app(TempoTarefaService::class)
+                ->calcularFimPrevisto($inicioPrevisto, $empresaId, $servicoAsoId);
+
             // 4) Cria a tarefa
             $tarefa = Tarefa::create([
                 'empresa_id' => $empresaId,
@@ -153,7 +158,8 @@ class AsoController extends Controller
                 'servico_id' => $servicoAsoId,
                 'titulo' => $titulo,
                 'descricao' => $descricao,
-                'inicio_previsto' => $data['data_aso'],
+                'inicio_previsto' => $inicioPrevisto,
+                'fim_previsto' => $fimPrevisto,
             ]);
 
             // 5) Cria o registro específico de ASO
@@ -418,11 +424,16 @@ class AsoController extends Controller
                 $descricao .= ' | Treinamentos: ' . implode(', ', $labels);
             }
 
+            $inicioPrevisto = Carbon::parse($data['data_aso']);
+            $fimPrevisto = app(TempoTarefaService::class)
+                ->calcularFimPrevisto($inicioPrevisto, $empresaId, (int) $tarefa->servico_id);
+
             // atualiza tarefa
             $tarefa->update([
                 'funcionario_id' => $funcionario->id,
                 'descricao' => $descricao,
-                'inicio_previsto' => $data['data_aso'],
+                'inicio_previsto' => $inicioPrevisto,
+                'fim_previsto' => $fimPrevisto,
             ]);
 
             // atualiza / cria aso_solicitacao

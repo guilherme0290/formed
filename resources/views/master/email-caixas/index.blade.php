@@ -5,23 +5,39 @@
     @php
         $caixaEmEdicaoId = (int) old('caixa_id');
         $caixaTesteId = (int) old('caixa_teste_id');
+        $tab = request('tab', 'email');
     @endphp
 
     <div class="max-w-6xl mx-auto px-4 md:px-6 py-6 space-y-6">
         <div class="text-[11px] text-slate-500">
-            Configurações &gt; E-mail SMTP (CRUR)
+            Configurações &gt; {{ $tab === 'tempos' ? 'Tempo das tarefas' : 'E-mail SMTP (CRUR)' }}
         </div>
         <div class="flex flex-wrap items-start justify-between gap-4">
             <div>
                 <h1 class="text-2xl font-semibold text-slate-900">
-                    Configuracao de Caixas de E-mail SMTP (CRUR)
+                    {{ $tab === 'tempos' ? 'Configuração de tempo das tarefas' : 'Configuracao de Caixas de E-mail SMTP (CRUR)' }}
                 </h1>
-                <p class="text-slate-500 text-sm mt-1">Defina servidor, remetente, respondente e credenciais.</p>
+                <p class="text-slate-500 text-sm mt-1">
+                    {{ $tab === 'tempos'
+                        ? 'Defina o tempo padrão por serviço para o controle de SLA.'
+                        : 'Defina servidor, remetente, respondente e credenciais.' }}
+                </p>
             </div>
             <button type="submit" form="email-caixa-form"
                     class="hidden">
                 Salvar Configurações
             </button>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2 text-sm">
+            <a href="{{ route('master.email-caixas.index', ['tab' => 'email']) }}"
+               class="px-3 py-2 rounded-xl border {{ $tab === 'email' ? 'border-indigo-200 bg-indigo-50 text-indigo-700 font-semibold' : 'border-slate-200 bg-white text-slate-600' }}">
+                E-mail
+            </a>
+            <a href="{{ route('master.email-caixas.index', ['tab' => 'tempos']) }}"
+               class="px-3 py-2 rounded-xl border {{ $tab === 'tempos' ? 'border-indigo-200 bg-indigo-50 text-indigo-700 font-semibold' : 'border-slate-200 bg-white text-slate-600' }}">
+                Tempo das tarefas
+            </a>
         </div>
 
         @if (session('ok'))
@@ -41,7 +57,7 @@
             </div>
         @endif
 
-        <div class="space-y-6">
+        <div class="{{ $tab === 'email' ? 'space-y-6' : 'hidden' }}" data-tab-panel="email">
             <form id="email-caixa-form" method="POST" action="{{ route('master.email-caixas.store') }}" class="space-y-4">
                 @csrf
                 <div class="grid md:grid-cols-2 gap-4">
@@ -273,6 +289,54 @@
                     @endforelse
                 </div>
             </div>
+        </div>
+
+        <div class="{{ $tab === 'tempos' ? 'space-y-6' : 'hidden' }}" data-tab-panel="tempos">
+            <form method="POST" action="{{ route('master.tempo-tarefas.store') }}" class="space-y-4">
+                @csrf
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+                        <h2 class="text-sm font-semibold text-slate-800">Tempo padrão por serviço</h2>
+                        <span class="text-xs text-slate-500">Em minutos</span>
+                    </div>
+                    <div class="divide-y divide-slate-100">
+                        @foreach($servicos as $servico)
+                            @php
+                                $isExcluido = in_array((int) $servico->id, $excluirServicoIds ?? [], true);
+                                $tempoAtual = $tempos[$servico->id]->tempo_minutos ?? 0;
+                            @endphp
+                            <div class="px-4 py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                <div>
+                                    <div class="text-sm font-semibold text-slate-800">{{ $servico->nome }}</div>
+                                    @if($isExcluido)
+                                        <div class="text-xs text-slate-500">Serviço não aplicável para SLA.</div>
+                                    @else
+                                        <div class="text-xs text-slate-500">Defina o tempo máximo para esta tarefa.</div>
+                                    @endif
+                                </div>
+                                <div class="w-full md:w-44">
+                                    <input type="number"
+                                           min="0"
+                                           max="10080"
+                                           step="1"
+                                           name="tempos[{{ $servico->id }}]"
+                                           value="{{ old('tempos.'.$servico->id, $tempoAtual) }}"
+                                           {{ $isExcluido ? 'disabled' : '' }}
+                                           class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm {{ $isExcluido ? 'bg-slate-100 text-slate-400' : '' }}"
+                                           placeholder="Ex: 60">
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-end">
+                    <button type="submit"
+                            class="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700">
+                        Salvar tempos
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 @endsection

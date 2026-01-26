@@ -23,6 +23,7 @@ use Psy\Util\Str;
 use App\Services\PrecificacaoService;
 use App\Services\VendaService;
 use App\Services\ComissaoService;
+use Illuminate\Http\JsonResponse;
 
 class PainelController extends Controller
 {
@@ -204,6 +205,84 @@ class PainelController extends Controller
 
         return view('operacional.kanban.modals.tarefa-detalhes', [
             't' => $tarefa
+        ]);
+    }
+
+    public function prazos(Request $request): JsonResponse
+    {
+        $empresaId = $request->user()->empresa_id;
+        $ids = $request->input('ids', []);
+        $ids = is_array($ids) ? array_filter(array_map('intval', $ids)) : [];
+
+        if (empty($ids)) {
+            return response()->json([
+                'ok' => true,
+                'now' => now()->toIso8601String(),
+                'coluna_atraso_id' => null,
+                'tarefas' => [],
+            ]);
+        }
+
+        $colunaAtraso = KanbanColuna::query()
+            ->where('empresa_id', $empresaId)
+            ->where('atraso', true)
+            ->first()
+            ?? KanbanColuna::query()
+                ->where('empresa_id', $empresaId)
+                ->where('slug', 'atrasado')
+                ->first();
+
+        $agora = now();
+        $tarefas = Tarefa::query()
+            ->where('empresa_id', $empresaId)
+            ->whereIn('id', $ids)
+            ->with('coluna')
+            ->get();
+
+        $ordemAtraso = $colunaAtraso
+            ? (int) (Tarefa::where('coluna_id', $colunaAtraso->id)->max('ordem') ?? 0)
+            : 0;
+
+        $payload = [];
+        foreach ($tarefas as $tarefa) {
+            $fimPrevisto = $tarefa->fim_previsto;
+            $estaFinalizada = !empty($tarefa->finalizado_em) || ($tarefa->coluna?->finaliza ?? false);
+            $estaAtrasada = $fimPrevisto && $fimPrevisto->lt($agora) && !$estaFinalizada;
+
+            if ($estaAtrasada && $colunaAtraso && (int) $tarefa->coluna_id !== (int) $colunaAtraso->id) {
+                $ordemAtraso += 1;
+                $colunaOrigem = $tarefa->coluna_id;
+                $tarefa->update([
+                    'coluna_id' => $colunaAtraso->id,
+                    'ordem' => $ordemAtraso,
+                ]);
+
+                TarefaLog::create([
+                    'tarefa_id' => $tarefa->id,
+                    'user_id' => $request->user()->id,
+                    'de_coluna_id' => $colunaOrigem,
+                    'para_coluna_id' => $colunaAtraso->id,
+                    'acao' => 'atrasado',
+                    'observacao' => 'Tarefa movida automaticamente para Atrasado (SLA excedido).',
+                ]);
+
+                $tarefa->coluna_id = $colunaAtraso->id;
+                $tarefa->setRelation('coluna', $colunaAtraso);
+            }
+
+            $payload[] = [
+                'id' => $tarefa->id,
+                'coluna_id' => $tarefa->coluna_id,
+                'coluna_nome' => $tarefa->coluna?->nome,
+                'fim_previsto' => $tarefa->fim_previsto?->toIso8601String(),
+            ];
+        }
+
+        return response()->json([
+            'ok' => true,
+            'now' => $agora->toIso8601String(),
+            'coluna_atraso_id' => $colunaAtraso?->id,
+            'tarefas' => $payload,
         ]);
     }
 

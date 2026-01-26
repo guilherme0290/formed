@@ -131,6 +131,9 @@ Route::middleware('auth')->group(function () {
             Route::post('{tarefa}/mover', [PainelController::class, 'mover'])
                 ->name('mover');
 
+            Route::post('prazos', [PainelController::class, 'prazos'])
+                ->name('prazos');
+
             Route::post('{tarefa}/observacao', [
                 PainelController::class,
                 'salvarObservacao'
@@ -728,6 +731,18 @@ Route::middleware('auth')->group(function () {
                     ->name('destroy');
             });
 
+            // Medições (LTCAT/LTIP)
+            Route::prefix('medicoes')->name('medicoes.')->group(function () {
+                Route::get('/', [\App\Http\Controllers\Comercial\MedicoesTabPrecoController::class, 'indexJson'])
+                    ->name('indexJson');
+                Route::post('/', [\App\Http\Controllers\Comercial\MedicoesTabPrecoController::class, 'store'])
+                    ->name('store');
+                Route::put('/{medicao}', [\App\Http\Controllers\Comercial\MedicoesTabPrecoController::class, 'update'])
+                    ->name('update');
+                Route::delete('/{medicao}', [\App\Http\Controllers\Comercial\MedicoesTabPrecoController::class, 'destroy'])
+                    ->name('destroy');
+            });
+
             // Protocolos de Exames
             Route::prefix('protocolos-exames')->name('protocolos-exames.')->group(function () {
                 Route::get('/', [ProtocolosExamesController::class, 'indexJson'])
@@ -897,6 +912,9 @@ Route::middleware('auth')->group(function () {
             Route::delete('/{emailCaixa}', [EmailCaixaController::class, 'destroy'])->name('destroy');
         });
 
+        Route::post('/tempo-tarefas', [\App\Http\Controllers\Master\TempoTarefasController::class, 'store'])
+            ->name('tempo-tarefas.store');
+
         // Acessos
         Route::get('/acessos', [AcessosController::class, 'index'])->name('acessos');
 
@@ -992,6 +1010,18 @@ Route::middleware('auth')->group(function () {
             Route::put('/{exame}', [ExamesTabPrecoController::class, 'update'])
                 ->name('update');
             Route::delete('/{exame}', [ExamesTabPrecoController::class, 'destroy'])
+                ->name('destroy');
+        });
+
+        // Medições (LTCAT/LTIP)
+        Route::prefix('medicoes')->name('medicoes.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Comercial\MedicoesTabPrecoController::class, 'indexJson'])
+                ->name('indexJson');
+            Route::post('/', [\App\Http\Controllers\Comercial\MedicoesTabPrecoController::class, 'store'])
+                ->name('store');
+            Route::put('/{medicao}', [\App\Http\Controllers\Comercial\MedicoesTabPrecoController::class, 'update'])
+                ->name('update');
+            Route::delete('/{medicao}', [\App\Http\Controllers\Comercial\MedicoesTabPrecoController::class, 'destroy'])
                 ->name('destroy');
         });
 

@@ -408,8 +408,9 @@ class PropostaController extends Controller
             'esocial_valor_mensal' => ['nullable','numeric','min:0'],
 
             'aso_grupos' => ['nullable','array'],
-            'aso_grupos.*.grupo_id' => ['nullable','integer','exists:protocolos_exames,id'],
-            'aso_grupos.*.total_exames' => ['nullable','numeric','min:0'],
+            'aso_grupos.*' => ['array'],
+            'aso_grupos.*.*.grupo_id' => ['nullable','integer','exists:protocolos_exames,id'],
+            'aso_grupos.*.*.total_exames' => ['nullable','numeric','min:0'],
 
             'itens' => ['required','array','min:1'],
             'itens.*.servico_id' => ['nullable','integer'],
@@ -443,24 +444,7 @@ class PropostaController extends Controller
             }],
         ]);
 
-        if (!$proposta) {
-            $propostaExistente = Proposta::query()
-                ->where('empresa_id', $empresaId)
-                ->where('cliente_id', $data['cliente_id'])
-                ->orderByDesc('id')
-                ->first();
-
-            if ($propostaExistente) {
-                $canEdit = $isMaster || ((int) $propostaExistente->vendedor_id === (int) $user->id);
-                if (!$canEdit) {
-                    return redirect()
-                        ->route('comercial.propostas.show', $propostaExistente)
-                        ->with('ok', 'Já existe uma proposta para este cliente. Abrindo a proposta existente.');
-                }
-
-                $proposta = $propostaExistente;
-            }
-        }
+        // Permite múltiplas propostas por cliente (não reaproveita proposta existente)
 
         $servicoEsocialId = (int) (config('services.esocial_id') ?? 0);
         $servicoExameId = (int) (config('services.exame_id') ?? 0);
@@ -494,14 +478,21 @@ class PropostaController extends Controller
         $asoGruposInput = $data['aso_grupos'] ?? [];
         $asoGrupos = [];
         foreach ($asoTipos as $tipo) {
-            $grupoId = isset($asoGruposInput[$tipo]['grupo_id']) ? (int) $asoGruposInput[$tipo]['grupo_id'] : 0;
-            if ($grupoId <= 0) {
+            $rows = $asoGruposInput[$tipo] ?? [];
+            if (!is_array($rows)) {
                 continue;
             }
-            $asoGrupos[$tipo] = [
-                'grupo_id' => $grupoId,
-                'total_exames' => (float) ($asoGruposInput[$tipo]['total_exames'] ?? 0),
-            ];
+            foreach ($rows as $row) {
+                $grupoId = (int) ($row['grupo_id'] ?? 0);
+                if ($grupoId <= 0) {
+                    continue;
+                }
+                $asoGrupos[] = [
+                    'tipo_aso' => $tipo,
+                    'grupo_id' => $grupoId,
+                    'total_exames' => (float) ($row['total_exames'] ?? 0),
+                ];
+            }
         }
 
         $clienteOk = Cliente::where('id', $data['cliente_id'])
@@ -658,12 +649,12 @@ class PropostaController extends Controller
             PropostaAsoGrupo::query()
                 ->where('proposta_id', $proposta->id)
                 ->delete();
-            foreach ($asoGrupos as $tipo => $row) {
+            foreach ($asoGrupos as $row) {
                 PropostaAsoGrupo::create([
                     'empresa_id' => $empresaId,
                     'cliente_id' => $data['cliente_id'],
                     'proposta_id' => $proposta->id,
-                    'tipo_aso' => $tipo,
+                    'tipo_aso' => $row['tipo_aso'],
                     'grupo_exames_id' => $row['grupo_id'],
                     'total_exames' => $row['total_exames'],
                 ]);
@@ -688,6 +679,9 @@ class PropostaController extends Controller
 
             if ($contratoParaAtualizar && strtoupper((string) $proposta->status) === 'FECHADA') {
                 $contratoParaAtualizar->load(['itens.servico', 'cliente']);
+                $contratoParaAtualizar->update([
+                    'vencimento_servicos' => $vencimentoServicos,
+                ]);
 
                 $usuarioNome = auth()->user()?->name ?? 'Sistema';
                 $clienteNome = $contratoParaAtualizar->cliente?->razao_social ?? 'Cliente';

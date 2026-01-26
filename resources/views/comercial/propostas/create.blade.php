@@ -53,12 +53,18 @@
 
         if (!empty($propostaAsoGrupos)) {
             $initialData['asoGrupos'] = collect($propostaAsoGrupos)
-                ->mapWithKeys(function ($row) {
-                    return [(string) $row->tipo_aso => [
-                        'grupo_id' => (int) ($row->grupo_exames_id ?? 0),
-                        'grupo_titulo' => $row->grupo?->titulo,
-                        'total_exames' => (float) ($row->total_exames ?? 0),
-                    ]];
+                ->groupBy('tipo_aso')
+                ->map(function ($rows) {
+                    return $rows
+                        ->map(function ($row) {
+                            return [
+                                'grupo_id' => (int) ($row->grupo_exames_id ?? 0),
+                                'grupo_titulo' => $row->grupo?->titulo,
+                                'total_exames' => (float) ($row->total_exames ?? 0),
+                            ];
+                        })
+                        ->values()
+                        ->toArray();
                 })
                 ->toArray();
         }
@@ -224,7 +230,7 @@
                             <div data-tab-panel="aso-tipos" class="hidden space-y-3">
                                 <div class="text-sm font-semibold text-slate-800">ASO por tipo</div>
                                 <p class="text-xs text-slate-500">
-                                    Selecione grupos de exames por tipo de ASO. Cada tipo gera um item separado na proposta.
+                                    Selecione um ou mais grupos de exames por tipo de ASO. Cada grupo gera um item separado na proposta.
                                 </p>
 
                                 @php
@@ -237,44 +243,30 @@
                                     ];
                                 @endphp
 
-                                <div class="rounded-xl border border-slate-200 overflow-hidden">
-                                    <div class="hidden md:grid grid-cols-12 gap-2 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600">
-                                        <div class="col-span-2">Tipo</div>
-                                        <div class="col-span-4">Grupo de exames</div>
-                                        <div class="col-span-4"></div>
-                                        <div class="col-span-2 text-right">Total</div>
-                                    </div>
-                                    <div class="divide-y divide-slate-200">
-                                        @foreach($asoTipos as $asoKey => $asoLabel)
-                                            <div class="grid grid-cols-12 gap-2 items-center px-3 py-2 bg-white">
-                                                <div class="col-span-12 md:col-span-2">
-                                                    <div class="text-[11px] font-semibold text-slate-500 md:hidden">Tipo</div>
-                                                    <div class="text-sm font-semibold text-slate-800">{{ $asoLabel }}</div>
-                                                    <button type="button"
-                                                            data-aso-show="{{ $asoKey }}"
-                                                            class="mt-1 text-xs font-semibold text-blue-600 hover:underline">
-                                                        Ver exames
-                                                    </button>
-                                                    <div class="mt-1 hidden text-xs text-slate-600" data-aso-exames="{{ $asoKey }}"></div>
-                                                </div>
-                                                <div class="col-span-12 md:col-span-4">
-                                                    <div class="text-[11px] font-semibold text-slate-500 md:hidden">Grupo de exames</div>
-                                                    <select data-aso-grupo="{{ $asoKey }}"
-                                                            class="w-full rounded-md border-slate-200 text-sm px-2 py-2">
-                                                        <option value="">Selecione...</option>
-                                                    </select>
-                                                </div>
-                                                <div class="col-span-12 md:col-span-4"></div>
-                                                <div class="col-span-12 md:col-span-2 text-right">
-                                                    <div class="text-[11px] font-semibold text-slate-500 md:hidden">Total</div>
-                                                    <div class="text-sm font-semibold text-emerald-700">
-                                                        <span data-aso-total="{{ $asoKey }}">R$ 0,00</span>
-                                                    </div>
-                                                </div>
+                                <div class="space-y-3">
+                                    @foreach($asoTipos as $asoKey => $asoLabel)
+                                        <div class="rounded-xl border border-slate-200 overflow-hidden">
+                                            <div class="flex items-center justify-between px-3 py-2 bg-slate-50">
+                                                <div class="text-sm font-semibold text-slate-800">{{ $asoLabel }}</div>
+                                                <button type="button"
+                                                        data-aso-add="{{ $asoKey }}"
+                                                        class="px-2.5 py-1.5 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-800 text-xs font-semibold hover:bg-emerald-100">
+                                                    + Grupo
+                                                </button>
                                             </div>
-                                        @endforeach
-                                    </div>
+                                            <div class="hidden md:grid grid-cols-12 gap-2 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600">
+                                                <div class="col-span-5">Grupo de exames</div>
+                                                <div class="col-span-3">Valor do grupo</div>
+                                                <div class="col-span-3">Exames</div>
+                                                <div class="col-span-1 text-right">Ação</div>
+                                            </div>
+                                            <div class="divide-y divide-slate-200" data-aso-rows="{{ $asoKey }}"></div>
+                                        </div>
+                                    @endforeach
                                 </div>
+                                <p class="text-xs text-slate-500">
+                                    O valor do grupo é carregado automaticamente pelos exames, mas pode ser ajustado aqui ou no grid de serviços.
+                                </p>
                             </div>
 
                             <div data-tab-panel="treinamentos" class="hidden space-y-3">
@@ -485,6 +477,7 @@
         </div>
     </div>
     --}}
+    @include('comercial.propostas.modal-medicoes')
     @include('comercial.propostas.modal-treinamentos')
     {{-- MODAL eSOCIAL (seu include existente) --}}
     @include('comercial.tabela-precos.itens.modal-esocial')
@@ -507,6 +500,7 @@
                     },
                     treinamentosJson: @json(route('comercial.propostas.treinamentos-nrs.json')),
                     examesJson: @json(route('comercial.exames.indexJson')),
+                    medicoesJson: @json(route('comercial.medicoes.indexJson')),
                     gruposExames: @json(route('comercial.protocolos-exames.indexJson')),
                     esocialPreco: (qtd) => @json(route('comercial.propostas.esocial-preco', ['qtd' => '__QTD__']))
                         .replace('__QTD__', encodeURIComponent(qtd)),
@@ -522,6 +516,7 @@
                 const SERVICO_TREINAMENTO_ID = @json(config('services.treinamento_id'));
                 const SERVICO_EXAME_ID = @json(config('services.exame_id'));
                 const SERVICO_ASO_ID = @json(config('services.aso_id'));
+                const MEDICAO_SERVICOS = new Set(['LTCAT', 'LTIP']);
 
                 // =========================
                 // State
@@ -529,8 +524,11 @@
                 const state = {
                     itens: [],         // {id, servico_id, tipo, nome, descricao, valor_unitario, quantidade, prazo, acrescimo, desconto, meta, valor_total}
                     exames: { loaded: false, list: [], manualPrice: false }, // [{id, nome, valor}]
+                    medicoes: { loaded: false, list: [] }, // [{id, titulo, descricao, preco}]
+                    medicoesTarget: null,
+                    medicoesSelected: new Set(),
                     esocial: { enabled:false, qtd:0, valor:0, aviso:null },
-                    asoGrupos: {},
+                    asoGrupos: {}, // { tipo: [{row_id, grupo_id, grupo_titulo, total_exames}] }
                     gruposExames: [],
                 };
 
@@ -563,6 +561,13 @@
 
                     modalTrein: document.getElementById('modalTreinamentos'),
                     nrChips: document.getElementById('nrChips'),
+                    modalMedicoes: document.getElementById('modalMedicoes'),
+                    medicoesList: document.getElementById('medicoesList'),
+                    medicoesCount: document.getElementById('medicoesCount'),
+                    medicoesTotal: document.getElementById('medicoesTotal'),
+                    medicoesTipoLabel: document.getElementById('medicoesTipoLabel'),
+                    medicoesConfirmBtn: document.getElementById('medicoesConfirmBtn'),
+                    medicoesAlert: document.getElementById('medicoesModalAlert'),
                     modalExames: document.getElementById('modalExames'),
                     examesList: document.getElementById('pkgExamesList'),
                     examesAvulsos: document.getElementById('examesAvulsos'),
@@ -582,14 +587,13 @@
                     { key: 'retorno_trabalho', label: 'Retorno ao Trabalho' },
                 ];
 
+                const ALLOW_MULTIPLE_PROPOSTAS = true;
+
                 const asoDom = {};
                 ASO_TYPES.forEach(({ key }) => {
                     asoDom[key] = {
-                        select: document.querySelector(`[data-aso-grupo="${key}"]`),
-                        resumo: document.querySelector(`[data-aso-resumo="${key}"]`),
-                        total: document.querySelector(`[data-aso-total="${key}"]`),
-                        exames: document.querySelector(`[data-aso-exames="${key}"]`),
-                        showBtn: document.querySelector(`[data-aso-show="${key}"]`),
+                        rowsWrap: document.querySelector(`[data-aso-rows="${key}"]`),
+                        addBtn: document.querySelector(`[data-aso-add="${key}"]`),
                     };
                 });
 
@@ -614,6 +618,7 @@
                     ensureAsoItemForGhe();
                 }
 
+                normalizeAsoGrupos();
                 initTabs();
                 updateTabBadges();
                 bindAsoGrupoEvents();
@@ -623,6 +628,21 @@
                 // =========================
                 // Utils
                 // =========================
+                function normalizeAsoGrupos() {
+                    if (!state.asoGrupos || typeof state.asoGrupos !== 'object') {
+                        state.asoGrupos = {};
+                    }
+                    ASO_TYPES.forEach(({ key }) => {
+                        const rows = Array.isArray(state.asoGrupos[key]) ? state.asoGrupos[key] : [];
+                        state.asoGrupos[key] = rows.map((row) => ({
+                            row_id: row?.row_id || uid(),
+                            grupo_id: Number(row?.grupo_id || 0),
+                            grupo_titulo: row?.grupo_titulo || '',
+                            total_exames: Number(row?.total_exames || 0),
+                        }));
+                    });
+                }
+
                 function hasAsoItem(it) {
                     const nomeBase = String(it?.nome || it?.descricao || '').toUpperCase();
                     return nomeBase && nomeBase.includes('ASO');
@@ -653,6 +673,7 @@
                 }
 
                 function bindClienteAutoLoad() {
+                    if (ALLOW_MULTIPLE_PROPOSTAS) return;
                     if (!el.clienteSelect || INITIAL?.isEdit) return;
                     el.clienteSelect.addEventListener('change', () => {
                         const clienteId = el.clienteSelect.value;
@@ -670,7 +691,9 @@
                 }
 
                 function hasAsoGrupoSelection() {
-                    return Object.values(state.asoGrupos || {}).some(g => Number(g?.grupo_id || 0) > 0);
+                    return Object.values(state.asoGrupos || {}).some((rows) => {
+                        return Array.isArray(rows) && rows.some(r => Number(r?.grupo_id || 0) > 0);
+                    });
                 }
 
                 function getGrupoById(id) {
@@ -682,88 +705,181 @@
                         const res = await fetch(URLS.gruposExames, { headers: { 'Accept': 'application/json' } });
                         const json = await res.json();
                         state.gruposExames = json.data || [];
-                        renderAsoGrupoOptions();
-                        applyInitialAsoGrupos();
+                        renderAsoRowsForAll();
+                        syncAsoTipoItems();
                     } catch (e) {
                         console.error(e);
                     }
                 }
 
-                function renderAsoGrupoOptions() {
-                    ASO_TYPES.forEach(({ key }) => {
-                        const sel = asoDom[key]?.select;
-                        if (!sel) return;
-                        sel.innerHTML = '<option value="">Selecione...</option>';
+                function ensureAsoRows(tipo) {
+                    if (!Array.isArray(state.asoGrupos?.[tipo])) {
+                        state.asoGrupos[tipo] = [];
+                    }
+                    return state.asoGrupos[tipo];
+                }
+
+                function addAsoGrupoRow(tipo, row = {}) {
+                    const rows = ensureAsoRows(tipo);
+                    rows.push({
+                        row_id: row?.row_id || uid(),
+                        grupo_id: Number(row?.grupo_id || 0),
+                        grupo_titulo: row?.grupo_titulo || '',
+                        total_exames: Number(row?.total_exames || 0),
+                    });
+                    renderAsoRows(tipo);
+                    syncAsoTipoItems();
+                }
+
+                function removeAsoGrupoRow(tipo, rowId) {
+                    const rows = ensureAsoRows(tipo).filter(row => row.row_id !== rowId);
+                    state.asoGrupos[tipo] = rows;
+                    renderAsoRows(tipo);
+                    syncAsoTipoItems();
+                }
+
+                function getAsoRow(tipo, rowId) {
+                    return (state.asoGrupos?.[tipo] || []).find(row => row.row_id === rowId);
+                }
+
+                function renderAsoRowsForAll() {
+                    ASO_TYPES.forEach(({ key }) => renderAsoRows(key));
+                }
+
+                function renderAsoRows(tipo) {
+                    const dom = asoDom[tipo];
+                    if (!dom?.rowsWrap) return;
+                    const rows = ensureAsoRows(tipo);
+                    dom.rowsWrap.innerHTML = '';
+
+                    if (!rows.length) {
+                        dom.rowsWrap.innerHTML = '<div class="px-3 py-3 text-sm text-slate-500">Nenhum grupo adicionado.</div>';
+                        return;
+                    }
+
+                    rows.forEach((row) => {
+                        const rowEl = document.createElement('div');
+                        rowEl.className = 'px-3 py-2 bg-white';
+                        rowEl.innerHTML = `
+                            <div class="grid grid-cols-12 gap-2 items-start">
+                                <div class="col-span-12 md:col-span-5">
+                                    <div class="text-[11px] font-semibold text-slate-500 md:hidden">Grupo de exames</div>
+                                    <select class="w-full rounded-md border-slate-200 text-sm px-2 py-2" data-aso-row-grupo></select>
+                                </div>
+                                <div class="col-span-6 md:col-span-3">
+                                    <div class="text-[11px] font-semibold text-slate-500 md:hidden">Valor do grupo</div>
+                                    <input type="text" class="w-full rounded-md border-slate-200 text-sm px-2 py-2" data-aso-row-total>
+                                </div>
+                                <div class="col-span-5 md:col-span-3">
+                                    <div class="text-[11px] font-semibold text-slate-500 md:hidden">Exames</div>
+                                    <button type="button" class="text-xs font-semibold text-blue-600 hover:underline" data-aso-row-show>Ver exames</button>
+                                    <div class="text-[11px] text-slate-500" data-aso-row-count>—</div>
+                                </div>
+                                <div class="col-span-1 flex justify-end">
+                                    <button type="button"
+                                            class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 text-lg leading-none"
+                                            data-aso-row-remove
+                                            aria-label="Remover grupo">×</button>
+                                </div>
+                            </div>
+                            <div class="mt-2 hidden text-xs text-slate-600 space-y-1" data-aso-row-exames></div>
+                        `;
+
+                        const select = rowEl.querySelector('[data-aso-row-grupo]');
+                        select.innerHTML = '<option value="">Selecione...</option>';
                         state.gruposExames.forEach(g => {
                             const opt = document.createElement('option');
                             opt.value = g.id;
                             opt.textContent = g.titulo;
-                            sel.appendChild(opt);
+                            select.appendChild(opt);
                         });
+                        if (row.grupo_id) {
+                            select.value = String(row.grupo_id);
+                        }
+
+                        const totalInput = rowEl.querySelector('[data-aso-row-total]');
+                        totalInput.dataset.digits = onlyDigits(Math.round(Number(row.total_exames || 0) * 100));
+                        totalInput.value = brl(Number(row.total_exames || 0));
+
+                        const countEl = rowEl.querySelector('[data-aso-row-count]');
+                        const examesWrap = rowEl.querySelector('[data-aso-row-exames]');
+                        const showBtn = rowEl.querySelector('[data-aso-row-show]');
+                        const removeBtn = rowEl.querySelector('[data-aso-row-remove]');
+
+                        const updateRowExames = () => {
+                            const grupo = getGrupoById(row.grupo_id);
+                            const count = grupo?.exames?.length ?? 0;
+                            if (countEl) {
+                                countEl.textContent = count ? `${count} exame(s)` : '—';
+                            }
+                            if (!examesWrap || examesWrap.classList.contains('hidden')) return;
+                            renderAsoRowExames(row, examesWrap);
+                        };
+
+                        select.addEventListener('change', () => {
+                            row.grupo_id = Number(select.value || 0);
+                            const grupo = getGrupoById(row.grupo_id);
+                            row.grupo_titulo = grupo?.titulo || '';
+                            row.total_exames = Number(grupo?.total ?? 0);
+                            totalInput.dataset.digits = onlyDigits(Math.round(Number(row.total_exames || 0) * 100));
+                            totalInput.value = brl(Number(row.total_exames || 0));
+                            updateRowExames();
+                            syncAsoTipoItems();
+                        });
+
+                        totalInput.addEventListener('keydown', (e) => {
+                            const nav = ['Tab','Escape','Enter','ArrowLeft','ArrowRight','Home','End','Delete'];
+                            if (e.ctrlKey || e.metaKey) return;
+                            if (e.key === 'Backspace') {
+                                e.preventDefault();
+                                const d = totalInput.dataset.digits || '';
+                                const nd = d.slice(0, -1);
+                                totalInput.dataset.digits = nd;
+                                const num = centsDigitsToNumber(nd);
+                                row.total_exames = num;
+                                totalInput.value = brl(num);
+                                updateAsoItemFromRow(tipo, row);
+                                return;
+                            }
+                            if (nav.includes(e.key)) return;
+                            if (!/^\d$/.test(e.key)) e.preventDefault();
+                        });
+
+                        totalInput.addEventListener('input', () => {
+                            const digits = onlyDigits(totalInput.value);
+                            totalInput.dataset.digits = digits;
+                            const num = centsDigitsToNumber(digits);
+                            row.total_exames = num;
+                            totalInput.value = brl(num);
+                            updateAsoItemFromRow(tipo, row);
+                        });
+
+                        showBtn.addEventListener('click', () => {
+                            if (!examesWrap) return;
+                            examesWrap.classList.toggle('hidden');
+                            if (!examesWrap.classList.contains('hidden')) {
+                                renderAsoRowExames(row, examesWrap);
+                            }
+                        });
+
+                        removeBtn.addEventListener('click', () => removeAsoGrupoRow(tipo, row.row_id));
+
+                        updateRowExames();
+                        dom.rowsWrap.appendChild(rowEl);
                     });
                 }
 
-                function applyInitialAsoGrupos() {
-                    if (!state.asoGrupos) return;
-                    ASO_TYPES.forEach(({ key }) => {
-                        const sel = asoDom[key]?.select;
-                        const grupoId = Number(state.asoGrupos?.[key]?.grupo_id || 0);
-                        if (sel && grupoId) {
-                            sel.value = String(grupoId);
-                        }
-                        updateAsoGrupoResumo(key);
-                    });
-                }
-
-                function updateAsoGrupoResumo(tipo) {
-                    const dom = asoDom[tipo];
-                    if (!dom?.select) return;
-                    const grupoId = Number(dom.select.value || 0);
-                    if (!grupoId) {
-                        if (dom.resumo) dom.resumo.textContent = 'Nenhum grupo selecionado.';
-                        if (dom.total) dom.total.textContent = brl(0);
-                        if (dom.exames && !dom.exames.classList.contains('hidden')) {
-                            dom.exames.innerHTML = '<div class="text-slate-500">Selecione um grupo para ver os exames.</div>';
-                        }
-                        delete state.asoGrupos[tipo];
-                        syncAsoTipoItems();
+                function renderAsoRowExames(row, target) {
+                    const grupo = getGrupoById(row.grupo_id);
+                    if (!row.grupo_id) {
+                        target.innerHTML = '<div class="text-slate-500">Selecione um grupo para ver os exames.</div>';
                         return;
                     }
-
-                    const grupo = getGrupoById(grupoId);
-                    const total = Number(state.asoGrupos?.[tipo]?.total_exames ?? grupo?.total ?? 0);
-                    const titulo = grupo?.titulo || state.asoGrupos?.[tipo]?.grupo_titulo || 'Grupo selecionado';
-
-                    state.asoGrupos[tipo] = {
-                        grupo_id: grupoId,
-                        grupo_titulo: titulo,
-                        total_exames: total,
-                    };
-
-                    if (dom.resumo) {
-                        dom.resumo.textContent = `${titulo} • ${grupo?.exames?.length ?? 0} exame(s)`;
-                    }
-                    if (dom.total) dom.total.textContent = brl(total);
-                    if (dom.exames && !dom.exames.classList.contains('hidden')) {
-                        renderAsoExames(tipo);
-                    }
-                    syncAsoTipoItems();
-                }
-
-                function renderAsoExames(tipo) {
-                    const dom = asoDom[tipo];
-                    if (!dom?.exames) return;
-                    const grupoId = Number(dom.select?.value || 0);
-                    if (!grupoId) {
-                        dom.exames.innerHTML = '<div class="text-slate-500">Selecione um grupo para ver os exames.</div>';
-                        return;
-                    }
-                    const grupo = getGrupoById(grupoId);
                     if (!grupo?.exames?.length) {
-                        dom.exames.innerHTML = '<div class="text-slate-500">Nenhum exame neste grupo.</div>';
+                        target.innerHTML = '<div class="text-slate-500">Nenhum exame neste grupo.</div>';
                         return;
                     }
-                    dom.exames.innerHTML = grupo.exames.map(ex => {
+                    target.innerHTML = grupo.exames.map(ex => {
                         return `<div class="flex items-center justify-between gap-2">
                             <span class="truncate">${escapeHtml(ex.titulo || 'Exame')}</span>
                             <span class="text-slate-700 font-semibold">${brl(ex.preco || 0)}</span>
@@ -771,19 +887,41 @@
                     }).join('');
                 }
 
-                function syncAsoTipoItems() {
-                    const tiposSelecionados = new Set(Object.keys(state.asoGrupos || {}));
+                function updateAsoItemFromRow(tipo, row) {
+                    if (!row?.row_id) return;
+                    const item = state.itens.find(it => it?.meta?.aso_row_id === row.row_id);
+                    if (!item) return;
+                    item.valor_unitario = Number(row.total_exames || 0);
+                    recalcItemTotal(item);
+                    render();
+                }
 
-                    state.itens = state.itens.filter(it => {
-                        const tipo = it?.meta?.aso_tipo;
-                        return !tipo || tiposSelecionados.has(tipo);
+                function updateAsoRowTotalFromItem(item, value) {
+                    const tipo = item?.meta?.aso_tipo;
+                    const rowId = item?.meta?.aso_row_id;
+                    if (!tipo || !rowId) return;
+                    const row = getAsoRow(tipo, rowId);
+                    if (!row) return;
+                    row.total_exames = Number(value || 0);
+                    renderAsoRows(tipo);
+                }
+
+                function syncAsoTipoItems() {
+                    const selectedRows = new Map();
+                    ASO_TYPES.forEach(({ key, label }) => {
+                        (state.asoGrupos?.[key] || []).forEach((row) => {
+                            if (!row?.grupo_id) return;
+                            selectedRows.set(row.row_id, { row, tipo: key, label });
+                        });
                     });
 
-                    ASO_TYPES.forEach(({ key, label }) => {
-                        const grupo = state.asoGrupos?.[key];
-                        if (!grupo?.grupo_id) return;
+                    state.itens = state.itens.filter(it => {
+                        const rowId = it?.meta?.aso_row_id;
+                        return !rowId || selectedRows.has(rowId);
+                    });
 
-                        let item = state.itens.find(it => it?.meta?.aso_tipo === key);
+                    selectedRows.forEach(({ row, tipo, label }) => {
+                        let item = state.itens.find(it => it?.meta?.aso_row_id === row.row_id);
                         if (!item) {
                             item = {
                                 id: uid(),
@@ -803,14 +941,15 @@
                         }
 
                         item.nome = `ASO - ${label}`;
-                        item.descricao = `Grupo: ${grupo.grupo_titulo}`;
+                        item.descricao = row.grupo_titulo ? `Grupo: ${row.grupo_titulo}` : null;
                         item.meta = {
                             ...(item.meta || {}),
-                            aso_tipo: key,
-                            grupo_id: grupo.grupo_id,
+                            aso_tipo: tipo,
+                            grupo_id: row.grupo_id,
+                            aso_row_id: row.row_id,
                         };
                         item.quantidade = 1;
-                        item.valor_unitario = Number(grupo.total_exames || 0);
+                        item.valor_unitario = Number(row.total_exames || 0);
                         recalcItemTotal(item);
                     });
 
@@ -820,14 +959,7 @@
                 function bindAsoGrupoEvents() {
                     ASO_TYPES.forEach(({ key }) => {
                         const dom = asoDom[key];
-                        dom?.select?.addEventListener('change', () => updateAsoGrupoResumo(key));
-                        dom?.showBtn?.addEventListener('click', () => {
-                            if (!dom.exames) return;
-                            dom.exames.classList.toggle('hidden');
-                            if (!dom.exames.classList.contains('hidden')) {
-                                renderAsoExames(key);
-                            }
-                        });
+                        dom?.addBtn?.addEventListener('click', () => addAsoGrupoRow(key));
                     });
                 }
 
@@ -1057,21 +1189,23 @@
                     el.esocialQtdHidden.value = state.esocial.enabled ? (state.esocial.qtd || 0) : '';
                     el.esocialValorHidden.value = state.esocial.enabled ? Number(state.esocial.valor || 0).toFixed(2) : '0.00';
 
-                    Object.entries(state.asoGrupos || {}).forEach(([tipo, grupo]) => {
-                        if (!grupo?.grupo_id) return;
-                        const base = `aso_grupos[${tipo}]`;
-                        const pairs = [
-                            ['grupo_id', grupo.grupo_id],
-                            ['total_exames', Number(grupo.total_exames || 0).toFixed(2)],
-                        ];
+                    Object.entries(state.asoGrupos || {}).forEach(([tipo, rows]) => {
+                        (rows || []).forEach((grupo, idx) => {
+                            if (!grupo?.grupo_id) return;
+                            const base = `aso_grupos[${tipo}][${idx}]`;
+                            const pairs = [
+                                ['grupo_id', grupo.grupo_id],
+                                ['total_exames', Number(grupo.total_exames || 0).toFixed(2)],
+                            ];
 
-                        pairs.forEach(([k,v]) => {
-                            const input = document.createElement('input');
-                            input.type = 'hidden';
-                            input.name = `${base}[${k}]`;
-                            input.value = v;
-                            input.setAttribute('data-hidden-aso-grupos','1');
-                            el.form.appendChild(input);
+                            pairs.forEach(([k,v]) => {
+                                const input = document.createElement('input');
+                                input.type = 'hidden';
+                                input.name = `${base}[${k}]`;
+                                input.value = v;
+                                input.setAttribute('data-hidden-aso-grupos','1');
+                                el.form.appendChild(input);
+                            });
                         });
                     });
                 }
@@ -1231,16 +1365,8 @@
                         // Valor (máscara por centavos)
                         const valorView = row.querySelector('[data-act="valor_view"]');
                         valorView.dataset.digits = onlyDigits(Math.round(Number(item.valor_unitario || 0) * 100));
-                        if (isAsoTipo) {
-                            valorView.setAttribute('readonly', 'readonly');
-                            valorView.classList.add('bg-slate-100', 'cursor-not-allowed');
-                        }
 
                         valorView.addEventListener('keydown', (e) => {
-                            if (isAsoTipo) {
-                                e.preventDefault();
-                                return;
-                            }
                             const nav = ['Tab','Escape','Enter','ArrowLeft','ArrowRight','Home','End','Delete'];
                             if (e.ctrlKey || e.metaKey) return;
 
@@ -1258,6 +1384,7 @@
 	                                if (totalEl) totalEl.textContent = brl(item.valor_total);
 	                                recalcTotals();
 	                                syncHiddenInputs();
+                                    if (isAsoTipo) updateAsoRowTotalFromItem(item, num);
 	                                return;
 	                            }
 
@@ -1266,7 +1393,6 @@
                         });
 
                         valorView.addEventListener('input', () => {
-                            if (isAsoTipo) return;
                             const digits = onlyDigits(valorView.value);
                             valorView.dataset.digits = digits;
 
@@ -1279,6 +1405,7 @@
 	                            if (totalEl) totalEl.textContent = brl(item.valor_total);
 	                            recalcTotals();
 	                            syncHiddenInputs();
+                                if (isAsoTipo) updateAsoRowTotalFromItem(item, num);
 	                        });
 
                         el.lista.appendChild(row);
@@ -1492,14 +1619,12 @@
                     const item = state.itens.find(x => x.id === itemId);
                     if (item?.meta?.aso_tipo) {
                         const tipo = item.meta.aso_tipo;
-                        if (asoDom[tipo]?.select) {
-                            asoDom[tipo].select.value = '';
-                            updateAsoGrupoResumo(tipo);
-                        } else {
-                            delete state.asoGrupos[tipo];
-                            state.itens = state.itens.filter(x => x.id !== itemId);
-                            render();
+                        if (item.meta.aso_row_id) {
+                            removeAsoGrupoRow(tipo, item.meta.aso_row_id);
+                            return;
                         }
+                        state.itens = state.itens.filter(x => x.id !== itemId);
+                        render();
                         return;
                     }
                     state.itens = state.itens.filter(x => x.id !== itemId);
@@ -1671,6 +1796,162 @@
                 }
 
                 // =========================
+                // Medições (LTCAT/LTIP)
+                // =========================
+                async function loadMedicoes(force = false) {
+                    if (!force && state.medicoes.loaded) return state.medicoes.list;
+
+                    const res = await fetch(URLS.medicoesJson, { headers: { 'Accept':'application/json' }});
+                    const json = await res.json();
+
+                    const list = (json?.data || [])
+                        .filter(x => x && (x.ativo === true || x.ativo === 1))
+                        .map(x => ({
+                            id: Number(x.id),
+                            titulo: String(x.titulo ?? ''),
+                            descricao: x.descricao ? String(x.descricao) : null,
+                            preco: Number(x.preco || 0),
+                        }))
+                        .filter(x => x.id && x.titulo);
+
+                    state.medicoes.list = list;
+                    state.medicoes.loaded = true;
+                    return list;
+                }
+
+                function updateMedicoesTotals() {
+                    const selected = (state.medicoes.list || []).filter(x => state.medicoesSelected.has(x.id));
+                    const total = selected.reduce((acc, x) => acc + Number(x.preco || 0), 0);
+                    if (el.medicoesCount) el.medicoesCount.textContent = String(selected.length);
+                    if (el.medicoesTotal) el.medicoesTotal.textContent = brl(total);
+                    if (el.medicoesConfirmBtn) {
+                        el.medicoesConfirmBtn.disabled = selected.length === 0;
+                        el.medicoesConfirmBtn.classList.toggle('opacity-50', selected.length === 0);
+                        el.medicoesConfirmBtn.classList.toggle('cursor-not-allowed', selected.length === 0);
+                    }
+                }
+
+                function renderMedicoesList() {
+                    if (!el.medicoesList) return;
+                    el.medicoesList.innerHTML = '';
+
+                    if (!state.medicoes.list.length) {
+                        el.medicoesList.innerHTML = '<div class="text-sm text-slate-500">Nenhuma medição ativa cadastrada.</div>';
+                        updateMedicoesTotals();
+                        return;
+                    }
+
+                    state.medicoes.list.forEach(m => {
+                        const row = document.createElement('label');
+                        row.className = 'flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm';
+                        row.innerHTML = `
+                            <input type="checkbox" class="rounded border-slate-300" value="${m.id}">
+                            <span class="flex-1">
+                                <span class="font-semibold text-slate-800">${escapeHtml(m.titulo)}</span>
+                                ${m.descricao ? `<span class="block text-xs text-slate-500">${escapeHtml(m.descricao)}</span>` : ``}
+                            </span>
+                            <span class="font-semibold">${brl(m.preco)}</span>
+                            <span class="text-xs text-slate-400">#${m.id}</span>
+                        `;
+                        const checkbox = row.querySelector('input[type="checkbox"]');
+                        checkbox.checked = state.medicoesSelected.has(m.id);
+                        checkbox.addEventListener('change', () => {
+                            if (checkbox.checked) state.medicoesSelected.add(m.id);
+                            else state.medicoesSelected.delete(m.id);
+                            updateMedicoesTotals();
+                            hideMedicoesAlert();
+                        });
+                        el.medicoesList.appendChild(row);
+                    });
+
+                    updateMedicoesTotals();
+                }
+
+                function showMedicoesAlert(msg) {
+                    if (!el.medicoesAlert) return;
+                    el.medicoesAlert.textContent = msg || '';
+                    el.medicoesAlert.classList.remove('hidden');
+                }
+
+                function hideMedicoesAlert() {
+                    el.medicoesAlert?.classList.add('hidden');
+                }
+
+                async function openMedicoesModal(target) {
+                    if (!el.modalMedicoes) return;
+                    state.medicoesTarget = target || null;
+                    state.medicoesSelected = new Set();
+                    hideMedicoesAlert();
+                    if (el.medicoesTipoLabel) {
+                        el.medicoesTipoLabel.textContent = target?.nome || 'LTCAT/LTIP';
+                    }
+                    if (el.medicoesList) {
+                        el.medicoesList.innerHTML = '<div class="text-sm text-slate-500">Carregando medições...</div>';
+                    }
+                    updateMedicoesTotals();
+                    el.modalMedicoes.classList.remove('hidden');
+
+                    try {
+                        await loadMedicoes(true);
+                        renderMedicoesList();
+                    } catch (e) {
+                        console.error(e);
+                        if (el.medicoesList) {
+                            el.medicoesList.innerHTML = '<div class="text-sm text-red-600">Falha ao carregar medições.</div>';
+                        }
+                    }
+                }
+
+                window.closeMedicoesModal = function () {
+                    el.modalMedicoes?.classList.add('hidden');
+                };
+
+                window.confirmMedicoes = function () {
+                    const selected = (state.medicoes.list || []).filter(x => state.medicoesSelected.has(x.id));
+                    if (!selected.length) {
+                        showMedicoesAlert('Selecione ao menos 1 item de medição.');
+                        return;
+                    }
+
+                    const target = state.medicoesTarget;
+                    if (!target?.id) {
+                        showMedicoesAlert('Serviço inválido.');
+                        return;
+                    }
+
+                    selected.forEach((medicao) => {
+                        const item = {
+                            id: uid(),
+                            servico_id: Number(target.id),
+                            tipo: 'MEDICAO',
+                            nome: `${target.nome} - ${medicao.titulo}`,
+                            descricao: medicao.descricao || null,
+                            valor_unitario: Number(medicao.preco || 0),
+                            quantidade: 1,
+                            prazo: '',
+                            acrescimo: 0,
+                            desconto: 0,
+                            meta: {
+                                medicao_tipo: target.nome,
+                                medicao_id: medicao.id,
+                                medicao_titulo: medicao.titulo,
+                                medicao_preco: medicao.preco,
+                            },
+                            valor_total: 0,
+                        };
+
+                        recalcItemTotal(item);
+                        state.itens.push(item);
+                        if (Number(item.valor_unitario || 0) <= 0) {
+                            showItemAlert(`Medição ${medicao.titulo} sem preço definido.`);
+                        }
+                    });
+                    closeMedicoesModal();
+                    render();
+                    showItemToast(`Medições ${target.nome}: ${selected.length} item(ns)`);
+                };
+
+                // =========================
                 // eSocial cálculo
                 // =========================
                 async function updateEsocial(qtd) {
@@ -1721,7 +2002,13 @@
                 // =========================
                 document.querySelectorAll('[data-action="add-servico"]').forEach(btn => {
                     btn.addEventListener('click', () => {
-                        addServico(btn.dataset.servicoId, btn.dataset.servicoNome);
+                        const servicoId = btn.dataset.servicoId;
+                        const servicoNome = String(btn.dataset.servicoNome || '');
+                        if (MEDICAO_SERVICOS.has(servicoNome.toUpperCase())) {
+                            openMedicoesModal({ id: Number(servicoId), nome: servicoNome });
+                            return;
+                        }
+                        addServico(servicoId, servicoNome);
                     });
                 });
 
@@ -1915,12 +2202,14 @@
                 document.addEventListener('click', (e) => {
                     if (el.modalTrein && !el.modalTrein.classList.contains('hidden') && e.target === el.modalTrein) closeTreinamentosModal();
                     if (el.modalExames && !el.modalExames.classList.contains('hidden') && e.target === el.modalExames) closeExamesModal();
+                    if (el.modalMedicoes && !el.modalMedicoes.classList.contains('hidden') && e.target === el.modalMedicoes) closeMedicoesModal();
                 });
 
                 document.addEventListener('keydown', (e) => {
                     if (e.key === 'Escape') {
                         if (el.modalTrein && !el.modalTrein.classList.contains('hidden')) closeTreinamentosModal();
                         if (el.modalExames && !el.modalExames.classList.contains('hidden')) closeExamesModal();
+                        if (el.modalMedicoes && !el.modalMedicoes.classList.contains('hidden')) closeMedicoesModal();
                     }
                 });
 
@@ -1951,7 +2240,3 @@
         </script>
     @endpush
 @endsection
-
-
-
-

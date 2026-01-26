@@ -13,6 +13,7 @@ use App\Models\Servico;
 use App\Models\Tarefa;
 use App\Models\TarefaLog;
 use App\Services\ContratoClienteService;
+use App\Services\TempoTarefaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -376,6 +377,10 @@ class PgrController extends Controller
             $valorArt,
             &$tarefaId
         ) {
+            $inicioPrevisto = now();
+            $fimPrevisto = app(TempoTarefaService::class)
+                ->calcularFimPrevisto($inicioPrevisto, $empresaId, optional($servicoPgr)->id);
+
             // cria Tarefa base
             $tarefa = Tarefa::create([
                 'empresa_id'     => $empresaId,
@@ -385,7 +390,8 @@ class PgrController extends Controller
                 'servico_id'     => optional($servicoPgr)->id,
                 'titulo'         => "PGR - {$tipoLabel}",
                 'descricao'      => "PGR - {$tipoLabel}" . ($data['com_art'] ? ' (COM ART)' : ''),
-                'inicio_previsto'=> now(),
+                'inicio_previsto'=> $inicioPrevisto,
+                'fim_previsto'   => $fimPrevisto,
             ]);
 
             $tarefaId = $tarefa->id;

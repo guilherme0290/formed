@@ -10,6 +10,7 @@ use App\Models\LtcatSolicitacoes;
 use App\Models\Servico;
 use App\Models\Tarefa;
 use App\Models\TarefaLog;
+use App\Services\TempoTarefaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -272,6 +273,10 @@ class LtcatController extends Controller
             $totalFuncionarios,
             &$tarefaId
         ) {
+            $inicioPrevisto = now();
+            $fimPrevisto = app(TempoTarefaService::class)
+                ->calcularFimPrevisto($inicioPrevisto, $empresaId, optional($servicoLtcat)->id);
+
             // Cria Tarefa no Kanban
             $tarefa = Tarefa::create([
                 'empresa_id'     => $empresaId,
@@ -281,7 +286,8 @@ class LtcatController extends Controller
                 'servico_id'     => optional($servicoLtcat)->id,
                 'titulo'         => "LTCAT - {$tipoLabel}",
                 'descricao'      => "LTCAT - {$tipoLabel}",
-                'inicio_previsto'=> now(),
+                'inicio_previsto'=> $inicioPrevisto,
+                'fim_previsto'   => $fimPrevisto,
             ]);
 
             $tarefaId = $tarefa->id;

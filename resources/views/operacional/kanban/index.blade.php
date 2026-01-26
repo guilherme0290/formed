@@ -374,6 +374,7 @@
                                     data-responsavel="{{ $respNome }}"
                                     data-datahora="{{ $dataHora }}"
                                     data-sla="{{ $slaData }}"
+                                    data-fim-previsto="{{ optional($tarefa->fim_previsto)->toIso8601String() }}"
                                     data-move-url="{{ route('operacional.tarefas.mover', $tarefa) }}"
                                     data-finalizar-url="{{ route('operacional.tarefas.finalizar-com-arquivo', $tarefa) }}
                                     "
@@ -644,6 +645,18 @@
                                                           stroke-linecap="round" stroke-linejoin="round"/>
                                                 </svg>
                                                 <span>{{ $slaData }}</span>
+                                            </div>
+                                        </div>
+                                    @endif
+
+                                    @if($tarefa->fim_previsto)
+                                        <div class="mb-2">
+                                            <div
+                                                class="inline-flex items-center gap-1 px-3 py-1 rounded-md border
+                                                    border-slate-200 bg-slate-50 text-[11px] text-slate-600"
+                                                data-role="card-tempo-label">
+                                                <span>⏱</span>
+                                                <span data-role="card-tempo-text">—</span>
                                             </div>
                                         </div>
                                     @endif
@@ -994,6 +1007,10 @@
                                 <dd class="font-medium" id="modal-sla"></dd>
                             </div>
                             <div class="mt-2">
+                                <dt class="text-[11px] text-slate-600">Tempo restante</dt>
+                                <dd class="font-medium" id="modal-tempo-restante">—</dd>
+                            </div>
+                            <div class="mt-2">
                                 <dt class="text-[11px] text-slate-600">Prioridade</dt>
                                 <dd class="font-medium" id="modal-prioridade"></dd>
                             </div>
@@ -1235,6 +1252,7 @@
             const spanTipoServ = document.getElementById('modal-tipo-servico');
             const spanDataHora = document.getElementById('modal-datahora');
             const spanSla = document.getElementById('modal-sla');
+            const spanTempoRestante = document.getElementById('modal-tempo-restante');
             const spanPrioridade = document.getElementById('modal-prioridade');
             const spanStatusText = document.getElementById('modal-status-text');
             const badgeStatus = document.getElementById('modal-status-badge');
@@ -1302,6 +1320,56 @@
                 return { telefone, mensagem };
             }
 
+            function parseIsoToMs(iso) {
+                if (!iso) return null;
+                const ts = Date.parse(iso);
+                return Number.isNaN(ts) ? null : ts;
+            }
+
+            function formatDuration(ms) {
+                const total = Math.max(0, Math.floor(ms / 1000));
+                const horas = Math.floor(total / 3600);
+                const minutos = Math.floor((total % 3600) / 60);
+                const segundos = total % 60;
+                return `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}:${String(segundos).padStart(2, '0')}`;
+            }
+
+            function updateTempoCard(card, nowMs) {
+                if (!card) return;
+                const fimIso = card.dataset.fimPrevisto || '';
+                const fimMs = parseIsoToMs(fimIso);
+                const label = card.querySelector('[data-role="card-tempo-label"]');
+                const textEl = card.querySelector('[data-role="card-tempo-text"]');
+                if (!label || !textEl || !fimMs) return;
+
+                const diff = fimMs - nowMs;
+                if (diff >= 0) {
+                    textEl.textContent = formatDuration(diff);
+                    label.classList.remove('border-rose-200', 'bg-rose-50', 'text-rose-700');
+                    label.classList.add('border-slate-200', 'bg-slate-50', 'text-slate-600');
+                } else {
+                    textEl.textContent = `Atrasado ${formatDuration(Math.abs(diff))}`;
+                    label.classList.remove('border-slate-200', 'bg-slate-50', 'text-slate-600');
+                    label.classList.add('border-rose-200', 'bg-rose-50', 'text-rose-700');
+                }
+            }
+
+            function updateModalTempo(card, nowMs) {
+                if (!spanTempoRestante || !card) return;
+                const fimIso = card.dataset.fimPrevisto || '';
+                const fimMs = parseIsoToMs(fimIso);
+                if (!fimMs) {
+                    spanTempoRestante.textContent = '—';
+                    return;
+                }
+                const diff = fimMs - nowMs;
+                if (diff >= 0) {
+                    spanTempoRestante.textContent = formatDuration(diff);
+                } else {
+                    spanTempoRestante.textContent = `Atrasado ${formatDuration(Math.abs(diff))}`;
+                }
+            }
+
 
             function openDetalhesModal(card) {
                 if (!card) return;
@@ -1322,6 +1390,7 @@
                 spanPrioridade.textContent = card.dataset.prioridade ?? '';
                 spanStatusText.textContent = card.dataset.status ?? '';
                 spanObs.textContent = card.dataset.observacoes ?? '';
+                updateModalTempo(card, Date.now());
 
                 spanFuncionario.textContent = card.dataset.funcionario || '—';
                 spanFuncionarioFuncao.textContent = card.dataset.funcionarioFuncao || '—';
@@ -1921,6 +1990,84 @@
 
             // Função global usada pelo Sortable
             window.abreModalFinalizarTarefa = openFinalizarModal;
+
+            // =========================================================
+            //  SLA / TEMPO REAL (polling)
+            // =========================================================
+            const PRAZOS_URL = @json(route('operacional.tarefas.prazos'));
+            const CSRF_TOKEN = @json(csrf_token());
+            const POLL_INTERVAL = 30000;
+            const TICK_INTERVAL = 1000;
+
+            function getKanbanCards() {
+                return Array.from(document.querySelectorAll('.kanban-card'));
+            }
+
+            function updateAllTempoLabels() {
+                const nowMs = Date.now();
+                getKanbanCards().forEach(card => updateTempoCard(card, nowMs));
+                if (detalhesCurrentCard) {
+                    updateModalTempo(detalhesCurrentCard, nowMs);
+                }
+            }
+
+            function moveCardToColumn(card, colunaId, colunaNome) {
+                const destino = document.querySelector(`.kanban-column[data-coluna-id="${colunaId}"]`);
+                if (!destino) return;
+                destino.appendChild(card);
+
+                const colunaCor = destino.dataset.colunaCor || '';
+                if (colunaCor) {
+                    card.style.borderLeftColor = colunaCor;
+                }
+
+                if (colunaNome) {
+                    card.dataset.status = colunaNome;
+                }
+            }
+
+            async function pollPrazos() {
+                const ids = getKanbanCards()
+                    .map(card => card.dataset.id)
+                    .filter(Boolean);
+
+                if (!ids.length) return;
+
+                try {
+                    const res = await fetch(PRAZOS_URL, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': CSRF_TOKEN,
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                        },
+                        body: JSON.stringify({ ids }),
+                    });
+                    const data = await res.json();
+                    if (!data || !data.ok || !Array.isArray(data.tarefas)) return;
+
+                    data.tarefas.forEach((tarefa) => {
+                        const card = document.querySelector(`.kanban-card[data-id="${tarefa.id}"]`);
+                        if (!card) return;
+
+                        if (tarefa.fim_previsto) {
+                            card.dataset.fimPrevisto = tarefa.fim_previsto;
+                        }
+
+                        const colunaAtual = card.closest('.kanban-column')?.dataset?.colunaId;
+                        if (tarefa.coluna_id && String(tarefa.coluna_id) !== String(colunaAtual)) {
+                            moveCardToColumn(card, tarefa.coluna_id, tarefa.coluna_nome || '');
+                        }
+                    });
+                } catch (e) {
+                    // silencioso
+                }
+            }
+
+            updateAllTempoLabels();
+            setInterval(updateAllTempoLabels, TICK_INTERVAL);
+            pollPrazos();
+            setInterval(pollPrazos, POLL_INTERVAL);
 
             // =========================================================
             //  DRAG & DROP (Sortable)

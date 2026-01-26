@@ -47,6 +47,12 @@
                     <div class="font-semibold text-slate-900">{{ optional($contrato->vigencia_fim)->format('d/m/Y') ?? '—' }}</div>
                 </div>
                 <div>
+                    <div class="text-xs text-slate-500">Vencimento da Fatura</div>
+                    <div class="font-semibold text-slate-900">
+                        {{ $contrato->vencimento_servicos ? sprintf('Dia %02d', $contrato->vencimento_servicos) : '—' }}
+                    </div>
+                </div>
+                <div>
                     <div class="text-xs text-slate-500">Valor Mensal</div>
                     <div class="font-semibold text-slate-900">R$ {{ number_format((float) $contrato->valor_mensal, 2, ',', '.') }}</div>
                 </div>
@@ -96,6 +102,75 @@
                 </table>
             </div>
         </section>
+
+        @php
+            $asoTipos = [
+                'admissional' => 'Admissional',
+                'periodico' => 'Periódico',
+                'demissional' => 'Demissional',
+                'mudanca_funcao' => 'Mudança de Função',
+                'retorno_trabalho' => 'Retorno ao Trabalho',
+            ];
+            $asoItensTipo = $contrato->itens
+                ->filter(fn ($item) => !empty($item->regras_snapshot['aso_tipo']))
+                ->groupBy(fn ($item) => $item->regras_snapshot['aso_tipo'] ?? 'outros');
+        @endphp
+
+        @if($asoItensTipo->isNotEmpty())
+            <section class="bg-white rounded-2xl shadow border border-slate-100 overflow-hidden">
+                <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                    <h2 class="text-sm font-semibold text-slate-800">ASO por tipo (grupos)</h2>
+                    <p class="text-xs text-slate-500">Vários grupos por tipo</p>
+                </div>
+                <div class="p-5 space-y-4">
+                    @foreach($asoTipos as $tipoKey => $tipoLabel)
+                        @php
+                            $rows = $asoItensTipo->get($tipoKey, collect());
+                            $subtotal = $rows->sum(fn ($item) => (float) $item->preco_unitario_snapshot);
+                        @endphp
+                        @if($rows->isNotEmpty())
+                            <div class="rounded-xl border border-slate-200 overflow-hidden">
+                                <div class="px-4 py-2 bg-slate-50 flex items-center justify-between">
+                                    <div class="text-sm font-semibold text-slate-800">{{ $tipoLabel }}</div>
+                                    <div class="text-sm font-semibold text-emerald-700">
+                                        R$ {{ number_format($subtotal, 2, ',', '.') }}
+                                    </div>
+                                </div>
+                                <div class="divide-y divide-slate-100">
+                                    @foreach($rows as $item)
+                                        @php
+                                            $grupoId = (int) ($item->regras_snapshot['grupo_id'] ?? 0);
+                                            $grupo = $protocolosAso[$grupoId] ?? null;
+                                            $grupoTitulo = $grupo?->titulo ?? $item->descricao_snapshot ?? 'Grupo';
+                                            $exames = $grupo?->itens?->map(fn ($it) => $it->exame)->filter() ?? collect();
+                                        @endphp
+                                        <details class="px-4 py-3">
+                                            <summary class="flex items-center justify-between cursor-pointer text-sm text-slate-700">
+                                                <span class="font-semibold text-slate-800">{{ $grupoTitulo }}</span>
+                                                <span class="font-semibold text-emerald-700">
+                                                    R$ {{ number_format((float) $item->preco_unitario_snapshot, 2, ',', '.') }}
+                                                </span>
+                                            </summary>
+                                            <div class="mt-2 text-xs text-slate-600">
+                                                @if($exames->count())
+                                                    <ul class="space-y-1">
+                                                        @foreach($exames as $exame)
+                                                            <li>{{ $exame->titulo ?? 'Exame' }}</li>
+                                                        @endforeach
+                                                    </ul>
+                                                @else
+                                                    <div class="text-slate-500">Sem exames vinculados.</div>
+                                                @endif
+                                            </div>
+                                        </details>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
+                    @endforeach
+                </div>
+            </section>
+        @endif
 
         @php
             $asoItem = $contrato->itens->first(fn ($item) => !empty($item->regras_snapshot['ghes']));
