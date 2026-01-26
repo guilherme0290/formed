@@ -69,13 +69,22 @@ class PropostaController extends Controller
         return view('comercial.propostas.index', compact('propostas'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $user = auth()->user();
         $empresaId = $user->empresa_id ?? 1;
         $isMaster = $user->hasPapel('Master');
 
         $esocialId = config('services.esocial_id');
+
+        $clienteSelecionadoId = (int) $request->query('cliente_id');
+        if ($clienteSelecionadoId > 0) {
+            $clienteSelecionadoId = (int) Cliente::where('id', $clienteSelecionadoId)
+                ->where('empresa_id', $empresaId)
+                ->value('id');
+        } else {
+            $clienteSelecionadoId = 0;
+        }
 
         $clientes = Cliente::where('empresa_id', $empresaId)->orderByDesc('id')->get();
         $servicos = Servico::where('empresa_id', $empresaId)
@@ -136,7 +145,8 @@ class PropostaController extends Controller
             'treinamentos',
             'funcoes',
             'propostaAsoGrupos',
-            'ultimaPropostaPorCliente'
+            'ultimaPropostaPorCliente',
+            'clienteSelecionadoId'
         ));
     }
 

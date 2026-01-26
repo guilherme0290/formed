@@ -203,9 +203,21 @@
             </div>
 
             {{-- BOTÕES --}}
-            <div class="flex justify-end gap-3">
+            <div class="flex flex-wrap justify-end gap-3">
                 <a href="{{ route($routePrefix.'.index') }}"
                    class="px-4 py-2 bg-gray-200 rounded-lg">Cancelar</a>
+
+                @if(!$cliente->exists)
+                    <button type="submit" name="after_action" value="proposta"
+                            class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg">
+                        Criar Proposta
+                    </button>
+
+                    <button type="submit" name="after_action" value="apresentacao"
+                            class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg">
+                        Criar apresentações
+                    </button>
+                @endif
 
                 <button class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
                     {{ $cliente->exists ? 'Salvar Alterações' : 'Cadastrar' }}

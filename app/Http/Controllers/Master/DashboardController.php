@@ -11,18 +11,30 @@ use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
-    public function index()
+    public function index(\Illuminate\Http\Request $request)
     {
         $empresaId = auth()->user()->empresa_id ?? null;
 
         $visaoEmpresa  = $this->metricasEmpresa($empresaId);
         $operacionais = $this->metricasOperacionais($empresaId);
         $comerciais   = $this->metricasComerciais($empresaId);
+        $agendamentosHoje = $this->resumoAgendamentosHoje($empresaId);
 
         return view('master.dashboard', [
             'visaoEmpresa'  => $visaoEmpresa,
             'operacionais' => $operacionais,
             'comerciais'   => $comerciais,
+            'agendamentosHoje' => $agendamentosHoje,
+        ]);
+    }
+
+    public function agendamentos(\Illuminate\Http\Request $request)
+    {
+        $empresaId = auth()->user()->empresa_id ?? null;
+        $agendamentos = $this->metricasAgendamentos($empresaId, $request);
+
+        return view('master.agendamentos', [
+            'agendamentos' => $agendamentos,
         ]);
     }
 
@@ -116,5 +128,89 @@ class DashboardController extends Controller
             'taxa_conversao'      => $taxaConversao,
             'propostas_em_aberto' => $propostasEmAberto,
         ];
+    }
+
+    private function resumoAgendamentosHoje(?int $empresaId): array
+    {
+        $hoje = Carbon::today()->toDateString();
+
+        $base = Tarefa::query()
+            ->join('kanban_colunas', 'kanban_colunas.id', '=', 'tarefas.coluna_id')
+            ->when($empresaId, fn ($q) => $q->where('tarefas.empresa_id', $empresaId))
+            ->whereDate('tarefas.inicio_previsto', $hoje);
+
+        $abertas = (clone $base)->where('kanban_colunas.finaliza', false)->count();
+        $fechadas = (clone $base)->where('kanban_colunas.finaliza', true)->count();
+
+        return [
+            'abertas' => $abertas,
+            'fechadas' => $fechadas,
+            'total' => $abertas + $fechadas,
+            'data' => $hoje,
+        ];
+    }
+
+    private function metricasAgendamentos(?int $empresaId, \Illuminate\Http\Request $request): array
+    {
+        $hoje = Carbon::today();
+        $dataInicio = $this->parseDate($request->query('data_inicio'), $hoje);
+        $dataFim = $this->parseDate($request->query('data_fim'), $dataInicio);
+        if ($dataFim->lt($dataInicio)) {
+            $dataFim = $dataInicio->copy();
+        }
+
+        $servicosSelecionados = $request->query('servicos', []);
+        $servicosSelecionados = is_array($servicosSelecionados) ? $servicosSelecionados : [$servicosSelecionados];
+        $servicosSelecionados = array_values(array_filter(array_map('intval', $servicosSelecionados)));
+
+        $servicosDisponiveis = \App\Models\Servico::query()
+            ->when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId))
+            ->orderBy('nome')
+            ->get(['id', 'nome']);
+
+        $base = Tarefa::query()
+            ->join('kanban_colunas', 'kanban_colunas.id', '=', 'tarefas.coluna_id')
+            ->when($empresaId, fn ($q) => $q->where('tarefas.empresa_id', $empresaId))
+            ->whereDate('tarefas.inicio_previsto', '>=', $dataInicio->toDateString())
+            ->whereDate('tarefas.inicio_previsto', '<=', $dataFim->toDateString());
+
+        if (!empty($servicosSelecionados)) {
+            $base->whereIn('tarefas.servico_id', $servicosSelecionados);
+        }
+
+        $abertas = (clone $base)->where('kanban_colunas.finaliza', false)->count();
+        $fechadas = (clone $base)->where('kanban_colunas.finaliza', true)->count();
+        $total = $abertas + $fechadas;
+
+        $porServico = (clone $base)
+            ->leftJoin('servicos', 'servicos.id', '=', 'tarefas.servico_id')
+            ->selectRaw("COALESCE(servicos.nome, 'Sem servico') as servico_nome, COUNT(*) as total")
+            ->groupBy('servico_nome')
+            ->orderBy('servico_nome')
+            ->get();
+
+        return [
+            'data_inicio' => $dataInicio->toDateString(),
+            'data_fim' => $dataFim->toDateString(),
+            'servicos_disponiveis' => $servicosDisponiveis,
+            'servicos_selecionados' => $servicosSelecionados,
+            'abertas' => $abertas,
+            'fechadas' => $fechadas,
+            'total' => $total,
+            'por_servico' => $porServico,
+        ];
+    }
+
+    private function parseDate(?string $raw, Carbon $fallback): Carbon
+    {
+        try {
+            if ($raw) {
+                return Carbon::parse($raw)->startOfDay();
+            }
+        } catch (\Throwable $e) {
+            // fallback below
+        }
+
+        return $fallback->copy()->startOfDay();
     }
 }
