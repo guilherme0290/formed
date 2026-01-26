@@ -37,7 +37,7 @@
                     <label class="text-xs font-semibold text-slate-600">Período</label>
                     <select name="status" class="w-full rounded-lg border-slate-200 bg-white text-slate-900 text-sm">
                         <option value="" class="text-slate-900">Todos</option>
-                        <option value="ABERTO" class="text-slate-900" @selected(($filtros['status'] ?? '') === 'ABERTO')>Em andamento</option>
+                        <option value="ABERTO" class="text-slate-900" @selected(($filtros['status'] ?? '') === 'ABERTO')>Em aberto</option>
                         <option value="VENCIDO" class="text-slate-900" @selected(($filtros['status'] ?? '') === 'VENCIDO')>Vencidos</option>
                         <option value="BAIXADO" class="text-slate-900" @selected(($filtros['status'] ?? '') === 'BAIXADO')>Pago</option>
                     </select>
@@ -51,17 +51,16 @@
             </form>
         </div>
 
-        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-6">
+        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-2 mb-6">
             <div class="rounded-2xl bg-[#059669] text-white shadow-lg shadow-emerald-900/25 p-5 flex items-center justify-between">
                 <div>
-                    <p class="text-[11px] uppercase tracking-[0.18em] text-emerald-50/90">
-                        Em andamento
+                    <p class="text-[11px] uppercase tracking-[0.18em] text-emerald-50/90">Fatura em aberto
                     </p>
                     <p class="mt-1 text-2xl md:text-3xl font-semibold">
-                        R$ {{ number_format($totalEmAndamento ?? 0, 2, ',', '.') }}
+                        R$ {{ number_format($totalFaturaAberto ?? 0, 2, ',', '.') }}
                     </p>
                     <p class="text-[11px] text-emerald-50/80 mt-1">
-                        Servicos em andamento
+                        Contas em aberto + tarefas em andamento
                     </p>
                 </div>
                 <div class="hidden md:block text-4xl">$</div>
@@ -79,34 +78,6 @@
                     </p>
                 </div>
                 <div class="hidden md:block text-4xl">!</div>
-            </div>
-            <div class="rounded-2xl bg-[#059669] text-white shadow-lg shadow-emerald-900/25 p-5 flex items-center justify-between">
-                <div>
-                    <p class="text-[11px] uppercase tracking-[0.18em] text-emerald-50/90">
-                        Pagas
-                    </p>
-                    <p class="mt-1 text-2xl md:text-3xl font-semibold">
-                        R$ {{ number_format($totalPago ?? 0, 2, ',', '.') }}
-                    </p>
-                    <p class="text-[11px] text-emerald-50/80 mt-1">
-                        Faturas liquidadas
-                    </p>
-                </div>
-                <div class="hidden md:block text-4xl">$</div>
-            </div>
-            <div class="rounded-2xl bg-[#059669] text-white shadow-lg shadow-emerald-900/25 p-5 flex items-center justify-between">
-                <div>
-                    <p class="text-[11px] uppercase tracking-[0.18em] text-emerald-50/90">
-                        Total geral
-                    </p>
-                    <p class="mt-1 text-2xl md:text-3xl font-semibold">
-                        R$ {{ number_format($totalGeral ?? 0, 2, ',', '.') }}
-                    </p>
-                    <p class="text-[11px] text-emerald-50/80 mt-1">
-                        Em aberto + pagas
-                    </p>
-                </div>
-                <div class="hidden md:block text-4xl">$</div>
             </div>
         </div>
 
@@ -142,7 +113,8 @@
                                     $servicoNome = $item->servico ?? 'Serviço';
                                     $status = strtoupper((string) $item->status);
                                     $vencimento = $item->vencimento ? \Carbon\Carbon::parse($item->vencimento) : null;
-                                    $vencido = $status !== 'BAIXADO' && $vencimento?->lt(now()->startOfDay());
+                                    $vencido = $vencimento?->lt(now()->startOfDay()) ?? false;
+                                    $valorReal = isset($item->valor_real) ? (float) $item->valor_real : (float) $item->valor;
                                     $badge = match(true) {
                                         $status === 'BAIXADO' => 'bg-emerald-50 text-emerald-700 border-emerald-100',
                                         $vencido => 'bg-rose-50 text-rose-700 border-rose-100',
@@ -167,7 +139,7 @@
                                         {{ $vencimento?->format('d/m/Y') ?? 'N/A' }}
                                     </td>
                                     <td class="px-4 py-3 text-right font-semibold text-slate-900">
-                                        R$ {{ number_format((float) $item->valor, 2, ',', '.') }}
+                                        R$ {{ number_format($valorReal, 2, ',', '.') }}
                                     </td>
                                 </tr>
                             @endforeach
@@ -182,4 +154,3 @@
         </div>
     </section>
 @endsection
-

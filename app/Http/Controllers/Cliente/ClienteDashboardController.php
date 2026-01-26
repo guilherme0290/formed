@@ -13,6 +13,7 @@ use App\Models\ContaReceberItem;
 use App\Models\Servico;
 use App\Models\Tarefa;
 use App\Models\Venda;
+use App\Models\VendaItem;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
@@ -98,29 +99,59 @@ class ClienteDashboardController extends Controller
             $precos = $this->precosPorServico($cliente, $tabela);
         }
         $temTabela = (bool) $tabela;
-        $faturaTotal = $this->faturaTotal($cliente);
+        $contasAbertasNaoVencidas = (float) ContaReceberItem::query()
+            ->where('contas_receber_itens.empresa_id', $cliente->empresa_id)
+            ->where('contas_receber_itens.cliente_id', $cliente->id)
+            ->whereNotIn('contas_receber_itens.status', ['BAIXADO', 'CANCELADO'])
+            ->whereDate('contas_receber_itens.vencimento', '>=', now()->startOfDay())
+            ->selectRaw('COALESCE(SUM(GREATEST(contas_receber_itens.valor - COALESCE(baixas.total_baixado, 0), 0)), 0) as total')
+            ->leftJoinSub(
+                ContaReceberBaixa::query()
+                    ->selectRaw('conta_receber_item_id, SUM(valor) as total_baixado')
+                    ->groupBy('conta_receber_item_id'),
+                'baixas',
+                fn ($join) => $join->on('contas_receber_itens.id', '=', 'baixas.conta_receber_item_id')
+            )
+            ->value('total');
+
         $tarefasEmAndamento = $this->tarefasEmAndamento($cliente, false);
         $totalEmAndamento = $this->totalEmAndamento($contratoAtivo, $tarefasEmAndamento);
+
+        $totalFaturaAberto = $contasAbertasNaoVencidas + $totalEmAndamento;
         $totalPago = (float) ContaReceberItem::query()
             ->where('empresa_id', $cliente->empresa_id)
             ->where('cliente_id', $cliente->id)
             ->where('status', 'BAIXADO')
             ->sum('valor');
         $totalVencido = (float) ContaReceberItem::query()
-            ->where('empresa_id', $cliente->empresa_id)
-            ->where('cliente_id', $cliente->id)
-            ->whereNotIn('status', ['BAIXADO', 'CANCELADO'])
-            ->whereDate('vencimento', '<', now()->startOfDay())
-            ->sum('valor');
-        $totalGeral = $faturaTotal + $totalPago;
+            ->where('contas_receber_itens.empresa_id', $cliente->empresa_id)
+            ->where('contas_receber_itens.cliente_id', $cliente->id)
+            ->whereNotIn('contas_receber_itens.status', ['BAIXADO', 'CANCELADO'])
+            ->whereDate('contas_receber_itens.vencimento', '<', now()->startOfDay())
+            ->selectRaw('COALESCE(SUM(GREATEST(contas_receber_itens.valor - COALESCE(baixas.total_baixado, 0), 0)), 0) as total')
+            ->leftJoinSub(
+                ContaReceberBaixa::query()
+                    ->selectRaw('conta_receber_item_id, SUM(valor) as total_baixado')
+                    ->groupBy('conta_receber_item_id'),
+                'baixas',
+                fn ($join) => $join->on('contas_receber_itens.id', '=', 'baixas.conta_receber_item_id')
+            )
+            ->value('total');
 
         $dataInicio = $request->input('data_inicio');
         $dataFim = $request->input('data_fim');
         $status = $request->input('status');
 
+        $baixasSub = DB::table('contas_receber_baixas')
+            ->selectRaw('conta_receber_item_id, SUM(valor) as total_baixado')
+            ->groupBy('conta_receber_item_id');
+
         $contaQuery = DB::table('contas_receber_itens as cri')
             ->leftJoin('servicos as s', 's.id', '=', 'cri.servico_id')
             ->leftJoin('venda_itens as vi', 'vi.id', '=', 'cri.venda_item_id')
+            ->leftJoinSub($baixasSub, 'baixas', function ($join) {
+                $join->on('cri.id', '=', 'baixas.conta_receber_item_id');
+            })
             ->where('cri.empresa_id', $cliente->empresa_id)
             ->where('cri.cliente_id', $cliente->id)
             ->where('cri.status', '!=', 'CANCELADO')
@@ -130,7 +161,9 @@ class ClienteDashboardController extends Controller
             ->selectRaw('cri.data_realizacao as data_realizacao')
             ->selectRaw('cri.vencimento as vencimento')
             ->selectRaw('cri.status as status')
-            ->selectRaw('cri.valor as valor');
+            ->selectRaw('cri.valor as valor')
+            ->selectRaw('COALESCE(baixas.total_baixado, 0) as total_baixado')
+            ->selectRaw('GREATEST(cri.valor - COALESCE(baixas.total_baixado, 0), 0) as valor_real');
 
         if ($status) {
             $statusFiltro = strtoupper((string) $status);
@@ -168,7 +201,9 @@ class ClienteDashboardController extends Controller
             ->selectRaw('COALESCE(DATE(t.finalizado_em), DATE(v.created_at)) as data_realizacao')
             ->selectRaw('NULL as vencimento')
             ->selectRaw("'ABERTO' as status")
-            ->selectRaw('vi.subtotal_snapshot as valor');
+            ->selectRaw('vi.subtotal_snapshot as valor')
+            ->selectRaw('0 as total_baixado')
+            ->selectRaw('vi.subtotal_snapshot as valor_real');
 
         if ($status) {
             $statusFiltro = strtoupper((string) $status);
@@ -196,11 +231,9 @@ class ClienteDashboardController extends Controller
             'cliente'      => $cliente,
             'temTabela'    => $temTabela,
             'precos'       => $precos,
-            'faturaTotal'  => $faturaTotal,
-            'totalEmAndamento' => $totalEmAndamento,
+            'totalFaturaAberto' => $totalFaturaAberto,
             'totalPago' => $totalPago,
             'totalVencido' => $totalVencido,
-            'totalGeral' => $totalGeral,
             'itens'        => $itens,
             'filtros' => [
                 'data_inicio' => $dataInicio,
