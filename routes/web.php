@@ -850,6 +850,18 @@ Route::middleware('auth')->group(function () {
         // Dashboard Master
         Route::get('/', [DashboardMaster::class, 'index'])->name('dashboard');
         Route::get('/agendamentos', [DashboardMaster::class, 'agendamentos'])->name('agendamentos');
+        Route::get('/relatorio-tarefas', [DashboardMaster::class, 'relatorioTarefas'])
+            ->name('relatorio-tarefas');
+        Route::get('/relatorio-tarefas/pdf', [DashboardMaster::class, 'relatorioTarefasPdf'])
+            ->name('relatorio-tarefas.pdf');
+        Route::get('/relatorio-produtividade', [DashboardMaster::class, 'relatorioProdutividade'])
+            ->name('relatorio-produtividade');
+        Route::get('/relatorio-produtividade/pdf', [DashboardMaster::class, 'relatorioProdutividadePdf'])
+            ->name('relatorio-produtividade.pdf');
+        Route::get('/relatorios', [DashboardMaster::class, 'relatorios'])
+            ->name('relatorios');
+        Route::get('/relatorios/pdf', [DashboardMaster::class, 'relatoriosPdf'])
+            ->name('relatorios.pdf');
 
         // Agenda de Vendedores
         Route::get('/agenda-vendedores', [AgendaVendedorController::class, 'index'])

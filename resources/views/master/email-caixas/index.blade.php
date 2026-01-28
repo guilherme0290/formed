@@ -7,21 +7,17 @@
         $caixaTesteId = (int) old('caixa_teste_id');
     @endphp
 
-    <div class="max-w-6xl mx-auto px-4 md:px-6 py-6 space-y-6">
-        <div class="text-[11px] text-slate-500">
-            Configurações &gt; E-mail SMTP (CRUR)
-        </div>
-        <div class="flex flex-wrap items-start justify-between gap-4">
-            <div>
-                <h1 class="text-2xl font-semibold text-slate-900">
-                    Configuracao de Caixas de E-mail SMTP (CRUR)
-                </h1>
-                <p class="text-slate-500 text-sm mt-1">Defina servidor, remetente, respondente e credenciais.</p>
+    <div class="max-w-6xl mx-auto px-4 md:px-6 py-8 space-y-6 bg-white">
+        <div class="space-y-2">
+            <div class="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                    <h1 class="text-2xl md:text-3xl font-semibold text-slate-900">
+                        Configuracao de Caixas de E-mail SMTP
+                    </h1>
+                    <p class="text-slate-500 text-sm mt-1">Defina servidor, autenticacao e credenciais de envio.</p>
+                </div>
+                <button type="submit" form="email-caixa-form" class="hidden">Salvar configuracoes</button>
             </div>
-            <button type="submit" form="email-caixa-form"
-                    class="hidden">
-                Salvar Configurações
-            </button>
         </div>
 
         @if (session('ok'))
@@ -41,132 +37,167 @@
             </div>
         @endif
 
-        <div class="space-y-6">
-            <form id="email-caixa-form" method="POST" action="{{ route('master.email-caixas.store') }}" class="space-y-4">
-                @csrf
-                <div class="grid md:grid-cols-2 gap-4">
-                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm">
-                        <div class="border-b border-slate-200 px-4 py-3">
-                            <h2 class="text-sm font-semibold text-slate-800">Servidor SMTP & Autenticacao</h2>
-                        </div>
-                        <div class="p-4 space-y-3 text-sm">
-                            <div class="space-y-1">
-                                <label class="text-xs font-semibold text-slate-600">Nome da configuracao</label>
-                                <input type="text" name="nome" class="w-full rounded-lg border border-slate-200 px-3 py-2"
-                                       value="{{ old('nome') }}" placeholder="Ex.: SMTP Principal Formed" required>
-                            </div>
-                            <div class="space-y-1">
-                                <label class="text-xs font-semibold text-slate-600">Servidor SMTP (Host)</label>
-                                <input type="text" name="host" class="w-full rounded-lg border border-slate-200 px-3 py-2"
-                                       value="{{ old('host') }}" placeholder="smtp.dominio.com" required>
-                            </div>
-                            <div class="grid grid-cols-2 gap-3">
-                                <div class="space-y-1">
-                                    <label class="text-xs font-semibold text-slate-600">Porta</label>
-                                    <input type="number" name="porta" class="w-full rounded-lg border border-slate-200 px-3 py-2"
-                                           value="{{ old('porta', 587) }}" min="1" max="65535" required>
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-xs font-semibold text-slate-600">Seguranca</label>
-                                    <select name="criptografia" class="w-full rounded-lg border border-slate-200 px-3 py-2">
-                                        <option value="starttls" @selected(old('criptografia', 'starttls') === 'starttls')>STARTTLS</option>
-                                        <option value="ssl" @selected(old('criptografia', 'starttls') === 'ssl')>SSL</option>
-                                        <option value="none" @selected(old('criptografia', 'starttls') === 'none')>Sem criptografia</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="space-y-1">
-                                <label class="text-xs font-semibold text-slate-600">Timeout (segundos)</label>
-                                <input type="number" name="timeout" class="w-full rounded-lg border border-slate-200 px-3 py-2"
-                                       value="{{ old('timeout', 30) }}" min="1" max="600">
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm">
-                        <div class="border-b border-slate-200 px-4 py-3 flex items-center justify-between">
-                            <h2 class="text-sm font-semibold text-slate-800">Credenciais de Acesso (U - Usuario)</h2>
-                        </div>
-                        <div class="p-4 space-y-3 text-sm">
-                            <div class="space-y-1">
-                                <label class="text-xs font-semibold text-slate-600">E-mail de Login / Usuario SMTP</label>
-                                <input type="text" name="usuario" class="w-full rounded-lg border border-slate-200 px-3 py-2"
-                                       value="{{ old('usuario') }}" placeholder="usuario@dominio.com">
-                            </div>
-                            <div class="space-y-1">
-                                <label class="text-xs font-semibold text-slate-600">Senha SMTP</label>
-                                <input type="password" name="senha" class="w-full rounded-lg border border-slate-200 px-3 py-2"
-                                       value="{{ old('senha') }}" autocomplete="new-password">
-                            </div>
-                            <div class="flex flex-wrap items-center gap-4 text-sm">
-                                <input type="hidden" name="requer_autenticacao" value="0">
-                                <label class="inline-flex items-center gap-2 text-slate-700">
-                                    <input type="checkbox" name="requer_autenticacao" value="1"
-                                           class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                                           {{ old('requer_autenticacao', '1') === '1' ? 'checked' : '' }}>
-                                    Autenticacao obrigatoria?
-                                </label>
-                                <input type="hidden" name="ativo" value="0">
-                                <label class="inline-flex items-center gap-2 text-slate-700">
-                                    <input type="checkbox" name="ativo" value="1"
-                                           class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                                           {{ old('ativo', '1') === '1' ? 'checked' : '' }}>
-                                    Ativo
-                                </label>
-                            </div>
-                            <div class="flex flex-wrap items-center justify-center gap-3 pt-6">
-                                <button type="submit" formaction="{{ route('master.email-caixas.testar') }}"
-                                        class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700">
-                                    Testar Conexao
-                                </button>
-                                <button type="submit"
-                                        class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800">
-                                    Salvar Configurações
-                                </button>
-                                @if (session('smtp_ok'))
-                                    <span class="text-xs text-emerald-600 font-semibold">{{ session('smtp_ok') }}</span>
-                                @elseif (session('smtp_error'))
-                                    <span class="text-xs text-rose-600 font-semibold">{{ session('smtp_error') }}</span>
-                                @endif
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </form>
-
-            @php $totalCaixas = $caixas->count(); @endphp
-
-            <div class="bg-white border border-slate-200 shadow-sm p-5 space-y-4">
-                <div class="flex items-center justify-between">
+        <form id="email-caixa-form" method="POST" action="{{ route('master.email-caixas.store') }}" class="space-y-5">
+            @csrf
+            <div class="grid lg:grid-cols-2 gap-5">
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
                     <div>
-                        <h2 class="text-sm font-semibold text-slate-800">Email cadastrado</h2>
-                        <p class="text-[11px] text-slate-500">Selecione para editar ou remover.</p>
+                        <div class="text-sm font-semibold text-slate-900">Servidor SMTP &amp; Autenticacao</div>
+                        <div class="text-xs text-slate-500">Host, porta e seguranca do envio</div>
                     </div>
-                    <span class="text-xs bg-slate-100 text-slate-700 px-3 py-1 rounded-full">{{ $totalCaixas }} caixa(s)</span>
+
+                    <div class="space-y-2 text-sm">
+                        <label class="text-xs font-semibold text-slate-600">Nome da configuracao</label>
+                        <input type="text" name="nome" class="w-full rounded-lg border border-slate-200 px-3 py-2"
+                               value="{{ old('nome') }}" placeholder="Ex: SMTP Principal - Producao" required>
+                    </div>
+
+                    <div class="space-y-2 text-sm">
+                        <label class="text-xs font-semibold text-slate-600">Servidor SMTP (Host)</label>
+                        <input type="text" name="host" class="w-full rounded-lg border border-slate-200 px-3 py-2"
+                               value="{{ old('host') }}" placeholder="smtp.dominio.com" required>
+                        <div class="text-[11px] text-slate-500">Endereco fornecido pelo provedor de e-mail</div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="space-y-2 text-sm">
+                            <label class="text-xs font-semibold text-slate-600">Porta</label>
+                            <input type="number" name="porta" class="w-full rounded-lg border border-slate-200 px-3 py-2"
+                                   value="{{ old('porta', 587) }}" min="1" max="65535" required>
+                        </div>
+                        <div class="space-y-2 text-sm">
+                            <label class="text-xs font-semibold text-slate-600">Seguranca</label>
+                            <select name="criptografia" class="w-full rounded-lg border border-slate-200 px-3 py-2">
+                                <option value="starttls" @selected(old('criptografia', 'starttls') === 'starttls')>STARTTLS</option>
+                                <option value="ssl" @selected(old('criptografia', 'starttls') === 'ssl')>SSL</option>
+                                <option value="tls" @selected(old('criptografia', 'starttls') === 'tls')>TLS</option>
+                                <option value="none" @selected(old('criptografia', 'starttls') === 'none')>Sem criptografia</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2 text-sm">
+                        <label class="text-xs font-semibold text-slate-600">Timeout (segundos)</label>
+                        <input type="number" name="timeout" class="w-full rounded-lg border border-slate-200 px-3 py-2"
+                               value="{{ old('timeout', 30) }}" min="1" max="600">
+                    </div>
                 </div>
 
-                <div class="space-y-3">
-                    @forelse ($caixas as $caixa)
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
+                    <div>
+                        <div class="text-sm font-semibold text-slate-900">Credenciais de Acesso</div>
+                        <div class="text-xs text-slate-500">Usuario, senha e autenticacao</div>
+                    </div>
+
+                    <div class="space-y-2 text-sm">
+                        <label class="text-xs font-semibold text-slate-600">E-mail de login / usuario SMTP</label>
+                        <input type="text" name="usuario" class="w-full rounded-lg border border-slate-200 px-3 py-2"
+                               value="{{ old('usuario') }}" placeholder="usuario@dominio.com">
+                    </div>
+
+                    <div class="space-y-2 text-sm">
+                        <label class="text-xs font-semibold text-slate-600">Senha SMTP</label>
+                        <div class="flex items-center gap-2">
+                            <input type="password" name="senha" class="w-full rounded-lg border border-slate-200 px-3 py-2"
+                                   value="{{ old('senha') }}" autocomplete="new-password" data-password-field>
+                            <button type="button" class="px-3 py-2 rounded-lg border border-slate-200 text-xs text-slate-600 hover:bg-slate-50" data-password-toggle>
+                                Mostrar
+                            </button>
+                        </div>
+                        <div class="text-[11px] text-slate-500">Sua senha e armazenada de forma segura</div>
+                    </div>
+
+                    <div class="space-y-2 text-sm">
+                        <div class="flex items-center justify-between">
+                            <label class="text-slate-700">Autenticacao obrigatoria</label>
+                            <div class="flex items-center gap-2">
+                                <input type="hidden" name="requer_autenticacao" value="0">
+                                <input type="checkbox" name="requer_autenticacao" value="1"
+                                       class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                       {{ old('requer_autenticacao', '1') === '1' ? 'checked' : '' }}>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <label class="text-slate-700">Caixa ativa</label>
+                            <div class="flex items-center gap-2">
+                                <input type="hidden" name="ativo" value="0">
+                                <input type="checkbox" name="ativo" value="1"
+                                       class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                       {{ old('ativo', '1') === '1' ? 'checked' : '' }}>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-3 pt-4">
+                        <button type="submit" formaction="{{ route('master.email-caixas.testar') }}"
+                                class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50">
+                            Testar conexao
+                        </button>
+                        <button type="submit"
+                                class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-500">
+                            Salvar configuracoes
+                        </button>
+                        @if (session('smtp_ok'))
+                            <span class="text-xs text-emerald-600 font-semibold">{{ session('smtp_ok') }}</span>
+                        @elseif (session('smtp_error'))
+                            <span class="text-xs text-rose-600 font-semibold">{{ session('smtp_error') }}</span>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        </form>
+
+        @php $totalCaixas = $caixas->count(); @endphp
+
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-sm font-semibold text-slate-900">Caixas de e-mail cadastradas</h2>
+                    <p class="text-xs text-slate-500">Gerencie configuracoes existentes</p>
+                </div>
+                <span class="text-xs bg-slate-100 text-slate-700 px-3 py-1 rounded-full">{{ $totalCaixas }} caixa(s)</span>
+            </div>
+
+            @if($totalCaixas === 0)
+                <div class="flex flex-col items-center justify-center text-center py-10 gap-2 text-slate-500">
+                    <svg class="h-10 w-10 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="5" width="18" height="14" rx="2"></rect>
+                        <path d="M3 7l9 6 9-6"></path>
+                    </svg>
+                    <div class="text-sm">Nenhuma caixa de e-mail cadastrada</div>
+                </div>
+            @else
+                <div class="grid md:grid-cols-2 gap-4">
+                    @foreach ($caixas as $caixa)
                         @php
                             $isEditing = $caixaEmEdicaoId === $caixa->id;
                             $emailLogin = $caixa->usuario ?: '-';
+                            $statusAtivo = $caixa->ativo ? 'Ativa' : 'Inativa';
                         @endphp
 
-                        <div class="rounded-lg border border-slate-200 px-3 py-3 flex items-center justify-between gap-3">
-                            <div>
-                                <p class="text-sm font-semibold text-slate-800">{{ $emailLogin }}</p>
-                                <p class="text-[11px] text-slate-500">{{ $caixa->nome }}</p>
+                        <div class="rounded-2xl border border-slate-200 p-4 space-y-3">
+                            <div class="flex items-start justify-between gap-3">
+                                <div>
+                                    <div class="text-sm font-semibold text-slate-900">{{ $caixa->nome }}</div>
+                                    <div class="text-xs text-slate-500">{{ $emailLogin }}</div>
+                                </div>
+                                <span class="text-xs px-2 py-1 rounded-full {{ $caixa->ativo ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600' }}">
+                                    {{ $statusAtivo }}
+                                </span>
+                            </div>
+                            <div class="text-xs text-slate-600">
+                                Host: {{ $caixa->host }} &middot; Porta: {{ $caixa->porta }} &middot; {{ strtoupper($caixa->criptografia ?? 'none') }}
                             </div>
                             <div class="flex flex-wrap items-center gap-2" x-data>
                                 <button type="button"
-                                        class="inline-flex items-center px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800"
+                                        class="inline-flex items-center px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50"
                                         x-on:click="$dispatch('open-modal', 'email-caixa-{{ $caixa->id }}')">
                                     Editar
                                 </button>
                                 <button type="button"
                                         class="inline-flex items-center px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700"
                                         x-on:click="$dispatch('open-modal', 'email-caixa-teste-{{ $caixa->id }}')">
-                                    Testar envio
+                                    Testar
                                 </button>
                                 <form method="POST" action="{{ route('master.email-caixas.destroy', $caixa) }}">
                                     @csrf
@@ -174,7 +205,7 @@
                                     <button type="submit"
                                             class="inline-flex items-center px-3 py-1.5 rounded-lg bg-rose-50 text-rose-700 text-xs font-semibold border border-rose-200 hover:bg-rose-100"
                                             onclick="return confirm('Excluir este email?')">
-                                        Excluir
+                                        Remover
                                     </button>
                                 </form>
                             </div>
@@ -203,7 +234,7 @@
                                     <input type="hidden" name="caixa_id" value="{{ $caixa->id }}">
 
                                     <div class="space-y-1 text-sm">
-                                        <label class="text-xs font-semibold text-slate-600">E-mail de Login / Usuario SMTP</label>
+                                        <label class="text-xs font-semibold text-slate-600">E-mail de login / usuario SMTP</label>
                                         <input type="text" name="usuario" class="w-full rounded-lg border border-slate-200 px-3 py-2"
                                                value="{{ $isEditing ? old('usuario', $caixa->usuario) : $caixa->usuario }}" required>
                                     </div>
@@ -268,11 +299,25 @@
                                 </form>
                             </div>
                         </x-modal>
-                    @empty
-                        <div class="text-sm text-slate-600">Nenhuma caixa cadastrada.</div>
-                    @endforelse
+                    @endforeach
                 </div>
-            </div>
+            @endif
         </div>
     </div>
 @endsection
+
+@push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const toggle = document.querySelector('[data-password-toggle]');
+            const field = document.querySelector('[data-password-field]');
+            if (toggle && field) {
+                toggle.addEventListener('click', () => {
+                    const isPassword = field.getAttribute('type') === 'password';
+                    field.setAttribute('type', isPassword ? 'text' : 'password');
+                    toggle.textContent = isPassword ? 'Ocultar' : 'Mostrar';
+                });
+            }
+        });
+    </script>
+@endpush

@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Master;
 use App\Http\Controllers\Controller;
 use App\Models\Proposta;
 use App\Models\Tarefa;
+use App\Models\User;
 use App\Models\Venda;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class DashboardController extends Controller
 {
@@ -36,6 +38,93 @@ class DashboardController extends Controller
         return view('master.agendamentos', [
             'agendamentos' => $agendamentos,
         ]);
+    }
+
+    public function relatorioTarefas(\Illuminate\Http\Request $request)
+    {
+        $empresaId = auth()->user()->empresa_id ?? null;
+        $data = $this->dadosRelatorioTarefas($empresaId, $request);
+
+        return view('master.relatorio-tarefas', $data);
+    }
+
+    public function relatorioTarefasPdf(\Illuminate\Http\Request $request)
+    {
+        $empresaId = auth()->user()->empresa_id ?? null;
+        $data = $this->dadosRelatorioTarefas($empresaId, $request);
+        $data['logoData'] = $this->logoData();
+        if (function_exists('set_time_limit')) {
+            @set_time_limit(180);
+        }
+        @ini_set('max_execution_time', '180');
+        @ini_set('memory_limit', '512M');
+
+        $pdf = Pdf::loadView('master.relatorio-tarefas-pdf', $data)
+            ->setPaper('a4', 'landscape');
+
+        $filename = 'relatorio-tarefas-' . now()->format('Y-m-d') . '.pdf';
+
+        return $pdf->download($filename);
+    }
+
+    public function relatorios(\Illuminate\Http\Request $request)
+    {
+        $user = auth()->user();
+        abort_unless($user && $user->isMaster(), 403);
+
+        $empresaId = $user->empresa_id ?? null;
+        $data = $this->dadosRelatoriosMaster($empresaId, $request);
+
+        return view('master.relatorios', $data);
+    }
+
+    public function relatoriosPdf(\Illuminate\Http\Request $request)
+    {
+        $user = auth()->user();
+        abort_unless($user && $user->isMaster(), 403);
+
+        $empresaId = $user->empresa_id ?? null;
+        $data = $this->dadosRelatoriosMaster($empresaId, $request);
+        $data['logoData'] = $this->logoData();
+        if (function_exists('set_time_limit')) {
+            @set_time_limit(180);
+        }
+        @ini_set('max_execution_time', '180');
+        @ini_set('memory_limit', '512M');
+
+        $pdf = Pdf::loadView('master.relatorios-pdf', $data)
+            ->setPaper('a4', 'landscape');
+
+        $filename = 'relatorios-master-' . now()->format('Y-m-d') . '.pdf';
+
+        return $pdf->download($filename);
+    }
+
+    public function relatorioProdutividade(\Illuminate\Http\Request $request)
+    {
+        $empresaId = auth()->user()->empresa_id ?? null;
+        $data = $this->dadosRelatorioProdutividade($empresaId, $request);
+
+        return view('master.relatorio-produtividade', $data);
+    }
+
+    public function relatorioProdutividadePdf(\Illuminate\Http\Request $request)
+    {
+        $empresaId = auth()->user()->empresa_id ?? null;
+        $data = $this->dadosRelatorioProdutividade($empresaId, $request);
+        $data['logoData'] = $this->logoData();
+        if (function_exists('set_time_limit')) {
+            @set_time_limit(180);
+        }
+        @ini_set('max_execution_time', '180');
+        @ini_set('memory_limit', '512M');
+
+        $pdf = Pdf::loadView('master.relatorio-produtividade-pdf', $data)
+            ->setPaper('a4', 'landscape');
+
+        $filename = 'relatorio-produtividade-' . now()->format('Y-m-d') . '.pdf';
+
+        return $pdf->download($filename);
     }
 
     private function metricasEmpresa(?int $empresaId): array
@@ -159,14 +248,31 @@ class DashboardController extends Controller
             $dataFim = $dataInicio->copy();
         }
 
-        $servicosSelecionados = $request->query('servicos', []);
-        $servicosSelecionados = is_array($servicosSelecionados) ? $servicosSelecionados : [$servicosSelecionados];
-        $servicosSelecionados = array_values(array_filter(array_map('intval', $servicosSelecionados)));
+        $servicoSelecionadoRaw = $request->query('servico', 'todos');
+        $servicoSelecionado = 'todos';
+        if (is_numeric($servicoSelecionadoRaw) && (int) $servicoSelecionadoRaw > 0) {
+            $servicoSelecionado = (int) $servicoSelecionadoRaw;
+        }
+
+        $responsavelSelecionadoRaw = $request->query('responsavel', 'todos');
+        $responsavelSelecionado = 'todos';
+        if (is_numeric($responsavelSelecionadoRaw) && (int) $responsavelSelecionadoRaw > 0) {
+            $responsavelSelecionado = (int) $responsavelSelecionadoRaw;
+        }
 
         $servicosDisponiveis = \App\Models\Servico::query()
             ->when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId))
+            ->whereRaw('LOWER(nome) NOT IN (?, ?)', ['exame', 'esocial'])
             ->orderBy('nome')
             ->get(['id', 'nome']);
+
+        $responsaveisDisponiveis = User::query()
+            ->when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId))
+            ->whereHas('papel', function ($query) {
+                $query->where('nome', 'Operacional');
+            })
+            ->orderBy('name')
+            ->get(['id', 'name']);
 
         $base = Tarefa::query()
             ->join('kanban_colunas', 'kanban_colunas.id', '=', 'tarefas.coluna_id')
@@ -174,13 +280,26 @@ class DashboardController extends Controller
             ->whereDate('tarefas.inicio_previsto', '>=', $dataInicio->toDateString())
             ->whereDate('tarefas.inicio_previsto', '<=', $dataFim->toDateString());
 
-        if (!empty($servicosSelecionados)) {
-            $base->whereIn('tarefas.servico_id', $servicosSelecionados);
+        if ($servicoSelecionado !== 'todos') {
+            $base->where('tarefas.servico_id', $servicoSelecionado);
         }
 
-        $abertas = (clone $base)->where('kanban_colunas.finaliza', false)->count();
-        $fechadas = (clone $base)->where('kanban_colunas.finaliza', true)->count();
-        $total = $abertas + $fechadas;
+        if ($responsavelSelecionado !== 'todos') {
+            $base->where('tarefas.responsavel_id', $responsavelSelecionado);
+        }
+
+        $contagemPorSlug = (clone $base)
+            ->selectRaw("COALESCE(LOWER(kanban_colunas.slug), '') as slug, COUNT(*) as total")
+            ->groupBy('slug')
+            ->pluck('total', 'slug')
+            ->all();
+
+        $pendentes = ($contagemPorSlug['pendente'] ?? 0) + ($contagemPorSlug['pendentes'] ?? 0);
+        $emExecucao = ($contagemPorSlug['em-execucao'] ?? 0) + ($contagemPorSlug['em_execucao'] ?? 0);
+        $aguardandoFornecedor = ($contagemPorSlug['aguardando-fornecedor'] ?? 0) + ($contagemPorSlug['aguardando'] ?? 0);
+        $correcao = $contagemPorSlug['correcao'] ?? 0;
+        $atrasados = ($contagemPorSlug['atrasado'] ?? 0) + ($contagemPorSlug['atrasados'] ?? 0);
+        $finalizadas = ($contagemPorSlug['finalizada'] ?? 0) + ($contagemPorSlug['finalizadas'] ?? 0);
 
         $porServico = (clone $base)
             ->leftJoin('servicos', 'servicos.id', '=', 'tarefas.servico_id')
@@ -193,9 +312,987 @@ class DashboardController extends Controller
             'data_inicio' => $dataInicio->toDateString(),
             'data_fim' => $dataFim->toDateString(),
             'servicos_disponiveis' => $servicosDisponiveis,
-            'servicos_selecionados' => $servicosSelecionados,
-            'abertas' => $abertas,
-            'fechadas' => $fechadas,
+            'servico_selecionado' => $servicoSelecionado,
+            'responsaveis_disponiveis' => $responsaveisDisponiveis,
+            'responsavel_selecionado' => $responsavelSelecionado,
+            'pendentes' => $pendentes,
+            'em_execucao' => $emExecucao,
+            'aguardando_fornecedor' => $aguardandoFornecedor,
+            'correcao' => $correcao,
+            'atrasados' => $atrasados,
+            'finalizadas' => $finalizadas,
+            'por_servico' => $porServico,
+        ];
+    }
+
+    private function dadosRelatorioTarefas(?int $empresaId, \Illuminate\Http\Request $request): array
+    {
+        $hoje = Carbon::today();
+        $dataInicio = $this->parseDate($request->query('data_inicio'), $hoje);
+        $dataFim = $this->parseDate($request->query('data_fim'), $dataInicio);
+        if ($dataFim->lt($dataInicio)) {
+            $dataFim = $dataInicio->copy();
+        }
+
+        $servicoSelecionadoRaw = $request->query('servico', 'todos');
+        $servicoSelecionado = 'todos';
+        if (is_numeric($servicoSelecionadoRaw) && (int) $servicoSelecionadoRaw > 0) {
+            $servicoSelecionado = (int) $servicoSelecionadoRaw;
+        }
+
+        $responsavelSelecionadoRaw = $request->query('responsavel', 'todos');
+        $responsavelSelecionado = 'todos';
+        if (is_numeric($responsavelSelecionadoRaw) && (int) $responsavelSelecionadoRaw > 0) {
+            $responsavelSelecionado = (int) $responsavelSelecionadoRaw;
+        }
+
+        $statusSelecionado = (string) $request->query('status', 'todos');
+
+        $servicosDisponiveis = \App\Models\Servico::query()
+            ->when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId))
+            ->whereRaw('LOWER(nome) NOT IN (?, ?)', ['exame', 'esocial'])
+            ->orderBy('nome')
+            ->get(['id', 'nome']);
+
+        $responsaveisDisponiveis = User::query()
+            ->when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId))
+            ->whereHas('papel', function ($query) {
+                $query->where('nome', 'Operacional');
+            })
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        $colunas = \App\Models\KanbanColuna::query()
+            ->when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId))
+            ->orderBy('ordem')
+            ->get(['id', 'nome', 'slug']);
+
+        $statusSlugs = [
+            'pendente',
+            'em-execucao',
+            'aguardando-fornecedor',
+            'correcao',
+            'atrasado',
+            'finalizada',
+        ];
+
+        $statusOpcoes = $colunas
+            ->whereIn('slug', $statusSlugs)
+            ->map(fn ($coluna) => ['slug' => $coluna->slug, 'label' => $coluna->nome])
+            ->values()
+            ->all();
+
+        if (!empty($statusSelecionado) && $statusSelecionado !== 'todos') {
+            $statusValido = collect($statusOpcoes)->pluck('slug')->contains($statusSelecionado);
+            if (!$statusValido) {
+                $statusSelecionado = 'todos';
+            }
+        }
+
+        $base = Tarefa::query()
+            ->join('kanban_colunas', 'kanban_colunas.id', '=', 'tarefas.coluna_id')
+            ->when($empresaId, fn ($q) => $q->where('tarefas.empresa_id', $empresaId))
+            ->whereDate('tarefas.inicio_previsto', '>=', $dataInicio->toDateString())
+            ->whereDate('tarefas.inicio_previsto', '<=', $dataFim->toDateString());
+
+        if ($servicoSelecionado !== 'todos') {
+            $base->where('tarefas.servico_id', $servicoSelecionado);
+        }
+
+        if ($responsavelSelecionado !== 'todos') {
+            $base->where('tarefas.responsavel_id', $responsavelSelecionado);
+        }
+
+        if ($statusSelecionado !== 'todos') {
+            $base->where('kanban_colunas.slug', $statusSelecionado);
+        }
+
+        $contagemPorSlug = (clone $base)
+            ->selectRaw("COALESCE(LOWER(kanban_colunas.slug), '') as slug, COUNT(*) as total")
+            ->groupBy('slug')
+            ->pluck('total', 'slug')
+            ->all();
+
+        $pendentes = ($contagemPorSlug['pendente'] ?? 0) + ($contagemPorSlug['pendentes'] ?? 0);
+        $emExecucao = ($contagemPorSlug['em-execucao'] ?? 0) + ($contagemPorSlug['em_execucao'] ?? 0);
+        $aguardandoFornecedor = ($contagemPorSlug['aguardando-fornecedor'] ?? 0) + ($contagemPorSlug['aguardando'] ?? 0);
+        $correcao = $contagemPorSlug['correcao'] ?? 0;
+        $atrasados = ($contagemPorSlug['atrasado'] ?? 0) + ($contagemPorSlug['atrasados'] ?? 0);
+        $finalizadas = ($contagemPorSlug['finalizada'] ?? 0) + ($contagemPorSlug['finalizadas'] ?? 0);
+
+        $tarefas = (clone $base)
+            ->select('tarefas.*')
+            ->with(['cliente', 'servico', 'responsavel', 'coluna'])
+            ->orderBy('tarefas.inicio_previsto')
+            ->orderBy('tarefas.id')
+            ->get();
+
+        $servicosPorServico = (clone $base)
+            ->leftJoin('servicos', 'servicos.id', '=', 'tarefas.servico_id')
+            ->selectRaw("COALESCE(servicos.nome, 'Sem serviço') as servico_nome, COUNT(*) as total")
+            ->groupBy('servico_nome')
+            ->orderBy('servico_nome')
+            ->get();
+
+        return [
+            'data_inicio' => $dataInicio->toDateString(),
+            'data_fim' => $dataFim->toDateString(),
+            'servicos_disponiveis' => $servicosDisponiveis,
+            'responsaveis_disponiveis' => $responsaveisDisponiveis,
+            'status_opcoes' => $statusOpcoes,
+            'servico_selecionado' => $servicoSelecionado,
+            'responsavel_selecionado' => $responsavelSelecionado,
+            'status_selecionado' => $statusSelecionado,
+            'tarefas' => $tarefas,
+            'resumo' => [
+                'pendentes' => $pendentes,
+                'em_execucao' => $emExecucao,
+                'aguardando_fornecedor' => $aguardandoFornecedor,
+                'correcao' => $correcao,
+                'atrasados' => $atrasados,
+                'finalizadas' => $finalizadas,
+                'total' => $tarefas->count(),
+            ],
+            'servicos_por_servico' => $servicosPorServico,
+        ];
+    }
+
+    private function dadosRelatorioProdutividade(?int $empresaId, \Illuminate\Http\Request $request): array
+    {
+        $hoje = Carbon::today();
+        $dataInicio = $this->parseDate($request->query('data_inicio'), $hoje);
+        $dataFim = $this->parseDate($request->query('data_fim'), $dataInicio);
+        if ($dataFim->lt($dataInicio)) {
+            $dataFim = $dataInicio->copy();
+        }
+
+        $setorSelecionado = (string) $request->query('setor', 'todos');
+        if (!in_array($setorSelecionado, ['todos', 'operacional', 'comercial'], true)) {
+            $setorSelecionado = 'todos';
+        }
+
+        $usuarioSelecionadoRaw = $request->query('usuario', 'todos');
+        $usuarioSelecionado = 'todos';
+        if (is_numeric($usuarioSelecionadoRaw) && (int) $usuarioSelecionadoRaw > 0) {
+            $usuarioSelecionado = (int) $usuarioSelecionadoRaw;
+        }
+
+        $statusPropostaSelecionado = (string) $request->query('status_proposta', 'FECHADA');
+
+        $usuariosQuery = User::query()
+            ->when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId))
+            ->whereHas('papel', function ($query) use ($setorSelecionado) {
+                if ($setorSelecionado === 'operacional') {
+                    $query->where('nome', 'Operacional');
+                } elseif ($setorSelecionado === 'comercial') {
+                    $query->where('nome', 'Comercial');
+                } else {
+                    $query->whereIn('nome', ['Operacional', 'Comercial']);
+                }
+            })
+            ->orderBy('name');
+
+        $usuariosDisponiveis = $usuariosQuery->get(['id', 'name']);
+
+        $statusPropostaOpcoes = Proposta::query()
+            ->when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId))
+            ->whereNotNull('status')
+            ->select('status')
+            ->distinct()
+            ->orderBy('status')
+            ->pluck('status')
+            ->values()
+            ->all();
+
+        if (empty($statusPropostaOpcoes)) {
+            $statusPropostaOpcoes = ['FECHADA'];
+        }
+
+        if (!in_array($statusPropostaSelecionado, $statusPropostaOpcoes, true)) {
+            $statusPropostaSelecionado = 'FECHADA';
+        }
+
+        $servicosBase = Tarefa::query()
+            ->join('kanban_colunas', 'kanban_colunas.id', '=', 'tarefas.coluna_id')
+            ->join('servicos', 'servicos.id', '=', 'tarefas.servico_id')
+            ->when($empresaId, fn ($q) => $q->where('tarefas.empresa_id', $empresaId))
+            ->whereDate('tarefas.finalizado_em', '>=', $dataInicio->toDateString())
+            ->whereDate('tarefas.finalizado_em', '<=', $dataFim->toDateString())
+            ->where('kanban_colunas.finaliza', true)
+            ->where(function ($q) {
+                $q->whereRaw('LOWER(servicos.nome) <> ?', ['exame'])
+                    ->whereRaw('LOWER(servicos.tipo) <> ?', ['exame']);
+            });
+
+        if ($setorSelecionado !== 'comercial' && $usuarioSelecionado !== 'todos') {
+            $servicosBase->where('tarefas.responsavel_id', $usuarioSelecionado);
+        }
+
+        $servicosTotal = (clone $servicosBase)->count();
+
+        $servicosTarefas = (clone $servicosBase)
+            ->select('tarefas.*')
+            ->with(['cliente', 'servico', 'responsavel', 'coluna'])
+            ->orderBy('tarefas.finalizado_em', 'desc')
+            ->get();
+
+        $servicosPorServico = (clone $servicosBase)
+            ->selectRaw('servicos.nome as servico_nome, COUNT(*) as total')
+            ->groupBy('servicos.nome')
+            ->orderBy('servicos.nome')
+            ->get();
+
+
+        if ($tarefasAtivas) {
+            $servicosResumoBase = null;
+            if ($statusServicosSelecionado === 'concluido') {
+                $servicosResumoBase = clone $tarefasBase;
+            } elseif ($statusServicosSelecionado === 'todos') {
+                $servicosResumoBase = Tarefa::query()
+                    ->join('kanban_colunas', 'kanban_colunas.id', '=', 'tarefas.coluna_id')
+                    ->leftJoin('servicos', 'servicos.id', '=', 'tarefas.servico_id')
+                    ->when($empresaId, fn ($q) => $q->where('tarefas.empresa_id', $empresaId))
+                    ->whereDate('tarefas.inicio_previsto', '>=', $dataInicio->toDateString())
+                    ->whereDate('tarefas.inicio_previsto', '<=', $dataFim->toDateString());
+
+                if ($servicoSelecionado !== 'todos' && $servicoSelecionado !== 'proposta') {
+                    $servicosResumoBase->where('tarefas.servico_id', $servicoSelecionado);
+                }
+
+                if ($usuarioSelecionado !== 'todos') {
+                    $servicosResumoBase->where('tarefas.responsavel_id', $usuarioSelecionado);
+                }
+            } elseif ($tarefasPendentesBase) {
+                $statusSlugsMap = [
+                    'pendente' => ['pendente', 'pendentes'],
+                    'em_execucao' => ['em-execucao', 'em_execucao'],
+                    'atrasado' => ['atrasado', 'atrasados'],
+                ];
+                $statusSlugs = $statusSlugsMap[$statusServicosSelecionado] ?? [];
+                $servicosResumoBase = clone $tarefasPendentesBase;
+                if (!empty($statusSlugs)) {
+                    $servicosResumoBase->whereIn('kanban_colunas.slug', $statusSlugs);
+                }
+            }
+
+            if ($servicosResumoBase) {
+                $servicosResumo = (clone $servicosResumoBase)
+                    ->selectRaw("COALESCE(servicos.nome, 'Sem servico') as servico_nome, COUNT(*) as total")
+                    ->groupBy('servico_nome')
+                    ->orderBy('servico_nome')
+                    ->get();
+            }
+        }
+
+        $propostasBase = Proposta::query()
+            ->with(['cliente', 'vendedor'])
+            ->when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId))
+            ->whereDate('updated_at', '>=', $dataInicio->toDateString())
+            ->whereDate('updated_at', '<=', $dataFim->toDateString());
+
+        if ($statusPropostaSelecionado !== 'todos') {
+            $propostasBase->where('status', $statusPropostaSelecionado);
+        }
+
+        if ($setorSelecionado !== 'operacional' && $usuarioSelecionado !== 'todos') {
+            $propostasBase->where('vendedor_id', $usuarioSelecionado);
+        }
+
+        $propostasTotal = (clone $propostasBase)->count();
+        $propostasValorTotal = (float) (clone $propostasBase)->sum('valor_total');
+
+        $propostas = (clone $propostasBase)
+            ->orderBy('updated_at', 'desc')
+            ->get();
+
+        return [
+            'data_inicio' => $dataInicio->toDateString(),
+            'data_fim' => $dataFim->toDateString(),
+            'setor_selecionado' => $setorSelecionado,
+            'usuario_selecionado' => $usuarioSelecionado,
+            'usuarios_disponiveis' => $usuariosDisponiveis,
+            'status_proposta_opcoes' => $statusPropostaOpcoes,
+            'status_proposta_selecionado' => $statusPropostaSelecionado,
+            'servicos_total' => $servicosTotal,
+            'servicos_tarefas' => $servicosTarefas,
+            'servicos_por_servico' => $servicosPorServico,
+            'propostas_total' => $propostasTotal,
+            'propostas_valor_total' => $propostasValorTotal,
+            'propostas' => $propostas,
+            'produtividade_setor' => [
+                'operacional' => $servicosTotal,
+                'comercial' => $propostasTotal,
+            ],
+        ];
+    }
+
+    private function dadosRelatoriosMaster(?int $empresaId, \Illuminate\Http\Request $request): array
+    {
+        $hoje = Carbon::today();
+        $dataInicio = $this->parseDate($request->query('data_inicio'), $hoje);
+        $dataFim = $this->parseDate($request->query('data_fim'), $dataInicio);
+        if ($dataFim->lt($dataInicio)) {
+            $dataFim = $dataInicio->copy();
+        }
+
+        $abaSelecionada = (string) $request->query('aba', 'operacional');
+        if (!in_array($abaSelecionada, ['operacional', 'comercial'], true)) {
+            $abaSelecionada = 'operacional';
+        }
+
+        $usuarioSelecionadoRaw = $request->query('usuario', 'todos');
+        $usuarioSelecionado = 'todos';
+        if (is_numeric($usuarioSelecionadoRaw) && (int) $usuarioSelecionadoRaw > 0) {
+            $usuarioSelecionado = (int) $usuarioSelecionadoRaw;
+        }
+
+        $statusSelecionado = (string) $request->query('status', 'todos');
+        if (!in_array($statusSelecionado, ['todos', 'pendente', 'em_execucao', 'concluido', 'atrasado'], true)) {
+            $statusSelecionado = 'todos';
+        }
+
+        $statusServicosSelecionado = (string) $request->query('status_servicos', 'concluido');
+        if (!in_array($statusServicosSelecionado, ['todos', 'pendente', 'em_execucao', 'concluido', 'atrasado'], true)) {
+            $statusServicosSelecionado = 'concluido';
+        }
+
+        $statusUsuarioSelecionado = (string) $request->query('status_usuario', 'todos');
+        if (!in_array($statusUsuarioSelecionado, ['todos', 'pendente', 'em_execucao', 'concluido', 'atrasado'], true)) {
+            $statusUsuarioSelecionado = 'todos';
+        }
+
+        $statusPropostaSelecionado = (string) $request->query('status_proposta', 'FECHADA');
+        $statusPropostaOpcoes = Proposta::query()
+            ->when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId))
+            ->whereNotNull('status')
+            ->select('status')
+            ->distinct()
+            ->orderBy('status')
+            ->pluck('status')
+            ->values()
+            ->all();
+        if (empty($statusPropostaOpcoes)) {
+            $statusPropostaOpcoes = ['FECHADA'];
+        }
+        if (!in_array($statusPropostaSelecionado, $statusPropostaOpcoes, true)) {
+            $statusPropostaSelecionado = 'FECHADA';
+        }
+
+        $servicoSelecionadoRaw = $request->query('servico', 'todos');
+        $servicoSelecionado = 'todos';
+        if ($servicoSelecionadoRaw === 'proposta') {
+            $servicoSelecionado = 'proposta';
+        } elseif (is_numeric($servicoSelecionadoRaw) && (int) $servicoSelecionadoRaw > 0) {
+            $servicoSelecionado = (int) $servicoSelecionadoRaw;
+        }
+
+        $servicosDisponiveis = \App\Models\Servico::query()
+            ->when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId))
+            ->whereRaw('LOWER(nome) NOT IN (?, ?)', ['exame', 'esocial'])
+            ->orderBy('nome')
+            ->get(['id', 'nome']);
+
+        $papelPermitidos = $abaSelecionada === 'operacional'
+            ? ['Master', 'Operacional']
+            : ['Master', 'Comercial'];
+
+        $usuariosDisponiveis = User::query()
+            ->when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId))
+            ->whereHas('papel', fn ($q) => $q->whereIn('nome', $papelPermitidos))
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        $usuarioSelecionadoLabel = 'Todos';
+        if ($usuarioSelecionado !== 'todos') {
+            $usuarioSelecionadoLabel = $usuariosDisponiveis->firstWhere('id', (int) $usuarioSelecionado)?->name ?? 'Usuário';
+        }
+
+        $servicoSelecionadoLabel = 'Todos';
+        if ($servicoSelecionado === 'proposta') {
+            $servicoSelecionadoLabel = 'Proposta Comercial';
+        } elseif ($servicoSelecionado !== 'todos') {
+            $servicoSelecionadoLabel = $servicosDisponiveis->firstWhere('id', (int) $servicoSelecionado)?->nome ?? 'Serviço';
+        }
+
+        $statusSelecionadoLabel = match ($statusSelecionado) {
+            'pendente' => 'Pendente',
+            'em_execucao' => 'Em execução',
+            'concluido' => 'Concluído',
+            'atrasado' => 'Atrasado',
+            default => 'Todos',
+        };
+        $statusPropostaSelecionadoLabel = $statusPropostaSelecionado;
+
+        $tarefas = collect();
+        $totalServicos = 0;
+        $executados = 0;
+        $atrasados = 0;
+        $pendentes = 0;
+        $servicosResumo = collect();
+        $servicosLancadosResumo = collect();
+
+        $tarefasAtivas = $abaSelecionada === 'operacional';
+        $tarefasBase = Tarefa::query()
+            ->join('kanban_colunas', 'kanban_colunas.id', '=', 'tarefas.coluna_id')
+            ->leftJoin('servicos', 'servicos.id', '=', 'tarefas.servico_id')
+            ->leftJoin('users as responsavel', 'responsavel.id', '=', 'tarefas.responsavel_id')
+            ->leftJoin('papeis as papel', 'papel.id', '=', 'responsavel.papel_id')
+            ->when($empresaId, fn ($q) => $q->where('tarefas.empresa_id', $empresaId))
+            ->whereDate('tarefas.finalizado_em', '>=', $dataInicio->toDateString())
+            ->whereDate('tarefas.finalizado_em', '<=', $dataFim->toDateString())
+            ->where('kanban_colunas.finaliza', true);
+
+        if ($servicoSelecionado !== 'todos' && $servicoSelecionado !== 'proposta') {
+            $tarefasBase->where('tarefas.servico_id', $servicoSelecionado);
+        }
+
+        if ($usuarioSelecionado !== 'todos') {
+            $tarefasBase->where('tarefas.responsavel_id', $usuarioSelecionado);
+        }
+
+        if ($tarefasAtivas) {
+            $totalServicos = (clone $tarefasBase)->count();
+            $executados = $totalServicos;
+            $atrasados = 0;
+            $pendentes = 0;
+
+            $tarefas = (clone $tarefasBase)
+                ->select('tarefas.*')
+                ->with(['cliente', 'servico', 'responsavel.papel', 'coluna'])
+                ->orderBy('tarefas.finalizado_em', 'desc')
+                ->orderBy('tarefas.id')
+                ->get();
+        }
+
+        if ($tarefasAtivas) {
+            $servicosLancadosBase = Tarefa::query()
+                ->leftJoin('servicos', 'servicos.id', '=', 'tarefas.servico_id')
+                ->when($empresaId, fn ($q) => $q->where('tarefas.empresa_id', $empresaId))
+                ->whereDate('tarefas.inicio_previsto', '>=', $dataInicio->toDateString())
+                ->whereDate('tarefas.inicio_previsto', '<=', $dataFim->toDateString());
+
+            if ($servicoSelecionado !== 'todos' && $servicoSelecionado !== 'proposta') {
+                $servicosLancadosBase->where('tarefas.servico_id', $servicoSelecionado);
+            }
+
+            if ($usuarioSelecionado !== 'todos') {
+                $servicosLancadosBase->where('tarefas.responsavel_id', $usuarioSelecionado);
+            }
+
+            $servicosLancadosResumo = (clone $servicosLancadosBase)
+                ->selectRaw("COALESCE(servicos.nome, 'Sem servio') as servico_nome, COUNT(*) as total")
+                ->groupBy('servico_nome')
+                ->orderBy('servico_nome')
+                ->get();
+        }
+
+        $tarefasProdBase = Tarefa::query()
+            ->join('kanban_colunas', 'kanban_colunas.id', '=', 'tarefas.coluna_id')
+            ->leftJoin('servicos', 'servicos.id', '=', 'tarefas.servico_id')
+            ->leftJoin('users as responsavel', 'responsavel.id', '=', 'tarefas.responsavel_id')
+            ->leftJoin('papeis as papel', 'papel.id', '=', 'responsavel.papel_id')
+            ->when($empresaId, fn ($q) => $q->where('tarefas.empresa_id', $empresaId))
+            ->where('kanban_colunas.finaliza', true)
+            ->whereDate('tarefas.finalizado_em', '>=', $dataInicio->toDateString())
+            ->whereDate('tarefas.finalizado_em', '<=', $dataFim->toDateString());
+
+        if ($servicoSelecionado !== 'todos' && $servicoSelecionado !== 'proposta') {
+            $tarefasProdBase->where('tarefas.servico_id', $servicoSelecionado);
+        }
+
+        if ($usuarioSelecionado !== 'todos') {
+            $tarefasProdBase->where('tarefas.responsavel_id', $usuarioSelecionado);
+        }
+
+        $prodServicosTotal = $tarefasAtivas ? (clone $tarefasProdBase)->count() : 0;
+        $prodServicosPorUsuario = $tarefasAtivas
+            ? (clone $tarefasProdBase)
+                ->selectRaw('tarefas.responsavel_id as usuario_id, COUNT(*) as total')
+                ->groupBy('tarefas.responsavel_id')
+                ->pluck('total', 'usuario_id')
+                ->all()
+            : [];
+        $prodPendentesPorUsuario = [];
+        $prodAtrasadosPorUsuario = [];
+        $tarefasPendentesBase = null;
+        if ($tarefasAtivas) {
+            $tarefasPendentesBase = Tarefa::query()
+                ->join('kanban_colunas', 'kanban_colunas.id', '=', 'tarefas.coluna_id')
+                ->leftJoin('servicos', 'servicos.id', '=', 'tarefas.servico_id')
+                ->when($empresaId, fn ($q) => $q->where('tarefas.empresa_id', $empresaId))
+                ->where('kanban_colunas.finaliza', false)
+                ->whereDate('tarefas.inicio_previsto', '>=', $dataInicio->toDateString())
+                ->whereDate('tarefas.inicio_previsto', '<=', $dataFim->toDateString());
+
+            if ($servicoSelecionado !== 'todos' && $servicoSelecionado !== 'proposta') {
+                $tarefasPendentesBase->where('tarefas.servico_id', $servicoSelecionado);
+            }
+
+            if ($usuarioSelecionado !== 'todos') {
+                $tarefasPendentesBase->where('tarefas.responsavel_id', $usuarioSelecionado);
+            }
+
+            $prodPendentesPorUsuario = (clone $tarefasPendentesBase)
+                ->selectRaw('tarefas.responsavel_id as usuario_id, COUNT(*) as total')
+                ->groupBy('tarefas.responsavel_id')
+                ->pluck('total', 'usuario_id')
+                ->all();
+
+            $prodAtrasadosPorUsuario = (clone $tarefasPendentesBase)
+                ->whereIn('kanban_colunas.slug', ['atrasado', 'atrasados'])
+                ->selectRaw('tarefas.responsavel_id as usuario_id, COUNT(*) as total')
+                ->groupBy('tarefas.responsavel_id')
+                ->pluck('total', 'usuario_id')
+                ->all();
+        }
+
+        $servicosFinalizadosPorUsuario = [];
+        if ($tarefasAtivas) {
+            $servicosFinalizadosPorUsuario = (clone $tarefasBase)
+                ->selectRaw("tarefas.responsavel_id as usuario_id, COALESCE(servicos.nome, 'Sem servico') as servico_nome")
+                ->groupBy('usuario_id', 'servico_nome')
+                ->orderBy('servico_nome')
+                ->get()
+                ->groupBy('usuario_id')
+                ->map(fn ($rows) => $rows->pluck('servico_nome')->values()->all())
+                ->all();
+        }
+
+
+        $chartServicosPorUsuario = $prodServicosPorUsuario;
+        $chartPendentesPorUsuario = $prodPendentesPorUsuario;
+        if ($tarefasAtivas && $statusUsuarioSelecionado !== 'todos') {
+            if ($statusUsuarioSelecionado == 'concluido') {
+                $chartPendentesPorUsuario = [];
+            } else {
+                $chartServicosPorUsuario = [];
+                $statusSlugsMap = [
+                    'pendente' => ['pendente', 'pendentes'],
+                    'em_execucao' => ['em-execucao', 'em_execucao'],
+                    'atrasado' => ['atrasado', 'atrasados'],
+                ];
+                $statusSlugs = $statusSlugsMap[$statusUsuarioSelecionado] ?? [];
+                if ($tarefasPendentesBase && !empty($statusSlugs)) {
+                    $chartPendentesPorUsuario = (clone $tarefasPendentesBase)
+                        ->whereIn('kanban_colunas.slug', $statusSlugs)
+                        ->selectRaw('tarefas.responsavel_id as usuario_id, COUNT(*) as total')
+                        ->groupBy('tarefas.responsavel_id')
+                        ->pluck('total', 'usuario_id')
+                        ->all();
+                } else {
+                    $chartPendentesPorUsuario = [];
+                }
+            }
+        }
+
+
+        if ($tarefasAtivas) {
+            $servicosResumoBase = null;
+            if ($statusServicosSelecionado === 'concluido' || $statusServicosSelecionado === 'todos') {
+                $servicosResumoBase = clone $tarefasBase;
+            } elseif ($tarefasPendentesBase) {
+                $statusSlugsMap = [
+                    'pendente' => ['pendente', 'pendentes'],
+                    'em_execucao' => ['em-execucao', 'em_execucao'],
+                    'atrasado' => ['atrasado', 'atrasados'],
+                ];
+                $statusSlugs = $statusSlugsMap[$statusServicosSelecionado] ?? [];
+                $servicosResumoBase = clone $tarefasPendentesBase;
+                if (!empty($statusSlugs)) {
+                    $servicosResumoBase->whereIn('kanban_colunas.slug', $statusSlugs);
+                }
+            }
+
+            if ($servicosResumoBase) {
+                $servicosResumo = (clone $servicosResumoBase)
+                    ->selectRaw("COALESCE(servicos.nome, 'Sem servi??o') as servico_nome, COUNT(*) as total")
+                    ->groupBy('servico_nome')
+                    ->orderBy('servico_nome')
+                    ->get();
+            }
+        }
+
+        $propostasBase = Proposta::query()
+            ->when($empresaId, fn ($q) => $q->where('propostas.empresa_id', $empresaId))
+            ->whereDate('propostas.updated_at', '>=', $dataInicio->toDateString())
+            ->whereDate('propostas.updated_at', '<=', $dataFim->toDateString());
+
+        if ($usuarioSelecionado !== 'todos') {
+            $propostasBase->where('propostas.vendedor_id', $usuarioSelecionado);
+        }
+
+        $propostasAtivas = $abaSelecionada === 'comercial';
+        if ($servicoSelecionado !== 'todos' && $servicoSelecionado !== 'proposta') {
+            $propostasAtivas = false;
+        }
+
+        if ($propostasAtivas && $statusPropostaSelecionado !== 'todos') {
+            $propostasBase->where('propostas.status', $statusPropostaSelecionado);
+        }
+
+        $prodPropostasTotal = $propostasAtivas ? (clone $propostasBase)->count() : 0;
+        $prodPropostasValorTotal = $propostasAtivas ? (float) (clone $propostasBase)->sum('valor_total') : 0;
+        $prodPropostasPorUsuario = $propostasAtivas
+            ? (clone $propostasBase)
+                ->selectRaw('propostas.vendedor_id as usuario_id, COUNT(*) as total')
+                ->groupBy('propostas.vendedor_id')
+                ->pluck('total', 'usuario_id')
+                ->all()
+            : [];
+        $prodPropostasValorPorUsuario = $propostasAtivas
+            ? (clone $propostasBase)
+                ->selectRaw('propostas.vendedor_id as usuario_id, SUM(propostas.valor_total) as total')
+                ->groupBy('propostas.vendedor_id')
+                ->pluck('total', 'usuario_id')
+                ->all()
+            : [];
+
+        $usuariosPorId = $usuariosDisponiveis->keyBy('id');
+        $topOperacionalUsuarios = collect($prodServicosPorUsuario)
+            ->map(fn ($total, $id) => [
+                'id' => $id,
+                'label' => $usuariosPorId->get($id)?->name ?? 'UsuÃ¡rio',
+                'total' => (int) $total,
+            ])
+            ->sortByDesc('total')
+            ->take(5)
+            ->values();
+
+        $topOperacionalServicos = $servicosResumo
+            ->sortByDesc('total')
+            ->take(5)
+            ->values()
+            ->map(fn ($row) => [
+                'label' => $row->servico_nome,
+                'total' => (int) $row->total,
+            ]);
+
+        $propostasBaseAll = Proposta::query()
+            ->when($empresaId, fn ($q) => $q->where('propostas.empresa_id', $empresaId))
+            ->whereDate('propostas.updated_at', '>=', $dataInicio->toDateString())
+            ->whereDate('propostas.updated_at', '<=', $dataFim->toDateString());
+
+        if ($usuarioSelecionado !== 'todos') {
+            $propostasBaseAll->where('propostas.vendedor_id', $usuarioSelecionado);
+        }
+
+        $comercialStatusResumo = [
+            'fechadas' => 0,
+            'canceladas' => 0,
+            'abertas' => 0,
+        ];
+
+        if ($propostasAtivas) {
+            $comercialStatus = (clone $propostasBaseAll)
+                ->selectRaw('status, COUNT(*) as total')
+                ->groupBy('status')
+                ->pluck('total', 'status')
+                ->all();
+            $fechadas = (int) ($comercialStatus['FECHADA'] ?? 0);
+            $canceladas = (int) ($comercialStatus['CANCELADA'] ?? 0);
+            $totalAll = array_sum($comercialStatus);
+            $abertas = max(0, $totalAll - $fechadas - $canceladas);
+            $comercialStatusResumo = [
+                'fechadas' => $fechadas,
+                'canceladas' => $canceladas,
+                'abertas' => $abertas,
+            ];
+        }
+
+        $topComercialVendedores = collect();
+        $topComercialClientes = collect();
+        $ticketMedio = 0;
+        if ($propostasAtivas) {
+            $propostasTotalBase = (clone $propostasBase)->count();
+            $propostasValorBase = (float) (clone $propostasBase)->sum('valor_total');
+            $ticketMedio = $propostasTotalBase > 0 ? ($propostasValorBase / $propostasTotalBase) : 0;
+
+            $topComercialVendedores = (clone $propostasBase)
+                ->leftJoin('users as vendedor', 'vendedor.id', '=', 'propostas.vendedor_id')
+                ->selectRaw("COALESCE(vendedor.name, 'Sem vendedor') as nome, COUNT(*) as total, SUM(propostas.valor_total) as valor_total")
+                ->groupBy('nome')
+                ->orderByDesc('total')
+                ->limit(5)
+                ->get();
+
+            $topComercialClientes = (clone $propostasBase)
+                ->leftJoin('clientes', 'clientes.id', '=', 'propostas.cliente_id')
+                ->selectRaw("COALESCE(clientes.razao_social, 'Sem cliente') as nome, COUNT(*) as total, SUM(propostas.valor_total) as valor_total")
+                ->groupBy('nome')
+                ->orderByDesc('total')
+                ->limit(5)
+                ->get();
+        }
+
+        $produtividadeUsuariosAll = $usuariosDisponiveis->map(function ($usuario) use ($prodServicosPorUsuario, $prodPropostasPorUsuario, $prodPropostasValorPorUsuario, $prodPendentesPorUsuario, $prodAtrasadosPorUsuario) {
+            $servicos = $prodServicosPorUsuario[$usuario->id] ?? 0;
+            $propostas = $prodPropostasPorUsuario[$usuario->id] ?? 0;
+            $pendentes = $prodPendentesPorUsuario[$usuario->id] ?? 0;
+            $atrasadas = $prodAtrasadosPorUsuario[$usuario->id] ?? 0;
+            return [
+                'id' => $usuario->id,
+                'name' => $usuario->name,
+                'servicos' => $servicos,
+                'pendentes' => $pendentes,
+                'atrasadas' => $atrasadas,
+                'propostas' => $propostas,
+                'propostas_valor' => $prodPropostasValorPorUsuario[$usuario->id] ?? 0,
+                'total' => $servicos + $propostas + $pendentes + $atrasadas,
+            ];
+        });
+
+        $produtividadeTopUsuarios = $produtividadeUsuariosAll
+            ->sortByDesc('total')
+            ->take(10)
+            ->values();
+
+        $produtividadeTopUsuariosServicos = $produtividadeTopUsuarios
+            ->map(fn ($row) => $servicosFinalizadosPorUsuario[$row['id']] ?? [])
+            ->values();
+
+        $agendamentosHoje = $this->agendamentosPorServico($empresaId, $hoje, $hoje);
+        $agendamentosAmanha = $this->agendamentosPorServico($empresaId, $hoje->copy()->addDay(), $hoje->copy()->addDay());
+        $agendamentosProximos = $this->agendamentosPorServico($empresaId, $hoje->copy()->addDays(2), null);
+
+        $resumoPeriodo = [
+            'pendentes' => 0,
+            'finalizadas' => 0,
+            'atrasadas' => 0,
+        ];
+        $operacionalAtivo = 0;
+        $variacaoPeriodo = [
+            'pendentes' => 0,
+            'finalizadas' => 0,
+            'atrasadas' => 0,
+            'operacional_ativo' => 0,
+        ];
+        if ($abaSelecionada === 'operacional') {
+            $tarefasPendentesPeriodo = Tarefa::query()
+                ->join('kanban_colunas', 'kanban_colunas.id', '=', 'tarefas.coluna_id')
+                ->when($empresaId, fn ($q) => $q->where('tarefas.empresa_id', $empresaId))
+                ->whereDate('tarefas.inicio_previsto', '>=', $dataInicio->toDateString())
+                ->whereDate('tarefas.inicio_previsto', '<=', $dataFim->toDateString())
+                ->where('kanban_colunas.finaliza', false);
+
+            if ($servicoSelecionado !== 'todos' && $servicoSelecionado !== 'proposta') {
+                $tarefasPendentesPeriodo->where('tarefas.servico_id', $servicoSelecionado);
+            }
+
+            if ($usuarioSelecionado !== 'todos') {
+                $tarefasPendentesPeriodo->where('tarefas.responsavel_id', $usuarioSelecionado);
+            }
+
+            $tarefasFinalizadasPeriodo = Tarefa::query()
+                ->join('kanban_colunas', 'kanban_colunas.id', '=', 'tarefas.coluna_id')
+                ->when($empresaId, fn ($q) => $q->where('tarefas.empresa_id', $empresaId))
+                ->whereDate('tarefas.finalizado_em', '>=', $dataInicio->toDateString())
+                ->whereDate('tarefas.finalizado_em', '<=', $dataFim->toDateString())
+                ->where('kanban_colunas.finaliza', true);
+
+            if ($servicoSelecionado !== 'todos' && $servicoSelecionado !== 'proposta') {
+                $tarefasFinalizadasPeriodo->where('tarefas.servico_id', $servicoSelecionado);
+            }
+
+            if ($usuarioSelecionado !== 'todos') {
+                $tarefasFinalizadasPeriodo->where('tarefas.responsavel_id', $usuarioSelecionado);
+            }
+
+            $resumoPeriodo['pendentes'] = (clone $tarefasPendentesPeriodo)->count();
+            $resumoPeriodo['finalizadas'] = (clone $tarefasFinalizadasPeriodo)->count();
+
+            $tarefasAtrasadasPeriodo = (clone $tarefasPendentesPeriodo)
+                ->whereDate('tarefas.fim_previsto', '<', $hoje->toDateString());
+            $resumoPeriodo['atrasadas'] = $tarefasAtrasadasPeriodo->count();
+
+            $operacionalAtivo = Tarefa::query()
+                ->join('kanban_colunas', 'kanban_colunas.id', '=', 'tarefas.coluna_id')
+                ->when($empresaId, fn ($q) => $q->where('tarefas.empresa_id', $empresaId))
+                ->whereDate('tarefas.inicio_previsto', '>=', $dataInicio->toDateString())
+                ->whereDate('tarefas.inicio_previsto', '<=', $dataFim->toDateString())
+                ->where('kanban_colunas.finaliza', false)
+                ->count();
+
+            $periodDays = $dataInicio->diffInDays($dataFim) + 1;
+            $periodoAnteriorFim = $dataInicio->copy()->subDay();
+            $periodoAnteriorInicio = $periodoAnteriorFim->copy()->subDays(max(0, $periodDays - 1));
+
+            $tarefasPendentesPeriodoAnterior = Tarefa::query()
+                ->join('kanban_colunas', 'kanban_colunas.id', '=', 'tarefas.coluna_id')
+                ->when($empresaId, fn ($q) => $q->where('tarefas.empresa_id', $empresaId))
+                ->whereDate('tarefas.inicio_previsto', '>=', $periodoAnteriorInicio->toDateString())
+                ->whereDate('tarefas.inicio_previsto', '<=', $periodoAnteriorFim->toDateString())
+                ->where('kanban_colunas.finaliza', false);
+
+            if ($servicoSelecionado !== 'todos' && $servicoSelecionado !== 'proposta') {
+                $tarefasPendentesPeriodoAnterior->where('tarefas.servico_id', $servicoSelecionado);
+            }
+
+            if ($usuarioSelecionado !== 'todos') {
+                $tarefasPendentesPeriodoAnterior->where('tarefas.responsavel_id', $usuarioSelecionado);
+            }
+
+            $tarefasFinalizadasPeriodoAnterior = Tarefa::query()
+                ->join('kanban_colunas', 'kanban_colunas.id', '=', 'tarefas.coluna_id')
+                ->when($empresaId, fn ($q) => $q->where('tarefas.empresa_id', $empresaId))
+                ->whereDate('tarefas.finalizado_em', '>=', $periodoAnteriorInicio->toDateString())
+                ->whereDate('tarefas.finalizado_em', '<=', $periodoAnteriorFim->toDateString())
+                ->where('kanban_colunas.finaliza', true);
+
+            if ($servicoSelecionado !== 'todos' && $servicoSelecionado !== 'proposta') {
+                $tarefasFinalizadasPeriodoAnterior->where('tarefas.servico_id', $servicoSelecionado);
+            }
+
+            if ($usuarioSelecionado !== 'todos') {
+                $tarefasFinalizadasPeriodoAnterior->where('tarefas.responsavel_id', $usuarioSelecionado);
+            }
+
+            $resumoPeriodoAnterior = [
+                'pendentes' => (clone $tarefasPendentesPeriodoAnterior)->count(),
+                'finalizadas' => (clone $tarefasFinalizadasPeriodoAnterior)->count(),
+                'atrasadas' => (clone $tarefasPendentesPeriodoAnterior)
+                    ->whereDate('tarefas.fim_previsto', '<', $periodoAnteriorFim->toDateString())
+                    ->count(),
+            ];
+
+            $operacionalAtivoAnterior = Tarefa::query()
+                ->join('kanban_colunas', 'kanban_colunas.id', '=', 'tarefas.coluna_id')
+                ->when($empresaId, fn ($q) => $q->where('tarefas.empresa_id', $empresaId))
+                ->whereDate('tarefas.inicio_previsto', '>=', $periodoAnteriorInicio->toDateString())
+                ->whereDate('tarefas.inicio_previsto', '<=', $periodoAnteriorFim->toDateString())
+                ->where('kanban_colunas.finaliza', false)
+                ->count();
+
+            $calcVariacao = function (int $atual, int $anterior): int {
+                if ($anterior === 0) {
+                    return $atual > 0 ? 100 : 0;
+                }
+                return (int) round((($atual - $anterior) / $anterior) * 100);
+            };
+
+            $variacaoPeriodo = [
+                'pendentes' => $calcVariacao($resumoPeriodo['pendentes'], $resumoPeriodoAnterior['pendentes']),
+                'finalizadas' => $calcVariacao($resumoPeriodo['finalizadas'], $resumoPeriodoAnterior['finalizadas']),
+                'atrasadas' => $calcVariacao($resumoPeriodo['atrasadas'], $resumoPeriodoAnterior['atrasadas']),
+                'operacional_ativo' => $calcVariacao($operacionalAtivo, $operacionalAtivoAnterior),
+            ];
+        }
+
+        return [
+            'data_inicio' => $dataInicio->toDateString(),
+            'data_fim' => $dataFim->toDateString(),
+            'aba_selecionada' => $abaSelecionada,
+            'usuario_selecionado' => $usuarioSelecionado,
+            'servico_selecionado' => $servicoSelecionado,
+            'status_selecionado' => $statusSelecionado,
+            'servicos_disponiveis' => $servicosDisponiveis,
+            'usuarios_disponiveis' => $usuariosDisponiveis,
+            'status_proposta_selecionado' => $statusPropostaSelecionado,
+            'status_proposta_opcoes' => $statusPropostaOpcoes,
+            'status_servicos_selecionado' => $statusServicosSelecionado,
+            'status_servicos_opcoes' => [
+                ['value' => 'concluido', 'label' => 'Concluido'],
+                ['value' => 'pendente', 'label' => 'Pendente'],
+                ['value' => 'em_execucao', 'label' => 'Em execucao'],
+                ['value' => 'atrasado', 'label' => 'Atrasado'],
+                ['value' => 'todos', 'label' => 'Todos'],
+            ],
+            'status_usuario_selecionado' => $statusUsuarioSelecionado,
+            'status_usuario_opcoes' => [
+                ['value' => 'todos', 'label' => 'Todos'],
+                ['value' => 'pendente', 'label' => 'Pendente'],
+                ['value' => 'em_execucao', 'label' => 'Em execução'],
+                ['value' => 'concluido', 'label' => 'Concluído'],
+                ['value' => 'atrasado', 'label' => 'Atrasado'],
+            ],
+            'filtros_label' => [
+                'usuario' => $usuarioSelecionadoLabel,
+                'servico' => $servicoSelecionadoLabel,
+                'setor' => $abaSelecionada === 'operacional' ? 'Operacional' : 'Comercial',
+                'status' => $statusSelecionadoLabel,
+                'status_proposta' => $statusPropostaSelecionadoLabel,
+            ],
+            'tarefas' => $tarefas,
+            'resumo' => [
+                'pendentes' => $pendentes,
+                'executados' => $executados,
+                'atrasados' => $atrasados,
+                'total' => $totalServicos,
+            ],
+            'servicos_resumo' => $servicosResumo,
+            'servicos_lancados_resumo' => $servicosLancadosResumo,
+            'produtividade_setor' => [
+                'operacional' => $abaSelecionada === 'operacional' ? $prodServicosTotal : 0,
+                'comercial' => $abaSelecionada === 'comercial' ? $prodPropostasTotal : 0,
+            ],
+            'produtividade_valor_total' => $prodPropostasValorTotal,
+            'ticket_medio' => $ticketMedio,
+            'comercial_status_resumo' => $comercialStatusResumo,
+            'top_comercial_vendedores' => $topComercialVendedores,
+            'top_comercial_clientes' => $topComercialClientes,
+            'top_operacional_usuarios' => $topOperacionalUsuarios,
+            'top_operacional_servicos' => $topOperacionalServicos,
+            'produtividade_usuarios' => [
+                'labels' => $usuariosDisponiveis->map(fn ($usuario) => $usuario->name)->all(),
+                'servicos' => $usuariosDisponiveis->pluck('id')->map(fn ($id) => $chartServicosPorUsuario[$id] ?? 0)->all(),
+                'pendentes' => $usuariosDisponiveis->pluck('id')->map(fn ($id) => $chartPendentesPorUsuario[$id] ?? 0)->all(),
+                'atrasadas' => $usuariosDisponiveis->pluck('id')->map(fn ($id) => $prodAtrasadosPorUsuario[$id] ?? 0)->all(),
+                'propostas' => $usuariosDisponiveis->pluck('id')->map(fn ($id) => $prodPropostasPorUsuario[$id] ?? 0)->all(),
+                'propostas_valor' => $usuariosDisponiveis->pluck('id')->map(fn ($id) => $prodPropostasValorPorUsuario[$id] ?? 0)->all(),
+            ],
+            'produtividade_top_usuarios' => [
+                'labels' => $produtividadeTopUsuarios->pluck('name')->all(),
+                'servicos' => $produtividadeTopUsuarios->pluck('servicos')->all(),
+                'pendentes' => $produtividadeTopUsuarios->pluck('pendentes')->all(),
+                'atrasadas' => $produtividadeTopUsuarios->pluck('atrasadas')->all(),
+                'propostas' => $produtividadeTopUsuarios->pluck('propostas')->all(),
+                'propostas_valor' => $produtividadeTopUsuarios->pluck('propostas_valor')->all(),
+                'total' => $produtividadeTopUsuarios->pluck('total')->all(),
+                'servicos_lista' => $produtividadeTopUsuariosServicos->all(),
+            ],
+            'agendamentos' => [
+                'data' => $hoje->format('d/m'),
+                'hoje' => $agendamentosHoje,
+                'amanha' => $agendamentosAmanha,
+                'proximos' => $agendamentosProximos,
+            ],
+            'resumo_periodo' => $resumoPeriodo,
+            'variacao_periodo' => $variacaoPeriodo,
+            'operacional_ativo' => $operacionalAtivo,
+            'status_opcoes' => [
+                ['value' => 'todos', 'label' => 'Todos'],
+                ['value' => 'pendente', 'label' => 'Pendente'],
+                ['value' => 'em_execucao', 'label' => 'Em execução'],
+                ['value' => 'concluido', 'label' => 'Concluído'],
+                ['value' => 'atrasado', 'label' => 'Atrasado'],
+            ],
+        ];
+    }
+
+    private function agendamentosPorServico(?int $empresaId, Carbon $dataInicio, ?Carbon $dataFim): array
+    {
+        $servicosChave = ['aso', 'ltcat', 'ltip', 'pcmso'];
+
+        $query = Tarefa::query()
+            ->join('servicos', 'servicos.id', '=', 'tarefas.servico_id')
+            ->when($empresaId, fn ($q) => $q->where('tarefas.empresa_id', $empresaId))
+            ->whereRaw('LOWER(servicos.nome) IN (?, ?, ?, ?)', $servicosChave);
+
+        if ($dataFim) {
+            $query->whereDate('tarefas.inicio_previsto', '>=', $dataInicio->toDateString())
+                ->whereDate('tarefas.inicio_previsto', '<=', $dataFim->toDateString());
+        } else {
+            $query->whereDate('tarefas.inicio_previsto', '>=', $dataInicio->toDateString());
+        }
+
+        $porServico = (clone $query)
+            ->selectRaw('servicos.nome as servico_nome, COUNT(*) as total')
+            ->groupBy('servicos.nome')
+            ->orderBy('servicos.nome')
+            ->get();
+
+        $total = (clone $query)->count();
+
+        return [
             'total' => $total,
             'por_servico' => $porServico,
         ];
@@ -213,4 +1310,55 @@ class DashboardController extends Controller
 
         return $fallback->copy()->startOfDay();
     }
+
+    private function logoData(): ?string
+    {
+        $logoPath = storage_path('app/public/logo (1)-transparente.png');
+
+        if (!is_file($logoPath)) {
+            return null;
+        }
+
+        $data = file_get_contents($logoPath);
+        if ($data === false) {
+            return null;
+        }
+
+        $mime = 'image/png';
+        if (function_exists('getimagesize')) {
+            $info = @getimagesize($logoPath);
+            if (!empty($info['mime'])) {
+                $mime = $info['mime'];
+            }
+        }
+
+        if (function_exists('imagecreatefromstring') && function_exists('imagescale')) {
+            $image = @imagecreatefromstring($data);
+            if ($image !== false) {
+                $width = imagesx($image);
+                if ($width > 320) {
+                    $scaled = imagescale($image, 320);
+                    if ($scaled !== false) {
+                        ob_start();
+                        if ($mime === 'image/png') {
+                            imagepng($scaled);
+                        } elseif ($mime === 'image/jpeg') {
+                            imagejpeg($scaled, null, 85);
+                            $mime = 'image/jpeg';
+                        } else {
+                            imagepng($scaled);
+                            $mime = 'image/png';
+                        }
+                        $data = (string) ob_get_clean();
+                        imagedestroy($scaled);
+                    }
+                }
+                imagedestroy($image);
+            }
+        }
+
+        return 'data:' . $mime . ';base64,' . base64_encode($data);
+    }
 }
+
+
