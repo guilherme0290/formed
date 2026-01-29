@@ -15,7 +15,10 @@ use Illuminate\Validation\ValidationException;
 
 class PrecificacaoService
 {
-    public function __construct(private readonly ContratoClienteService $contratoClienteService)
+    public function __construct(
+        private readonly ContratoClienteService $contratoClienteService,
+        private readonly AsoGheService $asoGheService
+    )
     {
     }
 
@@ -76,20 +79,30 @@ class PrecificacaoService
             ]);
         }
 
-        $itemContrato = $this->resolveItemContratoAsoPorTipo($contrato, (int) $tarefa->servico_id, (string) $aso->tipo_aso);
-        if (!$itemContrato) {
+        $itensContrato = $this->asoGheService->resolveItensContratoAsoPorTipo(
+            $contrato,
+            (int) $tarefa->servico_id,
+            (string) $aso->tipo_aso
+        );
+
+        if ($itensContrato->isEmpty()) {
             throw ValidationException::withMessages([
                 'contrato' => 'Não é possível precificar o ASO porque o tipo solicitado não está contratado. Solicite ao Comercial para ajustar a proposta e fechar novamente.',
             ]);
         }
 
-        if ((float) $itemContrato->preco_unitario_snapshot <= 0) {
+        $valorTotal = (float) $itensContrato->sum(fn ($item) => (float) $item->preco_unitario_snapshot);
+
+        if ($valorTotal <= 0) {
             throw ValidationException::withMessages([
                 'contrato' => 'Não é possível concluir esta tarefa porque o serviço não possui valor válido no contrato ativo.',
             ]);
         }
 
-        $descricao = $itemContrato->descricao_snapshot ?: 'ASO';
+        $itemContrato = $itensContrato->first();
+        $descricao = $itensContrato->count() === 1
+            ? ($itemContrato?->descricao_snapshot ?: 'ASO')
+            : $this->descricaoAsoPorTipo((string) $aso->tipo_aso);
 
         return [
             'contrato' => $contrato,
@@ -97,61 +110,24 @@ class PrecificacaoService
             'itensVenda' => [[
                 'servico_id' => $tarefa->servico_id,
                 'descricao_snapshot' => $descricao,
-                'preco_unitario_snapshot' => (float) $itemContrato->preco_unitario_snapshot,
+                'preco_unitario_snapshot' => $valorTotal,
                 'quantidade' => 1,
             ]],
         ];
     }
 
-    private function resolveItemContratoAsoPorTipo(ClienteContrato $contrato, int $servicoId, string $tipoAso): ?ClienteContratoItem
+    private function descricaoAsoPorTipo(string $tipoAso): string
     {
-        $itens = $contrato->itens()
-            ->where('servico_id', $servicoId)
-            ->where('ativo', true)
-            ->get();
+        $label = match ($tipoAso) {
+            'admissional' => 'Admissional',
+            'periodico' => 'Periódico',
+            'demissional' => 'Demissional',
+            'mudanca_funcao' => 'Mudança de Função',
+            'retorno_trabalho' => 'Retorno ao Trabalho',
+            default => '',
+        };
 
-        if ($itens->isEmpty()) {
-            return null;
-        }
-
-        $item = $itens->first(fn (ClienteContratoItem $item) => ($item->regras_snapshot['aso_tipo'] ?? null) === $tipoAso);
-        if ($item) {
-            return $item;
-        }
-
-        $item = $itens->first(function (ClienteContratoItem $item) use ($tipoAso) {
-            $descricao = mb_strtolower((string) ($item->descricao_snapshot ?? ''));
-            return $this->descricaoAsoCombinaTipo($descricao, $tipoAso);
-        });
-
-        if ($item) {
-            return $item;
-        }
-
-        return $itens->count() === 1 ? $itens->first() : null;
-    }
-
-    private function descricaoAsoCombinaTipo(string $descricao, string $tipoAso): bool
-    {
-        $map = [
-            'admissional' => ['admissional'],
-            'periodico' => ['periodico', 'periódico'],
-            'demissional' => ['demissional'],
-            'mudanca_funcao' => ['mudanca', 'mudança'],
-            'retorno_trabalho' => ['retorno'],
-        ];
-
-        if (!array_key_exists($tipoAso, $map)) {
-            return false;
-        }
-
-        foreach ($map[$tipoAso] as $keyword) {
-            if (str_contains($descricao, $keyword)) {
-                return true;
-            }
-        }
-
-        return false;
+        return $label !== '' ? 'ASO - ' . $label : 'ASO';
     }
 
     /**

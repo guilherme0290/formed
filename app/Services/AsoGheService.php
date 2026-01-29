@@ -67,6 +67,47 @@ class AsoGheService
         return array_keys($tipos);
     }
 
+    public function resolveItensContratoAsoPorTipo(ClienteContrato $contrato, int $servicoId, string $tipoAso): Collection
+    {
+        $itens = $contrato->relationLoaded('itens')
+            ? $contrato->itens->filter(fn ($item) => (int) $item->servico_id === $servicoId && $item->ativo)
+            : $contrato->itens()
+                ->where('servico_id', $servicoId)
+                ->where('ativo', true)
+                ->get();
+
+        if ($itens->isEmpty()) {
+            return collect();
+        }
+
+        $itensTipo = $itens->filter(fn ($item) => ($item->regras_snapshot['aso_tipo'] ?? null) === $tipoAso);
+        if ($itensTipo->isNotEmpty()) {
+            return $itensTipo->values();
+        }
+
+        $itensTipo = $itens->filter(function ($item) use ($tipoAso) {
+            $tipoInferido = $this->inferTipoAsoFromDescricao($item->descricao_snapshot ?? null);
+            return $tipoInferido === $tipoAso;
+        });
+        if ($itensTipo->isNotEmpty()) {
+            return $itensTipo->values();
+        }
+
+        return $itens->count() === 1 ? $itens->values() : collect();
+    }
+
+    public function totalAsoContratoPorTipo(ClienteContrato $contrato, int $servicoId, string $tipoAso): ?float
+    {
+        $itens = $this->resolveItensContratoAsoPorTipo($contrato, $servicoId, $tipoAso);
+        if ($itens->isEmpty()) {
+            return null;
+        }
+
+        $total = (float) $itens->sum(fn ($item) => (float) $item->preco_unitario_snapshot);
+
+        return $total > 0 ? $total : null;
+    }
+
     public function isAsoItemContrato(?ClienteContratoItem $item): bool
     {
         if (!$item) {
