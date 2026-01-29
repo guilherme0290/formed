@@ -99,13 +99,6 @@
                     <div class="text-sm font-semibold text-slate-900">Resumo Geral</div>
                     <label class="flex items-start justify-between gap-3 text-sm text-slate-700">
                         <span>
-                            <span class="font-medium">Mostrar resumo do painel</span>
-                            <span class="block text-xs text-slate-500">Hero com visão geral do módulo</span>
-                        </span>
-                        <input type="checkbox" class="h-5 w-9 accent-indigo-600" data-dashboard-toggle="hero">
-                    </label>
-                    <label class="flex items-start justify-between gap-3 text-sm text-slate-700">
-                        <span>
                             <span class="font-medium">Mostrar resumo de faturamento</span>
                             <span class="block text-xs text-slate-500">Card com total financeiro global</span>
                         </span>

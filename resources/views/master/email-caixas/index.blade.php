@@ -175,7 +175,7 @@
             </div>
 
                 <div class="space-y-3">
-                    @forelse ($caixas as $caixa)
+                    @foreach ($caixas as $caixa)
                         @php
                             $isEditing = $caixaEmEdicaoId === $caixa->id;
                             $emailLogin = $caixa->usuario ?: '-';
@@ -308,7 +308,6 @@
                         </x-modal>
                     @endforeach
                 </div>
-            @endif
         </div>
 
         <div class="{{ $tab === 'tempos' ? 'space-y-6' : 'hidden' }}" data-tab-panel="tempos">

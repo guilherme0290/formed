@@ -334,11 +334,6 @@
                     $ticketDiff = $ticketMedio > 0 && $ticketTop > 0 ? round((($ticketTop - $ticketMedio) / $ticketMedio) * 100) : 0;
                 @endphp
 
-                <div class="flex items-center gap-2 text-xs text-slate-500">
-                    <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-slate-600">i</span>
-                    Per&iacute;odo analisado: {{ $dataInicioFmt }} &rarr; {{ $dataFimFmt }}
-                </div>
-
                 <div class="grid gap-4 md:grid-cols-4">
                     <div class="rounded-2xl border border-indigo-200 bg-indigo-50/60 px-4 py-4">
                         <div class="flex items-center gap-2 text-xs font-bold text-slate-900 uppercase">

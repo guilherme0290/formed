@@ -80,60 +80,85 @@
         </div>
 
         {{-- Relatórios avançados --}}
-        <div class="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 space-y-5"
+        <div class="bg-sky-50 rounded-3xl shadow-sm border border-sky-100 p-6 space-y-5"
              data-dashboard-card="relatorios-avancados">
-            <div class="flex items-center justify-between gap-3 flex-wrap">
-                <div>
-                    <h3 class="text-lg font-semibold text-slate-900">Relatórios Avançados</h3>
-                    <p class="text-sm text-slate-500">Insights operacionais e comerciais</p>
+            <div class="flex items-center justify-center">
+                <div class="text-center">
+                    <h3 class="text-lg font-semibold text-slate-900 text-center">Relatórios Avançados</h3>
                 </div>
             </div>
 
             <div class="grid md:grid-cols-2 gap-6">
                 <div class="space-y-2">
-                    <div class="text-xs font-semibold text-slate-500 mb-2">Métricas Operacionais</div>
+                    <div class="mb-2 flex justify-center">
+                        <span class="inline-flex items-center rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white shadow-sm">
+                            Métricas Operacionais
+                        </span>
+                    </div>
                     <ul class="space-y-2">
-                        <li class="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-2">
-                            <span>Taxa de Conclusão</span>
-                            <span class="font-semibold text-emerald-600">
-                                {{ ($operacionais['taxa_conclusao'] ?? 0) }}%
-                            </span>
+                        <li>
+                            <a href="{{ route('master.relatorios', ['setor' => 'operacional', 'aba' => 'operacional']) }}"
+                               class="flex items-center justify-between bg-white/70 rounded-xl px-4 py-2 border border-transparent shadow-sm transition duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md hover:border-sky-200">
+                                <span>Taxa de Conclusão</span>
+                                <span class="font-semibold text-emerald-600">
+                                    {{ ($operacionais['taxa_conclusao'] ?? 0) }}%
+                                </span>
+                            </a>
                         </li>
-                        <li class="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-2">
-                            <span>Tarefas Atrasadas</span>
-                            <span class="font-semibold text-rose-600">
-                                {{ $operacionais['atrasadas'] ?? 0 }}
-                            </span>
+                        <li>
+                            <a href="{{ route('master.relatorios', ['setor' => 'operacional', 'aba' => 'operacional']) }}"
+                               class="flex items-center justify-between bg-white/70 rounded-xl px-4 py-2 border border-transparent shadow-sm transition duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md hover:border-sky-200">
+                                <span>Tarefas Atrasadas</span>
+                                <span class="font-semibold text-rose-600">
+                                    {{ $operacionais['atrasadas'] ?? 0 }}
+                                </span>
+                            </a>
                         </li>
-                        <li class="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-2">
-                            <span>SLA Médio</span>
-                            <span class="font-semibold text-indigo-600">
-                                {{ is_null($operacionais['sla_percentual'] ?? null) ? '—' : ($operacionais['sla_percentual'].'%') }}
-                            </span>
+                        <li>
+                            <a href="{{ route('master.relatorios', ['setor' => 'operacional', 'aba' => 'operacional']) }}"
+                               class="flex items-center justify-between bg-white/70 rounded-xl px-4 py-2 border border-transparent shadow-sm transition duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md hover:border-sky-200">
+                                <span>SLA Médio</span>
+                                <span class="font-semibold text-indigo-600">
+                                    {{ is_null($operacionais['sla_percentual'] ?? null) ? '—' : ($operacionais['sla_percentual'].'%') }}
+                                </span>
+                            </a>
                         </li>
                     </ul>
                 </div>
 
                 <div class="space-y-2">
-                    <div class="text-xs font-semibold text-slate-500 mb-2">Métricas Comerciais</div>
+                    <div class="mb-2 flex justify-center">
+                        <span class="inline-flex items-center rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white shadow-sm">
+                            Métricas Comerciais
+                        </span>
+                    </div>
                     <ul class="space-y-2">
-                        <li class="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-2">
-                            <span>Ticket Médio</span>
-                            <span class="font-semibold">
-                                R$ {{ number_format($comerciais['ticket_medio'] ?? 0, 2, ',', '.') }}
-                            </span>
+                        <li>
+                            <a href="{{ route('master.relatorios', ['setor' => 'operacional', 'aba' => 'comercial']) }}"
+                               class="flex items-center justify-between bg-white/70 rounded-xl px-4 py-2 border border-transparent shadow-sm transition duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md hover:border-sky-200">
+                                <span>Ticket Médio</span>
+                                <span class="font-semibold">
+                                    R$ {{ number_format($comerciais['ticket_medio'] ?? 0, 2, ',', '.') }}
+                                </span>
+                            </a>
                         </li>
-                        <li class="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-2">
-                            <span>Taxa de Conversão</span>
-                            <span class="font-semibold text-emerald-600">
-                                {{ ($comerciais['taxa_conversao'] ?? 0) }}%
-                            </span>
+                        <li>
+                            <a href="{{ route('master.relatorios', ['setor' => 'operacional', 'aba' => 'comercial']) }}"
+                               class="flex items-center justify-between bg-white/70 rounded-xl px-4 py-2 border border-transparent shadow-sm transition duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md hover:border-sky-200">
+                                <span>Taxa de Conversão</span>
+                                <span class="font-semibold text-emerald-600">
+                                    {{ ($comerciais['taxa_conversao'] ?? 0) }}%
+                                </span>
+                            </a>
                         </li>
-                        <li class="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-2">
-                            <span>Propostas em Aberto</span>
-                            <span class="font-semibold">
-                                {{ $comerciais['propostas_em_aberto'] ?? 0 }}
-                            </span>
+                        <li>
+                            <a href="{{ route('master.relatorios', ['setor' => 'operacional', 'aba' => 'comercial']) }}"
+                               class="flex items-center justify-between bg-white/70 rounded-xl px-4 py-2 border border-transparent shadow-sm transition duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md hover:border-sky-200">
+                                <span>Propostas em Aberto</span>
+                                <span class="font-semibold">
+                                    {{ $comerciais['propostas_em_aberto'] ?? 0 }}
+                                </span>
+                            </a>
                         </li>
                     </ul>
                 </div>
