@@ -5,19 +5,39 @@
     @php
         $caixaEmEdicaoId = (int) old('caixa_id');
         $caixaTesteId = (int) old('caixa_teste_id');
+        $tab = request('tab', 'email');
     @endphp
 
-    <div class="max-w-6xl mx-auto px-4 md:px-6 py-8 space-y-6 bg-white">
-        <div class="space-y-2">
-            <div class="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                    <h1 class="text-2xl md:text-3xl font-semibold text-slate-900">
-                        Configuracao de Caixas de E-mail SMTP
-                    </h1>
-                    <p class="text-slate-500 text-sm mt-1">Defina servidor, autenticacao e credenciais de envio.</p>
-                </div>
-                <button type="submit" form="email-caixa-form" class="hidden">Salvar configuracoes</button>
+    <div class="max-w-6xl mx-auto px-4 md:px-6 py-6 space-y-6">
+        <div class="text-[11px] text-slate-500">
+            Configurações &gt; {{ $tab === 'tempos' ? 'Tempo das tarefas' : 'E-mail SMTP (CRUR)' }}
+        </div>
+        <div class="flex flex-wrap items-start justify-between gap-4">
+            <div>
+                <h1 class="text-2xl font-semibold text-slate-900">
+                    {{ $tab === 'tempos' ? 'Configuração de tempo das tarefas' : 'Configuracao de Caixas de E-mail SMTP (CRUR)' }}
+                </h1>
+                <p class="text-slate-500 text-sm mt-1">
+                    {{ $tab === 'tempos'
+                        ? 'Defina o tempo padrão por serviço para o controle de SLA.'
+                        : 'Defina servidor, remetente, respondente e credenciais.' }}
+                </p>
             </div>
+            <button type="submit" form="email-caixa-form"
+                    class="hidden">
+                Salvar Configurações
+            </button>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2 text-sm">
+            <a href="{{ route('master.email-caixas.index', ['tab' => 'email']) }}"
+               class="px-3 py-2 rounded-xl border {{ $tab === 'email' ? 'border-indigo-200 bg-indigo-50 text-indigo-700 font-semibold' : 'border-slate-200 bg-white text-slate-600' }}">
+                E-mail
+            </a>
+            <a href="{{ route('master.email-caixas.index', ['tab' => 'tempos']) }}"
+               class="px-3 py-2 rounded-xl border {{ $tab === 'tempos' ? 'border-indigo-200 bg-indigo-50 text-indigo-700 font-semibold' : 'border-slate-200 bg-white text-slate-600' }}">
+                Tempo das tarefas
+            </a>
         </div>
 
         @if (session('ok'))
@@ -37,51 +57,47 @@
             </div>
         @endif
 
-        <form id="email-caixa-form" method="POST" action="{{ route('master.email-caixas.store') }}" class="space-y-5">
-            @csrf
-            <div class="grid lg:grid-cols-2 gap-5">
-                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
-                    <div>
-                        <div class="text-sm font-semibold text-slate-900">Servidor SMTP &amp; Autenticacao</div>
-                        <div class="text-xs text-slate-500">Host, porta e seguranca do envio</div>
-                    </div>
-
-                    <div class="space-y-2 text-sm">
-                        <label class="text-xs font-semibold text-slate-600">Nome da configuracao</label>
-                        <input type="text" name="nome" class="w-full rounded-lg border border-slate-200 px-3 py-2"
-                               value="{{ old('nome') }}" placeholder="Ex: SMTP Principal - Producao" required>
-                    </div>
-
-                    <div class="space-y-2 text-sm">
-                        <label class="text-xs font-semibold text-slate-600">Servidor SMTP (Host)</label>
-                        <input type="text" name="host" class="w-full rounded-lg border border-slate-200 px-3 py-2"
-                               value="{{ old('host') }}" placeholder="smtp.dominio.com" required>
-                        <div class="text-[11px] text-slate-500">Endereco fornecido pelo provedor de e-mail</div>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-3">
-                        <div class="space-y-2 text-sm">
-                            <label class="text-xs font-semibold text-slate-600">Porta</label>
-                            <input type="number" name="porta" class="w-full rounded-lg border border-slate-200 px-3 py-2"
-                                   value="{{ old('porta', 587) }}" min="1" max="65535" required>
+        <div class="{{ $tab === 'email' ? 'space-y-6' : 'hidden' }}" data-tab-panel="email">
+            <form id="email-caixa-form" method="POST" action="{{ route('master.email-caixas.store') }}" class="space-y-4">
+                @csrf
+                <div class="grid md:grid-cols-2 gap-4">
+                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm">
+                        <div class="border-b border-slate-200 px-4 py-3">
+                            <h2 class="text-sm font-semibold text-slate-800">Servidor SMTP & Autenticacao</h2>
                         </div>
-                        <div class="space-y-2 text-sm">
-                            <label class="text-xs font-semibold text-slate-600">Seguranca</label>
-                            <select name="criptografia" class="w-full rounded-lg border border-slate-200 px-3 py-2">
-                                <option value="starttls" @selected(old('criptografia', 'starttls') === 'starttls')>STARTTLS</option>
-                                <option value="ssl" @selected(old('criptografia', 'starttls') === 'ssl')>SSL</option>
-                                <option value="tls" @selected(old('criptografia', 'starttls') === 'tls')>TLS</option>
-                                <option value="none" @selected(old('criptografia', 'starttls') === 'none')>Sem criptografia</option>
-                            </select>
+                        <div class="p-4 space-y-3 text-sm">
+                            <div class="space-y-1">
+                                <label class="text-xs font-semibold text-slate-600">Nome da configuracao</label>
+                                <input type="text" name="nome" class="w-full rounded-lg border border-slate-200 px-3 py-2"
+                                       value="{{ old('nome') }}" placeholder="Ex.: SMTP Principal Formed" required>
+                            </div>
+                            <div class="space-y-1">
+                                <label class="text-xs font-semibold text-slate-600">Servidor SMTP (Host)</label>
+                                <input type="text" name="host" class="w-full rounded-lg border border-slate-200 px-3 py-2"
+                                       value="{{ old('host') }}" placeholder="smtp.dominio.com" required>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="space-y-1">
+                                    <label class="text-xs font-semibold text-slate-600">Porta</label>
+                                    <input type="number" name="porta" class="w-full rounded-lg border border-slate-200 px-3 py-2"
+                                           value="{{ old('porta', 587) }}" min="1" max="65535" required>
+                                </div>
+                                <div class="space-y-1">
+                                    <label class="text-xs font-semibold text-slate-600">Seguranca</label>
+                                    <select name="criptografia" class="w-full rounded-lg border border-slate-200 px-3 py-2">
+                                        <option value="starttls" @selected(old('criptografia', 'starttls') === 'starttls')>STARTTLS</option>
+                                        <option value="ssl" @selected(old('criptografia', 'starttls') === 'ssl')>SSL</option>
+                                        <option value="none" @selected(old('criptografia', 'starttls') === 'none')>Sem criptografia</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="space-y-1">
+                                <label class="text-xs font-semibold text-slate-600">Timeout (segundos)</label>
+                                <input type="number" name="timeout" class="w-full rounded-lg border border-slate-200 px-3 py-2"
+                                       value="{{ old('timeout', 30) }}" min="1" max="600">
+                            </div>
                         </div>
                     </div>
-
-                    <div class="space-y-2 text-sm">
-                        <label class="text-xs font-semibold text-slate-600">Timeout (segundos)</label>
-                        <input type="number" name="timeout" class="w-full rounded-lg border border-slate-200 px-3 py-2"
-                               value="{{ old('timeout', 30) }}" min="1" max="600">
-                    </div>
-                </div>
 
                 <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
                     <div>
@@ -158,17 +174,8 @@
                 <span class="text-xs bg-slate-100 text-slate-700 px-3 py-1 rounded-full">{{ $totalCaixas }} caixa(s)</span>
             </div>
 
-            @if($totalCaixas === 0)
-                <div class="flex flex-col items-center justify-center text-center py-10 gap-2 text-slate-500">
-                    <svg class="h-10 w-10 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="3" y="5" width="18" height="14" rx="2"></rect>
-                        <path d="M3 7l9 6 9-6"></path>
-                    </svg>
-                    <div class="text-sm">Nenhuma caixa de e-mail cadastrada</div>
-                </div>
-            @else
-                <div class="grid md:grid-cols-2 gap-4">
-                    @foreach ($caixas as $caixa)
+                <div class="space-y-3">
+                    @forelse ($caixas as $caixa)
                         @php
                             $isEditing = $caixaEmEdicaoId === $caixa->id;
                             $emailLogin = $caixa->usuario ?: '-';
@@ -302,6 +309,54 @@
                     @endforeach
                 </div>
             @endif
+        </div>
+
+        <div class="{{ $tab === 'tempos' ? 'space-y-6' : 'hidden' }}" data-tab-panel="tempos">
+            <form method="POST" action="{{ route('master.tempo-tarefas.store') }}" class="space-y-4">
+                @csrf
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+                        <h2 class="text-sm font-semibold text-slate-800">Tempo padrão por serviço</h2>
+                        <span class="text-xs text-slate-500">Em minutos</span>
+                    </div>
+                    <div class="divide-y divide-slate-100">
+                        @foreach($servicos as $servico)
+                            @php
+                                $isExcluido = in_array((int) $servico->id, $excluirServicoIds ?? [], true);
+                                $tempoAtual = $tempos[$servico->id]->tempo_minutos ?? 0;
+                            @endphp
+                            <div class="px-4 py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                <div>
+                                    <div class="text-sm font-semibold text-slate-800">{{ $servico->nome }}</div>
+                                    @if($isExcluido)
+                                        <div class="text-xs text-slate-500">Serviço não aplicável para SLA.</div>
+                                    @else
+                                        <div class="text-xs text-slate-500">Defina o tempo máximo para esta tarefa.</div>
+                                    @endif
+                                </div>
+                                <div class="w-full md:w-44">
+                                    <input type="number"
+                                           min="0"
+                                           max="10080"
+                                           step="1"
+                                           name="tempos[{{ $servico->id }}]"
+                                           value="{{ old('tempos.'.$servico->id, $tempoAtual) }}"
+                                           {{ $isExcluido ? 'disabled' : '' }}
+                                           class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm {{ $isExcluido ? 'bg-slate-100 text-slate-400' : '' }}"
+                                           placeholder="Ex: 60">
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-end">
+                    <button type="submit"
+                            class="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700">
+                        Salvar tempos
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 @endsection

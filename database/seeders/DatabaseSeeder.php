@@ -10,6 +10,7 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             PermissoesSeeder::class,
+            MedicoesTabPrecoSeeder::class,
             RemoveAsoTabelaPrecoSeeder::class,
         ]);
     }

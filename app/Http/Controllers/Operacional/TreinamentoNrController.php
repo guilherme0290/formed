@@ -15,6 +15,7 @@ use App\Models\TreinamentoNrDetalhes;
 use App\Models\UnidadeClinica;
 use App\Models\TabelaPrecoItem;
 use App\Models\TabelaPrecoPadrao;
+use App\Services\TempoTarefaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -106,6 +107,10 @@ class TreinamentoNrController extends Controller
             $tipoLabel
         ) {
             // Cria a tarefa no padrão das demais
+            $inicioPrevisto = now();
+            $fimPrevisto = app(TempoTarefaService::class)
+                ->calcularFimPrevisto($inicioPrevisto, $empresaId, optional($servicoTreinamentosNr)->id);
+
             $tarefa = Tarefa::create([
                 'empresa_id'      => $empresaId,
                 'cliente_id'      => $cliente->id,
@@ -117,7 +122,8 @@ class TreinamentoNrController extends Controller
                     . ($data['local_tipo'] === 'clinica'
                         ? " · Unidade ID: {$data['unidade_id']}"
                         : ' · In Company'),
-                'inicio_previsto' => now(),
+                'inicio_previsto' => $inicioPrevisto,
+                'fim_previsto'    => $fimPrevisto,
             ]);
 
             // Participantes

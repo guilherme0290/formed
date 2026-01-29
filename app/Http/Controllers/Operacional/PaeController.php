@@ -9,6 +9,7 @@ use App\Models\PaeSolicitacoes;
 use App\Models\Servico;
 use App\Models\Tarefa;
 use App\Models\TarefaLog;
+use App\Services\TempoTarefaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -60,6 +61,10 @@ class PaeController extends Controller
             $servicoPae,
             $colunaInicial
         ) {
+            $inicioPrevisto = now();
+            $fimPrevisto = app(TempoTarefaService::class)
+                ->calcularFimPrevisto($inicioPrevisto, $empresaId, optional($servicoPae)->id);
+
             $tarefa = Tarefa::create([
                 'empresa_id'     => $empresaId,
                 'cliente_id'     => $cliente->id,
@@ -68,7 +73,8 @@ class PaeController extends Controller
                 'servico_id'     => optional($servicoPae)->id,
                 'titulo'         => 'PAE - Plano de Atendimento a Emergências',
                 'descricao'      => 'Criação de PAE para o cliente.',
-                'inicio_previsto'=> now(),
+                'inicio_previsto'=> $inicioPrevisto,
+                'fim_previsto'   => $fimPrevisto,
             ]);
 
             PaeSolicitacoes::create([

@@ -53,6 +53,14 @@
                 <span>Exames</span>
             </button>
             <button type="button"
+                    onclick="openMedicoesCrudModal()"
+                    class="inline-flex items-center justify-center gap-2 rounded-2xl
+               bg-white hover:bg-amber-50 active:bg-amber-100
+               text-amber-700 px-4 py-2 text-sm font-semibold shadow-sm
+               ring-1 ring-amber-200 hover:ring-amber-300 transition">
+                <span>Medições LTCAT/LTIP</span>
+            </button>
+            <button type="button"
                     onclick="openTreinamentosCrudModal()"
                     class="inline-flex items-center justify-center gap-2 rounded-2xl
                bg-white hover:bg-emerald-50 active:bg-emerald-100
@@ -428,6 +436,7 @@
 
 @include('comercial.tabela-precos.itens.modal-esocial', ['routePrefix' => $routePrefix])
 @include('comercial.tabela-precos.itens.modal-exames', ['routePrefix' => $routePrefix])
+@include('comercial.tabela-precos.itens.modal-medicoes', ['routePrefix' => $routePrefix])
 @include('comercial.tabela-precos.itens.modal-treinamentos', ['routePrefix' => $routePrefix])
 
 

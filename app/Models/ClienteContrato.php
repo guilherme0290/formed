@@ -18,12 +18,14 @@ class ClienteContrato extends Model
         'status',
         'vigencia_inicio',
         'vigencia_fim',
+        'vencimento_servicos',
         'created_by',
     ];
 
     protected $casts = [
         'vigencia_inicio' => 'date',
         'vigencia_fim' => 'date',
+        'vencimento_servicos' => 'int',
     ];
 
     protected $appends = ['valor_mensal'];

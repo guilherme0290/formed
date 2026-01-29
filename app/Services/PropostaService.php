@@ -71,38 +71,53 @@ class PropostaService
             $usuarioNome = $usuario?->name ?? 'Sistema';
             $clienteNome = $proposta->cliente?->razao_social ?? 'Cliente';
 
-            // Inativa contrato ativo anterior
-            ClienteContrato::where('cliente_id', $proposta->cliente_id)
+            $contrato = ClienteContrato::query()
+                ->where('cliente_id', $proposta->cliente_id)
                 ->where('empresa_id', $proposta->empresa_id)
                 ->where('status', 'ATIVO')
-                ->update([
-                    'status' => 'SUBSTITUIDO',
-                    'vigencia_fim' => $hoje->copy()->subDay(),
+                ->latest('id')
+                ->first();
+
+            if (!$contrato) {
+                $contrato = ClienteContrato::create([
+                    'empresa_id' => $proposta->empresa_id,
+                    'cliente_id' => $proposta->cliente_id,
+                    'vendedor_id' => $proposta->cliente?->vendedor_id ?: $userId,
+                    'proposta_id_origem' => $proposta->id,
+                    'status' => 'ATIVO',
+                    'vigencia_inicio' => $hoje,
+                    'vigencia_fim' => null,
+                    'vencimento_servicos' => $proposta->vencimento_servicos,
+                    'created_by' => $userId,
                 ]);
 
-            // Cria novo contrato
-            $contrato = ClienteContrato::create([
-                'empresa_id' => $proposta->empresa_id,
-                'cliente_id' => $proposta->cliente_id,
-                'vendedor_id' => $proposta->cliente?->vendedor_id ?: $userId,
-                'proposta_id_origem' => $proposta->id,
-                'status' => 'ATIVO',
-                'vigencia_inicio' => $hoje,
-                'vigencia_fim' => null,
-                'created_by' => $userId,
-            ]);
-
-            ClienteContratoLog::create([
-                'cliente_contrato_id' => $contrato->id,
-                'user_id' => $userId,
-                'acao' => 'CRIACAO',
-                'descricao' => sprintf(
-                    'USUARIO: %s CRIOU o contrato da empresa %s a partir da proposta #%s.',
-                    $usuarioNome,
-                    $clienteNome,
-                    $proposta->id
-                ),
-            ]);
+                ClienteContratoLog::create([
+                    'cliente_contrato_id' => $contrato->id,
+                    'user_id' => $userId,
+                    'acao' => 'CRIACAO',
+                    'descricao' => sprintf(
+                        'USUARIO: %s CRIOU o contrato da empresa %s a partir da proposta #%s.',
+                        $usuarioNome,
+                        $clienteNome,
+                        $proposta->id
+                    ),
+                ]);
+            } else {
+                if (empty($contrato->vencimento_servicos) && $proposta->vencimento_servicos) {
+                    $contrato->update(['vencimento_servicos' => $proposta->vencimento_servicos]);
+                }
+                ClienteContratoLog::create([
+                    'cliente_contrato_id' => $contrato->id,
+                    'user_id' => $userId,
+                    'acao' => 'MERGE_PROPOSTA',
+                    'descricao' => sprintf(
+                        'USUARIO: %s MERGOU a proposta #%s no contrato da empresa %s.',
+                        $usuarioNome,
+                        $proposta->id,
+                        $clienteNome
+                    ),
+                ]);
+            }
 
             // Copia itens
             $asoSnapshot = null;

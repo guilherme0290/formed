@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Cliente;
 
 use App\Http\Controllers\Controller;
+use App\Models\AsoSolicitacoes;
 use App\Models\Cliente;
 use App\Models\ClienteContrato;
 use App\Models\ClienteTabelaPreco;
@@ -14,6 +15,7 @@ use App\Models\Servico;
 use App\Models\Tarefa;
 use App\Models\Venda;
 use App\Models\VendaItem;
+use App\Services\AsoGheService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
@@ -36,6 +38,7 @@ class ClienteDashboardController extends Controller
         [$contratoAtivo, $servicosContrato, $servicosIds] = $this->servicosLiberadosPorContrato($cliente);
 
         $precos = $this->precosPorContrato($contratoAtivo, $servicosIds);
+        $valoresAsoPorTipo = $this->valoresAsoPorTipo($contratoAtivo, $servicosIds['aso'] ?? null);
         $tabela = $this->tabelaAtiva($cliente);
         if (empty(array_filter($precos))) {
             $precos = $this->precosPorServico($cliente, $tabela);
@@ -62,6 +65,7 @@ class ClienteDashboardController extends Controller
             'cliente'      => $cliente,
             'temTabela'    => $temTabela,
             'precos'       => $precos,
+            'valoresAsoPorTipo' => $valoresAsoPorTipo,
             'faturaTotal'  => $faturaTotal,
             'totalEmAndamento' => $totalEmAndamento,
             'contratoAtivo' => $contratoAtivo,
@@ -94,6 +98,7 @@ class ClienteDashboardController extends Controller
 
         [$contratoAtivo, $servicosContrato, $servicosIds] = $this->servicosLiberadosPorContrato($cliente);
         $precos = $this->precosPorContrato($contratoAtivo, $servicosIds);
+        $valoresAsoPorTipo = $this->valoresAsoPorTipo($contratoAtivo, $servicosIds['aso'] ?? null);
         $tabela = $this->tabelaAtiva($cliente);
         if (empty(array_filter($precos))) {
             $precos = $this->precosPorServico($cliente, $tabela);
@@ -231,6 +236,7 @@ class ClienteDashboardController extends Controller
             'cliente'      => $cliente,
             'temTabela'    => $temTabela,
             'precos'       => $precos,
+            'valoresAsoPorTipo' => $valoresAsoPorTipo,
             'totalFaturaAberto' => $totalFaturaAberto,
             'totalPago' => $totalPago,
             'totalVencido' => $totalVencido,
@@ -397,10 +403,20 @@ class ClienteDashboardController extends Controller
             return 0.0;
         }
 
+        $asoServicoId = app(AsoGheService::class)->resolveServicoAsoIdFromContrato($contratoAtivo);
+        $tiposAso = $this->tiposAsoPorTarefaIds($tarefas, $asoServicoId);
         $itensPorServico = $contratoAtivo->itens->keyBy('servico_id');
         $total = 0.0;
 
         foreach ($tarefas as $tarefa) {
+            if ($asoServicoId && (int) $tarefa->servico_id === (int) $asoServicoId) {
+                $tipoAso = $tiposAso[$tarefa->id] ?? null;
+                $valorAso = $this->valorAsoContratoPorTipo($contratoAtivo, $asoServicoId, $tipoAso);
+                if ($valorAso !== null) {
+                    $total += $valorAso;
+                    continue;
+                }
+            }
             $valor = (float) ($itensPorServico->get($tarefa->servico_id)->preco_unitario_snapshot ?? 0);
             if ($valor > 0) {
                 $total += $valor;
@@ -422,8 +438,19 @@ class ClienteDashboardController extends Controller
             return $total;
         }
 
+        $asoServicoId = app(AsoGheService::class)->resolveServicoAsoIdFromContrato($contratoAtivo);
+        $tiposAso = $this->tiposAsoPorTarefaIds($tarefas, $asoServicoId);
         $itensPorServico = $contratoAtivo->itens->keyBy('servico_id');
         foreach ($tarefas as $tarefa) {
+            if ($asoServicoId && (int) $tarefa->servico_id === (int) $asoServicoId) {
+                $tipoAso = $tiposAso[$tarefa->id] ?? null;
+                $valorAso = $this->valorAsoContratoPorTipo($contratoAtivo, $asoServicoId, $tipoAso);
+                if ($valorAso !== null) {
+                    $tarefa->setAttribute('valor_estimado', $valorAso);
+                    $total += $valorAso;
+                    continue;
+                }
+            }
             $valor = (float) ($itensPorServico->get($tarefa->servico_id)->preco_unitario_snapshot ?? 0);
             if ($valor > 0) {
                 $tarefa->setAttribute('valor_estimado', $valor);
@@ -434,6 +461,38 @@ class ClienteDashboardController extends Controller
         }
 
         return $total;
+    }
+
+    private function tiposAsoPorTarefaIds(iterable $tarefas, ?int $asoServicoId): array
+    {
+        if (!$asoServicoId) {
+            return [];
+        }
+
+        $ids = collect($tarefas)
+            ->filter(fn ($tarefa) => (int) $tarefa->servico_id === (int) $asoServicoId)
+            ->pluck('id')
+            ->filter()
+            ->values()
+            ->all();
+
+        if (empty($ids)) {
+            return [];
+        }
+
+        return AsoSolicitacoes::query()
+            ->whereIn('tarefa_id', $ids)
+            ->pluck('tipo_aso', 'tarefa_id')
+            ->all();
+    }
+
+    private function valorAsoContratoPorTipo(?ClienteContrato $contrato, ?int $servicoId, ?string $tipoAso): ?float
+    {
+        if (!$contrato || !$servicoId || !$tipoAso) {
+            return null;
+        }
+
+        return app(AsoGheService::class)->totalAsoContratoPorTipo($contrato, $servicoId, $tipoAso);
     }
 
     private function contratoAtivo(Cliente $cliente): ?ClienteContrato
@@ -560,6 +619,11 @@ class ClienteDashboardController extends Controller
                 continue;
             }
 
+            if ($slug === 'aso') {
+                $precos[$slug] = $this->precoAsoPorContrato($contrato, $servicoId);
+                continue;
+            }
+
             if ($slug === 'treinamentos') {
                 $totalTreinamentos = (float) $contrato->itens()
                     ->where('servico_id', $servicoId)
@@ -579,6 +643,76 @@ class ClienteDashboardController extends Controller
         }
 
         return $precos;
+    }
+
+    private function precoAsoPorContrato(ClienteContrato $contrato, int $servicoId): ?float
+    {
+        $asoService = app(AsoGheService::class);
+        $tipos = $asoService->resolveTiposAsoContrato($contrato);
+        $tipoPreferido = $this->tipoPreferencialAso($tipos);
+
+        if ($tipoPreferido) {
+            $valor = $asoService->totalAsoContratoPorTipo($contrato, $servicoId, $tipoPreferido);
+            if ($valor !== null) {
+                return $valor;
+            }
+        }
+
+        $item = $contrato->itens()
+            ->where('servico_id', $servicoId)
+            ->where('ativo', true)
+            ->orderBy('descricao_snapshot')
+            ->first();
+
+        return $item?->preco_unitario_snapshot ? (float) $item->preco_unitario_snapshot : null;
+    }
+
+    private function tipoPreferencialAso(array $tipos): ?string
+    {
+        $ordem = ['admissional', 'periodico', 'demissional', 'mudanca_funcao', 'retorno_trabalho'];
+        foreach ($ordem as $tipo) {
+            if (in_array($tipo, $tipos, true)) {
+                return $tipo;
+            }
+        }
+
+        return $tipos[0] ?? null;
+    }
+
+    private function valoresAsoPorTipo(?ClienteContrato $contrato, ?int $servicoId): array
+    {
+        if (!$contrato || !$servicoId) {
+            return [];
+        }
+
+        $asoService = app(AsoGheService::class);
+        $tipos = $asoService->resolveTiposAsoContrato($contrato);
+        if (empty($tipos)) {
+            return [];
+        }
+
+        $labels = [
+            'admissional' => 'Admissional',
+            'periodico' => 'Periódico',
+            'demissional' => 'Demissional',
+            'mudanca_funcao' => 'Mudança de Função',
+            'retorno_trabalho' => 'Retorno ao Trabalho',
+        ];
+
+        $valores = [];
+        foreach ($tipos as $tipo) {
+            $total = $asoService->totalAsoContratoPorTipo($contrato, $servicoId, $tipo);
+            if ($total === null) {
+                continue;
+            }
+            $valores[] = [
+                'tipo' => $tipo,
+                'label' => $labels[$tipo] ?? ucfirst(str_replace('_', ' ', $tipo)),
+                'valor' => $total,
+            ];
+        }
+
+        return $valores;
     }
 
     private function telefoneVendedor(Cliente $cliente, ?ClienteContrato $contratoAtivo): string

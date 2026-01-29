@@ -135,6 +135,7 @@
                         <th class="px-5 py-3 font-semibold">Valor Mensal</th>
                         <th class="px-5 py-3 font-semibold">Vigência Início</th>
                         <th class="px-5 py-3 font-semibold">Vigência Fim</th>
+                        <th class="px-5 py-3 font-semibold">Vencimento</th>
                         <th class="px-5 py-3 font-semibold">Status</th>
                         <th class="px-5 py-3 font-semibold w-40">Ações</th>
                     </tr>
@@ -167,6 +168,9 @@
                             <td class="px-5 py-3 text-slate-700">
                                 {{ optional($contrato->vigencia_fim)->format('d/m/Y') ?? '—' }}
                             </td>
+                            <td class="px-5 py-3 text-slate-700">
+                                {{ $contrato->vencimento_servicos ? sprintf('Dia %02d', $contrato->vencimento_servicos) : '—' }}
+                            </td>
                             <td class="px-5 py-3">
                                 <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold border {{ $badge }}">
                                     {{ str_replace('_',' ', $status) }}
@@ -181,7 +185,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-5 py-10 text-center text-slate-500">
+                            <td colspan="7" class="px-5 py-10 text-center text-slate-500">
                                 Nenhum contrato encontrado.
                             </td>
                         </tr>

@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Master;
 
 use App\Http\Controllers\Controller;
 use App\Models\EmailCaixa;
+use App\Models\Servico;
+use App\Models\ServicoTempo;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -25,7 +27,22 @@ class EmailCaixaController extends Controller
             ->orderBy('nome')
             ->get();
 
-        return view('master.email-caixas.index', compact('caixas'));
+        $servicos = Servico::query()
+            ->where('empresa_id', $empresaId)
+            ->orderBy('nome')
+            ->get();
+
+        $tempos = ServicoTempo::query()
+            ->where('empresa_id', $empresaId)
+            ->get()
+            ->keyBy('servico_id');
+
+        $excluirServicoIds = array_filter([
+            (int) (config('services.esocial_id') ?? 0),
+            (int) (config('services.exame_id') ?? 0),
+        ]);
+
+        return view('master.email-caixas.index', compact('caixas', 'servicos', 'tempos', 'excluirServicoIds'));
     }
 
     public function store(Request $request): RedirectResponse

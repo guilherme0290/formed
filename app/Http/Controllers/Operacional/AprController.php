@@ -9,6 +9,7 @@ use App\Models\KanbanColuna;
 use App\Models\Servico;
 use App\Models\Tarefa;
 use App\Models\TarefaLog;
+use App\Services\TempoTarefaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -59,6 +60,10 @@ class AprController extends Controller
             $servicoApr
         ) {
             // cria Tarefa no Kanban
+            $inicioPrevisto = now();
+            $fimPrevisto = app(TempoTarefaService::class)
+                ->calcularFimPrevisto($inicioPrevisto, $empresaId, optional($servicoApr)->id);
+
             $tarefa = Tarefa::create([
                 'empresa_id'      => $empresaId,
                 'cliente_id'      => $cliente->id,
@@ -67,7 +72,8 @@ class AprController extends Controller
                 'servico_id'      => optional($servicoApr)->id,
                 'titulo'          => 'APR - Análise Preliminar de Riscos',
                 'descricao'       => 'APR solicitada pelo cliente.',
-                'inicio_previsto' => now(),
+                'inicio_previsto' => $inicioPrevisto,
+                'fim_previsto'    => $fimPrevisto,
             ]);
 
             // cria registro APR
