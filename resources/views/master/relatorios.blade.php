@@ -139,7 +139,7 @@
                     $varFinalizadas = (int) ($variacaoPeriodo['finalizadas'] ?? 0);
                     $varAtrasadas = (int) ($variacaoPeriodo['atrasadas'] ?? 0);
                     $varOperacional = (int) ($variacaoPeriodo['operacional_ativo'] ?? 0);
-                    $formatVar = fn (int $valor) => ($valor > 0 ? '+' : '') . $valor . '% em rela&ccedil;&atilde;o ao per&iacute;odo anterior';
+                    $formatVar = fn (int $valor) => ($valor > 0 ? '+' : '') . $valor . '% em relação ao período anterior';
                     $varClass = fn (int $valor) => $valor > 0
                         ? 'text-emerald-700'
                         : ($valor < 0 ? 'text-rose-700' : 'text-slate-600');
@@ -346,7 +346,7 @@
                             Propostas fechadas
                         </div>
                         <div class="text-2xl font-semibold text-slate-900 mt-2">{{ $totalPropostas }}</div>
-                        <div class="text-[11px] text-emerald-700 mt-1">+0% em rela&ccedil;&atilde;o ao per&iacute;odo anterior</div>
+                        <div class="text-[11px] text-slate-600 mt-1">0% em relação ao período anterior</div>
                     </div>
                     <div class="rounded-2xl border border-emerald-200 bg-emerald-50/60 px-4 py-4">
                         <div class="flex items-center gap-2 text-xs font-bold text-slate-900 uppercase">
@@ -374,7 +374,7 @@
                             Usu&aacute;rios ativos
                         </div>
                         <div class="text-2xl font-semibold text-slate-900 mt-2">{{ $usuariosAtivos }}</div>
-                        <div class="text-[11px] text-emerald-700 mt-1">+0% em rela&ccedil;&atilde;o ao per&iacute;odo anterior</div>
+                        <div class="text-[11px] text-slate-600 mt-1">0% em relação ao período anterior</div>
                     </div>
                 </div>
 
