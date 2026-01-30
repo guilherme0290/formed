@@ -53,6 +53,7 @@ return [
     */
 
     'url' => env('APP_URL', 'http://localhost'),
+    'contrato_empresa_id' => env('CONTRATO_EMPRESA_ID'),
 
     /*
     |--------------------------------------------------------------------------

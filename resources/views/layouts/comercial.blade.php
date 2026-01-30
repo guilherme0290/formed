@@ -116,6 +116,13 @@
                 </span>
                 <span data-sidebar-label>Contratos</span>
             </a>
+            <a href="{{ route('comercial.contratos.clausulas.index') }}"
+               class="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-200 hover:bg-slate-800 text-sm">
+                <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-700/40 text-slate-200">
+                    🧾
+                </span>
+                <span data-sidebar-label>Cláusulas</span>
+            </a>
 
             <a href="{{ route('comercial.clientes.index') }}"
                class="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-200 hover:bg-slate-800 text-sm">

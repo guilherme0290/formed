@@ -12,6 +12,7 @@ class DatabaseSeeder extends Seeder
             PermissoesSeeder::class,
             MedicoesTabPrecoSeeder::class,
             RemoveAsoTabelaPrecoSeeder::class,
+            ContratoClausulasBaseSeeder::class,
         ]);
     }
 }

@@ -40,4 +40,9 @@ return [
     'exame_id'       => env('FORMED_SERVICO_EXAME_ID'),
     'aso_id'         => env('FORMED_SERVICO_ASO_ID'),
 
+    'openai' => [
+        'key' => env('OPENAI_API_KEY'),
+        'model' => env('OPENAI_MODEL', 'gpt-4.1-mini'),
+    ],
+
 ];

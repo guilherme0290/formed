@@ -342,6 +342,23 @@
                                     </button>
                                 </form>
                             @endif
+                            <form method="POST"
+                                  action="{{ route('comercial.propostas.contrato.gerar', $proposta) }}"
+                                  id="formGerarContratoIa">
+                                @csrf
+                                <button type="submit"
+                                        class="px-4 py-2.5 rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-700 text-xs font-semibold hover:bg-indigo-100">
+                                    Gerar contrato com IA
+                                </button>
+                            </form>
+                            <form method="POST"
+                                  action="{{ route('comercial.propostas.contrato.gerar-template', $proposta) }}">
+                                @csrf
+                                <button type="submit"
+                                        class="px-4 py-2.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-700 text-xs font-semibold hover:bg-slate-100">
+                                    Gerar contrato (template)
+                                </button>
+                            </form>
                             <a href="{{ route('comercial.propostas.print', $proposta) }}"
                                target="_blank"
                                rel="noopener"
@@ -361,6 +378,17 @@
                         </div>
                     @endif
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="loadingContratoIa" class="fixed inset-0 z-[60] hidden items-center justify-center bg-slate-900/60">
+        <div class="bg-white rounded-2xl shadow-xl p-6 text-center w-full max-w-sm">
+            <img src="{{ asset('storage/logo.png') }}" alt="Logo" class="mx-auto h-12 w-auto mb-4">
+            <h3 class="text-sm font-semibold text-slate-800">Gerando contrato com IA...</h3>
+            <p class="text-xs text-slate-500 mt-1">Isso pode levar alguns segundos.</p>
+            <div class="mt-4 h-2 rounded-full bg-slate-100 overflow-hidden">
+                <div class="h-full w-1/2 bg-emerald-500 animate-pulse"></div>
             </div>
         </div>
     </div>
@@ -464,7 +492,20 @@
             </div>
         </div>
     </div>
-    @endif
+@endif
+
+@push('scripts')
+<script>
+    const formContratoIa = document.getElementById('formGerarContratoIa');
+    const loadingContratoIa = document.getElementById('loadingContratoIa');
+    if (formContratoIa && loadingContratoIa) {
+        formContratoIa.addEventListener('submit', () => {
+            loadingContratoIa.classList.remove('hidden');
+            loadingContratoIa.classList.add('flex');
+        });
+    }
+</script>
+@endpush
 
     @push('scripts')
         <script>
