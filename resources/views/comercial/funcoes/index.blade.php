@@ -28,8 +28,18 @@
             <form method="GET" class="flex flex-col gap-3 md:flex-row md:items-end">
                 <div class="flex-1">
                     <label class="block text-xs font-semibold text-slate-600 mb-1">Buscar</label>
-                    <input name="q" value="{{ $q }}" placeholder="Nome da função..."
-                           class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔎</span>
+                        <input name="q" value="{{ $q }}" placeholder="Nome da função..."
+                               list="funcoes-autocomplete"
+                               class="w-full rounded-xl border border-slate-200 pl-9 pr-3 py-2 text-sm focus:ring-2 focus:ring-slate-200 focus:border-slate-300">
+                        <datalist id="funcoes-autocomplete">
+                            @foreach($funcoes->pluck('nome')->unique() as $nome)
+                                <option value="{{ $nome }}"></option>
+                            @endforeach
+                        </datalist>
+                    </div>
+
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 mb-1">Status</label>
@@ -39,9 +49,15 @@
                         <option value="inativos" @selected($status === 'inativos')>Inativos</option>
                     </select>
                 </div>
-                <button class="px-4 py-2 rounded-xl bg-slate-900 text-white text-sm font-semibold">
-                    Filtrar
-                </button>
+                <div class="flex items-center gap-2">
+                    <button class="px-4 py-2 rounded-xl bg-slate-900 text-white text-sm font-semibold">
+                        Filtrar
+                    </button>
+                    <a href="{{ route('comercial.funcoes.index') }}"
+                       class="px-4 py-2 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-600 hover:bg-slate-50">
+                        Limpar filtros
+                    </a>
+                </div>
             </form>
         </div>
 

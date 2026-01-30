@@ -56,6 +56,7 @@
                 <div>
                     <label class="text-sm">CNPJ</label>
                     <input name="cnpj" value="{{ old('cnpj', $cliente->cnpj) }}"
+                           data-cliente-id="{{ $cliente->exists ? $cliente->id : '' }}"
                            class="w-full border-gray-300 rounded-lg px-3 py-2">
                     @error('cnpj')
                     <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
@@ -436,6 +437,8 @@
         document.addEventListener('DOMContentLoaded', function () {
             // pega o primeiro input com name="cnpj" da página
             var cnpjInput = document.querySelector('input[name="cnpj"]');
+            var formCliente = cnpjInput?.closest('form');
+            var cnpjDuplicado = false;
             if (!cnpjInput) return;
 
             // máscara enquanto digita
@@ -461,7 +464,7 @@
             });
 
             // validação ao sair do campo
-            cnpjInput.addEventListener('blur', function () {
+            cnpjInput.addEventListener('blur', async function () {
                 var cnpjLimpo = cnpjInput.value.replace(/\D/g, '');
 
                 if (cnpjLimpo === '') {
@@ -471,8 +474,34 @@
 
                 if (!cnpjValido(cnpjLimpo)) {
                     mostrarErroCNPJ(cnpjInput, 'CNPJ inválido');
+                    cnpjDuplicado = false;
                 } else {
                     limparErroCNPJ(cnpjInput);
+                    const clienteId = cnpjInput.dataset.clienteId || '';
+                    const baseUrl = @json(route($routePrefix.'.cnpj-exists', ['cnpj' => '__CNPJ__']));
+                    const url = baseUrl
+                        .replace('__CNPJ__', encodeURIComponent(cnpjLimpo))
+                        + (clienteId ? `?ignore=${encodeURIComponent(clienteId)}` : '');
+                    try {
+                        const resp = await fetch(url);
+                        const json = await resp.json();
+                        if (json?.exists) {
+                            cnpjDuplicado = true;
+                            mostrarErroCNPJ(cnpjInput, 'Já existe um cliente cadastrado com este CNPJ.');
+                        } else {
+                            cnpjDuplicado = false;
+                            limparErroCNPJ(cnpjInput);
+                        }
+                    } catch (e) {
+                        console.error('Erro ao validar CNPJ duplicado', e);
+                    }
+                }
+            });
+
+            formCliente?.addEventListener('submit', (e) => {
+                if (cnpjDuplicado) {
+                    e.preventDefault();
+                    mostrarErroCNPJ(cnpjInput, 'Já existe um cliente cadastrado com este CNPJ.');
                 }
             });
         });

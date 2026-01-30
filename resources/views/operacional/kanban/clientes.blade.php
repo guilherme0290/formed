@@ -3,15 +3,18 @@
 @section('title', 'Nova Tarefa - Selecionar Empresa')
 
 @section('content')
-    <div class="max-w-6xl mx-auto px-6 py-8">
+    <div class="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
 
         {{-- Voltar ao painel --}}
-        <div class="mb-4">
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
             <a href="{{ route('operacional.kanban') }}"
                class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 bg-white text-sm text-slate-700 hover:bg-slate-50">
                 <span>←</span>
                 <span>Voltar ao Painel</span>
             </a>
+            <span class="text-xs text-slate-500">
+                Selecione um cliente para criar a tarefa.
+            </span>
         </div>
 
         {{-- Card principal --}}
@@ -30,15 +33,37 @@
             <div class="px-6 py-5 space-y-5">
 
                 {{-- Busca --}}
-                <form method="GET" class="mb-4">
-                    <div class="relative">
+                <form method="GET" class="mb-4 flex flex-col sm:flex-row gap-2 sm:items-center">
+                    <div class="relative flex-1">
                         <span class="absolute inset-y-0 left-3 flex items-center text-slate-400 text-sm">🔍</span>
                         <input type="text"
                                name="q"
                                value="{{ request('q') }}"
-                               placeholder="Pesquisar empresa..."
+                               placeholder="Pesquisar por razão social, fantasia ou CNPJ..."
+                               list="clientes-autocomplete"
                                class="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm
                                       focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400">
+                        <datalist id="clientes-autocomplete">
+                            @foreach($clientes->pluck('razao_social')->filter()->unique() as $nome)
+                                <option value="{{ $nome }}"></option>
+                            @endforeach
+                            @foreach($clientes->pluck('nome_fantasia')->filter()->unique() as $nome)
+                                <option value="{{ $nome }}"></option>
+                            @endforeach
+                            @foreach($clientes->pluck('cnpj')->filter()->unique() as $cnpj)
+                                <option value="{{ $cnpj }}"></option>
+                            @endforeach
+                        </datalist>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button type="submit"
+                                class="px-4 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800">
+                            Buscar
+                        </button>
+                        <a href="{{ route('operacional.kanban.aso.clientes') }}"
+                           class="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm text-slate-600 hover:bg-slate-50">
+                            Limpar
+                        </a>
                     </div>
                 </form>
 

@@ -139,8 +139,11 @@
                 if (!sidebar) return;
                 desktopCollapsed = collapsed;
 
-                sidebar.classList.toggle('w-64', !desktopCollapsed);
-                sidebar.classList.toggle('w-16', desktopCollapsed);
+                if (desktopCollapsed) {
+                    sidebar.style.width = 'clamp(3.5rem, 6vw, 4rem)';
+                } else {
+                    sidebar.style.width = 'clamp(14rem, 18vw, 18rem)';
+                }
                 labels.forEach(el => el.classList.toggle('hidden', desktopCollapsed));
                 if (headerTitle) headerTitle.classList.toggle('hidden', desktopCollapsed);
             }

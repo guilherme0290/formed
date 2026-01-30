@@ -191,12 +191,12 @@
 
                 if (collapsed) {
                     // encolhe a largura e esconde labels
-                    sidebar.style.width = '4rem';
+                    sidebar.style.width = 'clamp(3.5rem, 6vw, 4rem)';
                     labels.forEach(el => el.classList.add('hidden'));
                     if (headerTitle) headerTitle.classList.add('hidden');
                 } else {
                     // volta ao normal (usa w-64 do Tailwind)
-                    sidebar.style.width = '';
+                    sidebar.style.width = 'clamp(14rem, 18vw, 18rem)';
                     labels.forEach(el => el.classList.remove('hidden'));
                     if (headerTitle) headerTitle.classList.remove('hidden');
                 }

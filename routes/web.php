@@ -656,6 +656,8 @@ Route::middleware('auth')->group(function () {
                 // Consulta CNPJ
                 Route::get('/consulta-cnpj/{cnpj}', [ClienteController::class, 'consultaCnpj'])
                     ->name('consulta-cnpj');
+                Route::get('/cnpj-exists/{cnpj}', [ClienteController::class, 'cnpjExists'])
+                    ->name('cnpj-exists');
             });
 
             // Funções (CRUD Comercial)
@@ -858,6 +860,8 @@ Route::middleware('auth')->group(function () {
         // Consulta CNPJ
         Route::get('/consulta-cnpj/{cnpj}', [ClienteController::class, 'consultaCnpj'])
             ->name('consulta-cnpj');
+        Route::get('/cnpj-exists/{cnpj}', [ClienteController::class, 'cnpjExists'])
+            ->name('cnpj-exists');
     });
 
     // Cidades por UF

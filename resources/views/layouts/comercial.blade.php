@@ -253,11 +253,11 @@
             desktopCollapsed = collapsed;
 
             if (collapsed) {
-                sidebar.style.width = '4rem';
+                sidebar.style.width = 'clamp(3.5rem, 6vw, 4rem)';
                 labels.forEach(el => el.classList.add('hidden'));
                 if (headerTitle) headerTitle.classList.add('hidden');
             } else {
-                sidebar.style.width = '';
+                sidebar.style.width = 'clamp(14rem, 18vw, 18rem)';
                 labels.forEach(el => el.classList.remove('hidden'));
                 if (headerTitle) headerTitle.classList.remove('hidden');
             }

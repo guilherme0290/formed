@@ -180,8 +180,8 @@
 
         {{-- Kanban --}}
         {{-- Kanban --}}
-        <div class="mt-4 pb-6 overflow-x-auto xl:overflow-x-visible">
-            <div class="flex gap-3 md:gap-4 min-w-max">
+        <div class="mt-4 pb-6 overflow-x-auto xl:overflow-x-visible -mx-3 md:mx-0 px-3 md:px-0">
+            <div class="flex gap-3 md:gap-4 min-w-max snap-x snap-mandatory">
                 @foreach($colunas as $coluna)
                     @php
                         $slug = Str::slug($coluna->nome);
@@ -197,7 +197,7 @@
 
                     {{-- UMA COLUNA COMPLETA (card resumo + raia) --}}
 
-                    <section class="flex flex-col w-56 md:w-60 lg:w-64 flex-shrink-0 gap-3">
+                    <section class="flex flex-col w-[clamp(240px,22vw,340px)] flex-shrink-0 gap-3 snap-start">
 
                         {{-- Card resumo da coluna --}}
                         <article
@@ -221,7 +221,7 @@
                         {{-- Raia do Kanban dessa coluna --}}
                         <article
                             class="bg-white border border-slate-200 rounded-2xl flex flex-col
-                           h-[64vh] md:h-[68vh] shadow-md">
+                           h-[calc(100vh-320px)] min-h-[420px] max-h-[72vh] shadow-md">
 
                             {{-- cards --}}
                             <div class="flex-1 overflow-y-auto px-3 py-3 space-y-3 kanban-column"
