@@ -2,17 +2,19 @@
 @section('title', 'Contas a Receber')
 
 @section('content')
-    <div class="max-w-7xl mx-auto px-4 md:px-8 py-6 space-y-8">
+    <div class="w-full px-4 sm:px-6 lg:px-8 py-6 space-y-8">
         <div class="flex flex-col gap-2">
             <div class="inline-flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-indigo-400">
                 <span class="inline-flex h-7 w-7 items-center justify-center rounded-2xl bg-indigo-500/20 text-pink-100 text-lg">💳</span>
                 Contas a Receber
             </div>
-            <div class="flex flex-wrap items-center gap-3">
+            <div>
                 <h1 class="text-3xl font-semibold text-slate-900">Selecionar vendas em aberto</h1>
-                <span class="text-sm text-slate-500">Filtre por cliente e período para gerar novas contas</span>
+                <p class="text-sm text-slate-500 mt-1">Filtre por cliente e período para gerar novas contas</p>
             </div>
         </div>
+
+        @include('financeiro.partials.tabs')
 
         @if(session('error'))
             <div class="rounded-xl bg-rose-50 text-rose-700 border border-rose-100 px-4 py-3 text-sm">
@@ -111,7 +113,7 @@
                                     $clienteNome = $venda?->cliente?->razao_social ?? 'Cliente';
                                     $servicoNome = $item->servico?->nome ?? $item->descricao_snapshot ?? 'Serviço';
                                 @endphp
-                                <tr class="hover:bg-slate-50/70">
+                                <tr class="odd:bg-white even:bg-slate-50 hover:bg-slate-100">
                                     <td class="px-4 py-3">
                                         <input type="checkbox" name="itens[]" value="{{ $item->id }}" class="rounded border-slate-300">
                                     </td>
@@ -178,7 +180,7 @@
                                     default => 'bg-slate-100 text-slate-700 border-slate-200',
                                 };
                             @endphp
-                            <tr class="hover:bg-slate-50/70">
+                            <tr class="odd:bg-white even:bg-slate-50 hover:bg-slate-100">
                                 <td class="px-4 py-3 text-slate-700">#{{ $conta->id }}</td>
                                 <td class="px-4 py-3 text-slate-800">{{ $conta->cliente->razao_social ?? 'Cliente' }}</td>
                                 <td class="px-4 py-3 text-slate-600">{{ optional($conta->vencimento)->format('d/m/Y') ?? '—' }}</td>

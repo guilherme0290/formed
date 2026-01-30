@@ -25,6 +25,8 @@
             </span>
         </div>
 
+        @include('financeiro.partials.tabs')
+
         <section class="bg-white rounded-2xl shadow border border-slate-100 p-5 space-y-4">
             <div class="grid md:grid-cols-2 gap-4 text-sm text-slate-700">
                 <div>

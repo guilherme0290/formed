@@ -14,6 +14,8 @@
             </div>
         </div>
 
+        @include('financeiro.partials.tabs')
+
         @if(session('error'))
             <div class="rounded-xl bg-rose-50 text-rose-700 border border-rose-100 px-4 py-3 text-sm">
                 {{ session('error') }}

@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Master;
 
 use App\Http\Controllers\Controller;
 use App\Models\Proposta;
+use App\Models\ContaReceberBaixa;
+use App\Models\ContaReceberItem;
 use App\Models\Tarefa;
 use App\Models\User;
 use App\Models\Venda;
@@ -20,12 +22,14 @@ class DashboardController extends Controller
         $visaoEmpresa  = $this->metricasEmpresa($empresaId);
         $operacionais = $this->metricasOperacionais($empresaId);
         $comerciais   = $this->metricasComerciais($empresaId);
+        $financeiro   = $this->metricasFinanceiras($empresaId);
         $agendamentosHoje = $this->resumoAgendamentosHoje($empresaId);
 
         return view('master.dashboard', [
             'visaoEmpresa'  => $visaoEmpresa,
             'operacionais' => $operacionais,
             'comerciais'   => $comerciais,
+            'financeiro'   => $financeiro,
             'agendamentosHoje' => $agendamentosHoje,
         ]);
     }
@@ -216,6 +220,31 @@ class DashboardController extends Controller
             'ticket_medio'        => $ticketMedio,
             'taxa_conversao'      => $taxaConversao,
             'propostas_em_aberto' => $propostasEmAberto,
+        ];
+    }
+
+    private function metricasFinanceiras(?int $empresaId): array
+    {
+        $totalEmAberto = (float) ContaReceberItem::query()
+            ->where('contas_receber_itens.empresa_id', $empresaId)
+            ->where('contas_receber_itens.status', '!=', 'CANCELADO')
+            ->selectRaw('COALESCE(SUM(GREATEST(contas_receber_itens.valor - COALESCE(baixas.total_baixado, 0), 0)), 0) as total')
+            ->leftJoinSub(
+                ContaReceberBaixa::query()
+                    ->selectRaw('conta_receber_item_id, SUM(valor) as total_baixado')
+                    ->groupBy('conta_receber_item_id'),
+                'baixas',
+                fn ($join) => $join->on('contas_receber_itens.id', '=', 'baixas.conta_receber_item_id')
+            )
+            ->value('total');
+
+        $totalRecebido = (float) ContaReceberBaixa::query()
+            ->when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId))
+            ->sum('valor');
+
+        return [
+            'total_aberto' => $totalEmAberto,
+            'total_recebido' => $totalRecebido,
         ];
     }
 

@@ -47,16 +47,6 @@
                     <span class="hidden md:inline">
                         {{ auth()->user()->name ?? '' }}
                     </span>
-                    <button type="button"
-                       class="inline-flex items-center justify-center h-9 w-9 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white"
-                       title="Configurações"
-                       data-dashboard-config>
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none"
-                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="3"></circle>
-                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06A2 2 0 1 1 6.04 3.3l.06.06A1.65 1.65 0 0 0 7.92 3a1.65 1.65 0 0 0 1-1.51V1a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06A2 2 0 1 1 20.7 6.04l-.06.06A1.65 1.65 0 0 0 21 7.92a1.65 1.65 0 0 0 1.51 1H23a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                        </svg>
-                    </button>
                 </div>
             </div>
         </header>
@@ -110,6 +100,24 @@
                             <span class="block text-xs text-slate-500">Total de itens utilizados</span>
                         </span>
                         <input type="checkbox" class="h-5 w-9 accent-indigo-600" data-dashboard-toggle="servicos-consumidos">
+                    </label>
+                </div>
+
+                <div class="rounded-2xl border border-slate-200 bg-slate-50/60 p-4 space-y-3">
+                    <div class="text-sm font-semibold text-slate-900">Financeiro</div>
+                    <label class="flex items-start justify-between gap-3 text-sm text-slate-700">
+                        <span>
+                            <span class="font-medium">Faturamento pendente</span>
+                            <span class="block text-xs text-slate-500">Total em aberto no per&iacute;odo</span>
+                        </span>
+                        <input type="checkbox" class="h-5 w-9 accent-indigo-600" data-dashboard-toggle="financeiro-pendente">
+                    </label>
+                    <label class="flex items-start justify-between gap-3 text-sm text-slate-700">
+                        <span>
+                            <span class="font-medium">Faturamento recebido</span>
+                            <span class="block text-xs text-slate-500">Total recebido no per&iacute;odo</span>
+                        </span>
+                        <input type="checkbox" class="h-5 w-9 accent-indigo-600" data-dashboard-toggle="financeiro-recebido">
                     </label>
                 </div>
 
@@ -168,7 +176,7 @@
         </div>
         <div class="flex items-center justify-end gap-2 px-6 py-4 border-t border-slate-100 bg-white">
             <button type="button" class="px-4 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 hover:bg-slate-50" data-config-close>Cancelar</button>
-            <button type="button" class="px-5 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-500" data-config-close>Salvar alterações</button>
+            <button type="button" class="px-5 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-500" data-config-close data-dashboard-save>Salvar alterações</button>
         </div>
     </div>
 </div>
@@ -223,20 +231,11 @@
         const backdrop = document.getElementById('dashboard-config-backdrop');
         const closeBtns = document.querySelectorAll('[data-config-close]');
         const toggles = Array.from(document.querySelectorAll('[data-dashboard-toggle]'));
-        const userKey = '{{ auth()->id() ?? 'master' }}';
-        const storageKey = `master_dashboard_visibility_${userKey}`;
-
-        function loadState() {
-            try {
-                return JSON.parse(localStorage.getItem(storageKey) || '{}');
-            } catch (e) {
-                return {};
-            }
-        }
-
-        function saveState(state) {
-            localStorage.setItem(storageKey, JSON.stringify(state));
-        }
+        const saveBtn = document.querySelector('[data-dashboard-save]');
+        const preferencesUrl = '{{ route('master.dashboard-preferences.show') }}';
+        const saveUrl = '{{ route('master.dashboard-preferences.update') }}';
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        let currentState = {};
 
         function applyState(state) {
             toggles.forEach((toggle) => {
@@ -248,6 +247,37 @@
                     el.classList.toggle('hidden', !isVisible);
                 }
             });
+        }
+
+        async function loadState() {
+            try {
+                const response = await fetch(preferencesUrl, {
+                    headers: { 'Accept': 'application/json' },
+                });
+                if (!response.ok) {
+                    return {};
+                }
+                const payload = await response.json();
+                return payload.visibility || {};
+            } catch (e) {
+                return {};
+            }
+        }
+
+        async function saveState(state) {
+            try {
+                await fetch(saveUrl, {
+                    method: 'PUT',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken || '',
+                    },
+                    body: JSON.stringify({ visibility: state }),
+                });
+            } catch (e) {
+                // ignore
+            }
         }
 
         function openModal() {
@@ -270,17 +300,24 @@
         closeBtns.forEach((btn) => btn.addEventListener('click', closeModal));
         backdrop?.addEventListener('click', closeModal);
 
-        const state = loadState();
-        applyState(state);
+        loadState().then((state) => {
+            currentState = state || {};
+            applyState(currentState);
+        });
 
         toggles.forEach((toggle) => {
             toggle.addEventListener('change', () => {
                 const key = toggle.getAttribute('data-dashboard-toggle');
-                const next = { ...loadState(), [key]: toggle.checked };
-                saveState(next);
-                applyState(next);
+                currentState = { ...currentState, [key]: toggle.checked };
+                applyState(currentState);
             });
         });
+
+        if (saveBtn) {
+            saveBtn.addEventListener('click', () => {
+                saveState(currentState);
+            });
+        }
     });
 </script>
 <script src="https://unpkg.com/currency.js@2.0.4/dist/currency.min.js"></script>

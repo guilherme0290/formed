@@ -13,6 +13,7 @@ use App\Http\Controllers\Master\AcessosController;
 use App\Http\Controllers\Master\DashboardController as DashboardMaster;
 use App\Http\Controllers\Master\EmailCaixaController;
 use App\Http\Controllers\Master\AgendaVendedorController;
+use App\Http\Controllers\Master\DashboardPreferenceController;
 use App\Http\Controllers\Comercial\DashboardController as DashboardComercial;
 use App\Http\Controllers\Comercial\FuncoesController as ComercialFuncoesController;
 use App\Http\Controllers\Operacional\AsoController;
@@ -807,6 +808,12 @@ Route::middleware('auth')->group(function () {
         ->group(function () {
             Route::get('/', [\App\Http\Controllers\Financeiro\DashboardController::class, 'index'])
                 ->name('dashboard');
+            Route::get('/faturamento-detalhado', [\App\Http\Controllers\Financeiro\FaturamentoDetalhadoController::class, 'index'])
+                ->name('faturamento-detalhado');
+            Route::get('/faturamento-detalhado/exportar-pdf', [\App\Http\Controllers\Financeiro\FaturamentoDetalhadoController::class, 'exportarPdf'])
+                ->name('faturamento-detalhado.exportar-pdf');
+            Route::get('/faturamento-detalhado/exportar-excel', [\App\Http\Controllers\Financeiro\FaturamentoDetalhadoController::class, 'exportarExcel'])
+                ->name('faturamento-detalhado.exportar-excel');
             Route::get('/contratos', [\App\Http\Controllers\Financeiro\ContratoController::class, 'index'])
                 ->name('contratos');
             Route::get('/contratos/{contrato}', [\App\Http\Controllers\Financeiro\ContratoController::class, 'show'])
@@ -864,6 +871,10 @@ Route::middleware('auth')->group(function () {
 
         // Dashboard Master
         Route::get('/', [DashboardMaster::class, 'index'])->name('dashboard');
+        Route::get('/dashboard-preferences', [DashboardPreferenceController::class, 'show'])
+            ->name('dashboard-preferences.show');
+        Route::put('/dashboard-preferences', [DashboardPreferenceController::class, 'update'])
+            ->name('dashboard-preferences.update');
         Route::get('/agendamentos', [DashboardMaster::class, 'agendamentos'])->name('agendamentos');
         Route::get('/relatorio-tarefas', [DashboardMaster::class, 'relatorioTarefas'])
             ->name('relatorio-tarefas');

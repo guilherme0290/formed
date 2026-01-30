@@ -53,6 +53,26 @@
                 </div>
                 <div class="text-sky-100 text-xs mt-1">Total de itens</div>
             </div>
+            <a href="{{ route('financeiro.faturamento-detalhado', ['status' => 'pendente']) }}"
+               class="rounded-2xl shadow-lg border border-amber-400/40 p-5 text-center text-white bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 hover:opacity-95 transition"
+               data-dashboard-card="financeiro-pendente">
+                <div class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 text-white mx-auto">&#128184;</div>
+                <div class="mt-2 text-xs uppercase tracking-wide text-amber-100">Faturamento Pendente</div>
+                <div class="text-3xl font-bold text-white mt-1">
+                    R$ {{ number_format($financeiro['total_aberto'] ?? 0, 2, ',', '.') }}
+                </div>
+                <div class="text-amber-100 text-xs mt-1">Clique para detalhar</div>
+            </a>
+            <a href="{{ route('financeiro.faturamento-detalhado', ['status' => 'recebido']) }}"
+               class="rounded-2xl shadow-lg border border-emerald-400/40 p-5 text-center text-white bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-500 hover:opacity-95 transition"
+               data-dashboard-card="financeiro-recebido">
+                <div class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 text-white mx-auto">&#128176;</div>
+                <div class="mt-2 text-xs uppercase tracking-wide text-emerald-100">Faturamento Recebido</div>
+                <div class="text-3xl font-bold text-white mt-1">
+                    R$ {{ number_format($financeiro['total_recebido'] ?? 0, 2, ',', '.') }}
+                </div>
+                <div class="text-emerald-100 text-xs mt-1">Clique para detalhar</div>
+            </a>
             <a href="{{ route('master.agendamentos') }}"
                class="rounded-2xl shadow-lg border border-emerald-400/40 p-5 text-center text-white bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-500 hover:opacity-95 transition"
                data-dashboard-card="agendamentos-dia">
