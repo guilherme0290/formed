@@ -18,6 +18,7 @@ class Cliente extends Model
         'cnpj',
         'email',
         'telefone',
+        'contato',
         'cep',
         'endereco',
         'numero',

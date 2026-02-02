@@ -88,7 +88,7 @@
 
                                 <form method="POST"
                                       action="{{ route('operacional.anexos.destroy', $anexo) }}"
-                                      onsubmit="return confirm('Remover este anexo?');">
+                                      data-confirm="Remover este anexo?">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit"

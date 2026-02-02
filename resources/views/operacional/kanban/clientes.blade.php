@@ -37,23 +37,15 @@
                     <div class="relative flex-1">
                         <span class="absolute inset-y-0 left-3 flex items-center text-slate-400 text-sm">🔍</span>
                         <input type="text"
+                               id="kanban-clientes-input"
                                name="q"
                                value="{{ request('q') }}"
                                placeholder="Pesquisar por razão social, fantasia ou CNPJ..."
-                               list="clientes-autocomplete"
+                               autocomplete="off"
                                class="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm
                                       focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400">
-                        <datalist id="clientes-autocomplete">
-                            @foreach($clientes->pluck('razao_social')->filter()->unique() as $nome)
-                                <option value="{{ $nome }}"></option>
-                            @endforeach
-                            @foreach($clientes->pluck('nome_fantasia')->filter()->unique() as $nome)
-                                <option value="{{ $nome }}"></option>
-                            @endforeach
-                            @foreach($clientes->pluck('cnpj')->filter()->unique() as $cnpj)
-                                <option value="{{ $cnpj }}"></option>
-                            @endforeach
-                        </datalist>
+                        <div id="kanban-clientes-list"
+                             class="absolute z-20 mt-1 w-full max-h-64 overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg hidden"></div>
                     </div>
                     <div class="flex items-center gap-2">
                         <button type="submit"
@@ -125,3 +117,32 @@
         </div>
     </div>
 @endsection
+
+@push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            window.initTailwindAutocomplete?.(
+                'kanban-clientes-input',
+                'kanban-clientes-list',
+                @json($clienteAutocomplete ?? [])
+            );
+        });
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.querySelector('form[method="GET"]');
+            const input = document.getElementById('kanban-clientes-input');
+            if (!form || !input) return;
+
+            let timer = null;
+            const delay = 350;
+
+            input.addEventListener('input', () => {
+                clearTimeout(timer);
+                timer = setTimeout(() => {
+                    form.submit();
+                }, delay);
+            });
+        });
+    </script>
+@endpush

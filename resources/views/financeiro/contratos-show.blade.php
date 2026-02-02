@@ -37,10 +37,10 @@
                     <div class="text-xs text-slate-500">Vigência Fim</div>
                     <div class="font-semibold text-slate-900">{{ optional($contrato->vigencia_fim)->format('d/m/Y') ?? '—' }}</div>
                 </div>
-                <div>
-                    <div class="text-xs text-slate-500">Valor Mensal</div>
-                    <div class="font-semibold text-slate-900">R$ {{ number_format((float) $contrato->valor_mensal, 2, ',', '.') }}</div>
-                </div>
+{{--                <div>--}}
+{{--                    <div class="text-xs text-slate-500">Valor Mensal</div>--}}
+{{--                    <div class="font-semibold text-slate-900">R$ {{ number_format((float) $contrato->valor_mensal, 2, ',', '.') }}</div>--}}
+{{--                </div>--}}
                 <div>
                     <div class="text-xs text-slate-500">Proposta Origem</div>
                     <div class="font-semibold text-slate-900">#{{ $contrato->proposta_id_origem }}</div>

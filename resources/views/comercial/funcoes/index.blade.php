@@ -23,6 +23,21 @@
                 {{ session('ok') }}
             </div>
         @endif
+        @if (session('ignored'))
+            <div class="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800 space-y-2">
+                <p class="font-semibold">Funções ignoradas (já existentes ou duplicadas):</p>
+                <ul class="list-disc list-inside space-y-1 text-xs">
+                    @foreach (session('ignored', []) as $nomeIgnorado)
+                        <li>{{ $nomeIgnorado }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+        @if (session('erro'))
+            <div class="rounded-xl bg-rose-50 border border-rose-200 px-4 py-3 text-sm text-rose-700">
+                {{ session('erro') }}
+            </div>
+        @endif
 
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
             <form method="GET" class="flex flex-col gap-3 md:flex-row md:items-end">
@@ -30,14 +45,11 @@
                     <label class="block text-xs font-semibold text-slate-600 mb-1">Buscar</label>
                     <div class="relative">
                         <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔎</span>
-                        <input name="q" value="{{ $q }}" placeholder="Nome da função..."
-                               list="funcoes-autocomplete"
+                        <input name="q" id="funcoes-autocomplete-input" value="{{ $q }}" placeholder="Nome da função..."
+                               autocomplete="off"
                                class="w-full rounded-xl border border-slate-200 pl-9 pr-3 py-2 text-sm focus:ring-2 focus:ring-slate-200 focus:border-slate-300">
-                        <datalist id="funcoes-autocomplete">
-                            @foreach($funcoes->pluck('nome')->unique() as $nome)
-                                <option value="{{ $nome }}"></option>
-                            @endforeach
-                        </datalist>
+                        <div id="funcoes-autocomplete-list"
+                             class="absolute z-20 mt-1 w-full max-h-64 overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg hidden"></div>
                     </div>
 
                 </div>
@@ -62,35 +74,70 @@
         </div>
 
         <div class="grid md:grid-cols-2 gap-4">
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
-                <h2 class="text-sm font-semibold text-slate-800">Nova função</h2>
-                <form method="POST" action="{{ route('comercial.funcoes.store') }}" class="space-y-3">
-                    @csrf
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Nome *</label>
-                        <input name="nome" value="{{ old('nome') }}" required
-                               class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+            <div class="space-y-4">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
+                    <h2 class="text-sm font-semibold text-slate-800">Nova função</h2>
+                    <form method="POST" action="{{ route('comercial.funcoes.store') }}" class="space-y-3">
+                        @csrf
+                        <x-toggle-ativo
+                            name="ativo"
+                            :checked="true"
+                            on-label="Ativa"
+                            off-label="Inativa"
+                            text-class="text-xs text-slate-600"
+                        />
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Nome *</label>
+                            <input name="nome" value="{{ old('nome') }}" required
+                                   class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">CBO</label>
+                            <input name="cbo" value="{{ old('cbo') }}"
+                                   class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Descrição</label>
+                            <textarea name="descricao" rows="3"
+                                      class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">{{ old('descricao') }}</textarea>
+                        </div>
+                        <div class="flex justify-end">
+                            <button class="px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-semibold">
+                                Salvar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-sm font-semibold text-slate-800">Importar funções</h2>
+                        <a href="{{ asset('templates/funcoes.xlsx') }}"
+                           class="text-xs font-semibold text-indigo-600 hover:text-indigo-700">
+                            Baixar template
+                        </a>
                     </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">CBO</label>
-                        <input name="cbo" value="{{ old('cbo') }}"
-                               class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                    <div class="text-xs text-slate-600 space-y-1">
+                        <p>O arquivo deve seguir exatamente o template: uma única coluna (A), sem cabeçalho, com uma função por linha.</p>
+                        <p>Funções já existentes serão ignoradas e não serão substituídas.</p>
                     </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Descrição</label>
-                        <textarea name="descricao" rows="3"
-                                  class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">{{ old('descricao') }}</textarea>
-                    </div>
-                    <label class="inline-flex items-center gap-2 text-xs text-slate-600">
-                        <input type="checkbox" name="ativo" value="1" checked class="rounded border-slate-300">
-                        Ativa
-                    </label>
-                    <div class="flex justify-end">
-                        <button class="px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-semibold">
-                            Salvar
-                        </button>
-                    </div>
-                </form>
+                    <form method="POST" action="{{ route('comercial.funcoes.import') }}" enctype="multipart/form-data" class="space-y-3">
+                        @csrf
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Arquivo (.xlsx)</label>
+                            <input type="file" name="arquivo" accept=".xlsx,.csv"
+                                   class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm bg-white">
+                            @error('arquivo')
+                                <p class="text-xs text-rose-600 mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+                        <div class="flex justify-end">
+                            <button class="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold">
+                                Importar
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
 
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
@@ -130,7 +177,7 @@
                                         ✏️
                                     </button>
                                     <form method="POST" action="{{ route('comercial.funcoes.destroy', $funcao) }}"
-                                          onsubmit="return confirm('{{ $temVinculo ? 'Esta função possui vínculos e será inativada. Deseja continuar?' : 'Deseja excluir esta função?' }}')">
+                                          data-confirm="{{ $temVinculo ? 'Esta função possui vínculos e será inativada. Deseja continuar?' : 'Deseja excluir esta função?' }}">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit"
@@ -158,9 +205,9 @@
         </div>
     </div>
 
-    <div id="modalFuncao" class="fixed inset-0 z-50 hidden bg-black/40">
+    <div id="modalFuncao" class="fixed inset-0 z-[90] hidden bg-black/50 overflow-y-auto">
         <div class="min-h-full flex items-center justify-center p-4">
-            <div class="bg-white w-full max-w-lg rounded-2xl shadow-xl overflow-hidden">
+            <div class="bg-white w-full max-w-lg rounded-2xl shadow-xl overflow-hidden max-h-[90vh] overflow-y-auto">
                 <div class="px-6 py-4 border-b flex items-center justify-between">
                     <h3 class="text-lg font-semibold text-slate-800">Editar função</h3>
                     <button type="button" class="h-9 w-9 rounded-xl hover:bg-slate-100 text-slate-500"
@@ -170,6 +217,13 @@
                 <form id="modalFuncaoForm" method="POST" class="p-6 space-y-3">
                     @csrf
                     @method('PUT')
+                    <x-toggle-ativo
+                        name="ativo"
+                        id="modalFuncaoAtivo"
+                        on-label="Ativa"
+                        off-label="Inativa"
+                        text-class="text-xs text-slate-600"
+                    />
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Nome *</label>
                         <input name="nome" id="modalFuncaoNome" required
@@ -185,11 +239,6 @@
                         <textarea name="descricao" id="modalFuncaoDescricao" rows="3"
                                   class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"></textarea>
                     </div>
-                    <label class="inline-flex items-center gap-2 text-xs text-slate-600">
-                        <input type="checkbox" name="ativo" id="modalFuncaoAtivo" value="1"
-                               class="rounded border-slate-300">
-                        Ativa
-                    </label>
                     <div class="flex justify-end gap-2 pt-2">
                         <button type="button" class="px-4 py-2 rounded-xl border text-sm" id="modalFuncaoCancel">
                             Cancelar
@@ -237,6 +286,15 @@
                     if (e.target === modal) closeModal();
                 });
             })();
+        </script>
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                window.initTailwindAutocomplete?.(
+                    'funcoes-autocomplete-input',
+                    'funcoes-autocomplete-list',
+                    @json($funcoesAutocomplete ?? [])
+                );
+            });
         </script>
     @endpush
 @endsection

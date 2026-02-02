@@ -45,9 +45,14 @@
                       class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
                     <div class="md:col-span-7">
                         <label class="text-xs font-semibold text-slate-600">Buscar</label>
-                        <input name="q" value="{{ request('q') }}"
-                               class="mt-1 w-full rounded-xl border border-slate-200 text-sm px-3 py-2"
-                               placeholder="Buscar por ID, cliente ou status...">
+                        <div class="relative">
+                            <input name="q" id="propostas-autocomplete-input" value="{{ request('q') }}"
+                                   autocomplete="off"
+                                   class="mt-1 w-full rounded-xl border border-slate-200 text-sm px-3 py-2"
+                                   placeholder="Buscar por ID, cliente ou status...">
+                            <div id="propostas-autocomplete-list"
+                                 class="absolute z-20 mt-1 w-full max-h-64 overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg hidden"></div>
+                        </div>
                     </div>
 
                     <div class="md:col-span-3">
@@ -84,7 +89,7 @@
                         <th class="px-5 py-3 font-semibold">Status</th>
                         <th class="px-5 py-3 font-semibold">Valor Total</th>
                         <th class="px-5 py-3 font-semibold">Criada em</th>
-                        <th class="px-5 py-3 font-semibold w-[220px]">Ações</th>
+                        <th class="px-5 py-3 font-semibold w-[300px]">Ações</th>
                     </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
@@ -156,9 +161,7 @@
                                             data-action="{{ route('comercial.propostas.enviar-whatsapp', $proposta) }}"
                                             data-telefone="{{ e($cliente?->telefone ?? '') }}"
                                             data-ref="{{ e($ref) }}">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h8M8 14h5m9-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                        </svg>
+                                        <i class="fa-brands fa-whatsapp text-base"></i>
                                         <span class="sr-only">Enviar por WhatsApp</span>
                                     </button>
 
@@ -176,6 +179,32 @@
                                         <span class="sr-only">Enviar por e-mail</span>
                                     </button>
 
+                                    <a href="{{ route('comercial.propostas.print', $proposta) }}"
+                                       target="_blank"
+                                       rel="noopener"
+                                       class="inline-flex items-center justify-center h-9 w-9 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+                                       title="Imprimir"
+                                       aria-label="Imprimir">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 9V3h12v6M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v7H6v-7z"/>
+                                        </svg>
+                                        <span class="sr-only">Imprimir</span>
+                                    </a>
+
+                                    <button type="button"
+                                            class="inline-flex items-center justify-center h-9 w-9 rounded-xl border border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100"
+                                            title="Duplicar proposta"
+                                            aria-label="Duplicar proposta"
+                                            data-act="duplicar"
+                                            data-action="{{ route('comercial.propostas.duplicar', $proposta) }}"
+                                            data-ref="{{ e($ref) }}"
+                                            data-cliente="{{ e($clienteTxt) }}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 9h11v11H9zM5 5h11v2H7v9H5z"/>
+                                        </svg>
+                                        <span class="sr-only">Duplicar proposta</span>
+                                    </button>
+
                                     <a href="{{ route('comercial.propostas.edit', $proposta) }}"
                                        class="inline-flex items-center justify-center h-9 w-9 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
                                        title="Editar"
@@ -188,7 +217,7 @@
 
                                     <form method="POST"
                                           action="{{ route('comercial.propostas.destroy', $proposta) }}"
-                                          onsubmit="return confirm('Deseja excluir esta proposta?')">
+                                          data-confirm="Deseja excluir esta proposta?">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit"
@@ -221,9 +250,9 @@
         </section>
 
         {{-- Modal WhatsApp --}}
-        <div id="modalWhatsapp" class="fixed inset-0 z-50 hidden bg-black/40">
+        <div id="modalWhatsapp" class="fixed inset-0 z-[90] hidden bg-black/50 overflow-y-auto">
             <div class="min-h-full flex items-center justify-center p-4">
-                <div class="bg-white w-full max-w-xl rounded-2xl shadow-xl overflow-hidden">
+                <div class="bg-white w-full max-w-xl rounded-2xl shadow-xl overflow-hidden max-h-[90vh] overflow-y-auto">
                     <div class="px-6 py-4 border-b flex items-center justify-between">
                         <h3 class="text-lg font-semibold text-slate-800">Enviar por WhatsApp</h3>
                         <button type="button" class="h-9 w-9 rounded-xl hover:bg-slate-100 text-slate-500"
@@ -263,9 +292,9 @@
         </div>
 
         {{-- Modal E-mail --}}
-        <div id="modalEmail" class="fixed inset-0 z-50 hidden bg-black/40">
+        <div id="modalEmail" class="fixed inset-0 z-[90] hidden bg-black/50 overflow-y-auto">
             <div class="min-h-full flex items-center justify-center p-4">
-                <div class="bg-white w-full max-w-xl rounded-2xl shadow-xl overflow-hidden">
+                <div class="bg-white w-full max-w-xl rounded-2xl shadow-xl overflow-hidden max-h-[90vh] overflow-y-auto">
                     <div class="px-6 py-4 border-b flex items-center justify-between">
                         <h3 class="text-lg font-semibold text-slate-800">Enviar por E-mail</h3>
                         <button type="button" class="h-9 w-9 rounded-xl hover:bg-slate-100 text-slate-500"
@@ -311,10 +340,53 @@
             </div>
         </div>
 
-        {{-- Modal Status --}}
-        <div id="modalStatus" class="fixed inset-0 z-50 hidden bg-black/40">
+        {{-- Modal Duplicar --}}
+        <div id="modalDuplicar" class="fixed inset-0 z-[90] hidden bg-black/50 overflow-y-auto">
             <div class="min-h-full flex items-center justify-center p-4">
-                <div class="bg-white w-full max-w-xl rounded-2xl shadow-xl overflow-hidden">
+                <div class="bg-white w-full max-w-xl rounded-2xl shadow-xl overflow-hidden max-h-[90vh] overflow-y-auto">
+                    <div class="px-6 py-4 border-b flex items-center justify-between">
+                        <h3 class="text-lg font-semibold text-slate-800">Duplicar proposta</h3>
+                        <button type="button" class="h-9 w-9 rounded-xl hover:bg-slate-100 text-slate-500"
+                                onclick="closeDuplicarModal()">✕</button>
+                    </div>
+
+                    <form id="formDuplicar" method="POST" class="p-6 space-y-4">
+                        @csrf
+
+                        <div class="text-sm text-slate-600">
+                            Duplicando a proposta <span class="font-semibold text-slate-800">#<span id="duplicarPropostaRef">—</span></span>
+                            <span class="text-slate-500">(<span id="duplicarPropostaCliente">—</span>)</span>
+                        </div>
+
+                        <div id="duplicarClienteWrap">
+                            <x-select-ajax name="cliente_id"
+                                           label="Cliente"
+                                           endpoint="{{ route('api.clientes.index') }}"
+                                           placeholder="Digite o nome do cliente..." />
+                        </div>
+
+                        <p class="text-xs text-slate-500">Selecione o cliente para criar uma nova proposta a partir desta.</p>
+
+                        <div class="pt-2 flex justify-end gap-2">
+                            <button type="button"
+                                    class="rounded-xl px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                                    onclick="closeDuplicarModal()">
+                                Cancelar
+                            </button>
+                            <button type="submit"
+                                    class="rounded-xl bg-amber-600 hover:bg-amber-700 text-white px-5 py-2 text-sm font-semibold">
+                                Duplicar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        {{-- Modal Status --}}
+        <div id="modalStatus" class="fixed inset-0 z-[90] hidden bg-black/50 overflow-y-auto">
+            <div class="min-h-full flex items-center justify-center p-4">
+                <div class="bg-white w-full max-w-xl rounded-2xl shadow-xl overflow-hidden max-h-[90vh] overflow-y-auto">
                     <div class="px-6 py-4 border-b flex items-center justify-between">
                         <h3 class="text-lg font-semibold text-slate-800">Alterar status da proposta</h3>
                         <button type="button" class="h-9 w-9 rounded-xl hover:bg-slate-100 text-slate-500"
@@ -362,6 +434,7 @@
             (function () {
                 const modalWhatsapp = document.getElementById('modalWhatsapp');
                 const modalEmail = document.getElementById('modalEmail');
+                const modalDuplicar = document.getElementById('modalDuplicar');
 
                 const formWhatsapp = document.getElementById('formWhatsapp');
                 const whatsappTelefone = document.getElementById('whatsappTelefone');
@@ -371,6 +444,11 @@
                 const emailTo = document.getElementById('emailTo');
                 const emailAssunto = document.getElementById('emailAssunto');
                 const emailMensagem = document.getElementById('emailMensagem');
+
+                const formDuplicar = document.getElementById('formDuplicar');
+                const duplicarPropostaRef = document.getElementById('duplicarPropostaRef');
+                const duplicarPropostaCliente = document.getElementById('duplicarPropostaCliente');
+                const duplicarClienteWrap = document.getElementById('duplicarClienteWrap');
 
                 function openWhatsappModal(action, telefone, ref) {
                     if (!modalWhatsapp || !formWhatsapp) return;
@@ -397,6 +475,35 @@
 
                 function closeEmailModal() {
                     modalEmail?.classList.add('hidden');
+                }
+
+                function resetDuplicarCliente() {
+                    if (!duplicarClienteWrap) return;
+                    const textInput = duplicarClienteWrap.querySelector('input[type="text"]');
+                    const hiddenInput = duplicarClienteWrap.querySelector('input[type="hidden"]');
+                    if (textInput) {
+                        textInput.value = '';
+                        textInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+                    if (hiddenInput) {
+                        hiddenInput.value = '';
+                        hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+                }
+
+                function openDuplicarModal(action, ref, cliente) {
+                    if (!modalDuplicar || !formDuplicar) return;
+                    formDuplicar.action = action;
+                    if (duplicarPropostaRef) duplicarPropostaRef.textContent = ref || '—';
+                    if (duplicarPropostaCliente) duplicarPropostaCliente.textContent = cliente || '—';
+                    resetDuplicarCliente();
+                    modalDuplicar.classList.remove('hidden');
+                    const textInput = duplicarClienteWrap?.querySelector('input[type="text"]');
+                    setTimeout(() => textInput?.focus(), 0);
+                }
+
+                function closeDuplicarModal() {
+                    modalDuplicar?.classList.add('hidden');
                 }
 
                 // Status
@@ -533,6 +640,7 @@
 
                 window.closeWhatsappModal = closeWhatsappModal;
                 window.closeEmailModal = closeEmailModal;
+                window.closeDuplicarModal = closeDuplicarModal;
                 window.closeStatusModal = closeStatusModal;
 
                 document.querySelectorAll('[data-act="whatsapp"]').forEach(btn => {
@@ -547,6 +655,12 @@
                     });
                 });
 
+                document.querySelectorAll('[data-act="duplicar"]').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        openDuplicarModal(btn.dataset.action, btn.dataset.ref, btn.dataset.cliente);
+                    });
+                });
+
                 document.querySelectorAll('[data-act="status"]').forEach(btn => {
                     btn.addEventListener('click', () => openStatusModal(btn));
                 });
@@ -556,6 +670,7 @@
                 document.addEventListener('click', (e) => {
                     if (modalWhatsapp && !modalWhatsapp.classList.contains('hidden') && e.target === modalWhatsapp) closeWhatsappModal();
                     if (modalEmail && !modalEmail.classList.contains('hidden') && e.target === modalEmail) closeEmailModal();
+                    if (modalDuplicar && !modalDuplicar.classList.contains('hidden') && e.target === modalDuplicar) closeDuplicarModal();
                     if (modalStatus && !modalStatus.classList.contains('hidden') && e.target === modalStatus) closeStatusModal();
                 });
 
@@ -563,9 +678,19 @@
                     if (e.key !== 'Escape') return;
                     if (modalWhatsapp && !modalWhatsapp.classList.contains('hidden')) return closeWhatsappModal();
                     if (modalEmail && !modalEmail.classList.contains('hidden')) return closeEmailModal();
+                    if (modalDuplicar && !modalDuplicar.classList.contains('hidden')) return closeDuplicarModal();
                     if (modalStatus && !modalStatus.classList.contains('hidden')) return closeStatusModal();
                 });
             })();
+        </script>
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                window.initTailwindAutocomplete?.(
+                    'propostas-autocomplete-input',
+                    'propostas-autocomplete-list',
+                    @json($propostasAutocomplete ?? [])
+                );
+            });
         </script>
     @endpush
 @endsection

@@ -66,7 +66,22 @@ class PropostaController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        return view('comercial.propostas.index', compact('propostas'));
+        $propostasAutocomplete = $propostas->getCollection()
+            ->flatMap(function ($proposta) {
+                return array_filter([
+                    $proposta->codigo,
+                    $proposta->id ? '#'.$proposta->id : null,
+                    $proposta->cliente?->razao_social,
+                    $proposta->status,
+                ]);
+            })
+            ->unique()
+            ->values();
+
+        return view('comercial.propostas.index', [
+            'propostas' => $propostas,
+            'propostasAutocomplete' => $propostasAutocomplete,
+        ]);
     }
 
     public function create(Request $request)
@@ -295,6 +310,106 @@ class PropostaController extends Controller
             report($e);
             return back()->with('erro', 'Falha ao enviar e-mail.');
         }
+    }
+
+    public function duplicar(Request $request, Proposta $proposta)
+    {
+        $user = auth()->user();
+        abort_unless($proposta->empresa_id === $user->empresa_id, 403);
+
+        if (!$user->hasPapel('Master')) {
+            abort_unless((int) $proposta->vendedor_id === (int) $user->id, 403);
+        }
+
+        $data = $request->validate([
+            'cliente_id' => ['required', 'integer'],
+        ]);
+
+        $clienteId = (int) $data['cliente_id'];
+        $clienteOk = Cliente::where('id', $clienteId)
+            ->where('empresa_id', $user->empresa_id)
+            ->exists();
+        abort_if(!$clienteOk, 403);
+
+        $temPropostaAberta = Proposta::query()
+            ->where('empresa_id', $user->empresa_id)
+            ->where('cliente_id', $clienteId)
+            ->whereNotIn('status', ['FECHADA', 'CANCELADA'])
+            ->exists();
+
+        if ($temPropostaAberta) {
+            return back()->with('erro', 'Já existe uma proposta em aberto para este cliente.');
+        }
+
+        $proposta->load(['itens', 'asoGrupos']);
+
+        $valorItens = $proposta->itens->sum(fn (PropostaItens $it) => (float) $it->valor_total);
+        $temItemEsocial = $proposta->itens->contains(fn (PropostaItens $it) => strtoupper((string) $it->tipo) === 'ESOCIAL');
+        $valorEsocial = $proposta->incluir_esocial && !$temItemEsocial
+            ? (float) ($proposta->esocial_valor_mensal ?? 0)
+            : 0.0;
+        $valorTotal = $valorItens + $valorEsocial;
+
+        $codigo = 'PRP-' . now()->format('Ymd') . '-' . Str::upper(Str::random(4));
+
+        $novaProposta = DB::transaction(function () use ($proposta, $clienteId, $valorTotal, $codigo) {
+            $novaProposta = Proposta::create([
+                'empresa_id' => $proposta->empresa_id,
+                'cliente_id' => $clienteId,
+                'vendedor_id' => auth()->id(),
+                'codigo' => $codigo,
+                'forma_pagamento' => $proposta->forma_pagamento,
+                'prazo_dias' => $proposta->prazo_dias,
+                'vencimento_servicos' => $proposta->vencimento_servicos,
+                'incluir_esocial' => $proposta->incluir_esocial,
+                'esocial_qtd_funcionarios' => $proposta->esocial_qtd_funcionarios,
+                'esocial_valor_mensal' => $proposta->esocial_valor_mensal,
+                'valor_total' => $valorTotal,
+                'status' => 'PENDENTE',
+                'pipeline_status' => 'CONTATO_INICIAL',
+                'pipeline_updated_at' => now(),
+                'pipeline_updated_by' => auth()->id(),
+                'public_token' => null,
+                'public_responded_at' => null,
+                'perdido_motivo' => null,
+                'perdido_observacao' => null,
+                'observacoes' => $proposta->observacoes,
+            ]);
+
+            foreach ($proposta->itens as $item) {
+                PropostaItens::create([
+                    'proposta_id' => $novaProposta->id,
+                    'servico_id' => $item->servico_id,
+                    'tipo' => $item->tipo,
+                    'nome' => $item->nome,
+                    'descricao' => $item->descricao,
+                    'valor_unitario' => $item->valor_unitario,
+                    'acrescimo' => $item->acrescimo,
+                    'desconto' => $item->desconto,
+                    'quantidade' => $item->quantidade,
+                    'prazo' => $item->prazo,
+                    'valor_total' => $item->valor_total,
+                    'meta' => $item->meta,
+                ]);
+            }
+
+            foreach ($proposta->asoGrupos as $grupo) {
+                PropostaAsoGrupo::create([
+                    'empresa_id' => $proposta->empresa_id,
+                    'cliente_id' => $clienteId,
+                    'proposta_id' => $novaProposta->id,
+                    'tipo_aso' => $grupo->tipo_aso,
+                    'grupo_exames_id' => $grupo->grupo_exames_id,
+                    'total_exames' => $grupo->total_exames,
+                ]);
+            }
+
+            return $novaProposta;
+        });
+
+        return redirect()
+            ->route('comercial.propostas.edit', $novaProposta)
+            ->with('ok', 'Proposta duplicada. Faça os ajustes necessários.');
     }
 
     public function alterarStatus(Request $request, Proposta $proposta, PropostaService $service)

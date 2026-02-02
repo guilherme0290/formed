@@ -605,6 +605,9 @@ Route::middleware('auth')->group(function () {
                 Route::post('/{proposta}/enviar-email', [PropostaController::class, 'enviarEmail'])
                     ->name('enviar-email');
 
+                Route::post('/{proposta}/duplicar', [PropostaController::class, 'duplicar'])
+                    ->name('duplicar');
+
                 Route::post('/{proposta}/status', [PropostaController::class, 'alterarStatus'])
                     ->name('status');
 
@@ -666,6 +669,8 @@ Route::middleware('auth')->group(function () {
                     ->name('index');
                 Route::post('/', [ComercialFuncoesController::class, 'store'])
                     ->name('store');
+                Route::post('/import', [ComercialFuncoesController::class, 'import'])
+                    ->name('import');
                 Route::put('/{funcao}', [ComercialFuncoesController::class, 'update'])
                     ->name('update');
                 Route::delete('/{funcao}', [ComercialFuncoesController::class, 'destroy'])

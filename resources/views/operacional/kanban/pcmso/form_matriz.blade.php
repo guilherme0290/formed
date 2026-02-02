@@ -424,7 +424,7 @@
 
                         const itens = funcoesWrapper.querySelectorAll('.funcao-item');
                         if (itens.length <= 1) {
-                            alert('E necessario pelo menos uma funcao.');
+                            window.uiAlert('E necessario pelo menos uma funcao.');
                             return;
                         }
 
@@ -506,11 +506,12 @@
 
                 // ----- DELETE ANEXO -----
                 document.querySelectorAll('[data-delete-anexo]').forEach(btn => {
-                    btn.addEventListener('click', function () {
+                    btn.addEventListener('click', async function () {
                         const url = this.dataset.deleteAnexo;
                         if (!url) return;
 
-                        if (!confirm('Confirma excluir este anexo?')) return;
+                        const ok = await window.uiConfirm('Confirma excluir este anexo?');
+                        if (!ok) return;
 
                         let form = document.getElementById('form-delete-anexo');
                         if (!form) {

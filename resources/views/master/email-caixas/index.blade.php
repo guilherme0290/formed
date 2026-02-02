@@ -12,12 +12,22 @@
         <div class="flex flex-wrap items-start justify-between gap-4">
             <div>
                 <h1 class="text-2xl font-semibold text-slate-900">
-                    {{ $tab === 'tempos' ? 'Configuração de tempo das tarefas' : 'Configuração de Caixas de E-mail SMTP (CRUR)' }}
+                    @if ($tab === 'tempos')
+                        Configuração de tempo das tarefas
+                    @elseif ($tab === 'painel')
+                        Configuração do painel
+                    @else
+                        Configuração de Caixas de E-mail
+                    @endif
                 </h1>
                 <p class="text-slate-500 text-sm mt-1">
-                    {{ $tab === 'tempos'
-                        ? 'Defina o tempo padrão por serviço para o controle de SLA.'
-                        : 'Defina servidor, remetente, respondente e credenciais.' }}
+                    @if ($tab === 'tempos')
+                        Defina o tempo padrão por serviço para o controle de SLA.
+                    @elseif ($tab === 'painel')
+                        Ajuste os textos exibidos no painel de controle.
+                    @else
+                        Defina servidor, remetente, respondente e credenciais.
+                    @endif
                 </p>
             </div>
             <button type="submit" form="email-caixa-form"
@@ -61,6 +71,13 @@
         <div class="{{ $tab === 'email' ? 'space-y-6' : 'hidden' }}" data-tab-panel="email">
             <form id="email-caixa-form" method="POST" action="{{ route('master.email-caixas.store') }}" class="space-y-4">
                 @csrf
+                <x-toggle-ativo
+                    name="ativo"
+                    :checked="old('ativo', '1') === '1'"
+                    on-label="Ativo"
+                    off-label="Inativo"
+                    text-class="text-sm text-slate-700"
+                />
                 <div class="grid md:grid-cols-2 gap-4">
                     <div class="bg-white rounded-xl border border-slate-200 shadow-sm">
                         <div class="border-b border-slate-200 px-4 py-3">
@@ -123,13 +140,6 @@
                                         {{ old('requer_autenticacao', '1') === '1' ? 'checked' : '' }}>
                                     Autenticacao obrigatoria?
                                 </label>
-                                <input type="hidden" name="ativo" value="0">
-                                <label class="inline-flex items-center gap-2 text-slate-700">
-                                    <input type="checkbox" name="ativo" value="1"
-                                           class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                                        {{ old('ativo', '1') === '1' ? 'checked' : '' }}>
-                                    Ativo
-                                </label>
                             </div>
                             <div class="flex flex-wrap items-center justify-center gap-3 pt-6">
                                 <button type="submit" formaction="{{ route('master.email-caixas.testar') }}"
@@ -185,12 +195,12 @@
                                         x-on:click="$dispatch('open-modal', 'email-caixa-teste-{{ $caixa->id }}')">
                                     Testar envio
                                 </button>
-                                <form method="POST" action="{{ route('master.email-caixas.destroy', $caixa) }}">
+                                <form method="POST" action="{{ route('master.email-caixas.destroy', $caixa) }}" data-confirm="Excluir este email?">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit"
                                             class="inline-flex items-center px-3 py-1.5 rounded-lg bg-rose-50 text-rose-700 text-xs font-semibold border border-rose-200 hover:bg-rose-100"
-                                            onclick="return confirm('Excluir este email?')">
+                                            >
                                         Excluir
                                     </button>
                                 </form>

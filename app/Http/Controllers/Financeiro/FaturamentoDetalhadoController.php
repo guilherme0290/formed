@@ -196,6 +196,14 @@ class FaturamentoDetalhadoController extends Controller
             ->orderBy('razao_social')
             ->get(['id', 'razao_social']);
 
+        $clienteAutocomplete = $clientes
+            ->pluck('razao_social')
+            ->filter()
+            ->unique()
+            ->values()
+            ->prepend('Todos os clientes')
+            ->values();
+
         $clienteSelecionadoLabel = 'Todos os clientes';
         if ($clienteSelecionado !== 'todos') {
             if (is_int($clienteSelecionado)) {
@@ -216,6 +224,7 @@ class FaturamentoDetalhadoController extends Controller
 
         return [
             'clientes' => $clientes,
+            'cliente_autocomplete' => $clienteAutocomplete,
             'cliente_selecionado' => $clienteSelecionado,
             'cliente_selecionado_label' => $clienteSelecionadoLabel,
             'status_selecionado' => $statusSelecionado,
@@ -294,7 +303,7 @@ class FaturamentoDetalhadoController extends Controller
         }
 
         if ($statusSelecionado === 'recebido') {
-            $query->whereRaw('COALESCE(baixas.total_baixado, 0) >= contas_receber_itens.valor');
+            $query->whereRaw('COALESCE(baixas.total_baixado, 0) > 0');
         } elseif ($statusSelecionado === 'pendente') {
             $query->whereRaw('COALESCE(baixas.total_baixado, 0) < contas_receber_itens.valor');
         }

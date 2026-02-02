@@ -131,7 +131,7 @@
 
                             {{-- Excluir --}}
                             <form method="POST" action="{{ route('tabela-precos.items.destroy',$item) }}"
-                                  onsubmit="return confirm('Excluir permanentemente?');">
+                                  data-confirm="Excluir permanentemente?">
                                 @csrf @method('DELETE')
                                 <button class="text-rose-600 hover:underline text-sm">
                                     Excluir

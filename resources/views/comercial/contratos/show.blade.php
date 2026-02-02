@@ -53,7 +53,7 @@
                     </div>
                 </div>
                 <div>
-                    <div class="text-xs text-slate-500">Valor Mensal</div>
+                    <div class="text-xs text-slate-500">Valor</div>
                     <div class="font-semibold text-slate-900">R$ {{ number_format((float) $contrato->valor_mensal, 2, ',', '.') }}</div>
                 </div>
                 <div>

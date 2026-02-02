@@ -11,6 +11,9 @@ use App\Models\ClienteContrato;
 use App\Models\Servico;
 use App\Models\Cliente;
 use App\Models\Funcionario;
+use App\Models\ContaReceber;
+use App\Models\ContaReceberItem;
+use App\Models\Venda;
 use App\Models\TarefaLog;
 use App\Models\TreinamentoNR;
 use App\Models\User;
@@ -23,6 +26,7 @@ use Psy\Util\Str;
 use App\Services\PrecificacaoService;
 use App\Services\VendaService;
 use App\Services\ComissaoService;
+use App\Services\ContaReceberService;
 use Illuminate\Http\JsonResponse;
 
 class PainelController extends Controller
@@ -464,7 +468,21 @@ class PainelController extends Controller
             ->orderBy('razao_social')
             ->paginate(12);
 
-        return view('operacional.kanban.clientes', compact('clientes', 'q'));
+        $clienteAutocomplete = Cliente::query()
+            ->where('empresa_id', $empresaId)
+            ->orderBy('razao_social')
+            ->get(['razao_social', 'nome_fantasia', 'cnpj'])
+            ->flatMap(function ($cliente) {
+                return array_filter([
+                    $cliente->razao_social,
+                    $cliente->nome_fantasia,
+                    $cliente->cnpj,
+                ]);
+            })
+            ->unique()
+            ->values();
+
+        return view('operacional.kanban.clientes', compact('clientes', 'q', 'clienteAutocomplete'));
     }
 
     public function selecionarServico(Cliente $cliente, Request $request)
@@ -556,7 +574,7 @@ class PainelController extends Controller
     }
 
 
-    public function destroy(Tarefa $tarefa, Request $request)
+    public function destroy(Tarefa $tarefa, Request $request, ContaReceberService $contaReceberService)
     {
         $usuario = $request->user();
 
@@ -566,7 +584,70 @@ class PainelController extends Controller
         // se quiser, garante que é da mesma empresa:
         abort_unless($tarefa->empresa_id === $usuario->empresa_id, 403);
 
-        $tarefa->delete(); // Soft delete
+        $resultado = DB::transaction(function () use ($tarefa, $contaReceberService) {
+            $vendas = Venda::query()
+                ->where('tarefa_id', $tarefa->id)
+                ->get();
+
+            foreach ($vendas as $venda) {
+                $itensConta = ContaReceberItem::query()
+                    ->where('venda_id', $venda->id);
+
+                $temItensNaoAbertos = (clone $itensConta)
+                    ->where('status', '!=', 'ABERTO')
+                    ->exists();
+
+                if ($temItensNaoAbertos) {
+                    return [
+                        'ok' => false,
+                        'message' => 'Não é possível excluir: existem contas a receber já baixadas ou faturadas.',
+                    ];
+                }
+
+                $itensAbertos = (clone $itensConta)
+                    ->where('status', 'ABERTO')
+                    ->get();
+
+                $contaIds = $itensAbertos->pluck('conta_receber_id')->filter()->unique();
+
+                if ($itensAbertos->isNotEmpty()) {
+                    ContaReceberItem::query()
+                        ->whereIn('id', $itensAbertos->pluck('id'))
+                        ->delete();
+                }
+
+                foreach ($contaIds as $contaId) {
+                    $conta = ContaReceber::find($contaId);
+                    if (!$conta) {
+                        continue;
+                    }
+
+                    $temItensRestantes = $conta->itens()
+                        ->where('status', '!=', 'CANCELADO')
+                        ->exists();
+
+                    if (!$temItensRestantes) {
+                        $conta->delete();
+                        continue;
+                    }
+
+                    $contaReceberService->recalcularConta($conta->fresh());
+                }
+
+                $venda->delete();
+            }
+
+            $tarefa->delete(); // Soft delete
+
+            return ['ok' => true];
+        });
+
+        if (!$resultado['ok']) {
+            return response()->json([
+                'ok' => false,
+                'message' => $resultado['message'],
+            ], 422);
+        }
 
         return response()->json([
             'ok'      => true,

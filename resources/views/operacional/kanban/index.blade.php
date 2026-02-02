@@ -245,6 +245,7 @@
                                         $funcionarioNome   = $funcionario->nome ?? null;
                                         $funcionarioCpf    = $funcionario->cpf ?? null;
                                         $funcionarioFuncao = $funcionario->funcao_nome ?? null;
+                                        $funcionarioCelular = $funcionario->celular ?? null;
 
                                         $slaData      = $tarefa->fim_previsto
                                                         ? \Carbon\Carbon::parse($tarefa->fim_previsto)->format('d/m/Y')
@@ -386,6 +387,7 @@
                                     "
                                     data-funcionario-funcao="{{ $funcionarioFuncao }}"
                                     data-funcionario-cpf="{{ $funcionarioCpf }}"
+                                    data-funcionario-celular="{{ $funcionarioCelular }}"
 
                                     data-aso-tipo="{{ $asoTipoLabel }}"
                                     data-aso-data="{{ $asoDataFormatada }}"
@@ -691,7 +693,7 @@
 
     {{-- Modal de Detalhes da Tarefa --}}
     <div id="tarefa-modal"
-         class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50">
+         class="fixed inset-0 z-[90] hidden items-center justify-center bg-black/50 p-4 overflow-y-auto">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden">
             {{-- Cabeçalho --}}
             {{-- Cabeçalho (VERSÃO DEBUG) --}}
@@ -759,6 +761,15 @@
                             {{-- BLOCO ESPECÍFICO: ASO --}}
 
                             <div id="modal-bloco-aso" class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div class="md:col-span-2">
+                                    <div class="flex items-center gap-3 py-2">
+                                        <div class="h-px flex-1 bg-slate-200"></div>
+                                        <span class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+                                            Dados do Funcionário
+                                        </span>
+                                        <div class="h-px flex-1 bg-slate-200"></div>
+                                    </div>
+                                </div>
 
                                 <div class="space-y-1">
                                     <div>
@@ -768,6 +779,10 @@
                                     <div>
                                         <dt class="text-[11px] text-slate-500">CPF</dt>
                                         <dd class="font-medium" id="modal-funcionario-cpf">—</dd>
+                                    </div>
+                                    <div>
+                                        <dt class="text-[11px] text-slate-500">Celular</dt>
+                                        <dd class="font-medium" id="modal-funcionario-celular">—</dd>
                                     </div>
                                     <div>
                                         <dt class="text-[11px] text-slate-500">Função</dt>
@@ -1238,6 +1253,7 @@
             const spanFuncionario = document.getElementById('modal-funcionario');
             const spanFuncionarioFuncao = document.getElementById('modal-funcionario-funcao');
             const spanFuncionarioCpf = document.getElementById('modal-funcionario-cpf');
+            const spanFuncionarioCelular = document.getElementById('modal-funcionario-celular');
             const spanAsoTipo = document.getElementById('modal-aso-tipo');
             const spanAsoData = document.getElementById('modal-aso-data');
             const spanAsoUnidade = document.getElementById('modal-aso-unidade');
@@ -1291,6 +1307,18 @@
             const arquivoLink = document.getElementById('modal-arquivo-link');
             const btnNotificarCliente = document.getElementById('btn-notificar-cliente');
             let detalhesCurrentCard = null;
+
+            function formatTelefone(raw) {
+                const digits = String(raw || '').replace(/\D/g, '');
+                if (!digits) return '—';
+                if (digits.length === 11) {
+                    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+                }
+                if (digits.length === 10) {
+                    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+                }
+                return raw || '—';
+            }
 
             function buildWhatsappMensagem(card, arquivoUrl) {
                 const telefone = (card?.dataset?.telefone || '').replace(/\D/g, '');
@@ -1394,6 +1422,9 @@
 
                 spanFuncionario.textContent = card.dataset.funcionario || '—';
                 spanFuncionarioFuncao.textContent = card.dataset.funcionarioFuncao || '—';
+                if (spanFuncionarioCelular) {
+                    spanFuncionarioCelular.textContent = formatTelefone(card.dataset.funcionarioCelular || '');
+                }
 
                 if (textareaObsInterna) {
                     textareaObsInterna.value = card.dataset.observacaoInterna || '';
@@ -1485,6 +1516,9 @@
                         if (spanFuncionarioCpf) {
                             spanFuncionarioCpf.textContent = card.dataset.funcionarioCpf || '—';
                         }
+                        if (spanFuncionarioCelular) {
+                            spanFuncionarioCelular.textContent = formatTelefone(card.dataset.funcionarioCelular || '');
+                        }
                         if (spanAsoTipo) {
                             spanAsoTipo.textContent = card.dataset.asoTipo || '—';
                         }
@@ -1508,6 +1542,7 @@
                         spanFuncionario.textContent = '—';
                         spanFuncionarioFuncao.textContent = '—';
                         if (spanFuncionarioCpf) spanFuncionarioCpf.textContent = '—';
+                        if (spanFuncionarioCelular) spanFuncionarioCelular.textContent = '—';
                         if (spanAsoTipo) spanAsoTipo.textContent = '—';
                         if (spanAsoData) spanAsoData.textContent = '—';
                         if (spanAsoUnidade) spanAsoUnidade.textContent = '—';
@@ -1799,13 +1834,13 @@
                     if (!detalhesCurrentCard) return;
                     const arquivoUrl = detalhesCurrentCard.dataset.arquivoClienteUrl || '';
                     if (!arquivoUrl) {
-                        alert('Nenhum documento anexado para enviar.');
+                        window.uiAlert('Nenhum documento anexado para enviar.');
                         return;
                     }
 
                     const payload = buildWhatsappMensagem(detalhesCurrentCard, arquivoUrl);
                     if (!payload) {
-                        alert('Telefone do cliente não informado.');
+                        window.uiAlert('Telefone do cliente não informado.');
                         return;
                     }
 
@@ -1941,7 +1976,7 @@
                                     || data?.message
                                     || (data?.errors ? Object.values(data.errors).flat()[0] : null)
                                     || 'Erro ao finalizar tarefa.';
-                                alert(error);
+                                window.uiAlert(error);
                                 return;
                             }
 
@@ -1983,7 +2018,7 @@
                             if (whatsappPopup && !whatsappPopup.closed) {
                                 whatsappPopup.close();
                             }
-                            alert(error?.message || 'Erro ao finalizar tarefa.');
+                            window.uiAlert(error?.message || 'Erro ao finalizar tarefa.');
                         });
                 });
             }
@@ -2243,7 +2278,7 @@
                     const isCancelada = modal.dataset.cancelada === '1';
                     console.log(isCancelada)
                     if (isCancelada) {
-                        alert('Esta tarefa está cancelada e não pode ser movimentada.');
+                        window.uiAlert('Esta tarefa está cancelada e não pode ser movimentada.');
                         return;
                     }
 
@@ -2275,12 +2310,12 @@
 
                                 console.log('Movido com sucesso:', data);
                             } else {
-                                alert('Não foi possível mover a tarefa.');
+                                window.uiAlert('Não foi possível mover a tarefa.');
                             }
                         })
                         .catch(err => {
                             console.error(err);
-                            alert('Erro ao mover a tarefa.');
+                            window.uiAlert('Erro ao mover a tarefa.');
                         });
                 });
             });
@@ -2296,7 +2331,7 @@
                     const url = modal.dataset.observacaoUrl;
 
                     if (!url) {
-                        alert('Nenhuma tarefa selecionada para salvar observação.');
+                        window.uiAlert('Nenhuma tarefa selecionada para salvar observação.');
                         return;
                     }
 
@@ -2322,12 +2357,12 @@
                                     btnSalvarObs.textContent = 'Salvar Observação';
                                 }, 1500);
                             } else {
-                                alert('Não foi possível salvar a observação.');
+                                window.uiAlert('Não foi possível salvar a observação.');
                             }
                         })
                         .catch(err => {
                             console.error(err);
-                            alert('Erro ao salvar a observação.');
+                            window.uiAlert('Erro ao salvar a observação.');
                         });
                 });
             }
@@ -2339,16 +2374,15 @@
             const btnExcluir = document.getElementById('btn-excluir-tarefa');
 
             if (btnExcluir) {
-                btnExcluir.addEventListener('click', () => {
-                    if (!confirm('Tem certeza que deseja excluir esta tarefa?')) {
-                        return;
-                    }
+                btnExcluir.addEventListener('click', async () => {
+                    const ok = await window.uiConfirm('Tem certeza que deseja excluir esta tarefa?');
+                    if (!ok) return;
 
                     const idSpan = document.getElementById('modal-tarefa-id');
                     const tarefaId = idSpan ? idSpan.textContent.trim() : null;
 
                     if (!tarefaId) {
-                        alert('ID da tarefa não encontrado.');
+                        window.uiAlert('ID da tarefa não encontrado.');
                         return;
                     }
 
@@ -2362,7 +2396,7 @@
                         .then(r => r.json())
                         .then(json => {
                             if (!json.ok) {
-                                alert(json.message || 'Não foi possível excluir a tarefa.');
+                                window.uiAlert(json.message || 'Não foi possível excluir a tarefa.');
                                 return;
                             }
 
@@ -2374,7 +2408,7 @@
                             window.location.reload();
                         })
                         .catch(() => {
-                            alert('Erro na comunicação com o servidor.');
+                            window.uiAlert('Erro na comunicação com o servidor.');
                         });
                 });
             }
@@ -2392,7 +2426,7 @@
                     const url = modal.dataset.editUrl;
 
                     if (!url) {
-                        alert('Edição ainda não está disponível para este tipo de tarefa.');
+                        window.uiAlert('Edição ainda não está disponível para este tipo de tarefa.');
                         return;
                     }
 

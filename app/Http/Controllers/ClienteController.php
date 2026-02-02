@@ -49,7 +49,13 @@ class ClienteController extends Controller
 
         $routePrefix = $this->routePrefix();
 
-        return view('clientes.index', compact('clientes', 'q', 'status', 'routePrefix'));
+        $autocompleteOptions = $clientes->getCollection()
+            ->pluck('razao_social')
+            ->filter()
+            ->unique()
+            ->values();
+
+        return view('clientes.index', compact('clientes', 'q', 'status', 'routePrefix', 'autocompleteOptions'));
     }
 
     /**
@@ -375,6 +381,7 @@ class ClienteController extends Controller
                 ],
                 'email'          => ['nullable', 'email', 'max:255'],
                 'telefone'       => ['nullable', 'string', 'max:30'],
+                'contato'        => ['nullable', 'string', 'max:120'],
                 'cep'            => ['nullable', 'string', 'max:20'],
                 'endereco'       => ['nullable', 'string', 'max:255'],
                 'numero'         => ['nullable', 'string', 'max:20'],

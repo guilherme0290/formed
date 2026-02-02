@@ -32,16 +32,15 @@
                 </div>
                 <div>
                     <label class="text-xs font-semibold text-slate-600">Cliente</label>
-                    <input type="text" name="cliente" list="clientes-list"
-                           class="mt-1 w-full rounded-xl border border-slate-200 bg-white text-slate-700 placeholder:text-slate-400 text-sm px-3 py-2 h-[44px]"
-                           placeholder="Todos os clientes"
-                           value="{{ ($cliente_selecionado ?? 'todos') === 'todos' ? '' : ($cliente_selecionado_label ?? '') }}">
-                    <datalist id="clientes-list">
-                        <option value="Todos os clientes"></option>
-                        @foreach($clientes as $cliente)
-                            <option value="{{ $cliente->razao_social }}"></option>
-                        @endforeach
-                    </datalist>
+                    <div class="relative">
+                        <input type="text" name="cliente" id="cliente-autocomplete-input"
+                               autocomplete="off"
+                               class="mt-1 w-full rounded-xl border border-slate-200 bg-white text-slate-700 placeholder:text-slate-400 text-sm px-3 py-2 h-[44px]"
+                               placeholder="Todos os clientes"
+                               value="{{ ($cliente_selecionado ?? 'todos') === 'todos' ? '' : ($cliente_selecionado_label ?? '') }}">
+                        <div id="cliente-autocomplete-list"
+                             class="absolute z-20 mt-1 w-full max-h-64 overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg hidden"></div>
+                    </div>
                 </div>
                 <div>
                     <label class="text-xs font-semibold text-slate-600">Status</label>
@@ -183,3 +182,15 @@
         </div>
     </div>
 @endsection
+
+@push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            window.initTailwindAutocomplete?.(
+                'cliente-autocomplete-input',
+                'cliente-autocomplete-list',
+                @json($cliente_autocomplete ?? [])
+            );
+        });
+    </script>
+@endpush

@@ -76,9 +76,12 @@
                         <label class="text-xs font-semibold text-slate-600">Busca</label>
                         <div class="mt-1 relative">
                             <span class="absolute inset-y-0 left-3 flex items-center text-slate-400">🔍</span>
-                            <input type="text" name="q" value="{{ $busca }}"
+                            <input type="text" name="q" id="pipeline-autocomplete-input" value="{{ $busca }}"
+                                   autocomplete="off"
                                    class="w-full rounded-xl border border-slate-200 text-sm px-9 py-2"
                                    placeholder="Buscar por cliente ou nº proposta…">
+                            <div id="pipeline-autocomplete-list"
+                                 class="absolute z-20 mt-1 w-full max-h-64 overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg hidden"></div>
                         </div>
                     </div>
 
@@ -283,8 +286,8 @@
 </div>
 
 {{-- Modal Detalhe Proposta --}}
-<div id="modalProposta" class="fixed inset-0 z-50 hidden">
-    <div class="absolute inset-0 bg-black/40"></div>
+<div id="modalProposta" class="fixed inset-0 z-[90] hidden overflow-y-auto">
+    <div class="absolute inset-0 bg-black/50"></div>
     <div class="relative min-h-screen flex items-center justify-center px-4 py-6">
         <div class="bg-white w-full max-w-6xl h-[90vh] rounded-3xl shadow-2xl overflow-hidden">
             <div class="bg-blue-700 px-6 py-4 flex items-start justify-between text-white">
@@ -442,8 +445,20 @@
             </div>
         </div>
     </div>
-</div>
+    </div>
 @endsection
+
+@push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            window.initTailwindAutocomplete?.(
+                'pipeline-autocomplete-input',
+                'pipeline-autocomplete-list',
+                @json($pipelineAutocomplete ?? [])
+            );
+        });
+    </script>
+@endpush
 
 @push('scripts')
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
@@ -541,7 +556,7 @@
                             evt.from.insertBefore(card, evt.from.children[evt.oldIndex] || null);
                             updateCounter(evt.from);
                             updateCounter(col);
-                            alert(e.message);
+                            window.uiAlert(e.message || 'Erro ao atualizar status.');
                         }
                     },
                 });

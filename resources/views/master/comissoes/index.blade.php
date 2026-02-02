@@ -49,6 +49,13 @@
             </div>
             <form method="POST" action="{{ route('master.comissoes.store') }}" class="space-y-3">
                 @csrf
+                <x-toggle-ativo
+                    name="ativo"
+                    :checked="old('ativo', '1') === '1'"
+                    on-label="Ativo"
+                    off-label="Inativo"
+                    text-class="text-sm text-slate-700"
+                />
                 <div class="hidden md:grid grid-cols-5 gap-3 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
                     <div class="col-span-2 pl-3">Serviço</div>
                     <div class="pl-3">Percentual (%)</div>
@@ -103,15 +110,7 @@
                         @endif
                     </div>
                 </div>
-                <div class="flex items-center justify-between gap-3 text-sm">
-                    <div class="flex items-center gap-2 text-slate-700">
-                        <input type="hidden" name="ativo" value="0">
-                        <label class="inline-flex items-center gap-2">
-                            <input type="checkbox" name="ativo" value="1" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                                   {{ old('ativo', '1') === '1' ? 'checked' : '' }}>
-                            Ativo
-                        </label>
-                    </div>
+                <div class="flex items-center justify-end gap-3 text-sm">
                     <button class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700">
                         Salvar regra
                     </button>

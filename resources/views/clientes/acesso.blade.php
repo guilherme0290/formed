@@ -71,9 +71,9 @@
         </div>
     </div>
 
-    <div id="modalEmailAcesso" class="fixed inset-0 z-50 hidden bg-black/40">
+    <div id="modalEmailAcesso" class="fixed inset-0 z-[90] hidden bg-black/50 overflow-y-auto">
         <div class="min-h-full flex items-center justify-center p-4">
-            <div class="bg-white w-full max-w-xl rounded-2xl shadow-xl overflow-hidden">
+            <div class="bg-white w-full max-w-xl rounded-2xl shadow-xl overflow-hidden max-h-[90vh] overflow-y-auto">
                 <div class="px-6 py-4 border-b flex items-center justify-between">
                     <h3 class="text-lg font-semibold text-slate-800">Enviar acesso por e-mail</h3>
                     <button type="button" class="h-9 w-9 rounded-xl hover:bg-slate-100 text-slate-500"

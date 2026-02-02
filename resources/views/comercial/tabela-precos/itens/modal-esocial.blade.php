@@ -1,7 +1,7 @@
 @php($routePrefix = $routePrefix ?? 'comercial')
 
 {{-- Modal eSocial --}}
-<div id="modalEsocial" class="fixed inset-0 z-50 hidden bg-black/40">
+<div id="modalEsocial" class="fixed inset-0 z-[90] hidden bg-black/50 overflow-y-auto">
     <div class="min-h-full flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-4xl rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[85vh]">
 
@@ -42,9 +42,9 @@
 </div>
 
 {{-- Modal interno: criar/editar faixa --}}
-<div id="modalEsocialForm" class="fixed inset-0 z-[60] hidden bg-black/40">
+<div id="modalEsocialForm" class="fixed inset-0 z-[100] hidden bg-black/50 overflow-y-auto">
     <div class="min-h-full flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-5xl rounded-2xl shadow-xl overflow-hidden">
+        <div class="bg-white w-full max-w-5xl rounded-2xl shadow-xl overflow-hidden max-h-[90vh] overflow-y-auto">
             <div class="px-6 py-4 border-b flex items-center justify-between">
                 <h3 id="esocialFormTitle" class="text-base font-semibold">Nova Faixa</h3>
                 <button type="button" class="h-9 w-9 rounded-xl hover:bg-slate-100 text-slate-500"
@@ -53,6 +53,15 @@
 
             <form id="formEsocialFaixa" class="p-6 space-y-4">
                 <input type="hidden" id="esocial_faixa_id" value="">
+                <x-toggle-ativo
+                    id="esocial_ativo"
+                    name="ativo"
+                    label-id="esocial_ativo_label"
+                    :checked="true"
+                    on-label="Ativo"
+                    off-label="Inativo"
+                    text-class="text-sm font-medium text-slate-700"
+                />
 
                 <div class="grid grid-cols-2 gap-3">
                     <div>
@@ -81,19 +90,6 @@
                            placeholder="R$ 0,00"
                            class="w-full mt-1 rounded-xl border-slate-200 text-sm px-3 py-2">
                     <input id="esocial_preco" type="hidden" value="0.00">
-                </div>
-
-                <div class="flex items-center gap-3">
-                    <div class="relative inline-block w-11 h-5">
-                        <input id="esocial_ativo" type="checkbox" value="1"
-                               class="peer appearance-none w-11 h-5 rounded-full cursor-pointer transition-colors duration-300
-                                      bg-red-600 checked:bg-green-600" checked>
-                        <label for="esocial_ativo"
-                               class="absolute top-0 left-0 w-5 h-5 bg-white rounded-full border shadow-sm cursor-pointer
-                                      transition-transform duration-300
-                                      border-red-600 peer-checked:border-green-600 peer-checked:translate-x-6"></label>
-                    </div>
-                    <span id="esocial_ativo_label" class="text-sm font-medium text-slate-700">Ativo</span>
                 </div>
 
                 <div class="pt-4 flex justify-end gap-3">
@@ -382,7 +378,8 @@
             }
 
             async function deleteEsocialFaixa(id) {
-                if (!confirm('Deseja remover esta faixa?')) return;
+                const ok = await window.uiConfirm('Deseja remover esta faixa?');
+                if (!ok) return;
 
                 try {
                     const res = await fetch(ESOCIAL.urls.destroy(id), {

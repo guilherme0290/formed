@@ -19,7 +19,7 @@
                         <tr>
                             <th class="px-5 py-3 text-left font-semibold">Cliente</th>
                             <th class="px-5 py-3 text-left font-semibold">Início</th>
-                            <th class="px-5 py-3 text-left font-semibold">Valor Mensal</th>
+                            <th class="px-5 py-3 text-left font-semibold">Valor</th>
                             <th class="px-5 py-3 text-center font-semibold">Status</th>
                             <th class="px-5 py-3 text-center font-semibold">Ações</th>
                         </tr>

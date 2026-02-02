@@ -90,9 +90,9 @@
 
     {{-- Modal genérico para criação de Função (JS puro) --}}
     @if ($allowCreate)
-        <div class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40"
+        <div class="fixed inset-0 z-[90] hidden items-center justify-center bg-black/50 p-4 overflow-y-auto"
              data-funcao-modal>
-            <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+            <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
                 <h2 class="text-sm font-semibold text-slate-800 mb-3">
                     Nova Função
                 </h2>

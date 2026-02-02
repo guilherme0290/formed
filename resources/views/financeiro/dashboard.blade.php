@@ -20,7 +20,7 @@
                 @php
                     $cards = [
                         ['titulo' => 'Contratos Ativos', 'valor' => $cards['contratos_ativos'] ?? 0, 'sub' => 'Empresas em carteira', 'cor' => 'from-indigo-500 to-blue-600', 'icone' => '&#128196;'],
-                        ['titulo' => 'Faturamento Mensal', 'valor' => 'R$ '.number_format($cards['faturamento_mensal'] ?? 0, 2, ',', '.'), 'sub' => 'Receita recorrente', 'cor' => 'from-emerald-500 to-emerald-600', 'icone' => '&#128176;'],
+//                        ['titulo' => 'Faturamento Mensal', 'valor' => 'R$ '.number_format($cards['faturamento_mensal'] ?? 0, 2, ',', '.'), 'sub' => 'Receita recorrente', 'cor' => 'from-emerald-500 to-emerald-600', 'icone' => '&#128176;'],
                         ['titulo' => 'Aprovados', 'valor' => $cards['aprovados'] ?? 0, 'sub' => 'Faturamentos confirmados', 'cor' => 'from-purple-500 to-indigo-600', 'icone' => '&#9989;'],
                         ['titulo' => 'Pendentes', 'valor' => $cards['pendentes'] ?? 0, 'sub' => 'Aguardando aprova&ccedil;&atilde;o', 'cor' => 'from-amber-500 to-orange-600', 'icone' => '&#9203;'],
                         [
@@ -29,7 +29,12 @@
                             'sub' => 'Total pendente a receber',
                             'cor' => 'from-slate-600 to-slate-800',
                             'icone' => '&#128204;',
-                            'link' => route('financeiro.faturamento-detalhado', ['status' => 'pendente']),
+                            'link' => route('financeiro.faturamento-detalhado', [
+                                'status' => 'pendente',
+                                'filtrar' => 1,
+                                'data_inicio' => now()->subMonth()->format('Y-m-d'),
+                                'data_fim' => now()->format('Y-m-d'),
+                            ]),
                         ],
                         [
                             'titulo' => 'Recebido em Caixa',
@@ -37,7 +42,12 @@
                             'sub' => 'Baixas registradas',
                             'cor' => 'from-teal-500 to-emerald-700',
                             'icone' => '&#127974;',
-                            'link' => route('financeiro.faturamento-detalhado', ['status' => 'recebido']),
+                            'link' => route('financeiro.faturamento-detalhado', [
+                                'status' => 'recebido',
+                                'filtrar' => 1,
+                                'data_inicio' => now()->subMonth()->format('Y-m-d'),
+                                'data_fim' => now()->format('Y-m-d'),
+                            ]),
                         ],
                     ];
                 @endphp
@@ -143,7 +153,7 @@
                                 <div>
                                     <p class="text-sm font-semibold text-slate-900">{{ $contrato->cliente->razao_social ?? 'Cliente' }}</p>
                                     <div class="text-xs text-slate-500 flex flex-wrap gap-3">
-                                        <span>Valor do Contrato: <strong class="text-slate-800">R$ {{ number_format((float) $contrato->valor_mensal, 2, ',', '.') }}</strong></span>
+{{--                                        <span>Valor do Contrato: <strong class="text-slate-800">R$ {{ number_format((float) $contrato->valor_mensal, 2, ',', '.') }}</strong></span>--}}
                                         <span>Vigência: {{ optional($contrato->vigencia_inicio)->format('d/m/Y') ?? '—' }}</span>
                                     </div>
                                 </div>

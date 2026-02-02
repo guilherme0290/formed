@@ -281,7 +281,7 @@
                                             data-cliente="{{ $tarefa->cliente }}">
                                         Editar
                                     </button>
-                                    <form method="POST" action="{{ route('comercial.agenda.destroy', $tarefa) }}" onsubmit="return confirm('Remover esta tarefa?')">
+                                    <form method="POST" action="{{ route('comercial.agenda.destroy', $tarefa) }}" data-confirm="Remover esta tarefa?">
                                         @csrf
                                         @method('DELETE')
                                         <button class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white border border-rose-200 text-rose-700 hover:bg-rose-50">
@@ -299,8 +299,8 @@
         </div>
     </div>
 
-    <div id="agendaDiaModal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/40 p-4">
-        <div class="bg-white w-full max-w-2xl rounded-2xl shadow-xl overflow-hidden">
+    <div id="agendaDiaModal" class="fixed inset-0 z-[90] hidden flex items-center justify-center bg-black/50 p-4 overflow-y-auto">
+        <div class="bg-white w-full max-w-2xl rounded-2xl shadow-xl overflow-hidden max-h-[90vh] overflow-y-auto">
             <div class="px-5 py-4 border-b border-slate-100 bg-emerald-600 text-white flex items-center justify-between">
                 <div>
                     <h2 class="text-lg font-semibold">Compromissos</h2>
@@ -312,8 +312,8 @@
         </div>
     </div>
 
-    <div id="agendaModal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/40 p-4">
-        <div class="bg-white w-full max-w-lg rounded-2xl shadow-xl overflow-hidden">
+    <div id="agendaModal" class="fixed inset-0 z-[90] hidden flex items-center justify-center bg-black/50 p-4 overflow-y-auto">
+        <div class="bg-white w-full max-w-lg rounded-2xl shadow-xl overflow-hidden max-h-[90vh] overflow-y-auto">
             <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
                 <h2 class="text-lg font-semibold text-slate-900" id="agendaModalTitle">Nova Tarefa</h2>
                 <button type="button" id="btnFecharAgendaModal" class="h-9 w-9 flex items-center justify-center rounded-xl hover:bg-slate-100 text-slate-500">X</button>

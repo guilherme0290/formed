@@ -1,6 +1,6 @@
 @php($routePrefix = $routePrefix ?? 'comercial')
 
-<div id="modalExamesCrud" class="fixed inset-0 z-50 hidden bg-black/40">
+<div id="modalExamesCrud" class="fixed inset-0 z-[90] hidden bg-black/50 overflow-y-auto">
     <div class="min-h-full w-full flex items-center justify-center p-4 md:p-6">
         <div class="bg-white w-full max-w-5xl rounded-2xl shadow-xl overflow-hidden max-h-[85vh] flex flex-col">
 
@@ -40,9 +40,9 @@
 </div>
 
 {{-- Modal interno: Form criar/editar --}}
-<div id="modalExameForm" class="fixed inset-0 z-[60] hidden bg-black/50">
+<div id="modalExameForm" class="fixed inset-0 z-[100] hidden bg-black/50 overflow-y-auto">
     <div class="min-h-full w-full flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-xl rounded-2xl shadow-xl overflow-hidden">
+        <div class="bg-white w-full max-w-xl rounded-2xl shadow-xl overflow-hidden max-h-[90vh] overflow-y-auto">
             <div class="px-6 py-4 border-b flex items-center justify-between">
                 <h3 id="exameFormTitle" class="text-lg font-semibold text-slate-800">Novo Exame</h3>
                 <button type="button" onclick="closeExameForm()"
@@ -53,16 +53,14 @@
 
             <form id="formExame" class="p-6 space-y-4">
                 <input type="hidden" id="exame_id" value="">
-
-                <div class="grid grid-cols-2 gap-3">
-
-
-                    <div class="flex items-center gap-3 pt-6">
-                        <input id="exame_ativo" type="checkbox" class="rounded border-slate-300" checked>
-                        <label for="exame_ativo" class="text-sm font-medium text-slate-700">Ativo</label>
-                    </div>
-                </div>
-
+                <x-toggle-ativo
+                    id="exame_ativo"
+                    name="ativo"
+                    :checked="true"
+                    on-label="Ativo"
+                    off-label="Inativo"
+                    text-class="text-sm font-medium text-slate-700"
+                />
 
                 <div>
                     <label class="text-xs font-semibold text-slate-600">Título *</label>
@@ -330,7 +328,8 @@
             }
 
             async function deleteExame(id){
-                if(!confirm('Deseja remover este exame?')) return;
+                const ok = await window.uiConfirm('Deseja remover este exame?');
+                if (!ok) return;
 
                 try{
                     const res = await fetch(EXAMES.urls.destroy(id), {

@@ -178,7 +178,7 @@
 
                                     <form method="POST"
                                           action="{{ route($routePrefix.'.tabela-precos.itens.destroy', $item) }}"
-                                          onsubmit="return confirm('Deseja remover este item?')">
+                                          data-confirm="Deseja remover este item?">
                                         @csrf
                                         @method('DELETE')
                                         <button class="text-red-600 hover:underline text-sm">
@@ -242,7 +242,7 @@
 
                                     <form method="POST"
                                           action="{{ route($routePrefix.'.tabela-precos.itens.destroy', $item) }}"
-                                          onsubmit="return confirm('Deseja remover este item?')">
+                                          data-confirm="Deseja remover este item?">
                                         @csrf
                                         @method('DELETE')
                                         <button class="text-red-600 hover:underline text-sm">
@@ -271,7 +271,7 @@
 {{-- MODAL NOVO ITEM --}}
 @php($storeRoute = $routePrefix.'.tabela-precos.itens.store')
 <div id="modalNovoItem"
-     class="fixed inset-0 z-50 hidden bg-black/40">
+     class="fixed inset-0 z-[90] hidden bg-black/50 overflow-y-auto">
     {{-- Centralizador + respiro --}}
     <div class="min-h-full w-full flex items-center justify-center p-4 md:p-6">
         {{-- Card modal --}}
@@ -301,6 +301,18 @@
 
                 {{-- Body com scroll interno --}}
                 <div class="px-6 py-5 space-y-4 overflow-y-auto">
+                    <div class="flex items-center gap-3">
+                        <x-toggle-ativo
+                            name="ativo"
+                            id="item_ativo"
+                            label-id="item_ativo_label"
+                            :checked="(bool) old('ativo', true)"
+                            on-label="Ativo"
+                            off-label="Inativo"
+                            text-class="text-sm font-medium text-slate-700"
+                        />
+                    </div>
+
                     @if ($errors->any())
                         <div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
                             <div class="font-semibold mb-1">Verifique os campos</div>
@@ -311,33 +323,6 @@
                             </ul>
                         </div>
                     @endif
-
-
-                    <div class="flex items-center gap-3">
-                        <div class="relative inline-block w-11 h-5">
-                            <input
-                                id="item_ativo"
-                                name="ativo"
-                                type="checkbox"
-                                value="1"
-                                @checked(old('ativo', true))
-                                class="peer appearance-none w-11 h-5 rounded-full cursor-pointer transition-colors duration-300
-                              bg-red-600 checked:bg-green-600"
-                            />
-
-                            <label
-                                for="item_ativo"
-                                class="absolute top-0 left-0 w-5 h-5 bg-white rounded-full border shadow-sm cursor-pointer
-                               transition-transform duration-300
-                               border-red-600 peer-checked:border-green-600
-                               peer-checked:translate-x-6"
-                            ></label>
-                        </div>
-
-                        <span id="item_ativo_label" class="text-sm font-medium text-slate-700">
-                        {{ old('ativo', true) ? 'Ativo' : 'Inativo' }}
-                    </span>
-                    </div>
 
 
                     <div>

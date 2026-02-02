@@ -68,9 +68,9 @@
 </div>
 
 {{-- Configuracoes do painel (modal) --}}
-<div id="dashboard-config-backdrop" class="fixed inset-0 bg-black/30 backdrop-blur-sm z-40 hidden"></div>
-<div id="dashboard-config-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
-    <div class="w-full max-w-3xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
+<div id="dashboard-config-backdrop" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[80] hidden"></div>
+<div id="dashboard-config-modal" class="fixed inset-0 z-[90] hidden items-center justify-center p-4 overflow-y-auto">
+    <div class="w-full max-w-3xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden max-h-[90vh] overflow-y-auto">
         <div class="flex items-start justify-between px-6 py-5 border-b border-slate-100">
             <div class="flex items-start gap-3">
                 <div class="h-10 w-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">

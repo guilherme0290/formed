@@ -2,9 +2,9 @@
      x-data="{ open: false, tarefa: {}, solicitacao: {}, tipo: '', funcoes: [] }"
      x-show="open"
      style="display: none;"
-     class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 overflow-y-auto">
+     class="fixed inset-0 z-[90] flex items-center justify-center bg-black/50 p-4 overflow-y-auto">
 
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl p-6 space-y-6 animate-fade-in">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl p-6 space-y-6 animate-fade-in max-h-[90vh] overflow-y-auto">
         {{-- Cabeçalho --}}
         <div class="flex items-center justify-between border-b border-slate-200 pb-3">
             <div>
@@ -28,6 +28,7 @@
                     <p class="text-sm font-medium text-slate-800" x-text="tarefa.cliente?.razao_social"></p>
                     <p class="text-xs text-slate-600 mt-1" x-text="'CNPJ: ' + (tarefa.cliente?.cnpj ?? '-')"></p>
                     <p class="text-xs text-slate-600" x-text="'Telefone: ' + (tarefa.cliente?.telefone ?? '-')"></p>
+                    <p class="text-xs text-slate-600" x-text="'Celular: ' + (tarefa.funcionario?.celular ?? '-')"></p>
                     <p class="text-xs text-slate-600" x-text="'Responsável: ' + (tarefa.responsavel?.name ?? '-')"></p>
                 </div>
             </div>

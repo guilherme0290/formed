@@ -51,6 +51,16 @@
                 @method('PUT')
             @endif
 
+            {{-- ATIVO --}}
+            <div class="flex items-center gap-3">
+                <x-toggle-ativo
+                    name="ativo"
+                    :checked="(bool) old('ativo', $cliente->exists ? $cliente->ativo : 1)"
+                    on-label="Ativo"
+                    off-label="Inativo"
+                />
+            </div>
+
             {{-- LINHA 1 --}}
             <div class="grid md:grid-cols-3 gap-4">
                 <div>
@@ -84,19 +94,6 @@
 
             {{-- LINHA 2 --}}
             <div class="grid md:grid-cols-3 gap-4 items-center">
-                @if($cliente->exists)
-                    <div>
-                        <label class="text-sm">Ativo</label>
-                        <div class="flex items-center gap-2 mt-1">
-                            <input type="hidden" name="ativo" value="0">
-                            <input type="checkbox" name="ativo" value="1"
-                                   {{ old('ativo', $cliente->ativo) ? 'checked' : '' }}
-                                   class="h-5 w-5 text-blue-600">
-                        </div>
-                    </div>
-                @endif
-
-
                 <div>
                     <label class="text-sm">E-mail</label>
                     <input name="email" value="{{ old('email', $cliente->email) }}"
@@ -111,6 +108,15 @@
                     <input name="telefone" value="{{ old('telefone', $cliente->telefone) }}"
                            class="w-full border-gray-300 rounded-lg px-3 py-2">
                     @error('telefone')
+                    <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <div>
+                    <label class="text-sm">Contato</label>
+                    <input name="contato" value="{{ old('contato', $cliente->contato) }}"
+                           class="w-full border-gray-300 rounded-lg px-3 py-2">
+                    @error('contato')
                     <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
                     @enderror
                 </div>
