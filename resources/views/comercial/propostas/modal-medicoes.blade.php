@@ -1,6 +1,6 @@
-<div id="modalMedicoes" class="fixed inset-0 z-50 hidden bg-black/40">
+<div id="modalMedicoes" class="fixed inset-0 z-[90] hidden bg-black/50 overflow-y-auto">
     <div class="min-h-full flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-2xl rounded-2xl shadow-xl overflow-hidden">
+        <div class="bg-white w-full max-w-2xl rounded-2xl shadow-xl overflow-hidden max-h-[90vh] overflow-y-auto">
             <div class="px-5 py-4 border-b bg-amber-700 text-white flex items-center justify-between">
                 <div>
                     <h3 class="font-semibold">Medições <span id="medicoesTipoLabel">LTCAT/LTIP</span></h3>

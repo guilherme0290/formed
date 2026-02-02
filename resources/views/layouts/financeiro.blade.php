@@ -59,8 +59,8 @@
     {{-- Main --}}
     <div class="flex-1 flex flex-col bg-slate-50">
         <header class="bg-indigo-700 text-white shadow-sm">
-            <div class="max-w-7xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
-                <div class="flex items-center gap-3">
+            <div class="w-full px-4 md:px-6 h-16 flex items-center">
+                <div class="flex items-center gap-3 w-1/3">
                     @if($isMaster)
                         <button type="button"
                                 class="inline-flex md:hidden items-center justify-center p-2 rounded-lg text-indigo-50 hover:bg-indigo-800 focus:outline-none focus:ring-2 focus:ring-white"
@@ -75,10 +75,11 @@
                     @endif
                     <div class="flex flex-col">
                         <span class="font-semibold text-lg leading-none">FORMED</span>
-                        <span class="text-[11px] text-indigo-100">Módulo Financeiro</span>
+                        <span class="text-[11px] text-indigo-100">M&oacute;dulo Financeiro</span>
                     </div>
                 </div>
-                <div class="text-xs md:text-sm text-indigo-50">
+                <div class="w-1/3"></div>
+                <div class="w-1/3 text-right text-xs md:text-sm text-indigo-50">
                     {{ auth()->user()->name ?? '' }}
                 </div>
             </div>
@@ -138,8 +139,11 @@
                 if (!sidebar) return;
                 desktopCollapsed = collapsed;
 
-                sidebar.classList.toggle('w-64', !desktopCollapsed);
-                sidebar.classList.toggle('w-16', desktopCollapsed);
+                if (desktopCollapsed) {
+                    sidebar.style.width = 'clamp(3.5rem, 6vw, 4rem)';
+                } else {
+                    sidebar.style.width = 'clamp(14rem, 18vw, 18rem)';
+                }
                 labels.forEach(el => el.classList.toggle('hidden', desktopCollapsed));
                 if (headerTitle) headerTitle.classList.toggle('hidden', desktopCollapsed);
             }

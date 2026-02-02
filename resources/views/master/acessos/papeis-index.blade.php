@@ -4,12 +4,15 @@
 
     <form method="POST" action="{{ route('master.papeis.store') }}" class="flex flex-wrap items-center gap-2 mb-4">
         @csrf
+        <x-toggle-ativo
+            name="ativo"
+            :checked="true"
+            on-label="ativo"
+            off-label="inativo"
+            text-class="text-sm text-slate-600"
+        />
         <input name="nome" class="rounded border-gray-200 px-3 py-2" placeholder="Nome do perfil *" required>
         <input name="descricao" class="rounded border-gray-200 px-3 py-2" placeholder="Descrição (opcional)">
-        <label class="inline-flex items-center gap-2 text-sm text-slate-600">
-            <input type="checkbox" name="ativo" value="1" checked>
-            ativo
-        </label>
         <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">+ Novo Perfil</button>
     </form>
 
@@ -36,7 +39,7 @@
                             {{ $papel->ativo ? 'Desativar' : 'Ativar' }}
                         </button>
                     </form>
-                    <form method="POST" action="{{ route('master.papeis.destroy', $papel) }}" class="inline" onsubmit="return confirm('Excluir perfil?')">
+                    <form method="POST" action="{{ route('master.papeis.destroy', $papel) }}" class="inline" data-confirm="Excluir perfil?">
                         @csrf @method('DELETE')
                         <button class="px-2 py-1 rounded bg-red-600 text-white text-xs">Excluir</button>
                     </form>

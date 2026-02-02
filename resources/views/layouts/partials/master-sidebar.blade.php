@@ -137,9 +137,11 @@
             @endphp
             <a href="{{ $item['route'] }}"
                class="{{ $baseClasses }} {{ $activeClasses }}">
-                <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800">
-                    {{ $item['icon'] }}
-                </span>
+                @if(!empty($item['icon']))
+                    <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800">
+                        {{ $item['icon'] }}
+                    </span>
+                @endif
                 <span data-sidebar-label>{{ $item['label'] }}</span>
             </a>
         @endforeach
@@ -155,6 +157,8 @@
         </form>
     </div>
 </aside>
+
+
 
 
 

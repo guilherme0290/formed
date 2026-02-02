@@ -146,6 +146,17 @@ class PipelineController extends Controller
                 ->get(['id', 'name'])
             : collect([$user]);
 
+        $pipelineAutocomplete = $propostas
+            ->flatMap(function ($proposta) {
+                return array_filter([
+                    $proposta->codigo,
+                    $proposta->id ? '#'.$proposta->id : null,
+                    $proposta->cliente?->razao_social,
+                ]);
+            })
+            ->unique()
+            ->values();
+
         return view('comercial.pipeline.index', [
             'colunas' => $colunas,
             'busca' => $busca,
@@ -153,6 +164,7 @@ class PipelineController extends Controller
             'vendedorFiltro' => $vendedorFiltro,
             'vendedores' => $vendedores,
             'colunasMeta' => $this->colunas,
+            'pipelineAutocomplete' => $pipelineAutocomplete,
             'kpi' => [
                 'total' => $total,
                 'fechadas' => $fechadas,

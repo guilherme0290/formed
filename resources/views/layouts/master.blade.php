@@ -67,6 +67,120 @@
     </div>
 </div>
 
+{{-- Configuracoes do painel (modal) --}}
+<div id="dashboard-config-backdrop" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[80] hidden"></div>
+<div id="dashboard-config-modal" class="fixed inset-0 z-[90] hidden items-center justify-center p-4 overflow-y-auto">
+    <div class="w-full max-w-3xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden max-h-[90vh] overflow-y-auto">
+        <div class="flex items-start justify-between px-6 py-5 border-b border-slate-100">
+            <div class="flex items-start gap-3">
+                <div class="h-10 w-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                    ⚙️
+                </div>
+                <div>
+                    <div class="text-lg font-semibold text-slate-900">Configurações do Painel Master</div>
+                    <div class="text-sm text-slate-500">Personalize os indicadores exibidos no dashboard</div>
+                </div>
+            </div>
+            <button type="button" class="h-9 w-9 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50" data-config-close>×</button>
+        </div>
+        <div class="p-6 space-y-5">
+            <div class="grid gap-4 md:grid-cols-2">
+                <div class="rounded-2xl border border-slate-200 bg-slate-50/60 p-4 space-y-3">
+                    <div class="text-sm font-semibold text-slate-900">Resumo Geral</div>
+                    <label class="flex items-start justify-between gap-3 text-sm text-slate-700">
+                        <span>
+                            <span class="font-medium">Mostrar resumo de faturamento</span>
+                            <span class="block text-xs text-slate-500">Card com total financeiro global</span>
+                        </span>
+                        <input type="checkbox" class="h-5 w-9 accent-indigo-600" data-dashboard-toggle="faturamento-global">
+                    </label>
+                    <label class="flex items-start justify-between gap-3 text-sm text-slate-700">
+                        <span>
+                            <span class="font-medium">Mostrar resumo de serviços consumidos</span>
+                            <span class="block text-xs text-slate-500">Total de itens utilizados</span>
+                        </span>
+                        <input type="checkbox" class="h-5 w-9 accent-indigo-600" data-dashboard-toggle="servicos-consumidos">
+                    </label>
+                </div>
+
+                <div class="rounded-2xl border border-slate-200 bg-slate-50/60 p-4 space-y-3">
+                    <div class="text-sm font-semibold text-slate-900">Financeiro</div>
+                    <label class="flex items-start justify-between gap-3 text-sm text-slate-700">
+                        <span>
+                            <span class="font-medium">Faturamento pendente</span>
+                            <span class="block text-xs text-slate-500">Total em aberto no per&iacute;odo</span>
+                        </span>
+                        <input type="checkbox" class="h-5 w-9 accent-indigo-600" data-dashboard-toggle="financeiro-pendente">
+                    </label>
+                    <label class="flex items-start justify-between gap-3 text-sm text-slate-700">
+                        <span>
+                            <span class="font-medium">Faturamento recebido</span>
+                            <span class="block text-xs text-slate-500">Total recebido no per&iacute;odo</span>
+                        </span>
+                        <input type="checkbox" class="h-5 w-9 accent-indigo-600" data-dashboard-toggle="financeiro-recebido">
+                    </label>
+                </div>
+
+                <div class="rounded-2xl border border-slate-200 bg-slate-50/60 p-4 space-y-3">
+                    <div class="text-sm font-semibold text-slate-900">Indicadores Operacionais</div>
+                    <label class="flex items-start justify-between gap-3 text-sm text-slate-700">
+                        <span>
+                            <span class="font-medium">Card de clientes ativos</span>
+                            <span class="block text-xs text-slate-500">Clientes ativos no período</span>
+                        </span>
+                        <input type="checkbox" class="h-5 w-9 accent-indigo-600" data-dashboard-toggle="clientes-ativos">
+                    </label>
+                    <label class="flex items-start justify-between gap-3 text-sm text-slate-700">
+                        <span>
+                            <span class="font-medium">Card de tempo médio</span>
+                            <span class="block text-xs text-slate-500">Tempo médio operacional</span>
+                        </span>
+                        <input type="checkbox" class="h-5 w-9 accent-indigo-600" data-dashboard-toggle="tempo-medio">
+                    </label>
+                    <label class="flex items-start justify-between gap-3 text-sm text-slate-700">
+                        <span>
+                            <span class="font-medium">Card de agendamentos do dia</span>
+                            <span class="block text-xs text-slate-500">Abertas e fechadas hoje</span>
+                        </span>
+                        <input type="checkbox" class="h-5 w-9 accent-indigo-600" data-dashboard-toggle="agendamentos-dia">
+                    </label>
+                </div>
+
+                <div class="rounded-2xl border border-slate-200 bg-slate-50/60 p-4 space-y-3">
+                    <div class="text-sm font-semibold text-slate-900">Relatórios</div>
+                    <label class="flex items-start justify-between gap-3 text-sm text-slate-700">
+                        <span>
+                            <span class="font-medium">Card de relatórios master</span>
+                            <span class="block text-xs text-slate-500">Atalho para relatórios</span>
+                        </span>
+                        <input type="checkbox" class="h-5 w-9 accent-indigo-600" data-dashboard-toggle="relatorios-master">
+                    </label>
+                    <label class="flex items-start justify-between gap-3 text-sm text-slate-700">
+                        <span>
+                            <span class="font-medium">Relatórios avançados</span>
+                            <span class="block text-xs text-slate-500">Bloco de métricas avançadas</span>
+                        </span>
+                        <input type="checkbox" class="h-5 w-9 accent-indigo-600" data-dashboard-toggle="relatorios-avancados">
+                    </label>
+                </div>
+
+                <div class="rounded-2xl border border-slate-200 bg-slate-50/60 p-4 space-y-3">
+                    <div class="text-sm font-semibold text-slate-900">Outras Configurações</div>
+                    <div class="text-sm text-slate-600">Gerencie opções avançadas do sistema</div>
+                    <a href="{{ route('master.email-caixas.index') }}"
+                       class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 hover:bg-slate-50">
+                        Configurar e-mails
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="flex items-center justify-end gap-2 px-6 py-4 border-t border-slate-100 bg-white">
+            <button type="button" class="px-4 py-2 rounded-lg border border-slate-200 text-sm text-slate-700 hover:bg-slate-50" data-config-close>Cancelar</button>
+            <button type="button" class="px-5 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-500" data-config-close data-dashboard-save>Salvar alterações</button>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 
 <script>
@@ -108,6 +222,102 @@
             labels.forEach(l => l.classList.toggle('hidden', desktopCollapsed));
             if (headerTitle) headerTitle.textContent = desktopCollapsed ? 'M' : 'Master';
         });
+    });
+</script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const configBtn = document.querySelector('[data-dashboard-config]');
+        const modal = document.getElementById('dashboard-config-modal');
+        const backdrop = document.getElementById('dashboard-config-backdrop');
+        const closeBtns = document.querySelectorAll('[data-config-close]');
+        const toggles = Array.from(document.querySelectorAll('[data-dashboard-toggle]'));
+        const saveBtn = document.querySelector('[data-dashboard-save]');
+        const preferencesUrl = '{{ route('master.dashboard-preferences.show') }}';
+        const saveUrl = '{{ route('master.dashboard-preferences.update') }}';
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        let currentState = {};
+
+        function applyState(state) {
+            toggles.forEach((toggle) => {
+                const key = toggle.getAttribute('data-dashboard-toggle');
+                const isVisible = state[key] !== false;
+                toggle.checked = isVisible;
+                const el = document.querySelector(`[data-dashboard-card="${key}"]`);
+                if (el) {
+                    el.classList.toggle('hidden', !isVisible);
+                }
+            });
+        }
+
+        async function loadState() {
+            try {
+                const response = await fetch(preferencesUrl, {
+                    headers: { 'Accept': 'application/json' },
+                });
+                if (!response.ok) {
+                    return {};
+                }
+                const payload = await response.json();
+                return payload.visibility || {};
+            } catch (e) {
+                return {};
+            }
+        }
+
+        async function saveState(state) {
+            try {
+                await fetch(saveUrl, {
+                    method: 'PUT',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken || '',
+                    },
+                    body: JSON.stringify({ visibility: state }),
+                });
+            } catch (e) {
+                // ignore
+            }
+        }
+
+        function openModal() {
+            if (!modal || !backdrop) return;
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            backdrop.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            if (!modal || !backdrop) return;
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            backdrop.classList.add('hidden');
+        }
+
+        if (configBtn) {
+            configBtn.addEventListener('click', openModal);
+        }
+        closeBtns.forEach((btn) => btn.addEventListener('click', closeModal));
+        backdrop?.addEventListener('click', closeModal);
+
+        loadState().then((state) => {
+            currentState = state || {};
+            applyState(currentState);
+        });
+
+        toggles.forEach((toggle) => {
+            toggle.addEventListener('change', () => {
+                const key = toggle.getAttribute('data-dashboard-toggle');
+                currentState = { ...currentState, [key]: toggle.checked };
+                applyState(currentState);
+            });
+        });
+
+        if (saveBtn) {
+            saveBtn.addEventListener('click', () => {
+                saveState(currentState);
+            });
+        }
     });
 </script>
 <script src="https://unpkg.com/currency.js@2.0.4/dist/currency.min.js"></script>

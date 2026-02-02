@@ -40,7 +40,7 @@
                         <p class="text-xs text-slate-500">{{ $papel->descricao ?: 'Sem descrição' }}</p>
                     </div>
                     <form method="POST" action="{{ route('master.papeis.permissoes.sync', $papel) }}"
-                          onsubmit="return confirm('Salvar permissões para {{ $papel->nome }}?')">
+                          data-confirm="Salvar permissões para {{ $papel->nome }}?">
                         @csrf
                         <button class="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700">
                             Salvar alterações

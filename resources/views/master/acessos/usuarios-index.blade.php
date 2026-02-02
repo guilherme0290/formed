@@ -48,11 +48,18 @@
         {{-- Filtros --}}
         <form method="GET" action="{{ route('master.acessos') }}" class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
             <input type="hidden" name="tab" value="usuarios">
-            <input name="q" value="{{ request('q') }}" placeholder="Buscar por nome ou e-mail..."
-                   class="w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:border-indigo-400 focus:ring-indigo-400 px-3 py-2 sm:w-64">
+            <div class="relative w-full sm:w-64">
+                <input name="q" id="usuarios-autocomplete-input" value="{{ request('q') }}"
+                       autocomplete="off"
+                       placeholder="Buscar por nome ou e-mail..."
+                       class="w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:border-indigo-400 focus:ring-indigo-400 px-3 py-2">
+                <div id="usuarios-autocomplete-list"
+                     class="absolute z-20 mt-1 w-full max-h-64 overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg hidden"></div>
+            </div>
             <select name="papel_id" class="w-full rounded-xl border-gray-200 bg-gray-50 px-3 py-2 pr-10 sm:w-52">
                 <option value="">Todos os perfis</option>
                 @foreach($papeis as $p)
+                    @continue(in_array(strtolower($p->nome), ['cliente', 'parceiros'], true))
                     <option value="{{ $p->id }}" @selected(request('papel_id') == $p->id)>{{ $p->nome }}</option>
                 @endforeach
             </select>
@@ -151,9 +158,9 @@
     </div>
 
     {{-- Modal novo usuário --}}
-    <div x-cloak x-show="open" class="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"
+    <div x-cloak x-show="open" class="fixed inset-0 z-[90] bg-black/50 flex items-center justify-center p-4 overflow-y-auto"
          @keydown.escape.window="open=false">
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-lg font-semibold" x-text="editing ? 'Editar Usuário' : 'Criar Novo Usuário'"></h3>
                 <button class="text-gray-500" @click="open=false">&times;</button>
@@ -163,6 +170,13 @@
                 <template x-if="editing">
                     <input type="hidden" name="_method" value="PATCH">
                 </template>
+                <x-toggle-ativo
+                    name="ativo"
+                    x-model="form.ativo"
+                    on-label="Usuário ativo"
+                    off-label="Usuário inativo"
+                    text-class="text-sm text-gray-600"
+                />
                 <input name="name" x-model="form.name" class="w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:border-indigo-400 focus:ring-indigo-400 px-3 py-2" placeholder="Nome Completo *" required>
                 <input name="email" x-model="form.email" type="email" class="w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:border-indigo-400 focus:ring-indigo-400 px-3 py-2" placeholder="E-mail corporativo *" required>
                 <div class="relative" x-data="{ showPassword: false }" x-show="!editing">
@@ -187,13 +201,10 @@
                 <select name="papel_id" x-model="form.papel_id" class="w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:border-indigo-400 focus:ring-indigo-400 px-3 py-2" required>
                     <option value="">Selecione o perfil</option>
                     @foreach($papeis as $p)
+                        @continue(in_array(strtolower($p->nome), ['cliente', 'parceiros'], true))
                         <option value="{{ $p->id }}">{{ $p->nome }}</option>
                     @endforeach
                 </select>
-                <label class="flex items-center gap-2 text-sm text-gray-600">
-                    <input type="checkbox" name="ativo" class="rounded border-gray-300" x-model="form.ativo">
-                    <span x-text="form.ativo ? 'Usuário ativo' : 'Usuário inativo'"></span>
-                </label>
                 <div class="flex items-center justify-end gap-2 pt-2">
                     <button type="button" class="px-4 py-2 rounded-xl border" @click="open=false">Cancelar</button>
                     <button class="px-4 py-2 rounded-xl bg-indigo-600 text-white"
@@ -204,9 +215,9 @@
     </div>
 
     {{-- Modal redefinir senha --}}
-    <div x-cloak x-show="resetOpen" class="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"
+    <div x-cloak x-show="resetOpen" class="fixed inset-0 z-[90] bg-black/50 flex items-center justify-center p-4 overflow-y-auto"
          @keydown.escape.window="resetOpen=false">
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-lg font-semibold">Redefinir senha</h3>
                 <button class="text-gray-500" @click="resetOpen=false">&times;</button>
@@ -261,10 +272,21 @@
             </form>
         </div>
     </div>
+
+    @push('scripts')
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                window.initTailwindAutocomplete?.(
+                    'usuarios-autocomplete-input',
+                    'usuarios-autocomplete-list',
+                    @json($usuariosAutocomplete ?? [])
+                );
+            });
+        </script>
+    @endpush
 </div>
 
 @push('scripts')
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const flashErro = @json(session('erro'));

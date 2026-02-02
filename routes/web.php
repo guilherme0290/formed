@@ -13,6 +13,7 @@ use App\Http\Controllers\Master\AcessosController;
 use App\Http\Controllers\Master\DashboardController as DashboardMaster;
 use App\Http\Controllers\Master\EmailCaixaController;
 use App\Http\Controllers\Master\AgendaVendedorController;
+use App\Http\Controllers\Master\DashboardPreferenceController;
 use App\Http\Controllers\Comercial\DashboardController as DashboardComercial;
 use App\Http\Controllers\Comercial\FuncoesController as ComercialFuncoesController;
 use App\Http\Controllers\Operacional\AsoController;
@@ -604,6 +605,9 @@ Route::middleware('auth')->group(function () {
                 Route::post('/{proposta}/enviar-email', [PropostaController::class, 'enviarEmail'])
                     ->name('enviar-email');
 
+                Route::post('/{proposta}/duplicar', [PropostaController::class, 'duplicar'])
+                    ->name('duplicar');
+
                 Route::post('/{proposta}/status', [PropostaController::class, 'alterarStatus'])
                     ->name('status');
 
@@ -682,6 +686,8 @@ Route::middleware('auth')->group(function () {
                 // Consulta CNPJ
                 Route::get('/consulta-cnpj/{cnpj}', [ClienteController::class, 'consultaCnpj'])
                     ->name('consulta-cnpj');
+                Route::get('/cnpj-exists/{cnpj}', [ClienteController::class, 'cnpjExists'])
+                    ->name('cnpj-exists');
             });
 
             // Funções (CRUD Comercial)
@@ -690,6 +696,8 @@ Route::middleware('auth')->group(function () {
                     ->name('index');
                 Route::post('/', [ComercialFuncoesController::class, 'store'])
                     ->name('store');
+                Route::post('/import', [ComercialFuncoesController::class, 'import'])
+                    ->name('import');
                 Route::put('/{funcao}', [ComercialFuncoesController::class, 'update'])
                     ->name('update');
                 Route::delete('/{funcao}', [ComercialFuncoesController::class, 'destroy'])
@@ -834,6 +842,12 @@ Route::middleware('auth')->group(function () {
         ->group(function () {
             Route::get('/', [\App\Http\Controllers\Financeiro\DashboardController::class, 'index'])
                 ->name('dashboard');
+            Route::get('/faturamento-detalhado', [\App\Http\Controllers\Financeiro\FaturamentoDetalhadoController::class, 'index'])
+                ->name('faturamento-detalhado');
+            Route::get('/faturamento-detalhado/exportar-pdf', [\App\Http\Controllers\Financeiro\FaturamentoDetalhadoController::class, 'exportarPdf'])
+                ->name('faturamento-detalhado.exportar-pdf');
+            Route::get('/faturamento-detalhado/exportar-excel', [\App\Http\Controllers\Financeiro\FaturamentoDetalhadoController::class, 'exportarExcel'])
+                ->name('faturamento-detalhado.exportar-excel');
             Route::get('/contratos', [\App\Http\Controllers\Financeiro\ContratoController::class, 'index'])
                 ->name('contratos');
             Route::get('/contratos/{contrato}', [\App\Http\Controllers\Financeiro\ContratoController::class, 'show'])
@@ -878,6 +892,8 @@ Route::middleware('auth')->group(function () {
         // Consulta CNPJ
         Route::get('/consulta-cnpj/{cnpj}', [ClienteController::class, 'consultaCnpj'])
             ->name('consulta-cnpj');
+        Route::get('/cnpj-exists/{cnpj}', [ClienteController::class, 'cnpjExists'])
+            ->name('cnpj-exists');
     });
 
     // Cidades por UF
@@ -891,7 +907,23 @@ Route::middleware('auth')->group(function () {
 
         // Dashboard Master
         Route::get('/', [DashboardMaster::class, 'index'])->name('dashboard');
+        Route::get('/dashboard-preferences', [DashboardPreferenceController::class, 'show'])
+            ->name('dashboard-preferences.show');
+        Route::put('/dashboard-preferences', [DashboardPreferenceController::class, 'update'])
+            ->name('dashboard-preferences.update');
         Route::get('/agendamentos', [DashboardMaster::class, 'agendamentos'])->name('agendamentos');
+        Route::get('/relatorio-tarefas', [DashboardMaster::class, 'relatorioTarefas'])
+            ->name('relatorio-tarefas');
+        Route::get('/relatorio-tarefas/pdf', [DashboardMaster::class, 'relatorioTarefasPdf'])
+            ->name('relatorio-tarefas.pdf');
+        Route::get('/relatorio-produtividade', [DashboardMaster::class, 'relatorioProdutividade'])
+            ->name('relatorio-produtividade');
+        Route::get('/relatorio-produtividade/pdf', [DashboardMaster::class, 'relatorioProdutividadePdf'])
+            ->name('relatorio-produtividade.pdf');
+        Route::get('/relatorios', [DashboardMaster::class, 'relatorios'])
+            ->name('relatorios');
+        Route::get('/relatorios/pdf', [DashboardMaster::class, 'relatoriosPdf'])
+            ->name('relatorios.pdf');
 
         // Agenda de Vendedores
         Route::get('/agenda-vendedores', [AgendaVendedorController::class, 'index'])

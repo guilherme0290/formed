@@ -51,15 +51,13 @@
                         @csrf
                         @method('PUT')
 
-                        <label class="inline-flex flex-col items-start gap-2 cursor-pointer">
-                            <input type="checkbox" name="ativo" value="1" class="sr-only peer"
-                                @checked(old('ativo', $empresa->ativo))>
-                            <div class="relative w-9 h-5 bg-slate-300 rounded-full transition-colors peer-checked:bg-emerald-600
-                                    after:content-[''] after:absolute after:top-[2px] after:left-[2px]
-                                    after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-transform
-                                    peer-checked:after:translate-x-4"></div>
-                            <span class="select-none text-sm font-medium text-slate-700">Empresa ativa</span>
-                        </label>
+                        <x-toggle-ativo
+                            name="ativo"
+                            :checked="(bool) old('ativo', $empresa->ativo)"
+                            on-label="Empresa ativa"
+                            off-label="Empresa inativa"
+                            text-class="text-sm font-medium text-slate-700"
+                        />
                         <div class="grid gap-4 md:grid-cols-2">
                             <div>
                                 <label class="text-xs font-semibold text-slate-600">Nome *</label>
@@ -177,7 +175,7 @@
                                             </a>
                                             <form method="POST"
                                                   action="{{ route('master.empresa.unidades.destroy', $unidade) }}"
-                                                  onsubmit="return confirm('Deseja remover esta unidade cl&iacute;nica?')">
+                                                  data-confirm="Deseja remover esta unidade clínica?">
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit"

@@ -1,6 +1,6 @@
 @php($routePrefix = $routePrefix ?? 'comercial')
 
-<div id="modalMedicoesCrud" class="fixed inset-0 z-50 hidden bg-black/40">
+<div id="modalMedicoesCrud" class="fixed inset-0 z-[90] hidden bg-black/50 overflow-y-auto">
     <div class="min-h-full w-full flex items-center justify-center p-4 md:p-6">
         <div class="bg-white w-full max-w-5xl rounded-2xl shadow-xl overflow-hidden max-h-[85vh] flex flex-col">
 
@@ -40,9 +40,9 @@
 </div>
 
 {{-- Modal interno: Form criar/editar --}}
-<div id="modalMedicaoForm" class="fixed inset-0 z-[60] hidden bg-black/50">
+<div id="modalMedicaoForm" class="fixed inset-0 z-[100] hidden bg-black/50 overflow-y-auto">
     <div class="min-h-full w-full flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-xl rounded-2xl shadow-xl overflow-hidden">
+        <div class="bg-white w-full max-w-xl rounded-2xl shadow-xl overflow-hidden max-h-[90vh] overflow-y-auto">
             <div class="px-6 py-4 border-b flex items-center justify-between">
                 <h3 id="medicaoFormTitle" class="text-lg font-semibold text-slate-800">Nova Medição</h3>
                 <button type="button" onclick="closeMedicaoForm()"
@@ -53,13 +53,14 @@
 
             <form id="formMedicao" class="p-6 space-y-4">
                 <input type="hidden" id="medicao_id" value="">
-
-                <div class="grid grid-cols-2 gap-3">
-                    <div class="flex items-center gap-3 pt-6">
-                        <input id="medicao_ativo" type="checkbox" class="rounded border-slate-300" checked>
-                        <label for="medicao_ativo" class="text-sm font-medium text-slate-700">Ativo</label>
-                    </div>
-                </div>
+                <x-toggle-ativo
+                    id="medicao_ativo"
+                    name="ativo"
+                    :checked="true"
+                    on-label="Ativo"
+                    off-label="Inativo"
+                    text-class="text-sm font-medium text-slate-700"
+                />
 
                 <div>
                     <label class="text-xs font-semibold text-slate-600">Título *</label>
@@ -250,7 +251,8 @@
             }
 
             async function deleteMedicao(id){
-                if(!confirm('Remover esta medição?')) return;
+                const ok = await window.uiConfirm('Remover esta medição?');
+                if (!ok) return;
                 try{
                     await fetch(MEDICOES.urls.destroy(id), {
                         method: 'DELETE',

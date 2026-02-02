@@ -1,7 +1,7 @@
 {{-- MODAL PACOTE TREINAMENTOS --}}
-<div id="modalPacoteTreinamentos" class="fixed inset-0 z-50 hidden bg-black/40">
+<div id="modalPacoteTreinamentos" class="fixed inset-0 z-[90] hidden bg-black/50 overflow-y-auto">
     <div class="min-h-full flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-2xl rounded-2xl shadow-xl overflow-hidden">
+        <div class="bg-white w-full max-w-2xl rounded-2xl shadow-xl overflow-hidden max-h-[90vh] overflow-y-auto">
             <div class="px-5 py-4 border-b bg-emerald-700 text-white flex items-center justify-between">
                 <h3 class="font-semibold">Criar Pacote de Treinamentos</h3>
                 <button type="button" class="h-9 w-9 rounded-xl hover:bg-white/10" onclick="closePacoteTreinamentosModal()">✕</button>

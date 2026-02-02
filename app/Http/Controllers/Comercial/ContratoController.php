@@ -93,6 +93,12 @@ class ContratoController extends Controller
             ->paginate(15)
             ->withQueryString();
 
+        $contratosAutocomplete = $contratos->getCollection()
+            ->map(fn ($contrato) => $contrato->cliente?->razao_social)
+            ->filter()
+            ->unique()
+            ->values();
+
         // Totalizadores (não dependem de filtros)
         $totalAtivos = ClienteContrato::where('empresa_id', $empresaId)
             ->when(!$isMaster, fn ($q) => $q->where('vendedor_id', $user->id))
@@ -125,6 +131,7 @@ class ContratoController extends Controller
             'totalPendentes' => $totalPendentes,
             'faturamentoAtivo' => $faturamentoAtivo,
             'usandoFiltroCustom' => !$usarDefaultStatus,
+            'contratosAutocomplete' => $contratosAutocomplete,
         ]);
     }
 

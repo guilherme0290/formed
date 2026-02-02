@@ -1,6 +1,6 @@
 @php($routePrefix = $routePrefix ?? 'comercial')
 
-<div id="modalGhe" class="fixed inset-0 z-50 hidden bg-black/40">
+<div id="modalGhe" class="fixed inset-0 z-[90] hidden bg-black/50 overflow-y-auto">
     <div class="min-h-full w-full flex items-center justify-center p-4 md:p-6">
         <div class="bg-white w-full max-w-6xl rounded-2xl shadow-xl overflow-hidden max-h-[88vh] flex flex-col text-base">
             <div class="px-6 py-4 bg-amber-700 text-white flex items-center justify-between">
@@ -45,9 +45,9 @@
 </div>
 
 {{-- Modal interno: Form criar/editar --}}
-<div id="modalGheForm" class="fixed inset-0 z-[60] hidden bg-black/50">
+<div id="modalGheForm" class="fixed inset-0 z-[100] hidden bg-black/50 overflow-y-auto">
     <div class="min-h-full w-full flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-5xl rounded-2xl shadow-xl overflow-hidden text-base">
+        <div class="bg-white w-full max-w-5xl rounded-2xl shadow-xl overflow-hidden text-base max-h-[90vh] overflow-y-auto">
             <div class="px-6 py-4 border-b flex items-center justify-between">
                 <h3 id="gheFormTitle" class="text-xl font-semibold text-slate-800">Novo GHE</h3>
                 <button type="button" onclick="closeGheForm()"
@@ -64,15 +64,34 @@
                         <div class="grid md:grid-cols-2 gap-4">
                             <div>
                                 <label class="text-xs font-semibold text-slate-600">Nome do GHE *</label>
-                                <input id="ghe_nome" type="text"
+                                <input  required id="ghe_nome" type="text"
                                        class="w-full mt-1 rounded-xl border-slate-200 text-sm px-3 py-2"
                                        placeholder="Ex: Trabalho em Altura">
                             </div>
                             <div>
-                                <label class="text-xs font-semibold text-slate-600">Funções do GHE (opcional)</label>
+                                <div class="flex items-center justify-between">
+                                    <label class="text-xs font-semibold text-slate-600">Funções do GHE (opcional)</label>
+                                    <a href="{{ route('comercial.funcoes.index') }}"
+                                       class="text-[11px] font-semibold text-amber-700 hover:text-amber-800"
+                                       target="_blank" rel="noopener">
+                                        Gerenciar funções
+                                    </a>
+                                </div>
                                 <input id="gheFuncoesFilter" type="text"
                                        class="mt-1 w-full rounded-xl border-slate-200 text-sm px-3 py-2"
                                        placeholder="Buscar função por nome ou descrição">
+                                <div class="mt-2 flex flex-wrap items-center gap-3 text-xs font-semibold text-slate-600">
+                                    <label class="inline-flex items-center gap-2">
+                                        <input type="checkbox" id="gheFuncoesSelectAll" class="rounded border-slate-300">
+                                        Selecionar todas as funções
+                                        <span class="text-[11px] text-slate-500" id="gheFuncoesSelectedCount">(0 selecionadas)</span>
+                                    </label>
+                                    <button type="button"
+                                            id="gheFuncoesClear"
+                                            class="text-[11px] font-semibold text-slate-600 hover:text-slate-800 underline decoration-dotted">
+                                        Limpar seleções
+                                    </button>
+                                </div>
                                 <div id="gheFuncoesList" class="mt-1 max-h-40 overflow-y-auto border border-slate-200 rounded-xl p-3 space-y-2 text-sm">
                                     @forelse($funcoes as $funcao)
                                         @php($descricao = trim((string) ($funcao->descricao ?? '')))
@@ -195,6 +214,9 @@
                     nome: document.getElementById('ghe_nome'),
                     funcoesList: document.getElementById('gheFuncoesList'),
                     funcoesFilter: document.getElementById('gheFuncoesFilter'),
+                    funcoesSelectAll: document.getElementById('gheFuncoesSelectAll'),
+                    funcoesSelectedCount: document.getElementById('gheFuncoesSelectedCount'),
+                    funcoesClear: document.getElementById('gheFuncoesClear'),
                     baseAdm: document.getElementById('ghe_base_adm'),
                     basePer: document.getElementById('ghe_base_per'),
                     baseDem: document.getElementById('ghe_base_dem'),
@@ -294,11 +316,31 @@
                     .map(cb => Number(cb.value));
             }
 
+            function updateSelectedCount(){
+                if (!GHE.dom.funcoesSelectedCount) return;
+                const total = GHE.dom.funcoesList
+                    ? GHE.dom.funcoesList.querySelectorAll('input[type="checkbox"]:checked').length
+                    : 0;
+                GHE.dom.funcoesSelectedCount.textContent = `(${total} selecionadas)`;
+            }
+
+            function updateSelectAllState(){
+                if (!GHE.dom.funcoesSelectAll) return;
+                const allVisible = Array.from(GHE.dom.funcoesList.querySelectorAll('label:not(.hidden) input[type="checkbox"]'));
+                if (!allVisible.length) {
+                    GHE.dom.funcoesSelectAll.checked = false;
+                    return;
+                }
+                GHE.dom.funcoesSelectAll.checked = allVisible.every(cb => cb.checked);
+            }
+
             function setSelectedFuncoes(ids){
                 const idSet = new Set((ids || []).map(id => Number(id)));
                 GHE.dom.funcoesList.querySelectorAll('input[type="checkbox"]').forEach(cb => {
                     cb.checked = idSet.has(Number(cb.value));
                 });
+                updateSelectAllState();
+                updateSelectedCount();
             }
 
             function notifyGheUpdated() {
@@ -316,6 +358,7 @@
                     const hay = label.dataset.search || '';
                     label.classList.toggle('hidden', query !== '' && !hay.includes(query));
                 });
+                updateSelectAllState();
             }
 
             async function saveGhe(e){
@@ -370,7 +413,8 @@
             }
 
             async function destroyGhe(id){
-                if(!confirm('Deseja remover este GHE?')) return;
+                const ok = await window.uiConfirm('Deseja remover este GHE?');
+                if (!ok) return;
                 try{
                     const res = await fetch(GHE.urls.destroy(id), {
                         method: 'DELETE',
@@ -424,6 +468,26 @@
 
             GHE.dom.form?.addEventListener('submit', saveGhe);
             GHE.dom.funcoesFilter?.addEventListener('input', applyFuncoesFilter);
+            GHE.dom.funcoesSelectAll?.addEventListener('change', (e) => {
+                const checked = e.target.checked;
+                GHE.dom.funcoesList.querySelectorAll('label:not(.hidden) input[type="checkbox"]').forEach(cb => {
+                    cb.checked = checked;
+                });
+                updateSelectedCount();
+            });
+            GHE.dom.funcoesList?.addEventListener('change', (e) => {
+                if (e.target && e.target.matches('input[type="checkbox"]')) {
+                    updateSelectAllState();
+                    updateSelectedCount();
+                }
+            });
+            GHE.dom.funcoesClear?.addEventListener('click', () => {
+                GHE.dom.funcoesList.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                    cb.checked = false;
+                });
+                if (GHE.dom.funcoesSelectAll) GHE.dom.funcoesSelectAll.checked = false;
+                updateSelectedCount();
+            });
         })();
     </script>
 @endpush

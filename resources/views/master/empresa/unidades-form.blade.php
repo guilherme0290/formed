@@ -38,15 +38,13 @@
                         @method('PUT')
                     @endif
 
-                    <label class="inline-flex flex-col items-start gap-2 cursor-pointer">
-                        <input type="checkbox" name="ativo" value="1" class="sr-only peer"
-                            @checked(old('ativo', $unidade->ativo ?? true))>
-                        <div class="relative w-9 h-5 bg-slate-300 rounded-full transition-colors peer-checked:bg-emerald-600
-                                    after:content-[''] after:absolute after:top-[2px] after:left-[2px]
-                                    after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-transform
-                                    peer-checked:after:translate-x-4"></div>
-                        <span class="select-none text-sm font-medium text-slate-700">Unidade ativa</span>
-                    </label>
+                    <x-toggle-ativo
+                        name="ativo"
+                        :checked="(bool) old('ativo', $unidade->ativo ?? true)"
+                        on-label="Unidade ativa"
+                        off-label="Unidade inativa"
+                        text-class="text-sm font-medium text-slate-700"
+                    />
 
                     <div class="grid gap-4 md:grid-cols-2">
                         <div>

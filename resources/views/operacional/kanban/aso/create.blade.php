@@ -300,6 +300,19 @@
                                       focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400">
                         </div>
 
+                        {{-- Telefone/Celular para contato --}}
+                        <div class="mt-6">
+                            <label class="block text-xs font-medium text-slate-600 mb-1">
+                                Telefone do colaborador
+                            </label>
+                            <input type="text"
+                                   name="celular"
+                                   value="{{ old('celular', $funcionario->celular ?? '') }}"
+                                   placeholder="(00) 00000-0000"
+                                   class="w-full rounded-xl border border-slate-200 text-sm py-2.5 px-3
+                                      focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400">
+                        </div>
+
                         {{-- Vai fazer treinamento conosco? --}}
                         <div class="space-y-3 mt-6">
                             <p class="text-xs font-medium text-slate-600">
@@ -853,13 +866,12 @@
                 if (!formDelete || !deleteButtons.length) return;
 
                 deleteButtons.forEach(btn => {
-                    btn.addEventListener('click', function () {
+                    btn.addEventListener('click', async function () {
                         const url = this.dataset.deleteAnexo;
                         if (!url) return;
 
-                        if (!confirm('Deseja realmente excluir este anexo?')) {
-                            return;
-                        }
+                        const ok = await window.uiConfirm('Deseja realmente excluir este anexo?');
+                        if (!ok) return;
 
                         formDelete.action = url;
                         formDelete.submit();

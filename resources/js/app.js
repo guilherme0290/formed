@@ -10,6 +10,113 @@ Alpine.start();
 
 window.Sortable = Sortable;
 
+if (!window.Swal) {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/sweetalert2@11';
+    script.defer = true;
+    document.head.appendChild(script);
+}
+
+window.uiAlert = (message, options = {}) => {
+    if (window.Swal) {
+        return window.Swal.fire({
+            icon: options.icon || 'info',
+            title: options.title || 'Atenção',
+            text: message,
+            confirmButtonText: options.confirmText || 'OK',
+        });
+    }
+
+    alert(message);
+    return Promise.resolve();
+};
+
+window.uiConfirm = (message, options = {}) => {
+    if (window.Swal) {
+        return window.Swal.fire({
+            icon: options.icon || 'warning',
+            title: options.title || 'Confirmar ação',
+            text: message,
+            showCancelButton: true,
+            confirmButtonText: options.confirmText || 'Confirmar',
+            cancelButtonText: options.cancelText || 'Cancelar',
+        }).then((result) => result.isConfirmed);
+    }
+
+    return Promise.resolve(confirm(message));
+};
+
+window.initTailwindAutocomplete = (inputRef, listRef, options = [], config = {}) => {
+    const input = typeof inputRef === 'string' ? document.getElementById(inputRef) : inputRef;
+    const list = typeof listRef === 'string' ? document.getElementById(listRef) : listRef;
+    if (!input || !list) return;
+
+    const maxItems = Number(config.maxItems || 10);
+
+    const normalize = (value) => (value || '')
+        .toString()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase();
+
+    const render = (items) => {
+        list.innerHTML = '';
+        if (!items.length) {
+            list.classList.add('hidden');
+            return;
+        }
+
+        items.forEach((value) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50';
+            btn.textContent = value;
+            btn.addEventListener('click', () => {
+                input.value = value;
+                list.classList.add('hidden');
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+            });
+            list.appendChild(btn);
+        });
+
+        list.classList.remove('hidden');
+    };
+
+    input.addEventListener('input', () => {
+        const query = normalize(input.value);
+        if (!query) {
+            list.classList.add('hidden');
+            return;
+        }
+
+        const filtered = options
+            .filter((value) => normalize(value).includes(query))
+            .slice(0, maxItems);
+        render(filtered);
+    });
+
+    document.addEventListener('click', (event) => {
+        if (!list.contains(event.target) && event.target !== input) {
+            list.classList.add('hidden');
+        }
+    });
+};
+
+document.addEventListener('submit', async (e) => {
+    const form = e.target.closest('form[data-confirm]');
+    if (!form) return;
+    e.preventDefault();
+    const message = form.dataset.confirm || 'Deseja confirmar esta ação?';
+    const ok = await window.uiConfirm(message, {
+        title: form.dataset.confirmTitle || 'Confirmar ação',
+        confirmText: form.dataset.confirmOk || 'Confirmar',
+        cancelText: form.dataset.confirmCancel || 'Cancelar',
+    });
+    if (ok) {
+        form.submit();
+    }
+});
+
 document.addEventListener('click', function (e) {
     const btn = e.target.closest('[data-funcao-open-modal]');
     if (!btn) return;

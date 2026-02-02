@@ -1,5 +1,5 @@
 @extends('layouts.master')
-@section('title', 'Configuracao de Caixas de Email')
+@section('title', 'Configuração de Caixas de Email')
 
 @section('content')
     @php
@@ -9,18 +9,25 @@
     @endphp
 
     <div class="max-w-6xl mx-auto px-4 md:px-6 py-6 space-y-6">
-        <div class="text-[11px] text-slate-500">
-            Configurações &gt; {{ $tab === 'tempos' ? 'Tempo das tarefas' : 'E-mail SMTP (CRUR)' }}
-        </div>
         <div class="flex flex-wrap items-start justify-between gap-4">
             <div>
                 <h1 class="text-2xl font-semibold text-slate-900">
-                    {{ $tab === 'tempos' ? 'Configuração de tempo das tarefas' : 'Configuracao de Caixas de E-mail SMTP (CRUR)' }}
+                    @if ($tab === 'tempos')
+                        Configuração de tempo das tarefas
+                    @elseif ($tab === 'painel')
+                        Configuração do painel
+                    @else
+                        Configuração de Caixas de E-mail
+                    @endif
                 </h1>
                 <p class="text-slate-500 text-sm mt-1">
-                    {{ $tab === 'tempos'
-                        ? 'Defina o tempo padrão por serviço para o controle de SLA.'
-                        : 'Defina servidor, remetente, respondente e credenciais.' }}
+                    @if ($tab === 'tempos')
+                        Defina o tempo padrão por serviço para o controle de SLA.
+                    @elseif ($tab === 'painel')
+                        Ajuste os textos exibidos no painel de controle.
+                    @else
+                        Defina servidor, remetente, respondente e credenciais.
+                    @endif
                 </p>
             </div>
             <button type="submit" form="email-caixa-form"
@@ -37,6 +44,10 @@
             <a href="{{ route('master.email-caixas.index', ['tab' => 'tempos']) }}"
                class="px-3 py-2 rounded-xl border {{ $tab === 'tempos' ? 'border-indigo-200 bg-indigo-50 text-indigo-700 font-semibold' : 'border-slate-200 bg-white text-slate-600' }}">
                 Tempo das tarefas
+            </a>
+            <a href="{{ route('master.email-caixas.index', ['tab' => 'painel']) }}"
+               class="px-3 py-2 rounded-xl border {{ $tab === 'painel' ? 'border-indigo-200 bg-indigo-50 text-indigo-700 font-semibold' : 'border-slate-200 bg-white text-slate-600' }}">
+                Configurar Card
             </a>
         </div>
 
@@ -60,6 +71,13 @@
         <div class="{{ $tab === 'email' ? 'space-y-6' : 'hidden' }}" data-tab-panel="email">
             <form id="email-caixa-form" method="POST" action="{{ route('master.email-caixas.store') }}" class="space-y-4">
                 @csrf
+                <x-toggle-ativo
+                    name="ativo"
+                    :checked="old('ativo', '1') === '1'"
+                    on-label="Ativo"
+                    off-label="Inativo"
+                    text-class="text-sm text-slate-700"
+                />
                 <div class="grid md:grid-cols-2 gap-4">
                     <div class="bg-white rounded-xl border border-slate-200 shadow-sm">
                         <div class="border-b border-slate-200 px-4 py-3">
@@ -119,15 +137,8 @@
                                 <label class="inline-flex items-center gap-2 text-slate-700">
                                     <input type="checkbox" name="requer_autenticacao" value="1"
                                            class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                                           {{ old('requer_autenticacao', '1') === '1' ? 'checked' : '' }}>
+                                        {{ old('requer_autenticacao', '1') === '1' ? 'checked' : '' }}>
                                     Autenticacao obrigatoria?
-                                </label>
-                                <input type="hidden" name="ativo" value="0">
-                                <label class="inline-flex items-center gap-2 text-slate-700">
-                                    <input type="checkbox" name="ativo" value="1"
-                                           class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                                           {{ old('ativo', '1') === '1' ? 'checked' : '' }}>
-                                    Ativo
                                 </label>
                             </div>
                             <div class="flex flex-wrap items-center justify-center gap-3 pt-6">
@@ -184,12 +195,12 @@
                                         x-on:click="$dispatch('open-modal', 'email-caixa-teste-{{ $caixa->id }}')">
                                     Testar envio
                                 </button>
-                                <form method="POST" action="{{ route('master.email-caixas.destroy', $caixa) }}">
+                                <form method="POST" action="{{ route('master.email-caixas.destroy', $caixa) }}" data-confirm="Excluir este email?">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit"
                                             class="inline-flex items-center px-3 py-1.5 rounded-lg bg-rose-50 text-rose-700 text-xs font-semibold border border-rose-200 hover:bg-rose-100"
-                                            onclick="return confirm('Excluir este email?')">
+                                            >
                                         Excluir
                                     </button>
                                 </form>
@@ -338,5 +349,247 @@
                 </div>
             </form>
         </div>
+
+        <div class="{{ $tab === 'painel' ? 'space-y-6' : 'hidden' }}" data-tab-panel="painel">
+            <div class="bg-slate-50 rounded-2xl border border-slate-200 shadow-sm p-6 space-y-6">
+                <div>
+                    <div class="text-xl font-semibold text-slate-900">Configurações do Painel Master</div>
+                    <div class="text-sm text-slate-500">Personalize o que será exibido no seu dashboard</div>
+                </div>
+
+                <div class="grid gap-4 md:grid-cols-2">
+                    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-4">
+                        <div class="flex items-center gap-3">
+                            <div class="h-10 w-10 rounded-xl bg-indigo-50 text-indigo-600 grid place-items-center text-lg">📊</div>
+                            <div>
+                                <div class="text-sm font-semibold text-slate-900">Resumo Geral</div>
+                                <div class="h-px bg-indigo-100 mt-1"></div>
+                            </div>
+                        </div>
+                        <div class="space-y-3">
+                            <label class="flex items-start justify-between gap-4 text-sm text-slate-700">
+                                <span>
+                                    <span class="font-medium">Mostrar resumo de faturamento</span>
+                                    <span class="block text-xs text-slate-500">Mostra o faturamento total do período selecionado</span>
+                                </span>
+                                <span class="relative inline-flex items-center">
+                                    <input type="checkbox" class="sr-only peer" data-dashboard-toggle="faturamento-global">
+                                    <span class="h-6 w-11 rounded-full bg-slate-200 peer-checked:bg-indigo-600 transition"></span>
+                                    <span class="absolute left-1 h-4 w-4 rounded-full bg-white transition peer-checked:translate-x-5"></span>
+                                </span>
+                            </label>
+                            <div class="h-px bg-slate-100"></div>
+                            <label class="flex items-start justify-between gap-4 text-sm text-slate-700">
+                                <span>
+                                    <span class="font-medium">Mostrar resumo de serviços consumidos</span>
+                                    <span class="block text-xs text-slate-500">Mostra o total de itens de serviços utilizados</span>
+                                </span>
+                                <span class="relative inline-flex items-center">
+                                    <input type="checkbox" class="sr-only peer" data-dashboard-toggle="servicos-consumidos">
+                                    <span class="h-6 w-11 rounded-full bg-slate-200 peer-checked:bg-indigo-600 transition"></span>
+                                    <span class="absolute left-1 h-4 w-4 rounded-full bg-white transition peer-checked:translate-x-5"></span>
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-4">
+                        <div class="flex items-center gap-3">
+                            <div class="h-10 w-10 rounded-xl bg-amber-50 text-amber-600 grid place-items-center text-lg">💰</div>
+                            <div>
+                                <div class="text-sm font-semibold text-slate-900">Financeiro</div>
+                                <div class="h-px bg-amber-100 mt-1"></div>
+                            </div>
+                        </div>
+                        <div class="space-y-3">
+                            <label class="flex items-start justify-between gap-4 text-sm text-slate-700">
+                                <span>
+                                    <span class="font-medium">Faturamento pendente</span>
+                                    <span class="block text-xs text-slate-500">Mostra o total em aberto no per&iacute;odo</span>
+                                </span>
+                                <span class="relative inline-flex items-center">
+                                    <input type="checkbox" class="sr-only peer" data-dashboard-toggle="financeiro-pendente">
+                                    <span class="h-6 w-11 rounded-full bg-slate-200 peer-checked:bg-indigo-600 transition"></span>
+                                    <span class="absolute left-1 h-4 w-4 rounded-full bg-white transition peer-checked:translate-x-5"></span>
+                                </span>
+                            </label>
+                            <div class="h-px bg-slate-100"></div>
+                            <label class="flex items-start justify-between gap-4 text-sm text-slate-700">
+                                <span>
+                                    <span class="font-medium">Faturamento recebido</span>
+                                    <span class="block text-xs text-slate-500">Mostra o total recebido no per&iacute;odo</span>
+                                </span>
+                                <span class="relative inline-flex items-center">
+                                    <input type="checkbox" class="sr-only peer" data-dashboard-toggle="financeiro-recebido">
+                                    <span class="h-6 w-11 rounded-full bg-slate-200 peer-checked:bg-indigo-600 transition"></span>
+                                    <span class="absolute left-1 h-4 w-4 rounded-full bg-white transition peer-checked:translate-x-5"></span>
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-4">
+                        <div class="flex items-center gap-3">
+                            <div class="h-10 w-10 rounded-xl bg-indigo-50 text-indigo-600 grid place-items-center text-lg">⚙️</div>
+                            <div>
+                                <div class="text-sm font-semibold text-slate-900">Indicadores Operacionais</div>
+                                <div class="h-px bg-indigo-100 mt-1"></div>
+                            </div>
+                        </div>
+                        <div class="space-y-3">
+                            <label class="flex items-start justify-between gap-4 text-sm text-slate-700">
+                                <span>
+                                    <span class="font-medium">Card de clientes ativos</span>
+                                    <span class="block text-xs text-slate-500">Mostra o número de clientes em atendimento</span>
+                                </span>
+                                <span class="relative inline-flex items-center">
+                                    <input type="checkbox" class="sr-only peer" data-dashboard-toggle="clientes-ativos">
+                                    <span class="h-6 w-11 rounded-full bg-slate-200 peer-checked:bg-indigo-600 transition"></span>
+                                    <span class="absolute left-1 h-4 w-4 rounded-full bg-white transition peer-checked:translate-x-5"></span>
+                                </span>
+                            </label>
+                            <div class="h-px bg-slate-100"></div>
+                            <label class="flex items-start justify-between gap-4 text-sm text-slate-700">
+                                <span>
+                                    <span class="font-medium">Card de tempo médio</span>
+                                    <span class="block text-xs text-slate-500">Mostra o tempo médio operacional</span>
+                                </span>
+                                <span class="relative inline-flex items-center">
+                                    <input type="checkbox" class="sr-only peer" data-dashboard-toggle="tempo-medio">
+                                    <span class="h-6 w-11 rounded-full bg-slate-200 peer-checked:bg-indigo-600 transition"></span>
+                                    <span class="absolute left-1 h-4 w-4 rounded-full bg-white transition peer-checked:translate-x-5"></span>
+                                </span>
+                            </label>
+                            <div class="h-px bg-slate-100"></div>
+                            <label class="flex items-start justify-between gap-4 text-sm text-slate-700">
+                                <span>
+                                    <span class="font-medium">Card de agendamentos do dia</span>
+                                    <span class="block text-xs text-slate-500">Mostra o total de agendas abertas e fechadas hoje</span>
+                                </span>
+                                <span class="relative inline-flex items-center">
+                                    <input type="checkbox" class="sr-only peer" data-dashboard-toggle="agendamentos-dia">
+                                    <span class="h-6 w-11 rounded-full bg-slate-200 peer-checked:bg-indigo-600 transition"></span>
+                                    <span class="absolute left-1 h-4 w-4 rounded-full bg-white transition peer-checked:translate-x-5"></span>
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-4">
+                        <div class="flex items-center gap-3">
+                            <div class="h-10 w-10 rounded-xl bg-indigo-50 text-indigo-600 grid place-items-center text-lg">📄</div>
+                            <div>
+                                <div class="text-sm font-semibold text-slate-900">Relatórios</div>
+                                <div class="h-px bg-indigo-100 mt-1"></div>
+                            </div>
+                        </div>
+                        <div class="space-y-3">
+                            <label class="flex items-start justify-between gap-4 text-sm text-slate-700">
+                                <span>
+                                    <span class="font-medium">Card de relatórios master</span>
+                                    <span class="block text-xs text-slate-500">Atalho para relatórios</span>
+                                </span>
+                                <span class="relative inline-flex items-center">
+                                    <input type="checkbox" class="sr-only peer" data-dashboard-toggle="relatorios-master">
+                                    <span class="h-6 w-11 rounded-full bg-slate-200 peer-checked:bg-indigo-600 transition"></span>
+                                    <span class="absolute left-1 h-4 w-4 rounded-full bg-white transition peer-checked:translate-x-5"></span>
+                                </span>
+                            </label>
+                            <div class="h-px bg-slate-100"></div>
+                            <label class="flex items-start justify-between gap-4 text-sm text-slate-700">
+                                <span>
+                                    <span class="font-medium">Relatórios avançados</span>
+                                    <span class="block text-xs text-slate-500">Bloco de métricas avançadas</span>
+                                </span>
+                                <span class="relative inline-flex items-center">
+                                    <input type="checkbox" class="sr-only peer" data-dashboard-toggle="relatorios-avancados">
+                                    <span class="h-6 w-11 rounded-full bg-slate-200 peer-checked:bg-indigo-600 transition"></span>
+                                    <span class="absolute left-1 h-4 w-4 rounded-full bg-white transition peer-checked:translate-x-5"></span>
+                                </span>
+                            </label>
+                        </div>
+
+                        <div class="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
+                            <span class="text-xs text-slate-500" data-dashboard-save-status></span>
+                            <button type="button"
+                                    class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700"
+                                    data-dashboard-save>
+                                <span class="text-base">💾</span>
+                                Salvar configurações do painel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
+
+    @push('scripts')
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const saveBtn = document.querySelector('[data-dashboard-save]');
+                if (!saveBtn) return;
+
+                const toggles = Array.from(document.querySelectorAll('[data-dashboard-toggle]'));
+                const statusEl = document.querySelector('[data-dashboard-save-status]');
+                const preferencesUrl = '{{ route('master.dashboard-preferences.show') }}';
+                const saveUrl = '{{ route('master.dashboard-preferences.update') }}';
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                let currentState = {};
+
+                const loadState = async () => {
+                    try {
+                        const response = await fetch(preferencesUrl, {
+                            headers: { 'Accept': 'application/json' },
+                        });
+                        if (!response.ok) {
+                            return {};
+                        }
+                        const payload = await response.json();
+                        return payload.visibility || {};
+                    } catch (e) {
+                        return {};
+                    }
+                };
+
+                const applyState = (state) => {
+                    toggles.forEach((toggle) => {
+                        const key = toggle.getAttribute('data-dashboard-toggle');
+                        if (Object.prototype.hasOwnProperty.call(state, key)) {
+                            toggle.checked = state[key] !== false;
+                        }
+                    });
+                };
+
+                loadState().then((state) => {
+                    currentState = state || {};
+                    applyState(currentState);
+                });
+
+                saveBtn.addEventListener('click', () => {
+                    const next = { ...currentState };
+                    toggles.forEach((toggle) => {
+                        const key = toggle.getAttribute('data-dashboard-toggle');
+                        next[key] = toggle.checked;
+                    });
+                    currentState = next;
+                    fetch(saveUrl, {
+                        method: 'PUT',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken || '',
+                        },
+                        body: JSON.stringify({ visibility: next }),
+                    }).catch(() => null);
+                    if (statusEl) {
+                        statusEl.textContent = 'Configurações salvas.';
+                        setTimeout(() => {
+                            statusEl.textContent = '';
+                        }, 2000);
+                    }
+                });
+            });
+        </script>
+    @endpush
 @endsection

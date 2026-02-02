@@ -56,23 +56,15 @@
 
                 <div class="md:col-span-2">
                     <label class="block text-sm font-medium mb-1 text-slate-700">Busca (razão social, nome fantasia ou CNPJ)</label>
-                    <input type="search" name="q" id="cliente-search" value="{{ $q }}"
-                           list="clientes-sugestoes"
-                           placeholder="Ex: 12.345.678/0001-00, Razão Social ou Nome Fantasia"
-                           class="w-full rounded-lg border-slate-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    <datalist id="clientes-sugestoes">
-                        @foreach ($clientes as $cliente)
-                            @if($cliente->razao_social)
-                                <option value="{{ $cliente->razao_social }}"></option>
-                            @endif
-                            @if($cliente->nome_fantasia)
-                                <option value="{{ $cliente->nome_fantasia }}"></option>
-                            @endif
-                            @if($cliente->cnpj)
-                                <option value="{{ $cliente->cnpj }}"></option>
-                            @endif
-                        @endforeach
-                    </datalist>
+                    <div class="relative">
+                        <input type="search" name="q" id="cliente-search" value="{{ $q }}"
+                               autocomplete="off"
+                               placeholder="Ex: 12.345.678/0001-00, Razão Social ou Nome Fantasia"
+                               class="w-full rounded-lg border-slate-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <div id="clientes-autocomplete"
+                             class="absolute z-20 mt-1 w-full max-h-64 overflow-auto rounded-lg border border-slate-200 bg-white shadow-lg hidden">
+                        </div>
+                    </div>
                 </div>
 
                 <div>
@@ -177,7 +169,7 @@
                                 <form action="{{ route($routePrefix.'.destroy', $cliente) }}"
                                       method="POST"
                                       class="inline"
-                                      onsubmit="return confirm('Tem certeza que deseja excluir este cliente?')">
+                                      data-confirm="Tem certeza que deseja excluir este cliente?">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit"
@@ -223,9 +215,9 @@
         </div>
     </div>
 
-    <div id="modalAcessoCliente" class="fixed inset-0 z-50 hidden bg-black/40">
+    <div id="modalAcessoCliente" class="fixed inset-0 z-[90] hidden bg-black/50 overflow-y-auto">
         <div class="min-h-full flex items-center justify-center p-4">
-            <div class="bg-white w-full max-w-lg rounded-2xl shadow-xl overflow-hidden">
+            <div class="bg-white w-full max-w-lg rounded-2xl shadow-xl overflow-hidden max-h-[90vh] overflow-y-auto">
                 <div class="px-6 py-4 border-b flex items-center justify-between">
                     <h3 class="text-lg font-semibold text-slate-800">Acesso do cliente</h3>
                     <button type="button" class="h-9 w-9 rounded-xl hover:bg-slate-100 text-slate-500"
@@ -241,7 +233,7 @@
                         <div><span class="text-slate-500">Criado em:</span> <span id="acessoUserCreated">-</span></div>
                     </div>
 
-                    <form id="acessoResetForm" method="POST" action="" onsubmit="return confirm('Enviar link de redefinição de senha para este usuário?')">
+                    <form id="acessoResetForm" method="POST" action="" data-confirm="Enviar link de redefinição de senha para este usuário?">
                         @csrf
                         <button type="submit"
                                 class="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 text-sm font-semibold">
@@ -289,6 +281,16 @@
 @endsection
 
 @push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            window.initTailwindAutocomplete?.(
+                'cliente-search',
+                'clientes-autocomplete',
+                @json($autocompleteOptions)
+            );
+        });
+    </script>
+
     <script>
         (function () {
             const input = document.getElementById('cliente-search');

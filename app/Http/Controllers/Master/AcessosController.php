@@ -41,6 +41,16 @@ class AcessosController extends Controller
             ->paginate(12)
             ->withQueryString();
 
+        $usuariosAutocomplete = $usuarios->getCollection()
+            ->flatMap(function ($user) {
+                return array_filter([
+                    $user->name,
+                    $user->email,
+                ]);
+            })
+            ->unique()
+            ->values();
+
         $papeis = Papel::with('permissoes')->orderBy('nome')->get();
         $permissoes = \App\Models\Permissao::orderBy('escopo')->orderBy('nome')->get()->groupBy('escopo');
 
@@ -49,7 +59,7 @@ class AcessosController extends Controller
 
 
         return view('master.acessos.index', compact(
-            'tab','papeis','usuarios','q','papelId','status','tipos','tipo','permissoes'
+            'tab','papeis','usuarios','q','papelId','status','tipos','tipo','permissoes','usuariosAutocomplete'
         ));
     }
 
@@ -215,5 +225,4 @@ class AcessosController extends Controller
     }
 
 }
-
 

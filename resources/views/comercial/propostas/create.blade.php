@@ -408,9 +408,9 @@
     </div>
 
     {{-- MODAL TREINAMENTOS --}}
-    <div id="modalTreinamentos" class="fixed inset-0 z-50 hidden bg-black/40">
+    <div id="modalTreinamentos" class="fixed inset-0 z-[90] hidden bg-black/50 overflow-y-auto">
         <div class="min-h-full flex items-center justify-center p-4">
-            <div class="bg-white w-full max-w-2xl rounded-2xl shadow-xl overflow-hidden">
+            <div class="bg-white w-full max-w-2xl rounded-2xl shadow-xl overflow-hidden max-h-[90vh] overflow-y-auto">
                 <div class="px-5 py-4 border-b flex items-center justify-between">
                     <h3 class="font-semibold text-slate-800">Selecionar Treinamento (NR)</h3>
                     <button type="button" class="h-9 w-9 rounded-xl hover:bg-slate-100" onclick="closeTreinamentosModal()">?</button>
@@ -430,9 +430,9 @@
     ])
     {{--
     MODAL PACOTE EXAMES (dinamico)
-    <div id="modalExames" class="fixed inset-0 z-50 hidden bg-black/40">
+    <div id="modalExames" class="fixed inset-0 z-[90] hidden bg-black/50 overflow-y-auto">
         <div class="min-h-full flex items-center justify-center p-4">
-            <div class="bg-white w-full max-w-2xl rounded-2xl shadow-xl overflow-hidden">
+            <div class="bg-white w-full max-w-2xl rounded-2xl shadow-xl overflow-hidden max-h-[90vh] overflow-y-auto">
                 <div class="px-5 py-4 border-b bg-blue-700 text-white flex items-center justify-between">
                     <h3 class="font-semibold">Criar Pacote de Exames</h3>
                     <button type="button" class="h-9 w-9 rounded-xl hover:bg-white/10" onclick="closeExamesModal()">?</button>
@@ -1780,16 +1780,16 @@
 
                 window.confirmExames = function() {
                     const nomePacote = (el.pkgExamesNome?.value || '').trim();
-                    if (!nomePacote) return alert('Informe o nome do pacote.');
+                    if (!nomePacote) return window.uiAlert('Informe o nome do pacote.');
 
                     const ids = Array.from(el.examesList.querySelectorAll('input[type="checkbox"]:checked'))
                         .map(i => Number(i.value));
 
                     const escolhidos = (state.exames.list || []).filter(e => ids.includes(e.id));
-                    if (!escolhidos.length) return alert('Selecione pelo menos um exame.');
+                    if (!escolhidos.length) return window.uiAlert('Selecione pelo menos um exame.');
 
                     const valor = Number(el.pkgExamesValorHidden?.value || 0);
-                    if (valor <= 0) return alert('Informe o valor do pacote.');
+                    if (valor <= 0) return window.uiAlert('Informe o valor do pacote.');
 
                     closeExamesModal();
                     addPacoteExames(nomePacote, valor, escolhidos);
@@ -2053,10 +2053,10 @@
                 });
                 window.confirmPacoteTreinamentos = function () {
                     const nomePacote = (pkgNome.value || '').trim();
-                    if (!nomePacote) return alert('Informe o nome do pacote.');
+                    if (!nomePacote) return window.uiAlert('Informe o nome do pacote.');
 
                     const checks = Array.from(pkgList.querySelectorAll('input[type="checkbox"]:checked'));
-                    if (!checks.length) return alert('Selecione pelo menos um treinamento.');
+                    if (!checks.length) return window.uiAlert('Selecione pelo menos um treinamento.');
 
                     const treinamentos = checks.map(c => ({
                         id: Number(c.value),

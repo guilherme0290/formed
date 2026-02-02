@@ -51,11 +51,22 @@
                 @method('PUT')
             @endif
 
+            {{-- ATIVO --}}
+            <div class="flex items-center gap-3">
+                <x-toggle-ativo
+                    name="ativo"
+                    :checked="(bool) old('ativo', $cliente->exists ? $cliente->ativo : 1)"
+                    on-label="Ativo"
+                    off-label="Inativo"
+                />
+            </div>
+
             {{-- LINHA 1 --}}
             <div class="grid md:grid-cols-3 gap-4">
                 <div>
                     <label class="text-sm">CNPJ</label>
                     <input name="cnpj" value="{{ old('cnpj', $cliente->cnpj) }}"
+                           data-cliente-id="{{ $cliente->exists ? $cliente->id : '' }}"
                            class="w-full border-gray-300 rounded-lg px-3 py-2">
                     @error('cnpj')
                     <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
@@ -83,19 +94,6 @@
 
             {{-- LINHA 2 --}}
             <div class="grid md:grid-cols-3 gap-4 items-center">
-                @if($cliente->exists)
-                    <div>
-                        <label class="text-sm">Ativo</label>
-                        <div class="flex items-center gap-2 mt-1">
-                            <input type="hidden" name="ativo" value="0">
-                            <input type="checkbox" name="ativo" value="1"
-                                   {{ old('ativo', $cliente->ativo) ? 'checked' : '' }}
-                                   class="h-5 w-5 text-blue-600">
-                        </div>
-                    </div>
-                @endif
-
-
                 <div>
                     <label class="text-sm">E-mail</label>
                     <input name="email" value="{{ old('email', $cliente->email) }}"
@@ -110,6 +108,15 @@
                     <input name="telefone" value="{{ old('telefone', $cliente->telefone) }}"
                            class="w-full border-gray-300 rounded-lg px-3 py-2">
                     @error('telefone')
+                    <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <div>
+                    <label class="text-sm">Contato</label>
+                    <input name="contato" value="{{ old('contato', $cliente->contato) }}"
+                           class="w-full border-gray-300 rounded-lg px-3 py-2">
+                    @error('contato')
                     <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
                     @enderror
                 </div>
@@ -436,6 +443,8 @@
         document.addEventListener('DOMContentLoaded', function () {
             // pega o primeiro input com name="cnpj" da página
             var cnpjInput = document.querySelector('input[name="cnpj"]');
+            var formCliente = cnpjInput?.closest('form');
+            var cnpjDuplicado = false;
             if (!cnpjInput) return;
 
             // máscara enquanto digita
@@ -461,7 +470,7 @@
             });
 
             // validação ao sair do campo
-            cnpjInput.addEventListener('blur', function () {
+            cnpjInput.addEventListener('blur', async function () {
                 var cnpjLimpo = cnpjInput.value.replace(/\D/g, '');
 
                 if (cnpjLimpo === '') {
@@ -471,8 +480,34 @@
 
                 if (!cnpjValido(cnpjLimpo)) {
                     mostrarErroCNPJ(cnpjInput, 'CNPJ inválido');
+                    cnpjDuplicado = false;
                 } else {
                     limparErroCNPJ(cnpjInput);
+                    const clienteId = cnpjInput.dataset.clienteId || '';
+                    const baseUrl = @json(route($routePrefix.'.cnpj-exists', ['cnpj' => '__CNPJ__']));
+                    const url = baseUrl
+                        .replace('__CNPJ__', encodeURIComponent(cnpjLimpo))
+                        + (clienteId ? `?ignore=${encodeURIComponent(clienteId)}` : '');
+                    try {
+                        const resp = await fetch(url);
+                        const json = await resp.json();
+                        if (json?.exists) {
+                            cnpjDuplicado = true;
+                            mostrarErroCNPJ(cnpjInput, 'Já existe um cliente cadastrado com este CNPJ.');
+                        } else {
+                            cnpjDuplicado = false;
+                            limparErroCNPJ(cnpjInput);
+                        }
+                    } catch (e) {
+                        console.error('Erro ao validar CNPJ duplicado', e);
+                    }
+                }
+            });
+
+            formCliente?.addEventListener('submit', (e) => {
+                if (cnpjDuplicado) {
+                    e.preventDefault();
+                    mostrarErroCNPJ(cnpjInput, 'Já existe um cliente cadastrado com este CNPJ.');
                 }
             });
         });

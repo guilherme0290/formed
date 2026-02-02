@@ -66,7 +66,7 @@
                     <p><strong>E-mail sugerido:</strong> {{ $cliente->email ?? '—' }}</p>
                     <p class="text-xs text-slate-500">Uma senha temporária será gerada e o usuário deve trocar no primeiro login.</p>
                 </div>
-                <form method="POST" action="{{ route($routePrefix.'.acesso', $cliente) }}" onsubmit="return confirm('Criar acesso para este cliente?')">
+                <form method="POST" action="{{ route($routePrefix.'.acesso', $cliente) }}" data-confirm="Criar acesso para este cliente?">
                     @csrf
                     <button class="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 {{ $cliente->email ? '' : 'opacity-50 cursor-not-allowed' }}" {{ $cliente->email ? '' : 'disabled' }}>
                         🔑 Criar usuário do cliente

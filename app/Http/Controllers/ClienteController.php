@@ -49,7 +49,13 @@ class ClienteController extends Controller
 
         $routePrefix = $this->routePrefix();
 
-        return view('clientes.index', compact('clientes', 'q', 'status', 'routePrefix'));
+        $autocompleteOptions = $clientes->getCollection()
+            ->pluck('razao_social')
+            ->filter()
+            ->unique()
+            ->values();
+
+        return view('clientes.index', compact('clientes', 'q', 'status', 'routePrefix', 'autocompleteOptions'));
     }
 
     /**
@@ -83,6 +89,29 @@ class ClienteController extends Controller
             'complemento'   => $dados['complemento'] ?? null,
             'uf'            => $dados['uf'] ?? null,
             'municipio'     => $dados['municipio'] ?? null,
+        ]);
+    }
+
+    public function cnpjExists(Request $request, string $cnpj)
+    {
+        $empresaId = $request->user()->empresa_id ?? 1;
+        $cnpjLimpo = preg_replace('/\D+/', '', (string) $cnpj);
+        $ignorarId = $request->query('ignore') ? (int) $request->query('ignore') : null;
+
+        if ($cnpjLimpo === '') {
+            return response()->json(['exists' => false]);
+        }
+
+        $query = Cliente::query()
+            ->where('empresa_id', $empresaId)
+            ->whereRaw("REPLACE(REPLACE(REPLACE(cnpj, '.', ''), '-', ''), '/', '') = ?", [$cnpjLimpo]);
+
+        if ($ignorarId) {
+            $query->where('id', '!=', $ignorarId);
+        }
+
+        return response()->json([
+            'exists' => $query->exists(),
         ]);
     }
 
@@ -319,13 +348,40 @@ class ClienteController extends Controller
      */
     protected function validateData(Request $r): array
     {
+        $empresaId = $r->user()->empresa_id ?? 1;
+        $clienteRoute = $r->route('cliente');
+        $clienteId = $clienteRoute instanceof Cliente ? $clienteRoute->id : (is_numeric($clienteRoute) ? (int) $clienteRoute : null);
+
         return $r->validate(
             [
                 'razao_social'   => ['required', 'string', 'max:255'],
                 'nome_fantasia'  => ['nullable', 'string', 'max:255'],
-                'cnpj'           => ['required', 'string', 'max:20'],
+                'cnpj'           => [
+                    'required',
+                    'string',
+                    'max:20',
+                    function ($attribute, $value, $fail) use ($empresaId, $clienteId) {
+                        $cnpjLimpo = preg_replace('/\D+/', '', (string) $value);
+                        if ($cnpjLimpo === '') {
+                            return;
+                        }
+
+                        $query = Cliente::query()
+                            ->where('empresa_id', $empresaId)
+                            ->whereRaw("REPLACE(REPLACE(REPLACE(cnpj, '.', ''), '-', ''), '/', '') = ?", [$cnpjLimpo]);
+
+                        if ($clienteId) {
+                            $query->where('id', '!=', $clienteId);
+                        }
+
+                        if ($query->exists()) {
+                            $fail('Já existe um cliente cadastrado com este CNPJ.');
+                        }
+                    },
+                ],
                 'email'          => ['nullable', 'email', 'max:255'],
                 'telefone'       => ['nullable', 'string', 'max:30'],
+                'contato'        => ['nullable', 'string', 'max:120'],
                 'cep'            => ['nullable', 'string', 'max:20'],
                 'endereco'       => ['nullable', 'string', 'max:255'],
                 'numero'         => ['nullable', 'string', 'max:20'],

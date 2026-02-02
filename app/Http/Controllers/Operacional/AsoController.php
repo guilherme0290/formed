@@ -48,6 +48,7 @@ class AsoController extends Controller
             'cpf' => ['nullable', 'string', 'max:20'],
             'data_nascimento' => ['nullable', 'date'],
             'rg' => ['nullable', 'string', 'max:255'],
+            'celular' => ['nullable', 'string', 'max:30'],
             'funcao_id' => ['nullable', 'integer', 'exists:funcoes,id'],
             'tipo_aso' => ['required', 'in:admissional,periodico,demissional,mudanca_funcao,retorno_trabalho'],
             'data_aso' => ['required', 'date_format:Y-m-d'],
@@ -84,6 +85,10 @@ class AsoController extends Controller
                     ->where('cliente_id', $cliente->id)
                     ->with('funcao')
                     ->findOrFail($data['funcionario_id']);
+                if (!empty($data['celular'])) {
+                    $funcionario->celular = $data['celular'];
+                    $funcionario->save();
+                }
             } else {
                 $funcionario = Funcionario::create([
                     'empresa_id' => $empresaId,
@@ -91,6 +96,7 @@ class AsoController extends Controller
                     'nome' => $data['nome'],
                     'cpf' => $data['cpf'] ?? null,
                     'rg' => $data['rg'],
+                    'celular' => $data['celular'] ?? null,
                     'data_nascimento' => $data['data_nascimento'],
                     'funcao_id' => $data['funcao_id'] ?? null,
                 ]);
@@ -337,6 +343,7 @@ class AsoController extends Controller
             'cpf' => ['nullable', 'string', 'max:20'],
             'data_nascimento' => ['nullable', 'date'],
             'rg' => ['nullable', 'string', 'max:255'],
+            'celular' => ['nullable', 'string', 'max:30'],
             'funcao_id' => ['nullable', 'integer', 'exists:funcoes,id'],
             'tipo_aso' => ['required', 'in:admissional,periodico,demissional,mudanca_funcao,retorno_trabalho'],
             'data_aso' => ['required', 'date_format:Y-m-d'],
@@ -373,6 +380,10 @@ class AsoController extends Controller
                     ->where('cliente_id', $cliente->id)
                     ->with('funcao')
                     ->findOrFail($data['funcionario_id']);
+                if (!empty($data['celular'])) {
+                    $funcionario->celular = $data['celular'];
+                    $funcionario->save();
+                }
             } else {
                 $funcionario = $tarefa->funcionario ?: new Funcionario([
                     'empresa_id' => $empresaId,
@@ -383,6 +394,7 @@ class AsoController extends Controller
                     'nome' => $data['nome'],
                     'cpf' => $data['cpf'] ?? null,
                     'rg' => $data['rg'],
+                    'celular' => $data['celular'] ?? null,
                     'data_nascimento' => $data['data_nascimento'],
                     'funcao_id' => $data['funcao_id'] ?? null,
                 ]);

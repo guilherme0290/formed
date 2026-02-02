@@ -1,7 +1,7 @@
 {{-- MODAL TREINAMENTOS (CRUD) --}}
 @php($routePrefix = $routePrefix ?? 'comercial')
 
-<div id="modalTreinamentosCrud" class="fixed inset-0 z-50 hidden bg-black/40">
+<div id="modalTreinamentosCrud" class="fixed inset-0 z-[90] hidden bg-black/50 overflow-y-auto">
     <div class="min-h-full w-full flex items-center justify-center p-4 md:p-6">
         <div class="bg-white w-full max-w-5xl rounded-2xl shadow-xl overflow-hidden max-h-[85vh] flex flex-col">
 
@@ -70,7 +70,7 @@
 </div>
 
 {{-- MODAL FORM TREINAMENTO --}}
-<div id="modalTreinamentoForm" class="fixed inset-0 z-[60] hidden bg-black/40">
+<div id="modalTreinamentoForm" class="fixed inset-0 z-[100] hidden bg-black/50 overflow-y-auto">
     <div class="min-h-full w-full flex items-center justify-center p-4 md:p-6">
         <div class="bg-white w-full max-w-xl rounded-2xl shadow-xl overflow-hidden max-h-[85vh] flex flex-col">
             <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
@@ -87,19 +87,15 @@
                     <div class="px-6 py-5 space-y-4 overflow-y-auto">
                         <input type="hidden" id="trn_id">
 
-                        <div class="flex items-center gap-3">
-                            <div class="relative inline-block w-11 h-5">
-                                <input id="trn_ativo" type="checkbox" value="1"
-                                       class="peer appearance-none w-11 h-5 rounded-full cursor-pointer transition-colors duration-300
-                                              bg-red-600 checked:bg-green-600" checked>
-                                <label for="trn_ativo"
-                                       class="absolute top-0 left-0 w-5 h-5 bg-white rounded-full border shadow-sm cursor-pointer
-                                                  transition-transform duration-300 border-red-600 peer-checked:border-green-600
-                                                  peer-checked:translate-x-6"></label>
-                            </div>
-
-                            <span id="trn_ativo_label" class="text-sm font-medium text-slate-700">Ativo</span>
-                        </div>
+                        <x-toggle-ativo
+                            id="trn_ativo"
+                            name="ativo"
+                            label-id="trn_ativo_label"
+                            :checked="true"
+                            on-label="Ativo"
+                            off-label="Inativo"
+                            text-class="text-sm font-medium text-slate-700"
+                        />
 
 
                     <div>
@@ -329,7 +325,8 @@
             }
 
             async function destroy(id) {
-                if (!confirm('Deseja excluir este treinamento?')) return;
+                const ok = await window.uiConfirm('Deseja excluir este treinamento?');
+                if (!ok) return;
 
                 try {
                     const res = await fetch(URLS.destroy(id), {

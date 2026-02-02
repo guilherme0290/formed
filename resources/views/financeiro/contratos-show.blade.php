@@ -25,6 +25,8 @@
             </span>
         </div>
 
+        @include('financeiro.partials.tabs')
+
         <section class="bg-white rounded-2xl shadow border border-slate-100 p-5 space-y-4">
             <div class="grid md:grid-cols-2 gap-4 text-sm text-slate-700">
                 <div>
@@ -35,10 +37,10 @@
                     <div class="text-xs text-slate-500">Vigência Fim</div>
                     <div class="font-semibold text-slate-900">{{ optional($contrato->vigencia_fim)->format('d/m/Y') ?? '—' }}</div>
                 </div>
-                <div>
-                    <div class="text-xs text-slate-500">Valor Mensal</div>
-                    <div class="font-semibold text-slate-900">R$ {{ number_format((float) $contrato->valor_mensal, 2, ',', '.') }}</div>
-                </div>
+{{--                <div>--}}
+{{--                    <div class="text-xs text-slate-500">Valor Mensal</div>--}}
+{{--                    <div class="font-semibold text-slate-900">R$ {{ number_format((float) $contrato->valor_mensal, 2, ',', '.') }}</div>--}}
+{{--                </div>--}}
                 <div>
                     <div class="text-xs text-slate-500">Proposta Origem</div>
                     <div class="font-semibold text-slate-900">#{{ $contrato->proposta_id_origem }}</div>

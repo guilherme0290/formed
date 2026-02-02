@@ -508,8 +508,8 @@
         @endif
     </div>
 
-    <div id="nrModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 p-4">
-        <div class="bg-white w-full max-w-md rounded-2xl shadow-xl overflow-hidden">
+    <div id="nrModal" class="fixed inset-0 z-[90] hidden items-center justify-center bg-black/50 p-4 overflow-y-auto">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-xl overflow-hidden max-h-[90vh] overflow-y-auto">
             <div class="px-5 py-4 border-b border-slate-100 bg-slate-900 text-white flex items-center justify-between">
                 <div>
                     <h2 class="text-sm font-semibold">Atividades especiais (NR)</h2>
@@ -766,7 +766,7 @@
 
                         const itens = wrapper.querySelectorAll('.funcao-item');
                         if (itens.length <= 1) {
-                            alert('É necessário pelo menos uma função.');
+                            window.uiAlert('É necessário pelo menos uma função.');
                             return;
                         }
 
@@ -951,13 +951,12 @@
 
                 if (formDelete && deleteButtons.length) {
                     deleteButtons.forEach(btn => {
-                        btn.addEventListener('click', function () {
+                        btn.addEventListener('click', async function () {
                             const url = this.dataset.deleteAnexo;
                             if (!url) return;
 
-                            if (!confirm('Deseja realmente excluir este anexo?')) {
-                                return;
-                            }
+                            const ok = await window.uiConfirm('Deseja realmente excluir este anexo?');
+                            if (!ok) return;
 
                             formDelete.action = url;
                             formDelete.submit();

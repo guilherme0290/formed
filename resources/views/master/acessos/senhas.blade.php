@@ -179,7 +179,7 @@
     }
     function gerarLinkReset() {
         const id = getUserId();
-        if (!id) { alert('Selecione um usuário.'); return; }
+        if (!id) { window.uiAlert('Selecione um usuário.'); return; }
         const form = document.getElementById('senhaOutrosForm');
         form.action = "{{ route('master.usuarios.reset', ':id') }}".replace(':id', id);
         form.method = 'POST';
@@ -187,7 +187,7 @@
     }
     function definirNovaSenha() {
         const id = getUserId();
-        if (!id) { alert('Selecione um usuário.'); return; }
+        if (!id) { window.uiAlert('Selecione um usuário.'); return; }
         const form = document.getElementById('senhaOutrosForm');
         form.action = "{{ route('master.usuarios.password', ':id') }}".replace(':id', id);
         form.method = 'POST';

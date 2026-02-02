@@ -22,7 +22,7 @@
                     </div>
                     <div class="flex items-center gap-3">
                         <a class="text-blue-600" href="{{ Storage::url($a->caminho) }}" target="_blank">Abrir</a>
-                        <form method="POST" action="{{ route('tarefas.anexos.destroy',[$tarefa,$a]) }}" onsubmit="return confirm('Excluir anexo?')">
+                        <form method="POST" action="{{ route('tarefas.anexos.destroy',[$tarefa,$a]) }}" data-confirm="Excluir anexo?">
                             @csrf @method('DELETE')
                             <button class="text-red-600">Excluir</button>
                         </form>
