@@ -53,8 +53,12 @@
                 @endphp
                 @foreach($cards as $card)
                     @php $tag = !empty($card['link']) ? 'a' : 'div'; @endphp
-                    <{{ $tag }}
-                        @if(!empty($card['link'])) href="{{ $card['link'] }}" @endif
+                    @php
+                        $attrs = !empty($card['link'])
+                            ? 'href="' . e($card['link']) . '"'
+                            : '';
+                    @endphp
+                    <{{ $tag }} {!! $attrs !!}
                         class="rounded-3xl bg-gradient-to-br {{ $card['cor'] }} text-white shadow-lg shadow-slate-900/20 p-5 flex flex-col gap-3 animate-[fadeIn_0.4s_ease] {{ !empty($card['link']) ? 'hover:opacity-95 transition' : '' }}">
                         <div class="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-white/15 text-xl">
                             {!! $card['icone'] !!}
@@ -67,64 +71,6 @@
                     </{{ $tag }}>
                 @endforeach
             </div>
-
-        {{-- Fluxo de faturamento --}}
-        <div class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-            <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-                <div>
-                    <h2 class="text-sm font-semibold text-slate-800">📌 Fluxo de Faturamento</h2>
-                    <p class="text-xs text-slate-500">Etapas recorrentes do ciclo financeiro</p>
-                </div>
-            </div>
-
-            @php
-                $etapas = [
-                    [
-                        'titulo' => 'Dia 1 a 30',
-                        'texto' => 'Per&iacute;odo de presta&ccedil;&atilde;o de servi&ccedil;os',
-                        'badge' => 'Em andamento',
-                        'cor' => 'bg-blue-50 text-blue-700 border-blue-100',
-                        'accent' => 'text-blue-700 ring-blue-200 bg-blue-50',
-                        'dot' => 'bg-blue-500',
-                    ],
-                    [
-                        'titulo' => 'At&eacute; dia 3',
-                        'texto' => 'Prazo para cliente validar faturamento',
-                        'badge' => 'Aguardando',
-                        'cor' => 'bg-amber-50 text-amber-700 border-amber-100',
-                        'accent' => 'text-amber-700 ring-amber-200 bg-amber-50',
-                        'dot' => 'bg-amber-500',
-                    ],
-                    [
-                        'titulo' => 'Dia 15',
-                        'texto' => 'Emiss&atilde;o de NF e boletos',
-                        'badge' => 'Autom&aacute;tico',
-                        'cor' => 'bg-emerald-50 text-emerald-700 border-emerald-100',
-                        'accent' => 'text-emerald-700 ring-emerald-200 bg-emerald-50',
-                        'dot' => 'bg-emerald-500',
-                    ],
-                ];
-            @endphp
-
-            <div class="divide-y divide-slate-100">
-                @foreach($etapas as $etapa)
-                    <div class="px-5 py-4 flex items-start justify-between gap-4">
-                        <div class="flex items-start gap-4">
-                            <span class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset {{ $etapa['accent'] }}">
-                                <span class="inline-block h-2 w-2 rounded-full {{ $etapa['dot'] }}"></span>
-                                {!! $etapa['titulo'] !!}
-                            </span>
-                            <div>
-                                <p class="text-sm font-semibold text-slate-900">{!! $etapa['texto'] !!}</p>
-                            </div>
-                        </div>
-                        <span class="inline-flex items-center px-3 py-1 rounded-full border text-xs font-semibold {{ $etapa['cor'] }}">
-                            {{ $etapa['badge'] }}
-                        </span>
-                    </div>
-                @endforeach
-            </div>
-        </div>
         </section>
 
         {{-- Contratos --}}

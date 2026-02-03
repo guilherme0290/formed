@@ -5,17 +5,17 @@
 
     <div class="w-full px-4 md:px-8 py-8 space-y-8">
 
-        {{-- Hero --}}
-        <div class="rounded-3xl bg-gradient-to-r from-indigo-700 via-indigo-600 to-blue-600 text-white shadow-xl p-6 md:p-8 flex flex-col gap-4 items-center text-center"
-             data-dashboard-card="hero">
-            <div class="inline-flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-indigo-100">
-                🔒 Master Control
-            </div>
-            <h1 class="text-3xl md:text-4xl font-semibold leading-tight">Painel Master</h1>
-            <p class="text-sm md:text-base text-indigo-100 max-w-2xl">
-                Visão centralizada das principais áreas: acessos, clientes, preços e comissões. Tudo em um só lugar.
-            </p>
-        </div>
+{{--        --}}{{-- Hero --}}
+{{--        <div class="rounded-3xl bg-gradient-to-r from-indigo-700 via-indigo-600 to-blue-600 text-white shadow-xl p-6 md:p-8 flex flex-col gap-4 items-center text-center"--}}
+{{--             data-dashboard-card="hero">--}}
+{{--            <div class="inline-flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-indigo-100">--}}
+{{--                🔒 Master Control--}}
+{{--            </div>--}}
+{{--            <h1 class="text-3xl md:text-4xl font-semibold leading-tight">Painel Master</h1>--}}
+{{--            <p class="text-sm md:text-base text-indigo-100 max-w-2xl">--}}
+{{--                Visão centralizada das principais áreas: acessos, clientes, preços e comissões. Tudo em um só lugar.--}}
+{{--            </p>--}}
+{{--        </div>--}}
         {{-- Cards m&eacute;tricas --}}
         <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
             <div class="rounded-2xl shadow-lg border border-indigo-400/40 p-5 text-center text-white bg-gradient-to-br from-indigo-700 via-blue-600 to-sky-500"
