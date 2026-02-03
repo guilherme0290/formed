@@ -9,6 +9,7 @@ use App\Models\ContaReceberItem;
 use App\Models\Tarefa;
 use App\Models\User;
 use App\Models\Venda;
+use App\Models\VendaItem;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -145,7 +146,7 @@ class DashboardController extends Controller
         // tempo médio fica fixo como solicitado
         $tempoMedio = '48h';
 
-        $servicosConsumidos = \App\Models\VendaItem::query()
+        $servicosConsumidos = VendaItem::query()
             ->whereHas('venda', function ($q) use ($empresaId) {
                 $q->when($empresaId, fn ($qq) => $qq->where('empresa_id', $empresaId));
             })

@@ -222,7 +222,7 @@
                             {{ $card['desc'] }}
                         </p>
                         @if($card['slug'] === 'aso' && !empty($valoresAsoPorTipo))
-                            <div class="mt-2 text-[11px] text-slate-600 space-y-1">
+                            <div class="mt-2 text-[11px] text-slate-600 space-y-1 opacity-0 max-h-0 overflow-hidden transition-all duration-200 group-hover:opacity-100 group-hover:max-h-64">
                                 @foreach($valoresAsoPorTipo as $row)
                                     <div class="flex items-center justify-between gap-2">
                                         <span class="truncate">ASO {{ $row['label'] ?? '' }}</span>
