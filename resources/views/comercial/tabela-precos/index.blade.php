@@ -1,8 +1,9 @@
 @extends('layouts.comercial')
 @section('title', 'Tabela de Preços')
+@section('page-container', 'w-full p-0')
 
 @section('content')
-    <div class="max-w-7xl mx-auto px-4 md:px-6 py-6 space-y-6">
+    <div class="w-full px-2 sm:px-3 md:px-4 py-2 md:py-3 space-y-6">
 
         <header>
             <h1 class="text-2xl md:text-3xl font-semibold text-slate-900">Tabela de Preços</h1>

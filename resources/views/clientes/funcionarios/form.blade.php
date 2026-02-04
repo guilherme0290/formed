@@ -1,9 +1,10 @@
 @extends('layouts.cliente')
 
 @section('title', $modo === 'edit' ? 'Editar Funcionário' : 'Novo Funcionário')
+@section('page-container', 'w-full p-0')
 
 @section('content')
-    <div class="max-w-3xl mx-auto mt-6">
+    <div class="w-full px-3 md:px-5 py-4 md:py-5">
 
         <div class="mb-3">
             <a href="{{ route('cliente.funcionarios.index') }}"

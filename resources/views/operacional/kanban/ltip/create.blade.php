@@ -4,17 +4,17 @@
 @section('pageTitle', 'LTIP - Insalubridade e Periculosidade')
 
 @section('content')
-    <div class="container mx-auto px-4 py-6">
+    <div class="w-full px-2 sm:px-3 md:px-4 xl:px-5 py-4 md:py-6">
         <div class="mb-4 flex items-center justify-between">
             <a href="{{ route('operacional.kanban.servicos', $cliente) }}"
-               class="inline-flex items-center gap-2 text-xs text-slate-600 mb-4">
+               class="inline-flex items-center gap-2 mb-4 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
                 ← Voltar
             </a>
         </div>
 
-        <div class="max-w-4xl mx-auto bg-white rounded-2xl shadow-lg overflow-hidden">
+        <div class="w-full bg-white rounded-2xl shadow-lg overflow-hidden">
             {{-- Cabeçalho --}}
-            <div class="px-6 py-4 bg-gradient-to-r from-red-700 to-red-600 text-white">
+            <div class="px-4 sm:px-5 md:px-6 py-4 bg-gradient-to-r from-red-700 to-red-600 text-white">
                 <h1 class="text-lg font-semibold">
                     LTIP - Insalubridade e Periculosidade {{ !empty($isEdit) ? '(Editar)' : '' }}
                 </h1>
@@ -27,7 +27,7 @@
                   action="{{ !empty($isEdit) && $ltip
                         ? route('operacional.ltip.update', $ltip)
                         : route('operacional.ltip.store', $cliente) }}"
-                  class="p-6 space-y-6">
+                  class="px-4 sm:px-5 md:px-6 py-5 md:py-6 space-y-6">
                 @csrf
                 @if(!empty($isEdit) && $ltip)
                     @method('PUT')

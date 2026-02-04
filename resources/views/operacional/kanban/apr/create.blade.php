@@ -9,7 +9,7 @@
         $origem = request()->query('origem');
     @endphp
 
-        <div class="container mx-auto px-4 py-6">
+        <div class="w-full px-2 sm:px-3 md:px-4 xl:px-5 py-4 md:py-6">
             <div class="mb-4 flex items-center justify-between">
                 <a href="{{ $origem === 'cliente'
                     ? route('cliente.dashboard')
@@ -19,9 +19,9 @@
                 </a>
             </div>
 
-            <div class="max-w-4xl mx-auto bg-white rounded-2xl shadow-lg overflow-hidden">
+            <div class="w-full bg-white rounded-2xl shadow-lg overflow-hidden">
                 {{-- Cabeçalho --}}
-                <div class="px-6 py-4 bg-gradient-to-r from-amber-700 to-amber-600 text-white">
+                <div class="px-4 sm:px-5 md:px-6 py-4 bg-gradient-to-r from-amber-700 to-amber-600 text-white">
                     <h1 class="text-lg font-semibold">
                         APR - Análise Preliminar de Riscos
                         {{ !empty($isEdit) ? '(Editar)' : '' }}
@@ -35,7 +35,7 @@
                       action="{{ !empty($isEdit) && $apr
                            ? route('operacional.apr.update', ['apr' => $apr, 'origem' => $origem])
                            : route('operacional.apr.store', ['cliente' => $cliente, 'origem' => $origem]) }}"
-                      class="p-6 space-y-6">
+                      class="px-4 sm:px-5 md:px-6 py-5 md:py-6 space-y-6">
                     @csrf
                     @if(!empty($isEdit) && $apr)
                         @method('PUT')
@@ -93,9 +93,9 @@
                     </div>
 
                     {{-- Footer --}}
-                    <div class="pt-4 border-t border-slate-100 flex justify-end">
+                    <div class="pt-4 border-t border-slate-100 mt-4">
                         <button type="submit"
-                                class="inline-flex items-center justify-center px-5 py-2.5 rounded-xl
+                                class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-xl
                                        bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 shadow-sm">
                             {{ !empty($isEdit) ? 'Salvar alterações' : 'Criar Tarefa APR' }}
                         </button>

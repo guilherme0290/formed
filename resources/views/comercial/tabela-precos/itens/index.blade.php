@@ -1,5 +1,6 @@
 @extends('layouts.comercial')
 @section('title', 'Itens da Tabela de Preços')
+@section('page-container', 'w-full p-0')
 
 @section('content')
     @php($routePrefix = 'comercial')

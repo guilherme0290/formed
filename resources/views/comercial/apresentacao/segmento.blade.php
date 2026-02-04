@@ -1,5 +1,6 @@
 @extends('layouts.comercial')
 @section('title', 'Escolher Segmento')
+@section('page-container', 'w-full p-0')
 
 @section('content')
     @php
@@ -31,25 +32,15 @@
         ];
     @endphp
 
-    <div class="min-h-[calc(100vh-64px)] bg-slate-50">
-        {{-- Top bar --}}
-        <div class="bg-slate-900">
-            <div class="max-w-7xl mx-auto px-4 md:px-6 py-4">
-                <div class="text-white">
-                    <div class="text-lg font-semibold leading-tight">FORMED</div>
-                    <div class="text-xs text-slate-200">Medicina e Segurança do Trabalho</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="max-w-7xl mx-auto px-4 md:px-6 py-8">
+    <div class="min-h-screen bg-slate-50">
+        <div class="w-full px-2 sm:px-3 md:px-4 py-4 md:py-6">
             <div class="mb-4">
                 <a href="{{ route('comercial.apresentacao.cliente') }}"
                    class="inline-flex items-center gap-2 rounded-xl bg-white border border-slate-200 text-slate-700 px-3 py-2 text-sm hover:bg-slate-50">
                     &larr; Voltar
                 </a>
             </div>
-            <div class="max-w-3xl mx-auto bg-white rounded-3xl shadow-lg border border-slate-100 overflow-hidden">
+            <div class="w-full bg-white rounded-none shadow-lg border-y border-slate-100 overflow-hidden md:rounded-3xl md:border">
 
                 <div class="bg-blue-600 px-6 py-4">
                     <h1 class="text-white font-semibold text-base">Escolha o Segmento</h1>

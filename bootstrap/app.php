@@ -17,10 +17,15 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (TokenMismatchException $e, $request) {
-            $message = 'Sua sessão expirou. Faça login novamente.';
+            $message = 'Sua sessao expirou. Faca login novamente.';
 
             if ($request->expectsJson()) {
                 return response()->json(['message' => $message], 419);
+            }
+
+            if ($request->hasSession()) {
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
             }
 
             return redirect()
@@ -28,6 +33,9 @@ return Application::configure(basePath: dirname(__DIR__))
                 ->with('error', $message);
         });
     })->create();
+
+
+
 
 
 

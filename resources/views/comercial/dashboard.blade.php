@@ -153,14 +153,14 @@
                     </a>
 
                     {{-- Minhas Comissões --}}
-                    <a href="{{ route('comercial.comissoes.index') }}"
+                    <a href="{{ auth()->user()?->isMaster() ? route('master.comissoes.vendedores') : route('comercial.comissoes.index') }}"
                        class="group rounded-2xl border border-amber-100 bg-amber-50/80 hover:bg-amber-100 transition shadow-sm p-4 flex flex-col justify-between">
                         <div>
                             <div class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500 text-white mb-3">
                                 $
                             </div>
-                            <h3 class="text-sm font-semibold text-slate-800">Minhas Comissões</h3>
-                            <p class="text-xs text-slate-500 mt-1">Ver comissões</p>
+                            <h3 class="text-sm font-semibold text-slate-800">{{ auth()->user()?->isMaster() ? 'Comissões (Vendedores)' : 'Minhas Comissões' }}</h3>
+                            <p class="text-xs text-slate-500 mt-1">{{ auth()->user()?->isMaster() ? 'Ver comissões dos vendedores' : 'Ver comissões' }}</p>
                         </div>
                         <span class="mt-3 text-[11px] font-medium text-amber-700 group-hover:text-amber-800">
                             Acessar →
@@ -208,75 +208,5 @@
             </div>
         </section>
 
-        {{-- GESTÃO & RELATÓRIOS --}}
-        <section class="space-y-4">
-            <div class="rounded-2xl bg-slate-900 text-white px-5 md:px-6 py-3 shadow">
-                <h2 class="text-sm md:text-base font-semibold">Gestão & Relatórios</h2>
-            </div>
-
-            <div class="bg-white rounded-2xl shadow border border-slate-100 px-4 md:px-6 py-5">
-                <div class="grid gap-4 md:grid-cols-4">
-                    {{-- Clientes & Leads --}}
-                    <a href="#"
-                       class="group rounded-2xl border border-cyan-100 bg-cyan-50/80 hover:bg-cyan-100 transition shadow-sm p-4 flex flex-col justify-between">
-                        <div>
-                            <div class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-cyan-500 text-white mb-3">
-                                👥
-                            </div>
-                            <h3 class="text-sm font-semibold text-slate-800">Clientes & Leads</h3>
-                            <p class="text-xs text-slate-500 mt-1">CRM completo</p>
-                        </div>
-                        <span class="mt-3 text-[11px] font-medium text-cyan-700 group-hover:text-cyan-800">
-                            Acessar →
-                        </span>
-                    </a>
-
-                    {{-- Relatórios e KPIs --}}
-                    <a href="#"
-                       class="group rounded-2xl border border-emerald-100 bg-emerald-50/80 hover:bg-emerald-100 transition shadow-sm p-4 flex flex-col justify-between">
-                        <div>
-                            <div class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500 text-white mb-3">
-                                📊
-                            </div>
-                            <h3 class="text-sm font-semibold text-slate-800">Relatórios e KPIs</h3>
-                            <p class="text-xs text-slate-500 mt-1">Indicadores e métricas</p>
-                        </div>
-                        <span class="mt-3 text-[11px] font-medium text-emerald-700 group-hover:text-emerald-800">
-                            Acessar →
-                        </span>
-                    </a>
-
-                    {{-- Gestão Contratos --}}
-                    <a href="#"
-                       class="group rounded-2xl border border-violet-100 bg-violet-50/80 hover:bg-violet-100 transition shadow-sm p-4 flex flex-col justify-between">
-                        <div>
-                            <div class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-violet-500 text-white mb-3">
-                                📃
-                            </div>
-                            <h3 class="text-sm font-semibold text-slate-800">Gestão Contratos</h3>
-                            <p class="text-xs text-slate-500 mt-1">Contratos ativos</p>
-                        </div>
-                        <span class="mt-3 text-[11px] font-medium text-violet-700 group-hover:text-violet-800">
-                            Acessar →
-                        </span>
-                    </a>
-
-                    {{-- Parceiros --}}
-                    <a href="#"
-                       class="group rounded-2xl border border-pink-100 bg-pink-50/80 hover:bg-pink-100 transition shadow-sm p-4 flex flex-col justify-between">
-                        <div>
-                            <div class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-pink-500 text-white mb-3">
-                                🤝
-                            </div>
-                            <h3 class="text-sm font-semibold text-slate-800">Parceiros</h3>
-                            <p class="text-xs text-slate-500 mt-1">Gestão de parceiros</p>
-                        </div>
-                        <span class="mt-3 text-[11px] font-medium text-pink-700 group-hover:text-pink-800">
-                            Acessar →
-                        </span>
-                    </a>
-                </div>
-            </div>
-        </section>
     </div>
 @endsection

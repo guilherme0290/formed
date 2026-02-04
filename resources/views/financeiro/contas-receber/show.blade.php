@@ -1,8 +1,9 @@
 @extends('layouts.financeiro')
 @section('title', 'Conta a Receber')
+@section('page-container', 'w-full p-0')
 
 @section('content')
-    <div class="max-w-6xl mx-auto px-4 md:px-8 py-6 space-y-6">
+    <div class="w-full px-3 md:px-5 py-4 md:py-5 space-y-6">
         <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
                 <div class="text-xs uppercase tracking-[0.2em] text-indigo-400">Conta a receber</div>

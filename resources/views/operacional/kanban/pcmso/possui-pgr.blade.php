@@ -10,7 +10,7 @@
 @section('content')
     <div class="container mx-auto px-4 py-8">
         <a href="{{ route('operacional.pcmso.tipo', $cliente) }}"
-           class="inline-flex items-center gap-2 text-xs text-slate-600 mb-4">
+           class="inline-flex items-center gap-2 mb-4 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
             ← Voltar ao Início
         </a>
 

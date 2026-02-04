@@ -1,5 +1,6 @@
 @extends('layouts.comercial')
 @section('title', 'Apresentação da Proposta')
+@section('page-container', 'w-full p-0')
 
 @section('content')
     @php
@@ -33,15 +34,15 @@
         $theme = $themeBySegment[$segmento] ?? $themeBySegment['construcao-civil'];
     @endphp
 
-    <div class="min-h-[calc(100vh-64px)] bg-slate-50">
-        <div class="max-w-7xl mx-auto px-4 md:px-6 py-6">
+    <div class="min-h-screen bg-slate-50">
+        <div class="w-full px-2 sm:px-3 md:px-4 py-2 md:py-3">
             <div class="mb-3 flex items-center justify-start print:hidden">
                 <a href="{{ route('comercial.dashboard') }}"
                    class="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900">
                     Painel comercial
                 </a>
             </div>
-            <div class="max-w-4xl mx-auto bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+            <div class="w-full bg-white rounded-none shadow-sm border-y border-slate-100 overflow-hidden md:rounded-3xl md:border">
 
                 {{-- Header do documento --}}
                 <div class="{{ $theme['headerBg'] }} px-6 py-4 flex items-center justify-between gap-3">
@@ -197,7 +198,7 @@
                                 <h3 class="text-sm font-semibold text-slate-900">Serviços</h3>
                             </div>
 
-                            <div class="mt-4 overflow-hidden rounded-2xl border border-slate-200">
+                            <div class="mt-4 overflow-x-auto rounded-2xl border border-slate-200">
                                 <table class="w-full text-sm">
                                     <thead class="bg-slate-50 text-xs text-slate-500">
                                     <tr>
@@ -241,7 +242,7 @@
                                 <h3 class="text-sm font-semibold text-slate-900">Exames</h3>
                             </div>
 
-                            <div class="mt-4 overflow-hidden rounded-2xl border border-slate-200">
+                            <div class="mt-4 overflow-x-auto rounded-2xl border border-slate-200">
                                 <table class="w-full text-sm">
                                     <thead class="bg-slate-50 text-xs text-slate-500">
                                     <tr>
@@ -290,7 +291,7 @@
                                 <h3 class="text-sm font-semibold text-slate-900">Treinamentos</h3>
                             </div>
 
-                            <div class="mt-4 overflow-hidden rounded-2xl border border-slate-200">
+                            <div class="mt-4 overflow-x-auto rounded-2xl border border-slate-200">
                                 <table class="w-full text-sm">
                                     <thead class="bg-slate-50 text-xs text-slate-500">
                                     <tr>
@@ -336,7 +337,7 @@
                                 </div>
                             @endif
 
-                            <div class="mt-4 overflow-hidden rounded-2xl border border-slate-200">
+                            <div class="mt-4 overflow-x-auto rounded-2xl border border-slate-200">
                                 <table class="w-full text-sm">
                                     <thead class="bg-slate-50 text-xs text-slate-500">
                                     <tr>
