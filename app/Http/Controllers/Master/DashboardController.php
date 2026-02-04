@@ -7,11 +7,13 @@ use App\Models\Proposta;
 use App\Models\ContaReceberBaixa;
 use App\Models\ContaReceberItem;
 use App\Models\Tarefa;
+use App\Models\UnidadeClinica;
 use App\Models\User;
 use App\Models\Venda;
 use App\Models\VendaItem;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class DashboardController extends Controller
@@ -290,6 +292,11 @@ class DashboardController extends Controller
             $responsavelSelecionado = (int) $responsavelSelecionadoRaw;
         }
 
+        $filtroPrestados = (string) $request->query('filtro_prestados', 'finalizadas');
+        if (!in_array($filtroPrestados, ['inicio_previsto', 'finalizadas'], true)) {
+            $filtroPrestados = 'finalizadas';
+        }
+
         $servicosDisponiveis = \App\Models\Servico::query()
             ->when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId))
             ->whereRaw('LOWER(nome) NOT IN (?, ?)', ['exame', 'esocial'])
@@ -338,13 +345,334 @@ class DashboardController extends Controller
             ->orderBy('servico_nome')
             ->get();
 
+        $dataRelatorio = $this->parseDate($request->query('data_relatorio'), $hoje);
+        $janelaInicio = $dataRelatorio->copy()->startOfMonth();
+        $janelaFim = $dataRelatorio->copy()->endOfMonth();
+        $datasJanela = [];
+        for ($diaRef = $janelaInicio->copy(); $diaRef->lte($janelaFim); $diaRef->addDay()) {
+            $datasJanela[] = $diaRef->toDateString();
+        }
+
+        $aplicarFiltrosTarefas = function ($query) use ($empresaId, $servicoSelecionado, $responsavelSelecionado) {
+            $query->when($empresaId, fn ($q) => $q->where('tarefas.empresa_id', $empresaId));
+            if ($servicoSelecionado !== 'todos') {
+                $query->where('tarefas.servico_id', $servicoSelecionado);
+            }
+            if ($responsavelSelecionado !== 'todos') {
+                $query->where('tarefas.responsavel_id', $responsavelSelecionado);
+            }
+        };
+
+        $inicioJanelaDataHora = $janelaInicio->copy()->startOfDay();
+        $fimJanelaDataHora = $janelaFim->copy()->endOfDay();
+        $inicioJanelaData = $janelaInicio->toDateString();
+        $fimJanelaData = $janelaFim->toDateString();
+        $temDataPrevista = Schema::hasColumn('tarefas', 'data_prevista');
+        $dataRefSql = $temDataPrevista
+            ? 'COALESCE(DATE(tarefas.inicio_previsto), DATE(tarefas.data_prevista))'
+            : 'DATE(tarefas.inicio_previsto)';
+        $aplicarJanelaTarefas = function ($query) use (
+            $temDataPrevista,
+            $inicioJanelaDataHora,
+            $fimJanelaDataHora,
+            $inicioJanelaData,
+            $fimJanelaData
+        ) {
+            if (!$temDataPrevista) {
+                return $query->whereBetween('tarefas.inicio_previsto', [$inicioJanelaDataHora, $fimJanelaDataHora]);
+            }
+
+            return $query->where(function ($q) use ($inicioJanelaDataHora, $fimJanelaDataHora, $inicioJanelaData, $fimJanelaData) {
+                $q->whereBetween('tarefas.inicio_previsto', [$inicioJanelaDataHora, $fimJanelaDataHora])
+                    ->orWhere(function ($qq) use ($inicioJanelaData, $fimJanelaData) {
+                        $qq->whereNull('tarefas.inicio_previsto')
+                            ->whereDate('tarefas.data_prevista', '>=', $inicioJanelaData)
+                            ->whereDate('tarefas.data_prevista', '<=', $fimJanelaData);
+                    });
+            });
+        };
+
+        $tarefasJanelaQuery = Tarefa::query();
+        $aplicarFiltrosTarefas($tarefasJanelaQuery);
+        $aplicarJanelaTarefas($tarefasJanelaQuery);
+        $tarefasJanela = $tarefasJanelaQuery
+            ->with([
+                'cliente:id,razao_social',
+                'responsavel:id,name',
+                'servico:id,nome',
+                'coluna:id,nome,finaliza',
+            ])
+            ->orderBy('tarefas.inicio_previsto')
+            ->orderBy('tarefas.id')
+            ->get();
+
+        $tarefasJanelaPorData = $tarefasJanela->groupBy(
+            fn ($tarefa) => optional($tarefa->inicio_previsto)->toDateString()
+                ?? ($temDataPrevista ? optional($tarefa->data_prevista)->toDateString() : null)
+                ?? optional($tarefa->created_at)->toDateString()
+        );
+
+        $unidadesCredenciadasQuery = UnidadeClinica::query()
+            ->when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId));
+        if (Schema::hasColumn('unidades_clinicas', 'ativo')) {
+            $unidadesCredenciadasQuery->where('ativo', true);
+        }
+        $unidadesCredenciadas = $unidadesCredenciadasQuery
+            ->orderBy('nome')
+            ->get(['id', 'nome']);
+
+        if ($unidadesCredenciadas->isEmpty()) {
+            $unidadesCredenciadas = UnidadeClinica::query()
+                ->when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId))
+                ->orderBy('nome')
+                ->get(['id', 'nome']);
+        }
+
+        $unidadesBase = $unidadesCredenciadas
+            ->map(fn ($unidade) => [
+                'id' => (int) $unidade->id,
+                'nome' => (string) $unidade->nome,
+                'total' => 0,
+            ])
+            ->values()
+            ->all();
+
+        $servicosBase = ['ASO', 'PGR', 'PCMSO', 'LTCAT', 'APR', 'PAE', 'Treinamentos NR'];
+
+        $servicosPrestadosQuery = Tarefa::query();
+        $aplicarFiltrosTarefas($servicosPrestadosQuery);
+        $servicosPrestadosQuery->join('kanban_colunas', 'kanban_colunas.id', '=', 'tarefas.coluna_id');
+        if ($filtroPrestados === 'finalizadas') {
+            $servicosPrestadosQuery->where('kanban_colunas.finaliza', true);
+        } else {
+            $servicosPrestadosQuery
+                ->where('kanban_colunas.finaliza', false)
+                ->whereRaw("COALESCE(LOWER(kanban_colunas.slug), '') NOT LIKE 'cancel%'");
+        }
+        $aplicarJanelaTarefas($servicosPrestadosQuery);
+        $servicosPrestadosBrutoPorDia = $servicosPrestadosQuery
+            ->leftJoin('servicos', 'servicos.id', '=', 'tarefas.servico_id')
+            ->selectRaw($dataRefSql . " as data_ref, COALESCE(servicos.nome, 'Sem servico') as nome, COUNT(*) as total")
+            ->groupBy('data_ref', 'nome')
+            ->orderBy('nome')
+            ->get()
+            ->groupBy('data_ref')
+            ->map(function ($itens) {
+                return $itens
+                    ->map(fn ($item) => [
+                        'nome' => (string) $item->nome,
+                        'total' => (int) $item->total,
+                    ])
+                    ->values()
+                    ->all();
+            })
+            ->all();
+
+        $servicosPrestadosPorDia = [];
+        foreach ($datasJanela as $dataRef) {
+            $contadores = array_fill_keys($servicosBase, 0);
+            foreach (($servicosPrestadosBrutoPorDia[$dataRef] ?? []) as $servicoDia) {
+                $rotulo = $this->mapearServicoRelatorio($servicoDia['nome'] ?? null);
+                if (!$rotulo || !array_key_exists($rotulo, $contadores)) {
+                    continue;
+                }
+                $contadores[$rotulo] += (int) ($servicoDia['total'] ?? 0);
+            }
+
+            $servicosPrestadosPorDia[$dataRef] = collect($servicosBase)
+                ->map(fn ($nome) => ['nome' => $nome, 'total' => (int) ($contadores[$nome] ?? 0)])
+                ->values()
+                ->all();
+        }
+
+        $vendasPorTarefa = DB::table('vendas')
+            ->selectRaw(
+                "tarefa_id,
+                COALESCE(SUM(total), 0) as total_vendas,
+                MAX(CASE WHEN UPPER(status) IN ('FECHADA', 'FINALIZADA') THEN 1 ELSE 0 END) as tem_status_fechado"
+            )
+            ->groupBy('tarefa_id');
+        $valorContratoPorTarefaSql = "(SELECT cci.preco_unitario_snapshot
+            FROM cliente_contratos cc
+            INNER JOIN cliente_contrato_itens cci ON cci.cliente_contrato_id = cc.id
+            WHERE cc.empresa_id = tarefas.empresa_id
+              AND cc.cliente_id = tarefas.cliente_id
+              AND cc.status = 'ATIVO'
+              AND cci.servico_id = tarefas.servico_id
+              AND cci.ativo = 1
+              AND (cc.vigencia_inicio IS NULL OR cc.vigencia_inicio <= DATE(COALESCE(tarefas.inicio_previsto, tarefas.created_at)))
+              AND (cc.vigencia_fim IS NULL OR cc.vigencia_fim >= DATE(COALESCE(tarefas.inicio_previsto, tarefas.created_at)))
+            ORDER BY cc.vigencia_inicio DESC, cc.id DESC
+            LIMIT 1)";
+
+        $vendasFinalizadasPorDia = DB::table('tarefas')
+            ->join('kanban_colunas', 'kanban_colunas.id', '=', 'tarefas.coluna_id')
+            ->leftJoinSub($vendasPorTarefa, 'vendas_tarefa', function ($join) {
+                $join->on('vendas_tarefa.tarefa_id', '=', 'tarefas.id');
+            })
+            ->when($empresaId, fn ($q) => $q->where('tarefas.empresa_id', $empresaId))
+            ->when($servicoSelecionado !== 'todos', fn ($q) => $q->where('tarefas.servico_id', $servicoSelecionado))
+            ->when($responsavelSelecionado !== 'todos', fn ($q) => $q->where('tarefas.responsavel_id', $responsavelSelecionado))
+            ->where('kanban_colunas.finaliza', true)
+            ->whereNull('tarefas.deleted_at');
+        $aplicarJanelaTarefas($vendasFinalizadasPorDia);
+        $vendasFinalizadasPorDia = $vendasFinalizadasPorDia
+            ->selectRaw(
+                $dataRefSql
+                . " as data_ref,
+                COALESCE(SUM(
+                    CASE
+                        WHEN tarefas.finalizado_em IS NOT NULL OR COALESCE(vendas_tarefa.tem_status_fechado, 0) = 1
+                        THEN COALESCE(vendas_tarefa.total_vendas, COALESCE($valorContratoPorTarefaSql, 0))
+                        ELSE 0
+                    END
+                ), 0) as total"
+            )
+            ->groupBy('data_ref')
+            ->pluck('total', 'data_ref')
+            ->all();
+
+        $vendasPendentesPorDia = DB::table('tarefas')
+            ->join('kanban_colunas', 'kanban_colunas.id', '=', 'tarefas.coluna_id')
+            ->leftJoinSub($vendasPorTarefa, 'vendas_tarefa', function ($join) {
+                $join->on('vendas_tarefa.tarefa_id', '=', 'tarefas.id');
+            })
+            ->when($empresaId, fn ($q) => $q->where('tarefas.empresa_id', $empresaId))
+            ->when($servicoSelecionado !== 'todos', fn ($q) => $q->where('tarefas.servico_id', $servicoSelecionado))
+            ->when($responsavelSelecionado !== 'todos', fn ($q) => $q->where('tarefas.responsavel_id', $responsavelSelecionado))
+            ->where('kanban_colunas.finaliza', false)
+            ->whereRaw("COALESCE(LOWER(kanban_colunas.slug), '') NOT LIKE 'cancel%'")
+            ->whereNull('tarefas.deleted_at');
+        $aplicarJanelaTarefas($vendasPendentesPorDia);
+        $vendasPendentesPorDia = $vendasPendentesPorDia
+            ->selectRaw($dataRefSql . " as data_ref, COALESCE(SUM(COALESCE(vendas_tarefa.total_vendas, COALESCE($valorContratoPorTarefaSql, 0))), 0) as total")
+            ->groupBy('data_ref')
+            ->pluck('total', 'data_ref')
+            ->all();
+
+        $atendimentosPorUnidade = [];
+        $agendamentosAsoPorDia = collect();
+            if (
+                Schema::hasTable('aso_solicitacoes')
+            && Schema::hasColumn('aso_solicitacoes', 'tarefa_id')
+            && Schema::hasColumn('aso_solicitacoes', 'unidade_id')
+        ) {
+            $agendamentosAsoPorDiaQuery = DB::table('tarefas')
+                ->join('aso_solicitacoes', 'aso_solicitacoes.tarefa_id', '=', 'tarefas.id')
+                ->when($empresaId, fn ($q) => $q->where('tarefas.empresa_id', $empresaId))
+                ->when($servicoSelecionado !== 'todos', fn ($q) => $q->where('tarefas.servico_id', $servicoSelecionado))
+                ->when($responsavelSelecionado !== 'todos', fn ($q) => $q->where('tarefas.responsavel_id', $responsavelSelecionado))
+                ->whereNull('tarefas.deleted_at');
+            $agendamentosAsoPorDiaQuery->join('kanban_colunas', 'kanban_colunas.id', '=', 'tarefas.coluna_id');
+            if ($filtroPrestados === 'finalizadas') {
+                $agendamentosAsoPorDiaQuery->where('kanban_colunas.finaliza', true);
+            } else {
+                $agendamentosAsoPorDiaQuery
+                    ->where('kanban_colunas.finaliza', false)
+                    ->whereRaw("COALESCE(LOWER(kanban_colunas.slug), '') NOT LIKE 'cancel%'");
+            }
+            $aplicarJanelaTarefas($agendamentosAsoPorDiaQuery);
+            $agendamentosAsoPorDia = $agendamentosAsoPorDiaQuery
+                ->selectRaw($dataRefSql . ' as data_ref, aso_solicitacoes.unidade_id as unidade_id, tarefas.id as tarefa_id')
+                ->whereNotNull('aso_solicitacoes.unidade_id')
+                ->distinct()
+                ->get();
+        }
+
+        $agendamentosTreinamentosPorDia = collect();
+        if (
+            Schema::hasTable('treinamento_nr_detalhes')
+            && Schema::hasColumn('treinamento_nr_detalhes', 'tarefa_id')
+            && Schema::hasColumn('treinamento_nr_detalhes', 'local_tipo')
+            && Schema::hasColumn('treinamento_nr_detalhes', 'unidade_id')
+        ) {
+            $agendamentosTreinamentosPorDiaQuery = DB::table('tarefas')
+                ->join('treinamento_nr_detalhes', 'treinamento_nr_detalhes.tarefa_id', '=', 'tarefas.id')
+                ->when($empresaId, fn ($q) => $q->where('tarefas.empresa_id', $empresaId))
+                ->when($servicoSelecionado !== 'todos', fn ($q) => $q->where('tarefas.servico_id', $servicoSelecionado))
+                ->when($responsavelSelecionado !== 'todos', fn ($q) => $q->where('tarefas.responsavel_id', $responsavelSelecionado))
+                ->whereNull('tarefas.deleted_at');
+            $agendamentosTreinamentosPorDiaQuery->join('kanban_colunas', 'kanban_colunas.id', '=', 'tarefas.coluna_id');
+            if ($filtroPrestados === 'finalizadas') {
+                $agendamentosTreinamentosPorDiaQuery->where('kanban_colunas.finaliza', true);
+            } else {
+                $agendamentosTreinamentosPorDiaQuery
+                    ->where('kanban_colunas.finaliza', false)
+                    ->whereRaw("COALESCE(LOWER(kanban_colunas.slug), '') NOT LIKE 'cancel%'");
+            }
+            $aplicarJanelaTarefas($agendamentosTreinamentosPorDiaQuery);
+            $agendamentosTreinamentosPorDia = $agendamentosTreinamentosPorDiaQuery
+                ->where('treinamento_nr_detalhes.local_tipo', 'clinica')
+                ->whereNotNull('treinamento_nr_detalhes.unidade_id')
+                ->selectRaw($dataRefSql . ' as data_ref, treinamento_nr_detalhes.unidade_id as unidade_id, tarefas.id as tarefa_id')
+                ->distinct()
+                ->get();
+        }
+
+        $chavesContadas = [];
+        foreach ([$agendamentosAsoPorDia, $agendamentosTreinamentosPorDia] as $colecao) {
+            foreach ($colecao as $linha) {
+                $dataRef = (string) $linha->data_ref;
+                $unidadeId = (int) $linha->unidade_id;
+                $tarefaId = (int) ($linha->tarefa_id ?? 0);
+                if ($tarefaId <= 0 || $unidadeId <= 0 || $dataRef === '') {
+                    continue;
+                }
+                $chaveContagem = $dataRef . '|' . $unidadeId . '|' . $tarefaId;
+                if (isset($chavesContadas[$chaveContagem])) {
+                    continue;
+                }
+                $chavesContadas[$chaveContagem] = true;
+                if (!isset($atendimentosPorUnidade[$dataRef])) {
+                    $atendimentosPorUnidade[$dataRef] = [];
+                }
+                if (!isset($atendimentosPorUnidade[$dataRef][$unidadeId])) {
+                    $atendimentosPorUnidade[$dataRef][$unidadeId] = 0;
+                }
+                $atendimentosPorUnidade[$dataRef][$unidadeId] += 1;
+            }
+        }
+
+        $atendimentosPorUnidadePorDia = [];
+        foreach ($datasJanela as $dataRef) {
+            $totaisDia = $atendimentosPorUnidade[$dataRef] ?? [];
+            $listaDia = [];
+            foreach ($unidadesBase as $unidadeBase) {
+                $unidadeId = (int) $unidadeBase['id'];
+                $listaDia[] = [
+                    'nome' => $unidadeBase['nome'],
+                    'total' => (int) ($totaisDia[$unidadeId] ?? 0),
+                ];
+            }
+            usort($listaDia, fn ($a, $b) => $b['total'] <=> $a['total']);
+            $atendimentosPorUnidadePorDia[$dataRef] = $listaDia;
+        }
+
+        $resumoPorDia = [];
+        foreach ($datasJanela as $dataRef) {
+            $tarefasDia = $tarefasJanelaPorData->get($dataRef, collect());
+            $resumoPorDia[$dataRef] = [
+                'total' => $tarefasDia->count(),
+                'pendentes' => $tarefasDia->filter(fn ($tarefa) => !optional($tarefa->coluna)->finaliza)->count(),
+                'concluidas' => $tarefasDia->filter(fn ($tarefa) => (bool) optional($tarefa->coluna)->finaliza)->count(),
+                'unidades' => $atendimentosPorUnidadePorDia[$dataRef] ?? [],
+                'servicos' => $servicosPrestadosPorDia[$dataRef] ?? [],
+                'total_atendimentos' => collect($atendimentosPorUnidadePorDia[$dataRef] ?? [])->sum('total'),
+                'total_servicos' => collect($servicosPrestadosPorDia[$dataRef] ?? [])->sum('total'),
+                'vendas_finalizadas_valor' => (float) ($vendasFinalizadasPorDia[$dataRef] ?? 0),
+                'vendas_pendentes_valor' => (float) ($vendasPendentesPorDia[$dataRef] ?? 0),
+            ];
+        }
+
         return [
             'data_inicio' => $dataInicio->toDateString(),
             'data_fim' => $dataFim->toDateString(),
+            'data_relatorio' => $dataRelatorio->toDateString(),
             'servicos_disponiveis' => $servicosDisponiveis,
             'servico_selecionado' => $servicoSelecionado,
             'responsaveis_disponiveis' => $responsaveisDisponiveis,
             'responsavel_selecionado' => $responsavelSelecionado,
+            'filtro_prestados' => $filtroPrestados,
             'pendentes' => $pendentes,
             'em_execucao' => $emExecucao,
             'aguardando_fornecedor' => $aguardandoFornecedor,
@@ -352,7 +680,49 @@ class DashboardController extends Controller
             'atrasados' => $atrasados,
             'finalizadas' => $finalizadas,
             'por_servico' => $porServico,
+            'janela_inicio' => $janelaInicio,
+            'janela_fim' => $janelaFim,
+            'tarefas_janela_por_data' => $tarefasJanelaPorData,
+            'resumo_por_dia' => $resumoPorDia,
         ];
+    }
+
+    private function mapearServicoRelatorio(?string $nome): ?string
+    {
+        $servico = strtoupper(trim((string) $nome));
+        if ($servico === '') {
+            return null;
+        }
+
+        if (str_contains($servico, 'TREINAMENTO')) {
+            return 'Treinamentos NR';
+        }
+
+        if (str_contains($servico, 'PCMSO')) {
+            return 'PCMSO';
+        }
+
+        if (str_contains($servico, 'LTCAT')) {
+            return 'LTCAT';
+        }
+
+        if (preg_match('/\bPGR\b/u', $servico) === 1) {
+            return 'PGR';
+        }
+
+        if (preg_match('/\bAPR\b/u', $servico) === 1) {
+            return 'APR';
+        }
+
+        if (preg_match('/\bPAE\b/u', $servico) === 1) {
+            return 'PAE';
+        }
+
+        if (str_contains($servico, 'ASO')) {
+            return 'ASO';
+        }
+
+        return null;
     }
 
     private function dadosRelatorioTarefas(?int $empresaId, \Illuminate\Http\Request $request): array
@@ -1328,8 +1698,16 @@ class DashboardController extends Controller
         ];
     }
 
-    private function parseDate(?string $raw, Carbon $fallback): Carbon
+    private function parseDate($raw, Carbon $fallback): Carbon
     {
+        if (is_array($raw)) {
+            $raw = collect($raw)->first(fn ($value) => is_string($value) && trim($value) !== '');
+        }
+
+        if (!is_string($raw)) {
+            $raw = null;
+        }
+
         try {
             if ($raw) {
                 return Carbon::parse($raw)->startOfDay();
@@ -1390,5 +1768,4 @@ class DashboardController extends Controller
         return 'data:' . $mime . ';base64,' . base64_encode($data);
     }
 }
-
 

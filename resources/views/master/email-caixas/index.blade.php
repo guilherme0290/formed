@@ -8,7 +8,7 @@
         $tab = request('tab', 'email');
     @endphp
 
-    <div class="max-w-6xl mx-auto px-4 md:px-6 py-6 space-y-6">
+    <div class="w-full px-3 md:px-5 py-4 md:py-5 space-y-6">
         <div class="flex flex-wrap items-start justify-between gap-4">
             <div>
                 <h1 class="text-2xl font-semibold text-slate-900">

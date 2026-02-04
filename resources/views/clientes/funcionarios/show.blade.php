@@ -1,11 +1,12 @@
 @extends('layouts.cliente')
 
 @section('title', 'Detalhes do Funcionário')
+@section('page-container', 'w-full p-0')
 
 @section('content')
 
     {{-- 🔧 ALTERAÇÃO: wrapper centralizado e com mais respiro na tela --}}
-    <div class="max-w-5xl mx-auto mt-10 mb-16">
+    <div class="w-full px-3 md:px-5 py-4 md:py-5">
 
         {{-- Barra de navegação local --}}
         <div class="flex items-center justify-between mb-4">

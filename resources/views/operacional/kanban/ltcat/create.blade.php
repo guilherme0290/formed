@@ -13,7 +13,7 @@
             : route('operacional.ltcat.tipo', ['cliente' => $cliente->id, 'origem' => $origem]);
     @endphp
 
-    <div class="container mx-auto px-4 py-6">
+    <div class="w-full px-2 sm:px-3 md:px-4 xl:px-5 py-4 md:py-6">
         <div class="mb-4 flex items-center justify-between">
             <a href="{{ $rotaVoltar }}"
                class="inline-flex items-center gap-2 text-xs px-3 py-1.5 rounded-full border border-slate-200 bg-white hover:bg-slate-50">
@@ -21,9 +21,9 @@
             </a>
         </div>
 
-        <div class="max-w-5xl mx-auto bg-white rounded-2xl shadow-lg overflow-hidden">
+        <div class="w-full bg-white rounded-2xl shadow-lg overflow-hidden">
             {{-- Cabeçalho --}}
-            <div class="px-6 py-4 bg-gradient-to-r from-orange-600 to-orange-700 text-white">
+            <div class="px-4 sm:px-5 md:px-6 py-4 bg-gradient-to-r from-orange-600 to-orange-700 text-white">
                 <h1 class="text-lg font-semibold">
                     LTCAT - {{ $tipoLabel }} {{ !empty($isEdit) ? '(Editar)' : '' }}
                 </h1>
@@ -37,7 +37,7 @@
                   action="{{ !empty($isEdit) && $ltcat
                         ? route('operacional.ltcat.update', $ltcat)
                         : route('operacional.ltcat.store', $cliente) }}"
-                  class="p-6 space-y-6">
+                  class="px-4 sm:px-5 md:px-6 py-5 md:py-6 space-y-6">
                 @csrf
                 @if(!empty($isEdit) && $ltcat)
                     @method('PUT')

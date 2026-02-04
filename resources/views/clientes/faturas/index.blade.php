@@ -2,9 +2,10 @@
 @extends('layouts.cliente')
 
 @section('title', 'Faturas e Serviços')
+@section('page-container', 'w-full p-0')
 
 @section('content')
-    <section class="w-full px-4 sm:px-6 lg:px-8 2xl:px-12">
+    <section class="w-full px-3 md:px-5 py-4 md:py-5">
         <div class="flex items-center justify-between mb-6">
             <div>
                 <h2 class="text-xl md:text-2xl font-semibold text-slate-900">

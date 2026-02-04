@@ -8,7 +8,7 @@
         $origem = request()->query('origem');
     @endphp
 
-    <div class="container mx-auto px-4 py-6">
+    <div class="w-full px-2 sm:px-3 md:px-4 xl:px-5 py-4 md:py-6">
         <div class="mb-4 flex items-center justify-between">
             <a href="{{ $origem === 'cliente'
                     ? route('cliente.dashboard')
@@ -18,9 +18,9 @@
             </a>
         </div>
 
-        <div class="max-w-6xl mx-auto bg-white rounded-2xl shadow-lg overflow-hidden">
+        <div class="w-full bg-white rounded-2xl shadow-lg overflow-hidden">
             {{-- Cabeçalho --}}
-            <div class="px-6 py-4 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white">
+            <div class="px-4 sm:px-5 md:px-6 py-4 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white">
                 <h1 class="text-lg font-semibold">
                     Treinamentos de NRs {{ !empty($isEdit) ? '(Editar)' : '' }}
                 </h1>
@@ -33,7 +33,7 @@
                   action="{{ !empty($isEdit) && $tarefa
                         ? route('operacional.treinamentos-nr.update', $tarefa)
                         : route('operacional.treinamentos-nr.store', $cliente) }}"
-                  class="p-6 space-y-6">
+                  class="px-4 sm:px-5 md:px-6 py-5 md:py-6 space-y-6">
                 @csrf
                 @if(!empty($isEdit) && $tarefa)
                     @method('PUT')

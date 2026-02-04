@@ -1,9 +1,10 @@
 @extends('layouts.comercial')
 
 @section('title', 'Funções')
+@section('page-container', 'w-full p-0')
 
 @section('content')
-    <div class="w-full mx-auto px-4 md:px-6 xl:px-8 py-6 space-y-6">
+    <div class="w-full px-3 md:px-5 py-4 md:py-5 space-y-6">
         <div>
             <a href="{{ route('master.dashboard') }}"
                class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900">

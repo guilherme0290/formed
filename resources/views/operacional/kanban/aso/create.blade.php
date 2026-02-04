@@ -81,7 +81,7 @@
 @section('title', 'Agendar ASO')
 
 @section('content')
-    <div class="max-w-4xl mx-auto px-6 py-8">
+    <div class="w-full px-2 sm:px-3 md:px-4 xl:px-5 py-4 md:py-6">
 
         {{-- Voltar --}}
         <div class="mb-4">
@@ -96,7 +96,7 @@
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
 
             {{-- Cabeçalho azul --}}
-            <div class="px-6 py-4 bg-gradient-to-r from-[#0A3A80] to-[#1E68D9]">
+            <div class="px-4 sm:px-5 md:px-6 py-4 bg-gradient-to-r from-[#0A3A80] to-[#1E68D9]">
                 <h1 class="text-lg md:text-xl font-semibold text-white mb-1">
                     Agendar ASO
                 </h1>
@@ -107,7 +107,7 @@
 
 
             {{-- Conteúdo / Form --}}
-            <div class="px-6 py-6">
+            <div class="px-4 sm:px-5 md:px-6 py-5 md:py-6">
                 @if($errors->any())
                     <div class="mb-4 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-700">
                         <p class="font-medium mb-1">Ocorreram alguns erros ao salvar:</p>
