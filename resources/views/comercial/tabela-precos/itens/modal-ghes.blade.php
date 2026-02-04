@@ -61,7 +61,14 @@
                                        placeholder="Ex: Trabalho em Altura">
                             </div>
                             <div>
-                                <label class="text-xs font-semibold text-slate-600">Grupo de Exames (opcional)</label>
+                                <div class="flex items-center justify-between">
+                                    <label class="text-xs font-semibold text-slate-600">Grupo de Exames (opcional)</label>
+                                    <button type="button"
+                                            id="gheProtocoloNovo"
+                                            class="text-[11px] font-semibold text-amber-700 hover:text-amber-800 underline decoration-dotted">
+                                        + Novo Grupo
+                                    </button>
+                                </div>
                                 <select id="ghe_protocolo" class="w-full mt-1 rounded-xl border-slate-200 text-sm px-3 py-2">
                                     <option value="">Selecione...</option>
                                 </select>
@@ -573,6 +580,16 @@
                 if (GHE.dom.funcoesSelectAll) GHE.dom.funcoesSelectAll.checked = false;
                 updateSelectedCount();
             });
+            document.getElementById('gheProtocoloNovo')?.addEventListener('click', () => {
+                if (typeof window.openProtocolosModal === 'function') {
+                    window.openProtocolosModal();
+                }
+            });
+            window.addEventListener('protocolos:updated', () => {
+                loadProtocolos();
+            });
         })();
     </script>
 @endpush
+
+@include('comercial.tabela-precos.itens.modal-protocolos', ['routePrefix' => $routePrefix])

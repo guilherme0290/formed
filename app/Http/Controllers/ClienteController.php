@@ -212,10 +212,12 @@ class ClienteController extends Controller
 
     public function criarAcesso(Request $request, Cliente $cliente)
     {
+        $data = $request->validate([
+            'email' => ['required','email'],
+            'password' => ['required','string','min:8'],
+        ]);
+
         $email = $cliente->email;
-        if (!$email) {
-            return back()->with('erro', 'O cliente não possui e-mail cadastrado para criar o acesso.');
-        }
 
         // evita duplicar usuário para o mesmo cliente
         $userExistente = \App\Models\User::where('cliente_id', $cliente->id)->first();
@@ -224,7 +226,7 @@ class ClienteController extends Controller
         }
 
         // evita conflito de e-mail
-        if (\App\Models\User::where('email', $request->input('email', $email))->exists()) {
+        if (\App\Models\User::where('email', $data['email'])->exists()) {
             return back()->with('erro', 'Já existe um usuário com este e-mail. Use outro e-mail.');
         }
 
@@ -232,11 +234,6 @@ class ClienteController extends Controller
         if (!$papelCliente) {
             return back()->with('erro', 'Papel Cliente não encontrado. Cadastre o papel antes de criar o acesso.');
         }
-
-        $data = $request->validate([
-            'email' => ['required','email'],
-            'password' => ['required','string','min:8'],
-        ]);
 
         $senhaTemporaria = $data['password'];
 
