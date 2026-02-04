@@ -17,9 +17,18 @@ class MinhasComissoesController extends Controller
     {
         $this->middleware(function (Request $request, $next) {
             $user = $request->user();
-            if (!$user || !$user->hasPapel('Comercial')) {
+            if (!$user) {
                 abort(403);
             }
+
+            if ($user->hasPapel('Master')) {
+                return redirect()->route('master.comissoes.vendedores');
+            }
+
+            if (!$user->hasPapel('Comercial')) {
+                abort(403);
+            }
+
             return $next($request);
         });
     }

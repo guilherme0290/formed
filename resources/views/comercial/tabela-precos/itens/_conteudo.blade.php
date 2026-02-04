@@ -3,7 +3,7 @@
     $dashboardRoute = $dashboardRoute ?? route($routePrefix === 'master' ? 'master.dashboard' : 'comercial.dashboard');
 @endphp
 
-<div class="w-full mx-auto px-4 md:px-6 xl:px-8 py-6 space-y-6">
+<div class="w-full px-2 sm:px-3 md:px-4 py-2 md:py-3 space-y-6">
 
     <div class="mb-4">
         <a href="{{ $dashboardRoute }}"

@@ -1,12 +1,13 @@
 @extends('layouts.comercial')
 @section('title', 'Clientes Inadimplentes')
+@section('page-container', 'w-full p-0')
 
 @section('content')
     @php
         $mesNome = \Carbon\Carbon::createFromDate($ano, $mes, 1)->locale('pt_BR')->isoFormat('MMMM');
     @endphp
 
-    <div class="max-w-6xl mx-auto px-4 md:px-6 py-6 space-y-6">
+    <div class="w-full px-3 md:px-5 py-4 md:py-5 space-y-6">
         <div class="flex items-center justify-between flex-wrap gap-3">
             <div class="space-y-1">
                 <div class="inline-flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-rose-600">

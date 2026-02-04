@@ -31,7 +31,7 @@
             </ul>
         </div>
     @endif
-    <div class="w-full px-3 md:px-6 py-4 md:py-5">
+    <div class="w-full px-3 md:px-5 py-4 md:py-5">
 
         {{-- Barra de busca + Nova Tarefa --}}
         <div class="flex flex-col md:flex-row md:items-center gap-3 md:gap-4 mb-6">
@@ -181,7 +181,7 @@
         {{-- Kanban --}}
         {{-- Kanban --}}
         <div class="mt-4 pb-6 overflow-x-auto xl:overflow-x-visible -mx-3 md:mx-0 px-3 md:px-0">
-            <div class="flex gap-3 md:gap-4 min-w-max snap-x snap-mandatory">
+            <div class="flex gap-2 md:gap-3 min-w-max snap-x snap-mandatory">
                 @foreach($colunas as $coluna)
                     @php
                         $slug = Str::slug($coluna->nome);
@@ -197,7 +197,7 @@
 
                     {{-- UMA COLUNA COMPLETA (card resumo + raia) --}}
 
-                    <section class="flex flex-col w-[clamp(240px,22vw,340px)] flex-shrink-0 gap-3 snap-start">
+                    <section class="flex flex-col w-[clamp(210px,16vw,260px)] flex-shrink-0 gap-2 md:gap-3 snap-start">
 
                         {{-- Card resumo da coluna --}}
                         <article
