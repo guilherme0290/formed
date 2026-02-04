@@ -381,6 +381,7 @@
                                     "
                                     data-prioridade="{{ ucfirst($tarefa->prioridade) }}"
                                     data-status="{{ $coluna->nome }}"
+                                    data-finalizado="{{ (!empty($tarefa->finalizado_em) || ($coluna->finaliza ?? false)) ? '1' : '0' }}"
                                     data-observacoes="{{ e($obs) }}"
 
                                     data-funcionario="{{ $funcionarioNome . ($funcionarioCpf ? ' | CPF '.$funcionarioCpf : '') }}
@@ -1362,13 +1363,34 @@
                 return `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}:${String(segundos).padStart(2, '0')}`;
             }
 
+            function isCardFinalizada(card) {
+                if (!card) return false;
+                const finalizadoFlag = String(card.dataset.finalizado || '') === '1';
+                const status = String(card.dataset.status || '').toLowerCase();
+                const colunaSlug = String(card.closest('.kanban-column')?.dataset?.colunaSlug || '').toLowerCase();
+                return finalizadoFlag || status.includes('finalizada') || colunaSlug === 'finalizada';
+            }
+
             function updateTempoCard(card, nowMs) {
                 if (!card) return;
                 const fimIso = card.dataset.fimPrevisto || '';
                 const fimMs = parseIsoToMs(fimIso);
                 const label = card.querySelector('[data-role="card-tempo-label"]');
                 const textEl = card.querySelector('[data-role="card-tempo-text"]');
-                if (!label || !textEl || !fimMs) return;
+                if (!label || !textEl) return;
+
+                if (isCardFinalizada(card)) {
+                    textEl.textContent = 'Finalizada';
+                    label.classList.remove('border-slate-200', 'bg-slate-50', 'text-slate-600', 'border-rose-200', 'bg-rose-50', 'text-rose-700');
+                    label.classList.add('border-emerald-200', 'bg-emerald-50', 'text-emerald-700');
+                    return;
+                }
+
+                label.classList.remove('border-emerald-200', 'bg-emerald-50', 'text-emerald-700');
+                if (!fimMs) {
+                    textEl.textContent = '—';
+                    return;
+                }
 
                 const diff = fimMs - nowMs;
                 if (diff >= 0) {
@@ -1384,6 +1406,10 @@
 
             function updateModalTempo(card, nowMs) {
                 if (!spanTempoRestante || !card) return;
+                if (isCardFinalizada(card)) {
+                    spanTempoRestante.textContent = 'Finalizada';
+                    return;
+                }
                 const fimIso = card.dataset.fimPrevisto || '';
                 const fimMs = parseIsoToMs(fimIso);
                 if (!fimMs) {
@@ -1988,6 +2014,7 @@
                             // atualiza status do card
                             const statusName = data.status_label || 'Finalizada';
                             finalizarCurrentCard.dataset.status = statusName;
+                            finalizarCurrentCard.dataset.finalizado = '1';
 
                             const statusSpan = finalizarCurrentCard.querySelector('[data-role="card-status-label"]');
                             if (statusSpan) {
@@ -2059,6 +2086,7 @@
                 if (colunaNome) {
                     card.dataset.status = colunaNome;
                 }
+                card.dataset.finalizado = (String(destino.dataset.colunaSlug || '') === 'finalizada') ? '1' : '0';
             }
 
             async function pollPrazos() {
@@ -2201,6 +2229,7 @@
                                     if (statusName) {
                                         card.dataset.status = statusName;
                                     }
+                                    card.dataset.finalizado = (colunaSlug === 'finalizada') ? '1' : '0';
 
                                     const respBadge = card.querySelector('[data-role="card-responsavel-badge"]');
                                     if (respBadge && colunaCor) {

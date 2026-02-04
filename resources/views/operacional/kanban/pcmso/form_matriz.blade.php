@@ -14,14 +14,14 @@
 @section('pageTitle', 'PCMSO - Matriz')
 
 @section('content')
-    <div class="container mx-auto px-4 py-8">
+    <div class="w-full px-2 sm:px-3 md:px-4 xl:px-5 py-4 md:py-6">
         <a href="{{ route('operacional.pcmso.possui-pgr', [$cliente, 'matriz']) }}"
-           class="inline-flex items-center gap-2 text-xs text-slate-600 mb-4">
+           class="inline-flex items-center gap-2 mb-4 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
             ← Voltar
         </a>
 
-        <div class="max-w-2xl mx-auto bg-white rounded-2xl shadow-lg overflow-hidden">
-            <div class="px-6 py-4 bg-gradient-to-r from-purple-600 to-fuchsia-500 text-white">
+        <div class="w-full bg-white rounded-2xl shadow-lg overflow-hidden">
+            <div class="px-4 sm:px-5 md:px-6 py-4 bg-gradient-to-r from-purple-600 to-fuchsia-500 text-white">
                 <h1 class="text-lg font-semibold">PCMSO - Matriz</h1>
                 <p class="text-xs text-purple-100 mt-1">
                     {{ $cliente->razao_social ?? $cliente->nome }}
@@ -33,7 +33,7 @@
                         ? route('operacional.kanban.pcmso.update', $pcmso->tarefa_id)
                         : route('operacional.pcmso.store-com-pgr', [$cliente, 'matriz']) }}"
                   enctype="multipart/form-data"
-                  class="p-6 space-y-4">
+                  class="px-4 sm:px-5 md:px-6 py-5 md:py-6 space-y-4">
                 @csrf
                 @if($isEdit)
                     @method('PUT')

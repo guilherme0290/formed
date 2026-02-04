@@ -1255,6 +1255,7 @@
                         }
                         const stripeClass = rowIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50/60';
                         const row = document.createElement('div');
+                        row.setAttribute('data-item-id', String(item.id));
                         row.className = hasZeroPrice
                             ? 'grid grid-cols-12 gap-1 items-center px-2 py-1.5 bg-amber-50/60'
                             : `grid grid-cols-12 gap-1 items-center px-2 py-1.5 ${stripeClass}`;
@@ -2190,9 +2191,28 @@
                     });
                     if (zeroItems.length) {
                         e.preventDefault();
-                        const names = zeroItems.map(it => it.nome).slice(0, 3).join(', ');
-                        const extra = zeroItems.length > 3 ? ` e mais ${zeroItems.length - 3}` : '';
-                        showItemAlert(`Existem itens com preço zerado: ${names}${extra}.`, 'error');
+                        const nomes = Array.from(new Set(zeroItems.map(it => String(it.nome || 'Item sem nome'))));
+                        const names = nomes.slice(0, 5).join(', ');
+                        const extra = nomes.length > 5 ? ` e mais ${nomes.length - 5}` : '';
+                        const msg = `Existem itens com preço zerado: ${names}${extra}. Ajuste o valor para continuar.`;
+                        if (typeof window.uiAlert === 'function') {
+                            window.uiAlert(msg, {
+                                icon: 'error',
+                                title: 'Preço obrigatório',
+                                confirmText: 'Entendi',
+                            });
+                        }
+
+                        const firstZeroId = String(zeroItems[0]?.id ?? '');
+                        if (firstZeroId) {
+                            const row = el.lista?.querySelector(`[data-item-id="${firstZeroId}"]`);
+                            row?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            const valorInput = row?.querySelector('[data-act="valor_view"]');
+                            if (valorInput && typeof valorInput.focus === 'function') {
+                                valorInput.focus();
+                                if (typeof valorInput.select === 'function') valorInput.select();
+                            }
+                        }
                     }
                 });
 

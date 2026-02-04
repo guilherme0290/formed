@@ -24,7 +24,7 @@
             $modo = $modo ?? 'create';
     @endphp
 
-    <div class="max-w-5xl mx-auto px-4 md:px-8 py-8">
+    <div class="w-full px-2 sm:px-3 md:px-4 xl:px-5 py-4 md:py-6">
 
         {{-- BOTÃO VOLTAR CORRETO --}}
         <div class="mb-4">
@@ -52,7 +52,7 @@
 
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                 {{-- Cabeçalho --}}
-                <div class="bg-emerald-700 px-6 py-4">
+                <div class="bg-emerald-700 px-4 sm:px-5 md:px-6 py-4">
                     <h1 class="text-lg md:text-xl font-semibold text-white mb-1">
                         PGR - {{ $tipoLabel }}
                     </h1>
@@ -61,7 +61,7 @@
                     </p>
                 </div>
 
-                <div class="px-6 py-6">
+                <div class="px-4 sm:px-5 md:px-6 py-5 md:py-6">
                     {{-- ERROS --}}
                     @if($errors->any())
                         <div class="mb-4 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-700">

@@ -366,18 +366,35 @@ class DashboardController extends Controller
         $fimJanelaDataHora = $janelaFim->copy()->endOfDay();
         $inicioJanelaData = $janelaInicio->toDateString();
         $fimJanelaData = $janelaFim->toDateString();
+        $temDataPrevista = Schema::hasColumn('tarefas', 'data_prevista');
+        $dataRefSql = $temDataPrevista
+            ? 'COALESCE(DATE(tarefas.inicio_previsto), DATE(tarefas.data_prevista))'
+            : 'DATE(tarefas.inicio_previsto)';
+        $aplicarJanelaTarefas = function ($query) use (
+            $temDataPrevista,
+            $inicioJanelaDataHora,
+            $fimJanelaDataHora,
+            $inicioJanelaData,
+            $fimJanelaData
+        ) {
+            if (!$temDataPrevista) {
+                return $query->whereBetween('tarefas.inicio_previsto', [$inicioJanelaDataHora, $fimJanelaDataHora]);
+            }
 
-        $tarefasJanelaQuery = Tarefa::query();
-        $aplicarFiltrosTarefas($tarefasJanelaQuery);
-        $tarefasJanela = $tarefasJanelaQuery
-            ->where(function ($q) use ($inicioJanelaDataHora, $fimJanelaDataHora, $inicioJanelaData, $fimJanelaData) {
+            return $query->where(function ($q) use ($inicioJanelaDataHora, $fimJanelaDataHora, $inicioJanelaData, $fimJanelaData) {
                 $q->whereBetween('tarefas.inicio_previsto', [$inicioJanelaDataHora, $fimJanelaDataHora])
                     ->orWhere(function ($qq) use ($inicioJanelaData, $fimJanelaData) {
                         $qq->whereNull('tarefas.inicio_previsto')
                             ->whereDate('tarefas.data_prevista', '>=', $inicioJanelaData)
                             ->whereDate('tarefas.data_prevista', '<=', $fimJanelaData);
                     });
-            })
+            });
+        };
+
+        $tarefasJanelaQuery = Tarefa::query();
+        $aplicarFiltrosTarefas($tarefasJanelaQuery);
+        $aplicarJanelaTarefas($tarefasJanelaQuery);
+        $tarefasJanela = $tarefasJanelaQuery
             ->with([
                 'cliente:id,razao_social',
                 'responsavel:id,name',
@@ -390,7 +407,7 @@ class DashboardController extends Controller
 
         $tarefasJanelaPorData = $tarefasJanela->groupBy(
             fn ($tarefa) => optional($tarefa->inicio_previsto)->toDateString()
-                ?? optional($tarefa->data_prevista)->toDateString()
+                ?? ($temDataPrevista ? optional($tarefa->data_prevista)->toDateString() : null)
                 ?? optional($tarefa->created_at)->toDateString()
         );
 
@@ -419,26 +436,22 @@ class DashboardController extends Controller
             ->values()
             ->all();
 
-        $servicosBase = ['ASO', 'PGR', 'PCMSO', 'LTCAT', 'APR', 'Treinamentos NR'];
+        $servicosBase = ['ASO', 'PGR', 'PCMSO', 'LTCAT', 'APR', 'PAE', 'Treinamentos NR'];
 
         $servicosPrestadosQuery = Tarefa::query();
         $aplicarFiltrosTarefas($servicosPrestadosQuery);
+        $servicosPrestadosQuery->join('kanban_colunas', 'kanban_colunas.id', '=', 'tarefas.coluna_id');
         if ($filtroPrestados === 'finalizadas') {
+            $servicosPrestadosQuery->where('kanban_colunas.finaliza', true);
+        } else {
             $servicosPrestadosQuery
-                ->join('kanban_colunas', 'kanban_colunas.id', '=', 'tarefas.coluna_id')
-                ->where('kanban_colunas.finaliza', true);
+                ->where('kanban_colunas.finaliza', false)
+                ->whereRaw("COALESCE(LOWER(kanban_colunas.slug), '') NOT LIKE 'cancel%'");
         }
+        $aplicarJanelaTarefas($servicosPrestadosQuery);
         $servicosPrestadosBrutoPorDia = $servicosPrestadosQuery
-            ->where(function ($q) use ($inicioJanelaDataHora, $fimJanelaDataHora, $inicioJanelaData, $fimJanelaData) {
-                $q->whereBetween('tarefas.inicio_previsto', [$inicioJanelaDataHora, $fimJanelaDataHora])
-                    ->orWhere(function ($qq) use ($inicioJanelaData, $fimJanelaData) {
-                        $qq->whereNull('tarefas.inicio_previsto')
-                            ->whereDate('tarefas.data_prevista', '>=', $inicioJanelaData)
-                            ->whereDate('tarefas.data_prevista', '<=', $fimJanelaData);
-                    });
-            })
             ->leftJoin('servicos', 'servicos.id', '=', 'tarefas.servico_id')
-            ->selectRaw("COALESCE(DATE(tarefas.inicio_previsto), DATE(tarefas.data_prevista)) as data_ref, COALESCE(servicos.nome, 'Sem servico') as nome, COUNT(*) as total")
+            ->selectRaw($dataRefSql . " as data_ref, COALESCE(servicos.nome, 'Sem servico') as nome, COUNT(*) as total")
             ->groupBy('data_ref', 'nome')
             ->orderBy('nome')
             ->get()
@@ -471,46 +484,67 @@ class DashboardController extends Controller
                 ->all();
         }
 
+        $vendasPorTarefa = DB::table('vendas')
+            ->selectRaw(
+                "tarefa_id,
+                COALESCE(SUM(total), 0) as total_vendas,
+                MAX(CASE WHEN UPPER(status) IN ('FECHADA', 'FINALIZADA') THEN 1 ELSE 0 END) as tem_status_fechado"
+            )
+            ->groupBy('tarefa_id');
+        $valorContratoPorTarefaSql = "(SELECT cci.preco_unitario_snapshot
+            FROM cliente_contratos cc
+            INNER JOIN cliente_contrato_itens cci ON cci.cliente_contrato_id = cc.id
+            WHERE cc.empresa_id = tarefas.empresa_id
+              AND cc.cliente_id = tarefas.cliente_id
+              AND cc.status = 'ATIVO'
+              AND cci.servico_id = tarefas.servico_id
+              AND cci.ativo = 1
+              AND (cc.vigencia_inicio IS NULL OR cc.vigencia_inicio <= DATE(COALESCE(tarefas.inicio_previsto, tarefas.created_at)))
+              AND (cc.vigencia_fim IS NULL OR cc.vigencia_fim >= DATE(COALESCE(tarefas.inicio_previsto, tarefas.created_at)))
+            ORDER BY cc.vigencia_inicio DESC, cc.id DESC
+            LIMIT 1)";
+
         $vendasFinalizadasPorDia = DB::table('tarefas')
             ->join('kanban_colunas', 'kanban_colunas.id', '=', 'tarefas.coluna_id')
-            ->leftJoin('vendas', 'vendas.tarefa_id', '=', 'tarefas.id')
+            ->leftJoinSub($vendasPorTarefa, 'vendas_tarefa', function ($join) {
+                $join->on('vendas_tarefa.tarefa_id', '=', 'tarefas.id');
+            })
             ->when($empresaId, fn ($q) => $q->where('tarefas.empresa_id', $empresaId))
             ->when($servicoSelecionado !== 'todos', fn ($q) => $q->where('tarefas.servico_id', $servicoSelecionado))
             ->when($responsavelSelecionado !== 'todos', fn ($q) => $q->where('tarefas.responsavel_id', $responsavelSelecionado))
             ->where('kanban_colunas.finaliza', true)
-            ->where('vendas.status', 'FECHADA')
-            ->whereNull('tarefas.deleted_at')
-            ->where(function ($q) use ($inicioJanelaDataHora, $fimJanelaDataHora, $inicioJanelaData, $fimJanelaData) {
-                $q->whereBetween('tarefas.inicio_previsto', [$inicioJanelaDataHora, $fimJanelaDataHora])
-                    ->orWhere(function ($qq) use ($inicioJanelaData, $fimJanelaData) {
-                        $qq->whereNull('tarefas.inicio_previsto')
-                            ->whereDate('tarefas.data_prevista', '>=', $inicioJanelaData)
-                            ->whereDate('tarefas.data_prevista', '<=', $fimJanelaData);
-                    });
-            })
-            ->selectRaw('COALESCE(DATE(tarefas.inicio_previsto), DATE(tarefas.data_prevista)) as data_ref, COALESCE(SUM(vendas.total), 0) as total')
+            ->whereNull('tarefas.deleted_at');
+        $aplicarJanelaTarefas($vendasFinalizadasPorDia);
+        $vendasFinalizadasPorDia = $vendasFinalizadasPorDia
+            ->selectRaw(
+                $dataRefSql
+                . " as data_ref,
+                COALESCE(SUM(
+                    CASE
+                        WHEN tarefas.finalizado_em IS NOT NULL OR COALESCE(vendas_tarefa.tem_status_fechado, 0) = 1
+                        THEN COALESCE(vendas_tarefa.total_vendas, COALESCE($valorContratoPorTarefaSql, 0))
+                        ELSE 0
+                    END
+                ), 0) as total"
+            )
             ->groupBy('data_ref')
             ->pluck('total', 'data_ref')
             ->all();
 
         $vendasPendentesPorDia = DB::table('tarefas')
             ->join('kanban_colunas', 'kanban_colunas.id', '=', 'tarefas.coluna_id')
-            ->leftJoin('vendas', 'vendas.tarefa_id', '=', 'tarefas.id')
+            ->leftJoinSub($vendasPorTarefa, 'vendas_tarefa', function ($join) {
+                $join->on('vendas_tarefa.tarefa_id', '=', 'tarefas.id');
+            })
             ->when($empresaId, fn ($q) => $q->where('tarefas.empresa_id', $empresaId))
             ->when($servicoSelecionado !== 'todos', fn ($q) => $q->where('tarefas.servico_id', $servicoSelecionado))
             ->when($responsavelSelecionado !== 'todos', fn ($q) => $q->where('tarefas.responsavel_id', $responsavelSelecionado))
             ->where('kanban_colunas.finaliza', false)
             ->whereRaw("COALESCE(LOWER(kanban_colunas.slug), '') NOT LIKE 'cancel%'")
-            ->whereNull('tarefas.deleted_at')
-            ->where(function ($q) use ($inicioJanelaDataHora, $fimJanelaDataHora, $inicioJanelaData, $fimJanelaData) {
-                $q->whereBetween('tarefas.inicio_previsto', [$inicioJanelaDataHora, $fimJanelaDataHora])
-                    ->orWhere(function ($qq) use ($inicioJanelaData, $fimJanelaData) {
-                        $qq->whereNull('tarefas.inicio_previsto')
-                            ->whereDate('tarefas.data_prevista', '>=', $inicioJanelaData)
-                            ->whereDate('tarefas.data_prevista', '<=', $fimJanelaData);
-                    });
-            })
-            ->selectRaw('COALESCE(DATE(tarefas.inicio_previsto), DATE(tarefas.data_prevista)) as data_ref, COALESCE(SUM(vendas.total), 0) as total')
+            ->whereNull('tarefas.deleted_at');
+        $aplicarJanelaTarefas($vendasPendentesPorDia);
+        $vendasPendentesPorDia = $vendasPendentesPorDia
+            ->selectRaw($dataRefSql . " as data_ref, COALESCE(SUM(COALESCE(vendas_tarefa.total_vendas, COALESCE($valorContratoPorTarefaSql, 0))), 0) as total")
             ->groupBy('data_ref')
             ->pluck('total', 'data_ref')
             ->all();
@@ -528,21 +562,17 @@ class DashboardController extends Controller
                 ->when($servicoSelecionado !== 'todos', fn ($q) => $q->where('tarefas.servico_id', $servicoSelecionado))
                 ->when($responsavelSelecionado !== 'todos', fn ($q) => $q->where('tarefas.responsavel_id', $responsavelSelecionado))
                 ->whereNull('tarefas.deleted_at');
+            $agendamentosAsoPorDiaQuery->join('kanban_colunas', 'kanban_colunas.id', '=', 'tarefas.coluna_id');
             if ($filtroPrestados === 'finalizadas') {
+                $agendamentosAsoPorDiaQuery->where('kanban_colunas.finaliza', true);
+            } else {
                 $agendamentosAsoPorDiaQuery
-                    ->join('kanban_colunas', 'kanban_colunas.id', '=', 'tarefas.coluna_id')
-                    ->where('kanban_colunas.finaliza', true);
+                    ->where('kanban_colunas.finaliza', false)
+                    ->whereRaw("COALESCE(LOWER(kanban_colunas.slug), '') NOT LIKE 'cancel%'");
             }
+            $aplicarJanelaTarefas($agendamentosAsoPorDiaQuery);
             $agendamentosAsoPorDia = $agendamentosAsoPorDiaQuery
-                ->where(function ($q) use ($inicioJanelaDataHora, $fimJanelaDataHora, $inicioJanelaData, $fimJanelaData) {
-                    $q->whereBetween('tarefas.inicio_previsto', [$inicioJanelaDataHora, $fimJanelaDataHora])
-                        ->orWhere(function ($qq) use ($inicioJanelaData, $fimJanelaData) {
-                            $qq->whereNull('tarefas.inicio_previsto')
-                                ->whereDate('tarefas.data_prevista', '>=', $inicioJanelaData)
-                                ->whereDate('tarefas.data_prevista', '<=', $fimJanelaData);
-                        });
-                })
-                ->selectRaw('COALESCE(DATE(tarefas.inicio_previsto), DATE(tarefas.data_prevista)) as data_ref, aso_solicitacoes.unidade_id as unidade_id, tarefas.id as tarefa_id')
+                ->selectRaw($dataRefSql . ' as data_ref, aso_solicitacoes.unidade_id as unidade_id, tarefas.id as tarefa_id')
                 ->whereNotNull('aso_solicitacoes.unidade_id')
                 ->distinct()
                 ->get();
@@ -561,23 +591,19 @@ class DashboardController extends Controller
                 ->when($servicoSelecionado !== 'todos', fn ($q) => $q->where('tarefas.servico_id', $servicoSelecionado))
                 ->when($responsavelSelecionado !== 'todos', fn ($q) => $q->where('tarefas.responsavel_id', $responsavelSelecionado))
                 ->whereNull('tarefas.deleted_at');
+            $agendamentosTreinamentosPorDiaQuery->join('kanban_colunas', 'kanban_colunas.id', '=', 'tarefas.coluna_id');
             if ($filtroPrestados === 'finalizadas') {
+                $agendamentosTreinamentosPorDiaQuery->where('kanban_colunas.finaliza', true);
+            } else {
                 $agendamentosTreinamentosPorDiaQuery
-                    ->join('kanban_colunas', 'kanban_colunas.id', '=', 'tarefas.coluna_id')
-                    ->where('kanban_colunas.finaliza', true);
+                    ->where('kanban_colunas.finaliza', false)
+                    ->whereRaw("COALESCE(LOWER(kanban_colunas.slug), '') NOT LIKE 'cancel%'");
             }
+            $aplicarJanelaTarefas($agendamentosTreinamentosPorDiaQuery);
             $agendamentosTreinamentosPorDia = $agendamentosTreinamentosPorDiaQuery
-                ->where(function ($q) use ($inicioJanelaDataHora, $fimJanelaDataHora, $inicioJanelaData, $fimJanelaData) {
-                    $q->whereBetween('tarefas.inicio_previsto', [$inicioJanelaDataHora, $fimJanelaDataHora])
-                        ->orWhere(function ($qq) use ($inicioJanelaData, $fimJanelaData) {
-                            $qq->whereNull('tarefas.inicio_previsto')
-                                ->whereDate('tarefas.data_prevista', '>=', $inicioJanelaData)
-                                ->whereDate('tarefas.data_prevista', '<=', $fimJanelaData);
-                        });
-                })
                 ->where('treinamento_nr_detalhes.local_tipo', 'clinica')
                 ->whereNotNull('treinamento_nr_detalhes.unidade_id')
-                ->selectRaw('COALESCE(DATE(tarefas.inicio_previsto), DATE(tarefas.data_prevista)) as data_ref, treinamento_nr_detalhes.unidade_id as unidade_id, tarefas.id as tarefa_id')
+                ->selectRaw($dataRefSql . ' as data_ref, treinamento_nr_detalhes.unidade_id as unidade_id, tarefas.id as tarefa_id')
                 ->distinct()
                 ->get();
         }
@@ -685,6 +711,10 @@ class DashboardController extends Controller
 
         if (preg_match('/\bAPR\b/u', $servico) === 1) {
             return 'APR';
+        }
+
+        if (preg_match('/\bPAE\b/u', $servico) === 1) {
+            return 'PAE';
         }
 
         if (str_contains($servico, 'ASO')) {
@@ -1737,3 +1767,4 @@ class DashboardController extends Controller
         return 'data:' . $mime . ';base64,' . base64_encode($data);
     }
 }
+

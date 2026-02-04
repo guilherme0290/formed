@@ -86,10 +86,10 @@
                 </div>
                 <div class="flex items-center gap-2 flex-wrap">
                     <div class="inline-flex items-center rounded-lg border border-white/40 bg-white/15 px-3 py-1.5 text-xs font-semibold">
-                        Vendas Finalizadas: <span id="reportVendasFinalizadas" class="ml-1">R$ 0,00</span>
+                        Serviços Finalizados: <span id="reportVendasFinalizadas" class="ml-1">R$ 0,00</span>
                     </div>
                     <div class="inline-flex items-center rounded-lg border border-white/40 bg-white/15 px-3 py-1.5 text-xs font-semibold">
-                        Vendas Pendentes: <span id="reportVendasPendentes" class="ml-1">R$ 0,00</span>
+                        Serviços em Andamento: <span id="reportVendasPendentes" class="ml-1">R$ 0,00</span>
                     </div>
                 </div>
             </div>
