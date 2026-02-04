@@ -4,23 +4,11 @@
 @section('content')
     @php
         $isEdit = isset($proposta) && $proposta;
-        $temGheSnapshot = false;
-        $gheTotalExames = 0.0;
-        if ($isEdit && $proposta->cliente_id) {
-            $gheSnapshot = app(\App\Services\AsoGheService::class)
-                ->buildSnapshotForCliente($proposta->cliente_id, $proposta->empresa_id);
-            $temGheSnapshot = !empty($gheSnapshot['ghes']);
-            foreach ($gheSnapshot['ghes'] ?? [] as $ghe) {
-                $gheTotalExames += (float) ($ghe['total_exames'] ?? 0);
-            }
-        }
         $initialData = [
             'isEdit' => (bool) $isEdit,
             'itens' => [],
             'esocial' => null,
-            'temGhe' => $temGheSnapshot,
-            'gheTotal' => $gheTotalExames,
-            'asoGrupos' => [],
+            'gheConfigs' => [],
         ];
 
         if ($isEdit) {
@@ -52,20 +40,28 @@
         }
 
         if (!empty($propostaAsoGrupos)) {
-            $initialData['asoGrupos'] = collect($propostaAsoGrupos)
-                ->groupBy('tipo_aso')
+            $initialData['gheConfigs'] = collect($propostaAsoGrupos)
+                ->groupBy('cliente_ghe_id')
                 ->map(function ($rows) {
-                    return $rows
-                        ->map(function ($row) {
-                            return [
-                                'grupo_id' => (int) ($row->grupo_exames_id ?? 0),
-                                'grupo_titulo' => $row->grupo?->titulo,
-                                'total_exames' => (float) ($row->total_exames ?? 0),
-                            ];
-                        })
-                        ->values()
-                        ->toArray();
+                    $first = $rows->first();
+                    return [
+                        'cliente_ghe_id' => $first?->cliente_ghe_id,
+                        'ghe_id' => $first?->clienteGhe?->ghe_id,
+                        'ghe_nome' => $first?->clienteGhe?->nome,
+                        'tipos' => $rows
+                            ->mapWithKeys(function ($row) {
+                                return [
+                                    $row->tipo_aso => [
+                                        'grupo_id' => (int) ($row->grupo_exames_id ?? 0),
+                                        'grupo_titulo' => $row->grupo?->titulo,
+                                        'total_exames' => (float) ($row->total_exames ?? 0),
+                                    ],
+                                ];
+                            })
+                            ->toArray(),
+                    ];
                 })
+                ->values()
                 ->toArray();
         }
     @endphp
@@ -148,12 +144,6 @@
                                 </button>
                                 <button type="button"
                                         class="relative px-4 py-2 rounded-full text-sm font-semibold text-slate-600 hover:bg-slate-100"
-                                        data-tab="ghe">
-                                    GHE
-                                    <span id="badgeTabGhe" class="hidden absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-amber-400"></span>
-                                </button>
-                                <button type="button"
-                                        class="relative px-4 py-2 rounded-full text-sm font-semibold text-slate-600 hover:bg-slate-100"
                                         data-tab="aso-tipos">
                                     ASO
                                 </button>
@@ -213,25 +203,8 @@
                         </div>
                         --}}
 
-                            <div data-tab-panel="ghe" class="hidden space-y-3">
-                                <div class="text-sm font-semibold text-slate-800">GHE do Cliente</div>
-                                <div class="flex items-center justify-between">
-                                    <p class="text-xs text-slate-500">
-                                        Defina GHEs e funções para este cliente.
-                                    </p>
-                                    <button type="button"
-                                            class="px-3 py-2 rounded-xl border border-amber-200 text-sm bg-amber-50 hover:bg-amber-100 text-amber-800 font-semibold"
-                                            id="btnGheCliente">
-                                        Gerenciar GHE
-                                    </button>
-                                </div>
-                            </div>
-
                             <div data-tab-panel="aso-tipos" class="hidden space-y-3">
-                                <div class="text-sm font-semibold text-slate-800">ASO por tipo</div>
-                                <p class="text-xs text-slate-500">
-                                    Selecione um ou mais grupos de exames por tipo de ASO. Cada grupo gera um item separado na proposta.
-                                </p>
+                                <div class="text-sm font-semibold text-slate-800">ASO por GHE</div>
 
                                 @php
                                     $asoTipos = [
@@ -243,30 +216,60 @@
                                     ];
                                 @endphp
 
-                                <div class="space-y-3">
-                                    @foreach($asoTipos as $asoKey => $asoLabel)
-                                        <div class="rounded-xl border border-slate-200 overflow-hidden">
-                                            <div class="flex items-center justify-between px-3 py-2 bg-slate-50">
-                                                <div class="text-sm font-semibold text-slate-800">{{ $asoLabel }}</div>
-                                                <button type="button"
-                                                        data-aso-add="{{ $asoKey }}"
-                                                        class="px-2.5 py-1.5 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-800 text-xs font-semibold hover:bg-emerald-100">
-                                                    + Grupo
-                                                </button>
-                                            </div>
-                                            <div class="hidden md:grid grid-cols-12 gap-2 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600">
-                                                <div class="col-span-5">Grupo de exames</div>
-                                                <div class="col-span-3">Valor do grupo</div>
-                                                <div class="col-span-3">Exames</div>
-                                                <div class="col-span-1 text-right">Ação</div>
-                                            </div>
-                                            <div class="divide-y divide-slate-200" data-aso-rows="{{ $asoKey }}"></div>
-                                        </div>
-                                    @endforeach
+                                <div class="rounded-xl border border-slate-200 p-4 space-y-3">
+                                    <div class="text-xs text-slate-500">
+                                        Configure um GHE por vez. Após finalizar, adicione-o à lista abaixo.
+                                    </div>
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <select id="gheSelect"
+                                                class="min-w-[220px] rounded-md border-slate-200 text-sm px-2 py-2">
+                                            <option value="">Selecione o GHE...</option>
+                                        </select>
+                                        <button type="button"
+                                                class="px-3 py-2 rounded-xl border border-blue-200 text-sm bg-blue-50 hover:bg-blue-100 text-blue-800 font-semibold"
+                                                id="btnGheGlobal">
+                                            Gerenciar GHE
+                                        </button>
+                                    </div>
                                 </div>
-                                <p class="text-xs text-slate-500">
-                                    O valor do grupo é carregado automaticamente pelos exames, mas pode ser ajustado aqui ou no grid de serviços.
-                                </p>
+
+                                <div class="rounded-xl border border-slate-200 overflow-hidden">
+                                    <div class="flex items-center justify-between px-3 py-2 bg-slate-50">
+                                        <div class="text-sm font-semibold text-slate-800">
+                                            Grupos de Exames por Tipo de ASO — <span id="asoGheTitle" class="text-emerald-700">—</span>
+                                        </div>
+                                        <button type="button"
+                                                class="px-2.5 py-1.5 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-800 text-xs font-semibold hover:bg-emerald-100"
+                                                onclick="openProtocolosModal()">
+                                            + Novo Grupo
+                                        </button>
+                                    </div>
+                                    <div class="hidden md:grid grid-cols-12 gap-2 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600">
+                                        <div class="col-span-2">Tipo de ASO</div>
+                                        <div class="col-span-5">Grupo de exames</div>
+                                        <div class="col-span-3">Exames</div>
+                                        <div class="col-span-2 text-right">Valor</div>
+                                    </div>
+                                    <div class="divide-y divide-slate-200" id="asoTipoRows"></div>
+                                    <div class="px-3 py-3 bg-white flex justify-end">
+                                        <button type="button"
+                                                class="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold"
+                                                id="btnAddGheConfig">
+                                            + Adicionar este GHE à lista
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="rounded-xl border border-slate-200 overflow-hidden">
+                                    <div class="px-3 py-2 bg-slate-50">
+                                        <div class="text-sm font-semibold text-slate-800">Protocolos de ASO Configurados</div>
+                                        <div class="text-xs text-slate-500">Resumo dos GHEs com seus grupos por tipo.</div>
+                                    </div>
+                                    <div id="gheConfigsGrid" class="p-3 grid gap-3 md:grid-cols-2"></div>
+                                    <div class="px-3 py-2 text-xs text-slate-500 bg-emerald-50/60">
+                                        O sistema aplicará automaticamente esses protocolos conforme o GHE do funcionário no momento da criação do ASO.
+                                    </div>
+                                </div>
                             </div>
 
                             <div data-tab-panel="treinamentos" class="hidden space-y-3">
@@ -428,6 +431,7 @@
         'clientes' => $clientes ?? collect(),
         'funcoes' => $funcoes ?? collect(),
     ])
+    @include('comercial.tabela-precos.itens.modal-protocolos', ['routePrefix' => 'comercial'])
     {{--
     MODAL PACOTE EXAMES (dinamico)
     <div id="modalExames" class="fixed inset-0 z-[90] hidden bg-black/50 overflow-y-auto">
@@ -502,6 +506,8 @@
                     examesJson: @json(route('comercial.exames.indexJson')),
                     medicoesJson: @json(route('comercial.medicoes.indexJson')),
                     gruposExames: @json(route('comercial.protocolos-exames.indexJson')),
+                    ghes: @json(route('comercial.ghes.indexJson')),
+                    clientesAsoGrupos: @json(route('comercial.clientes-aso-grupos.indexJson')),
                     esocialPreco: (qtd) => @json(route('comercial.propostas.esocial-preco', ['qtd' => '__QTD__']))
                         .replace('__QTD__', encodeURIComponent(qtd)),
 
@@ -528,17 +534,14 @@
                     medicoesTarget: null,
                     medicoesSelected: new Set(),
                     esocial: { enabled:false, qtd:0, valor:0, aviso:null },
-                    asoGrupos: {}, // { tipo: [{row_id, grupo_id, grupo_titulo, total_exames}] }
                     gruposExames: [],
+                    gheCatalog: [],
+                    gheConfigs: [], // [{cliente_ghe_id, ghe_id, ghe_nome, tipos:{tipo:{grupo_id, grupo_titulo, total_exames}}}]
+                    currentGhe: { cliente_ghe_id: null, ghe_id: null, ghe_nome: '', tipos: {} },
                 };
 
                 const INITIAL = @json($initialData);
                 const LAST_BY_CLIENTE = @json($ultimaPropostaPorCliente ?? []);
-                const gheInfo = {
-                    has: !!INITIAL?.temGhe,
-                    total: Number(INITIAL?.gheTotal || 0),
-                };
-
                 // =========================
                 // DOM
                 // =========================
@@ -577,6 +580,12 @@
                     pkgExamesValorHidden: document.getElementById('pkgExamesValorHidden'),
                     form: document.getElementById('propostaForm'),
                     tabsWrap: document.querySelector('[data-tabs="proposta"]'),
+                    gheSelect: document.getElementById('gheSelect'),
+                    asoTipoRows: document.getElementById('asoTipoRows'),
+                    gheConfigsGrid: document.getElementById('gheConfigsGrid'),
+                    asoGheTitle: document.getElementById('asoGheTitle'),
+                    btnAddGheConfig: document.getElementById('btnAddGheConfig'),
+                    btnGheGlobal: document.getElementById('btnGheGlobal'),
                 };
 
                 const ASO_TYPES = [
@@ -588,14 +597,6 @@
                 ];
 
                 const ALLOW_MULTIPLE_PROPOSTAS = true;
-
-                const asoDom = {};
-                ASO_TYPES.forEach(({ key }) => {
-                    asoDom[key] = {
-                        rowsWrap: document.querySelector(`[data-aso-rows="${key}"]`),
-                        addBtn: document.querySelector(`[data-aso-add="${key}"]`),
-                    };
-                });
 
                 // =========================
                 // Hydrate (edit)
@@ -611,65 +612,25 @@
                         state.esocial.valor = Number(INITIAL.esocial.valor || 0);
                     }
 
-                    if (INITIAL.asoGrupos) {
-                        state.asoGrupos = INITIAL.asoGrupos;
+                    if (Array.isArray(INITIAL.gheConfigs)) {
+                        state.gheConfigs = INITIAL.gheConfigs;
                     }
-
-                    ensureAsoItemForGhe();
                 }
 
-                normalizeAsoGrupos();
                 initTabs();
                 updateTabBadges();
-                bindAsoGrupoEvents();
-                loadGruposExames();
                 bindClienteAutoLoad();
+                bindAsoHandlers();
+                loadGruposExames();
+                loadGheCatalog();
+                syncAsoTipoItems();
 
                 // =========================
                 // Utils
                 // =========================
-                function normalizeAsoGrupos() {
-                    if (!state.asoGrupos || typeof state.asoGrupos !== 'object') {
-                        state.asoGrupos = {};
-                    }
-                    ASO_TYPES.forEach(({ key }) => {
-                        const rows = Array.isArray(state.asoGrupos[key]) ? state.asoGrupos[key] : [];
-                        state.asoGrupos[key] = rows.map((row) => ({
-                            row_id: row?.row_id || uid(),
-                            grupo_id: Number(row?.grupo_id || 0),
-                            grupo_titulo: row?.grupo_titulo || '',
-                            total_exames: Number(row?.total_exames || 0),
-                        }));
-                    });
-                }
-
                 function hasAsoItem(it) {
                     const nomeBase = String(it?.nome || it?.descricao || '').toUpperCase();
                     return nomeBase && nomeBase.includes('ASO');
-                }
-
-                function ensureAsoItemForGhe() {
-                    if (hasAsoGrupoSelection()) return;
-                    if (!gheInfo.has) return;
-                    if (state.itens.some(it => hasAsoItem(it))) return;
-                    const item = {
-                        id: uid(),
-                        servico_id: SERVICO_ASO_ID ? Number(SERVICO_ASO_ID) : null,
-                        tipo: 'SERVICO',
-                        nome: 'ASO',
-                        descricao: 'ASO por GHE',
-                        valor_unitario: 0,
-                        quantidade: 1,
-                        prazo: '',
-                        acrescimo: 0,
-                        desconto: 0,
-                        meta: null,
-                        valor_total: 0,
-                    };
-                    recalcItemTotal(item);
-                    state.itens.push(item);
-                    applyGheToAsoItems();
-                    render();
                 }
 
                 function bindClienteAutoLoad() {
@@ -690,12 +651,6 @@
                     });
                 }
 
-                function hasAsoGrupoSelection() {
-                    return Object.values(state.asoGrupos || {}).some((rows) => {
-                        return Array.isArray(rows) && rows.some(r => Number(r?.grupo_id || 0) > 0);
-                    });
-                }
-
                 function getGrupoById(id) {
                     return state.gruposExames.find(g => Number(g.id) === Number(id));
                 }
@@ -705,87 +660,130 @@
                         const res = await fetch(URLS.gruposExames, { headers: { 'Accept': 'application/json' } });
                         const json = await res.json();
                         state.gruposExames = json.data || [];
-                        renderAsoRowsForAll();
+                        Object.entries(state.currentGhe.tipos || {}).forEach(([tipo, row]) => {
+                            if (!row?.grupo_id) return;
+                            const grupo = getGrupoById(row.grupo_id);
+                            if (grupo) {
+                                row.grupo_titulo = row.grupo_titulo || grupo.titulo || '';
+                                if (!row.total_exames) row.total_exames = Number(grupo.total || 0);
+                            }
+                        });
+                        state.gheConfigs.forEach(cfg => {
+                            Object.entries(cfg.tipos || {}).forEach(([tipo, row]) => {
+                                if (!row?.grupo_id) return;
+                                const grupo = getGrupoById(row.grupo_id);
+                                if (grupo) {
+                                    row.grupo_titulo = row.grupo_titulo || grupo.titulo || '';
+                                    if (!row.total_exames) row.total_exames = Number(grupo.total || 0);
+                                }
+                            });
+                        });
+                        renderAsoTipoRows();
+                        renderGheConfigsTable();
                         syncAsoTipoItems();
                     } catch (e) {
                         console.error(e);
                     }
                 }
 
-                function ensureAsoRows(tipo) {
-                    if (!Array.isArray(state.asoGrupos?.[tipo])) {
-                        state.asoGrupos[tipo] = [];
+                async function loadGheCatalog() {
+                    try {
+                        const res = await fetch(URLS.ghes, { headers: { 'Accept': 'application/json' } });
+                        const json = await res.json();
+                        state.gheCatalog = json.data || [];
+                        renderGheSelectOptions();
+                    } catch (e) {
+                        console.error(e);
                     }
-                    return state.asoGrupos[tipo];
                 }
 
-                function addAsoGrupoRow(tipo, row = {}) {
-                    const rows = ensureAsoRows(tipo);
-                    rows.push({
-                        row_id: row?.row_id || uid(),
-                        grupo_id: Number(row?.grupo_id || 0),
-                        grupo_titulo: row?.grupo_titulo || '',
-                        total_exames: Number(row?.total_exames || 0),
+                function renderGheSelectOptions() {
+                    if (!el.gheSelect) return;
+                    const current = String(state.currentGhe.ghe_id || '');
+                    el.gheSelect.innerHTML = '<option value="">Selecione o GHE...</option>';
+                    state.gheCatalog.forEach(g => {
+                        const opt = document.createElement('option');
+                        opt.value = g.id;
+                        opt.textContent = g.nome;
+                        el.gheSelect.appendChild(opt);
                     });
-                    renderAsoRows(tipo);
-                    syncAsoTipoItems();
+                    if (current && !state.gheCatalog.some(g => String(g.id) === current) && state.currentGhe.ghe_nome) {
+                        const opt = document.createElement('option');
+                        opt.value = current;
+                        opt.textContent = state.currentGhe.ghe_nome;
+                        el.gheSelect.appendChild(opt);
+                    }
+                    if (current) {
+                        el.gheSelect.value = current;
+                    }
                 }
 
-                function removeAsoGrupoRow(tipo, rowId) {
-                    const rows = ensureAsoRows(tipo).filter(row => row.row_id !== rowId);
-                    state.asoGrupos[tipo] = rows;
-                    renderAsoRows(tipo);
-                    syncAsoTipoItems();
+                function resetCurrentGheConfig() {
+                    state.currentGhe = { cliente_ghe_id: null, ghe_id: null, ghe_nome: '', tipos: {} };
+                    if (el.gheSelect) el.gheSelect.value = '';
+                    if (el.asoGheTitle) el.asoGheTitle.textContent = '—';
+                    if (el.btnAddGheConfig) el.btnAddGheConfig.textContent = '+ Adicionar este GHE à lista';
+                    renderAsoTipoRows();
                 }
 
-                function getAsoRow(tipo, rowId) {
-                    return (state.asoGrupos?.[tipo] || []).find(row => row.row_id === rowId);
-                }
-
-                function renderAsoRowsForAll() {
-                    ASO_TYPES.forEach(({ key }) => renderAsoRows(key));
-                }
-
-                function renderAsoRows(tipo) {
-                    const dom = asoDom[tipo];
-                    if (!dom?.rowsWrap) return;
-                    const rows = ensureAsoRows(tipo);
-                    dom.rowsWrap.innerHTML = '';
-
-                    if (!rows.length) {
-                        dom.rowsWrap.innerHTML = '<div class="px-3 py-3 text-sm text-slate-500">Nenhum grupo adicionado.</div>';
+                function setCurrentGheFromSelect() {
+                    const id = Number(el.gheSelect?.value || 0);
+                    const ghe = state.gheCatalog.find(g => Number(g.id) === id);
+                    if (!ghe) {
+                        resetCurrentGheConfig();
                         return;
                     }
+                    state.currentGhe = { cliente_ghe_id: null, ghe_id: ghe.id, ghe_nome: ghe.nome, tipos: {} };
+                    if (el.asoGheTitle) el.asoGheTitle.textContent = ghe.nome || '—';
+                    if (el.btnAddGheConfig) el.btnAddGheConfig.textContent = '+ Adicionar este GHE à lista';
+                    if (ghe.grupo_exames_id) {
+                        ASO_TYPES.forEach(({ key }) => {
+                            const grupo = getGrupoById(ghe.grupo_exames_id);
+                            state.currentGhe.tipos[key] = {
+                                grupo_id: ghe.grupo_exames_id,
+                                grupo_titulo: grupo?.titulo || '',
+                                total_exames: Number(grupo?.total || 0),
+                            };
+                        });
+                    }
+                    renderAsoTipoRows();
+                }
 
-                    rows.forEach((row) => {
+                function renderAsoTipoRows() {
+                    if (!el.asoTipoRows) return;
+                    el.asoTipoRows.innerHTML = '';
+
+                    ASO_TYPES.forEach(({ key, label }) => {
+                        const row = state.currentGhe.tipos?.[key] || {};
                         const rowEl = document.createElement('div');
                         rowEl.className = 'px-3 py-2 bg-white';
                         rowEl.innerHTML = `
                             <div class="grid grid-cols-12 gap-2 items-start">
+                                <div class="col-span-12 md:col-span-2">
+                                    <div class="text-[11px] font-semibold text-slate-500 md:hidden">Tipo de ASO</div>
+                                    <div class="text-sm font-semibold text-slate-800">${label}</div>
+                                </div>
                                 <div class="col-span-12 md:col-span-5">
                                     <div class="text-[11px] font-semibold text-slate-500 md:hidden">Grupo de exames</div>
-                                    <select class="w-full rounded-md border-slate-200 text-sm px-2 py-2" data-aso-row-grupo></select>
+                                    <select class="w-full rounded-md border-slate-200 text-sm px-2 py-2" data-aso-tipo-grupo></select>
                                 </div>
-                                <div class="col-span-6 md:col-span-3">
-                                    <div class="text-[11px] font-semibold text-slate-500 md:hidden">Valor do grupo</div>
-                                    <input type="text" class="w-full rounded-md border-slate-200 text-sm px-2 py-2" data-aso-row-total>
-                                </div>
-                                <div class="col-span-5 md:col-span-3">
+                                <div class="col-span-8 md:col-span-3">
                                     <div class="text-[11px] font-semibold text-slate-500 md:hidden">Exames</div>
-                                    <button type="button" class="text-xs font-semibold text-blue-600 hover:underline" data-aso-row-show>Ver exames</button>
-                                    <div class="text-[11px] text-slate-500" data-aso-row-count>—</div>
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <button type="button" class="text-xs font-semibold text-blue-600 hover:underline" data-aso-tipo-show>Ver exames</button>
+                                        <button type="button" class="text-xs font-semibold text-emerald-700 hover:underline" data-aso-tipo-new>+ Novo Grupo</button>
+                                    </div>
+                                    <div class="text-[11px] text-slate-500" data-aso-tipo-count>—</div>
                                 </div>
-                                <div class="col-span-1 flex justify-end">
-                                    <button type="button"
-                                            class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 text-lg leading-none"
-                                            data-aso-row-remove
-                                            aria-label="Remover grupo">×</button>
+                                <div class="col-span-4 md:col-span-2">
+                                    <div class="text-[11px] font-semibold text-slate-500 md:hidden">Valor</div>
+                                    <input type="text" class="w-full rounded-md border-slate-200 text-sm px-2 py-2 text-right" data-aso-tipo-total>
                                 </div>
                             </div>
-                            <div class="mt-2 hidden text-xs text-slate-600 space-y-1" data-aso-row-exames></div>
+                            <div class="mt-2 hidden text-xs text-slate-600 space-y-1" data-aso-tipo-exames></div>
                         `;
 
-                        const select = rowEl.querySelector('[data-aso-row-grupo]');
+                        const select = rowEl.querySelector('[data-aso-tipo-grupo]');
                         select.innerHTML = '<option value="">Selecione...</option>';
                         state.gruposExames.forEach(g => {
                             const opt = document.createElement('option');
@@ -797,34 +795,37 @@
                             select.value = String(row.grupo_id);
                         }
 
-                        const totalInput = rowEl.querySelector('[data-aso-row-total]');
+                        const totalInput = rowEl.querySelector('[data-aso-tipo-total]');
                         totalInput.dataset.digits = onlyDigits(Math.round(Number(row.total_exames || 0) * 100));
                         totalInput.value = brl(Number(row.total_exames || 0));
 
-                        const countEl = rowEl.querySelector('[data-aso-row-count]');
-                        const examesWrap = rowEl.querySelector('[data-aso-row-exames]');
-                        const showBtn = rowEl.querySelector('[data-aso-row-show]');
-                        const removeBtn = rowEl.querySelector('[data-aso-row-remove]');
+                        const countEl = rowEl.querySelector('[data-aso-tipo-count]');
+                        const examesWrap = rowEl.querySelector('[data-aso-tipo-exames]');
+                        const showBtn = rowEl.querySelector('[data-aso-tipo-show]');
+                        const newBtn = rowEl.querySelector('[data-aso-tipo-new]');
 
                         const updateRowExames = () => {
-                            const grupo = getGrupoById(row.grupo_id);
+                            const grupo = getGrupoById(Number(select.value || 0));
                             const count = grupo?.exames?.length ?? 0;
                             if (countEl) {
                                 countEl.textContent = count ? `${count} exame(s)` : '—';
                             }
                             if (!examesWrap || examesWrap.classList.contains('hidden')) return;
-                            renderAsoRowExames(row, examesWrap);
+                            const totalOverride = Number((state.currentGhe.tipos?.[key]?.total_exames ?? grupo?.total) || 0);
+                            renderAsoRowExames(grupo, examesWrap, totalOverride);
                         };
 
                         select.addEventListener('change', () => {
-                            row.grupo_id = Number(select.value || 0);
-                            const grupo = getGrupoById(row.grupo_id);
-                            row.grupo_titulo = grupo?.titulo || '';
-                            row.total_exames = Number(grupo?.total ?? 0);
-                            totalInput.dataset.digits = onlyDigits(Math.round(Number(row.total_exames || 0) * 100));
-                            totalInput.value = brl(Number(row.total_exames || 0));
+                            const grupoId = Number(select.value || 0);
+                            const grupo = getGrupoById(grupoId);
+                            state.currentGhe.tipos[key] = {
+                                grupo_id: grupoId,
+                                grupo_titulo: grupo?.titulo || '',
+                                total_exames: Number(grupo?.total || 0),
+                            };
+                            totalInput.dataset.digits = onlyDigits(Math.round(Number(grupo?.total || 0) * 100));
+                            totalInput.value = brl(Number(grupo?.total || 0));
                             updateRowExames();
-                            syncAsoTipoItems();
                         });
 
                         totalInput.addEventListener('keydown', (e) => {
@@ -836,9 +837,10 @@
                                 const nd = d.slice(0, -1);
                                 totalInput.dataset.digits = nd;
                                 const num = centsDigitsToNumber(nd);
-                                row.total_exames = num;
+                                const current = state.currentGhe.tipos[key] || { grupo_id: Number(select.value || 0) };
+                                current.total_exames = num;
+                                state.currentGhe.tipos[key] = current;
                                 totalInput.value = brl(num);
-                                updateAsoItemFromRow(tipo, row);
                                 return;
                             }
                             if (nav.includes(e.key)) return;
@@ -849,29 +851,39 @@
                             const digits = onlyDigits(totalInput.value);
                             totalInput.dataset.digits = digits;
                             const num = centsDigitsToNumber(digits);
-                            row.total_exames = num;
+                            const current = state.currentGhe.tipos[key] || { grupo_id: Number(select.value || 0) };
+                            current.total_exames = num;
+                            state.currentGhe.tipos[key] = current;
                             totalInput.value = brl(num);
-                            updateAsoItemFromRow(tipo, row);
+                            if (examesWrap && !examesWrap.classList.contains('hidden')) {
+                                const grupo = getGrupoById(Number(select.value || 0));
+                                renderAsoRowExames(grupo, examesWrap, num);
+                            }
                         });
 
                         showBtn.addEventListener('click', () => {
                             if (!examesWrap) return;
                             examesWrap.classList.toggle('hidden');
                             if (!examesWrap.classList.contains('hidden')) {
-                                renderAsoRowExames(row, examesWrap);
+                                const grupo = getGrupoById(Number(select.value || 0));
+                                const totalOverride = Number((state.currentGhe.tipos?.[key]?.total_exames ?? grupo?.total) || 0);
+                                renderAsoRowExames(grupo, examesWrap, totalOverride);
                             }
                         });
 
-                        removeBtn.addEventListener('click', () => removeAsoGrupoRow(tipo, row.row_id));
+                        newBtn?.addEventListener('click', () => {
+                            if (typeof window.openProtocolosModal === 'function') {
+                                window.openProtocolosModal();
+                            }
+                        });
 
                         updateRowExames();
-                        dom.rowsWrap.appendChild(rowEl);
+                        el.asoTipoRows.appendChild(rowEl);
                     });
                 }
 
-                function renderAsoRowExames(row, target) {
-                    const grupo = getGrupoById(row.grupo_id);
-                    if (!row.grupo_id) {
+                function renderAsoRowExames(grupo, target, totalOverride) {
+                    if (!grupo?.id) {
                         target.innerHTML = '<div class="text-slate-500">Selecione um grupo para ver os exames.</div>';
                         return;
                     }
@@ -879,7 +891,8 @@
                         target.innerHTML = '<div class="text-slate-500">Nenhum exame neste grupo.</div>';
                         return;
                     }
-                    target.innerHTML = grupo.exames.map(ex => {
+                    const exames = ratearExames(grupo.exames, Number(totalOverride || 0));
+                    target.innerHTML = exames.map(ex => {
                         return `<div class="flex items-center justify-between gap-2">
                             <span class="truncate">${escapeHtml(ex.titulo || 'Exame')}</span>
                             <span class="text-slate-700 font-semibold">${brl(ex.preco || 0)}</span>
@@ -887,41 +900,187 @@
                     }).join('');
                 }
 
-                function updateAsoItemFromRow(tipo, row) {
-                    if (!row?.row_id) return;
-                    const item = state.itens.find(it => it?.meta?.aso_row_id === row.row_id);
-                    if (!item) return;
-                    item.valor_unitario = Number(row.total_exames || 0);
-                    recalcItemTotal(item);
-                    render();
+                function ratearExames(exames, novoTotal) {
+                    if (!Array.isArray(exames) || !exames.length) return [];
+                    const somaOriginal = exames.reduce((sum, ex) => sum + Number(ex.preco || 0), 0);
+                    if (!novoTotal) {
+                        return exames;
+                    }
+                    let acumulado = 0;
+                    const result = exames.map((ex, idx) => {
+                        let novoPreco;
+                        if (somaOriginal > 0) {
+                            novoPreco = (Number(ex.preco || 0) / somaOriginal) * novoTotal;
+                        } else {
+                            novoPreco = novoTotal / exames.length;
+                        }
+                        novoPreco = Math.round(novoPreco * 100) / 100;
+                        acumulado += novoPreco;
+                        return { ...ex, preco: novoPreco };
+                    });
+                    const diff = Math.round((novoTotal - acumulado) * 100) / 100;
+                    if (Math.abs(diff) >= 0.01) {
+                        const last = result[result.length - 1];
+                        last.preco = Math.round((Number(last.preco || 0) + diff) * 100) / 100;
+                    }
+                    return result;
                 }
 
-                function updateAsoRowTotalFromItem(item, value) {
-                    const tipo = item?.meta?.aso_tipo;
-                    const rowId = item?.meta?.aso_row_id;
-                    if (!tipo || !rowId) return;
-                    const row = getAsoRow(tipo, rowId);
-                    if (!row) return;
-                    row.total_exames = Number(value || 0);
-                    renderAsoRows(tipo);
+                function getGheConfigKey(cfg) {
+                    if (cfg?.cliente_ghe_id) return `c:${cfg.cliente_ghe_id}`;
+                    if (cfg?.ghe_id) return `g:${cfg.ghe_id}`;
+                    return cfg?._key || uid();
+                }
+
+                function renderGheConfigsTable() {
+                    if (!el.gheConfigsGrid) return;
+                    el.gheConfigsGrid.innerHTML = '';
+
+                    if (!state.gheConfigs.length) {
+                        el.gheConfigsGrid.innerHTML = '<div class="px-3 py-3 text-sm text-slate-500">Nenhum GHE configurado.</div>';
+                        return;
+                    }
+
+                    const chip = (label, grupo) => {
+                        const hasGroup = !!(grupo && grupo !== '—');
+                        const baseClass = hasGroup
+                            ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                            : 'bg-slate-50 text-slate-500 border-slate-200';
+                        return `
+                            <div class="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs ${baseClass}">
+                                <span class="font-semibold">${label}</span>
+                                <span class="text-[11px]">${escapeHtml(grupo || '—')}</span>
+                            </div>
+                        `;
+                    };
+
+                    state.gheConfigs.forEach((cfg) => {
+                        const card = document.createElement('div');
+                        card.className = 'rounded-xl border border-slate-200 bg-white p-4 space-y-3';
+                        const tipos = cfg.tipos || {};
+                        const getGrupo = (tipo) => tipos?.[tipo]?.grupo_titulo || '—';
+                        const totalTipos = ASO_TYPES.length;
+                        const configured = ASO_TYPES.filter(t => tipos?.[t.key]?.grupo_id).length;
+                        const rateado = ASO_TYPES.some(({ key }) => {
+                            const row = tipos?.[key];
+                            if (!row?.grupo_id) return false;
+                            const grupo = getGrupoById(Number(row.grupo_id || 0));
+                            if (!grupo) return false;
+                            return Number(row.total_exames || 0) !== Number(grupo.total || 0);
+                        });
+
+                        card.innerHTML = `
+                            <div class="flex items-center justify-between gap-3">
+                                <div>
+                                    <div class="font-semibold text-slate-800">${escapeHtml(cfg.ghe_nome || 'GHE')}</div>
+                                    <div class="text-xs text-slate-500">${configured}/${totalTipos} tipos configurados</div>
+                                    ${rateado ? '<div class="mt-1 inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] text-amber-800">Rateado</div>' : ''}
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <button type="button" class="text-blue-600 text-sm font-semibold" data-action="edit">Editar</button>
+                                    <button type="button" class="text-red-600 text-sm font-semibold" data-action="del">Excluir</button>
+                                </div>
+                            </div>
+                            <div class="flex flex-wrap gap-2">
+                                ${chip('Admissional', getGrupo('admissional'))}
+                                ${chip('Periódico', getGrupo('periodico'))}
+                                ${chip('Demissional', getGrupo('demissional'))}
+                                ${chip('Mudança', getGrupo('mudanca_funcao'))}
+                                ${chip('Retorno', getGrupo('retorno_trabalho'))}
+                            </div>
+                        `;
+
+                        card.querySelector('[data-action="edit"]').addEventListener('click', () => {
+                            state.currentGhe = JSON.parse(JSON.stringify(cfg));
+                            if (el.gheSelect) {
+                                const opt = cfg.ghe_id ? String(cfg.ghe_id) : '';
+                                el.gheSelect.value = opt;
+                            }
+                            if (el.asoGheTitle) el.asoGheTitle.textContent = cfg.ghe_nome || '—';
+                            if (el.btnAddGheConfig) el.btnAddGheConfig.textContent = 'Atualizar este GHE';
+                            renderAsoTipoRows();
+                        });
+
+                        card.querySelector('[data-action="del"]').addEventListener('click', () => {
+                            const key = getGheConfigKey(cfg);
+                            state.gheConfigs = state.gheConfigs.filter(c => getGheConfigKey(c) !== key);
+                            syncAsoTipoItems();
+                            renderGheConfigsTable();
+                            updateTabBadges();
+                        });
+
+                        el.gheConfigsGrid.appendChild(card);
+                    });
+                }
+
+                function addOrUpdateCurrentGheConfig() {
+                    if (!el.clienteSelect?.value) {
+                        showItemAlert('Selecione um cliente antes de configurar o GHE.');
+                        return;
+                    }
+                    if (!state.currentGhe.ghe_id && !state.currentGhe.cliente_ghe_id) {
+                        showItemAlert('Selecione um GHE para adicionar.');
+                        return;
+                    }
+
+                    const gheNome = state.currentGhe.ghe_nome || (state.gheCatalog.find(g => Number(g.id) === Number(state.currentGhe.ghe_id))?.nome || '');
+                    const tipos = {};
+                    ASO_TYPES.forEach(({ key }) => {
+                        const row = state.currentGhe.tipos?.[key] || {};
+                        if (!row?.grupo_id) return;
+                        const grupo = getGrupoById(row.grupo_id);
+                        tipos[key] = {
+                            grupo_id: row.grupo_id,
+                            grupo_titulo: grupo?.titulo || row.grupo_titulo || '',
+                            total_exames: Number(row.total_exames || grupo?.total || 0),
+                        };
+                    });
+                    if (!Object.keys(tipos).length) {
+                        showItemAlert('Selecione ao menos um grupo de exames.');
+                        return;
+                    }
+
+                    const cfg = {
+                        cliente_ghe_id: state.currentGhe.cliente_ghe_id || null,
+                        ghe_id: state.currentGhe.ghe_id || null,
+                        ghe_nome: gheNome,
+                        tipos,
+                    };
+
+                    const key = getGheConfigKey(cfg);
+                    const idx = state.gheConfigs.findIndex(c => getGheConfigKey(c) === key);
+                    if (idx >= 0) {
+                        state.gheConfigs[idx] = cfg;
+                    } else {
+                        state.gheConfigs.push(cfg);
+                    }
+
+                    syncAsoTipoItems();
+                    renderGheConfigsTable();
+                    resetCurrentGheConfig();
+                    updateTabBadges();
                 }
 
                 function syncAsoTipoItems() {
-                    const selectedRows = new Map();
-                    ASO_TYPES.forEach(({ key, label }) => {
-                        (state.asoGrupos?.[key] || []).forEach((row) => {
+                    const selected = new Map();
+                    state.gheConfigs.forEach(cfg => {
+                        const baseKey = getGheConfigKey(cfg);
+                        const tipos = cfg.tipos || {};
+                        ASO_TYPES.forEach(({ key, label }) => {
+                            const row = tipos[key];
                             if (!row?.grupo_id) return;
-                            selectedRows.set(row.row_id, { row, tipo: key, label });
+                            const asoKey = `${baseKey}:${key}`;
+                            selected.set(asoKey, { cfg, row, tipo: key, label });
                         });
                     });
 
                     state.itens = state.itens.filter(it => {
-                        const rowId = it?.meta?.aso_row_id;
-                        return !rowId || selectedRows.has(rowId);
+                        const asoKey = it?.meta?.aso_key;
+                        return !asoKey || selected.has(asoKey);
                     });
 
-                    selectedRows.forEach(({ row, tipo, label }) => {
-                        let item = state.itens.find(it => it?.meta?.aso_row_id === row.row_id);
+                    selected.forEach(({ cfg, row, tipo, label }, asoKey) => {
+                        let item = state.itens.find(it => it?.meta?.aso_key === asoKey);
                         if (!item) {
                             item = {
                                 id: uid(),
@@ -941,12 +1100,18 @@
                         }
 
                         item.nome = `ASO - ${label}`;
-                        item.descricao = row.grupo_titulo ? `Grupo: ${row.grupo_titulo}` : null;
+                        const descParts = [];
+                        if (cfg.ghe_nome) descParts.push(`GHE: ${cfg.ghe_nome}`);
+                        if (row.grupo_titulo) descParts.push(`Grupo: ${row.grupo_titulo}`);
+                        item.descricao = descParts.length ? descParts.join(' | ') : null;
                         item.meta = {
                             ...(item.meta || {}),
                             aso_tipo: tipo,
                             grupo_id: row.grupo_id,
-                            aso_row_id: row.row_id,
+                            cliente_ghe_id: cfg.cliente_ghe_id || null,
+                            ghe_id: cfg.ghe_id || null,
+                            ghe_nome: cfg.ghe_nome || null,
+                            aso_key: asoKey,
                         };
                         item.quantidade = 1;
                         item.valor_unitario = Number(row.total_exames || 0);
@@ -956,11 +1121,82 @@
                     render();
                 }
 
-                function bindAsoGrupoEvents() {
-                    ASO_TYPES.forEach(({ key }) => {
-                        const dom = asoDom[key];
-                        dom?.addBtn?.addEventListener('click', () => addAsoGrupoRow(key));
+                function updateAsoConfigFromItem(item, value) {
+                    const asoKey = item?.meta?.aso_key || '';
+                    if (!asoKey) return;
+                    const [baseKey, tipo] = asoKey.split(':').length >= 3
+                        ? [asoKey.split(':').slice(0, 2).join(':'), asoKey.split(':').slice(2).join(':')]
+                        : asoKey.split(':');
+                    const cfg = state.gheConfigs.find(c => getGheConfigKey(c) === baseKey);
+                    if (!cfg || !cfg.tipos?.[tipo]) return;
+                    cfg.tipos[tipo].total_exames = Number(value || 0);
+                    renderGheConfigsTable();
+                    syncHiddenInputs();
+                }
+
+                function bindAsoHandlers() {
+                    el.gheSelect?.addEventListener('change', setCurrentGheFromSelect);
+                    el.btnAddGheConfig?.addEventListener('click', addOrUpdateCurrentGheConfig);
+                    el.btnGheGlobal?.addEventListener('click', () => {
+                        if (typeof window.openGheModal === 'function') {
+                            window.openGheModal();
+                        }
                     });
+
+                    window.addEventListener('protocolos:updated', () => {
+                        loadGruposExames();
+                    });
+                    window.addEventListener('ghes:updated', () => {
+                        loadGheCatalog();
+                    });
+
+                    if (el.clienteSelect && !INITIAL?.isEdit) {
+                        el.clienteSelect.addEventListener('change', () => {
+                            const clienteId = el.clienteSelect.value;
+                            if (!clienteId) return;
+                            loadClienteAsoGrupos(clienteId);
+                        });
+                        if (el.clienteSelect.value) {
+                            loadClienteAsoGrupos(el.clienteSelect.value);
+                        }
+                    }
+
+                    if (INITIAL?.isEdit) {
+                        renderGheConfigsTable();
+                        resetCurrentGheConfig();
+                    }
+                }
+
+                async function loadClienteAsoGrupos(clienteId) {
+                    try {
+                        const res = await fetch(`${URLS.clientesAsoGrupos}?cliente_id=${clienteId}`, { headers: { 'Accept': 'application/json' } });
+                        const json = await res.json();
+                        const rows = json.data || [];
+                        const grouped = new Map();
+                        rows.forEach(r => {
+                            const key = r.cliente_ghe_id ? `c:${r.cliente_ghe_id}` : (r.ghe_id ? `g:${r.ghe_id}` : uid());
+                            if (!grouped.has(key)) {
+                                grouped.set(key, {
+                                    cliente_ghe_id: r.cliente_ghe_id || null,
+                                    ghe_id: r.ghe_id || null,
+                                    ghe_nome: r.ghe_nome || '',
+                                    tipos: {},
+                                });
+                            }
+                            const cfg = grouped.get(key);
+                            cfg.tipos[r.tipo_aso] = {
+                                grupo_id: r.grupo_id,
+                                grupo_titulo: r.grupo_titulo || '',
+                                total_exames: Number(r.total_exames || 0),
+                            };
+                        });
+                        state.gheConfigs = Array.from(grouped.values());
+                        syncAsoTipoItems();
+                        renderGheConfigsTable();
+                        resetCurrentGheConfig();
+                    } catch (e) {
+                        console.error(e);
+                    }
                 }
 
                 function getAsoTotals() {
@@ -976,14 +1212,8 @@
                 }
 
                 function updateTabBadges() {
-                    const badgeGhe = document.getElementById('badgeTabGhe');
                     const badgeTrein = document.getElementById('badgeTabTreinamentos');
-                    const temGhe = !!gheInfo.has;
                     const temTrein = state.itens.some(it => (String(it.tipo || '')).toUpperCase() === 'TREINAMENTO_NR');
-
-                    if (badgeGhe) {
-                        badgeGhe.classList.toggle('hidden', !temGhe);
-                    }
                     if (badgeTrein) {
                         badgeTrein.classList.toggle('hidden', !temTrein);
                     }
@@ -1076,22 +1306,6 @@
                     return item.valor_total;
                 }
 
-                function applyGheToAsoItems() {
-                    const gheTotal = Number(gheInfo.total || 0);
-                    if (!gheTotal) return;
-                    const asoItems = state.itens.filter(it => hasAsoItem(it) && !it?.meta?.aso_tipo);
-                    if (!asoItems.length) return;
-                    const totalAtual = asoItems.reduce((sum, it) => sum + Number(it.valor_total || 0), 0);
-                    if (totalAtual > 0) return;
-                    const target = asoItems[0];
-                    if (!target.servico_id && SERVICO_ASO_ID) {
-                        target.servico_id = Number(SERVICO_ASO_ID);
-                    }
-                    const qtd = Number(target.quantidade || 1);
-                    target.valor_unitario = qtd > 0 ? (gheTotal / qtd) : gheTotal;
-                    recalcItemTotal(target);
-                }
-
                 function removeEsocialItens() {
                     const servicoId = Number(SERVICO_ESOCIAL_ID || 0);
                     const before = state.itens.length;
@@ -1107,21 +1321,12 @@
 
                 function recalcTotals() {
                     let total = 0;
-                    applyGheToAsoItems();
                     removeEsocialItens();
                     state.itens.forEach(i => total += Number(i.valor_total || 0));
                     if (state.esocial.enabled) total += Number(state.esocial.valor || 0);
                     el.total.textContent = brl(total);
                     updateTabBadges();
                 }
-
-                window.addEventListener('ghe:updated', (event) => {
-                    const detail = event?.detail || {};
-                    gheInfo.has = !!detail.hasGhe;
-                    gheInfo.total = Number(detail.total || 0);
-                    ensureAsoItemForGhe();
-                    recalcTotals();
-                });
 
                 function syncHiddenInputs() {
                     removeEsocialItens();
@@ -1189,19 +1394,34 @@
                     el.esocialQtdHidden.value = state.esocial.enabled ? (state.esocial.qtd || 0) : '';
                     el.esocialValorHidden.value = state.esocial.enabled ? Number(state.esocial.valor || 0).toFixed(2) : '0.00';
 
-                    Object.entries(state.asoGrupos || {}).forEach(([tipo, rows]) => {
-                        (rows || []).forEach((grupo, idx) => {
-                            if (!grupo?.grupo_id) return;
-                            const base = `aso_grupos[${tipo}][${idx}]`;
-                            const pairs = [
-                                ['grupo_id', grupo.grupo_id],
-                                ['total_exames', Number(grupo.total_exames || 0).toFixed(2)],
-                            ];
+                    state.gheConfigs.forEach((cfg, idx) => {
+                        const base = `cliente_aso_grupos[${idx}]`;
+                        const pairs = [
+                            ['ghe_id', cfg.ghe_id ?? ''],
+                            ['cliente_ghe_id', cfg.cliente_ghe_id ?? ''],
+                            ['ghe_nome', cfg.ghe_nome ?? ''],
+                        ];
+                        pairs.forEach(([k,v]) => {
+                            const input = document.createElement('input');
+                            input.type = 'hidden';
+                            input.name = `${base}[${k}]`;
+                            input.value = v;
+                            input.setAttribute('data-hidden-aso-grupos','1');
+                            el.form.appendChild(input);
+                        });
 
-                            pairs.forEach(([k,v]) => {
+                        ASO_TYPES.forEach(({ key }) => {
+                            const row = cfg.tipos?.[key];
+                            if (!row?.grupo_id) return;
+                            const rowBase = `${base}[tipos][${key}]`;
+                            const rowPairs = [
+                                ['grupo_id', row.grupo_id],
+                                ['total_exames', Number(row.total_exames || 0).toFixed(2)],
+                            ];
+                            rowPairs.forEach(([k,v]) => {
                                 const input = document.createElement('input');
                                 input.type = 'hidden';
-                                input.name = `${base}[${k}]`;
+                                input.name = `${rowBase}[${k}]`;
                                 input.value = v;
                                 input.setAttribute('data-hidden-aso-grupos','1');
                                 el.form.appendChild(input);
@@ -1384,7 +1604,7 @@
 	                                if (totalEl) totalEl.textContent = brl(item.valor_total);
 	                                recalcTotals();
 	                                syncHiddenInputs();
-                                    if (isAsoTipo) updateAsoRowTotalFromItem(item, num);
+                                    if (isAsoTipo) updateAsoConfigFromItem(item, num);
 	                                return;
 	                            }
 
@@ -1405,7 +1625,7 @@
 	                            if (totalEl) totalEl.textContent = brl(item.valor_total);
 	                            recalcTotals();
 	                            syncHiddenInputs();
-                                if (isAsoTipo) updateAsoRowTotalFromItem(item, num);
+                                if (isAsoTipo) updateAsoConfigFromItem(item, num);
 	                        });
 
                         el.lista.appendChild(row);
@@ -1489,7 +1709,6 @@
 
                     recalcItemTotal(item);
                     state.itens.push(item);
-                    applyGheToAsoItems();
                     render();
                     showItemToast(`Serviço: ${servicoNome}`);
                     if (Number(item.valor_unitario || 0) <= 0) {
@@ -1526,7 +1745,6 @@
 
                     recalcItemTotal(item);
                     state.itens.push(item);
-                    applyGheToAsoItems();
                     render();
                     showItemToast(`Treinamento: ${nome}`);
                     if (Number(item.valor_unitario || 0) <= 0) {
@@ -1618,13 +1836,21 @@
                 function removeItem(itemId) {
                     const item = state.itens.find(x => x.id === itemId);
                     if (item?.meta?.aso_tipo) {
-                        const tipo = item.meta.aso_tipo;
-                        if (item.meta.aso_row_id) {
-                            removeAsoGrupoRow(tipo, item.meta.aso_row_id);
-                            return;
+                        const asoKey = item?.meta?.aso_key || '';
+                        if (asoKey) {
+                            const parts = asoKey.split(':');
+                            const baseKey = parts.length >= 3 ? parts.slice(0, 2).join(':') : parts[0];
+                            const tipo = parts.length >= 3 ? parts.slice(2).join(':') : parts[1];
+                            const cfg = state.gheConfigs.find(c => getGheConfigKey(c) === baseKey);
+                            if (cfg && cfg.tipos?.[tipo]) {
+                                delete cfg.tipos[tipo];
+                                if (!Object.keys(cfg.tipos || {}).length) {
+                                    state.gheConfigs = state.gheConfigs.filter(c => getGheConfigKey(c) !== baseKey);
+                                }
+                            }
                         }
-                        state.itens = state.itens.filter(x => x.id !== itemId);
-                        render();
+                        syncAsoTipoItems();
+                        renderGheConfigsTable();
                         return;
                     }
                     state.itens = state.itens.filter(x => x.id !== itemId);
@@ -2029,17 +2255,6 @@
                         }
                     }
                 })();
-
-                document.getElementById('btnGheCliente')?.addEventListener('click', () => {
-                    const sel = el.clienteSelect?.value || '';
-                    const nome = el.clienteSelect?.selectedOptions?.[0]?.textContent?.trim() || '';
-                    if (typeof setGheCliente === 'function') {
-                        setGheCliente(sel, nome);
-                    }
-                    if (typeof openGheModal === 'function') {
-                        openGheModal();
-                    }
-                });
 
                 // B) Botão “Pacote de Treinamentos”
                 document.querySelectorAll('[data-action="add-treinamento"]').forEach(btn => {

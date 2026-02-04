@@ -38,7 +38,6 @@ class ClienteDashboardController extends Controller
         [$contratoAtivo, $servicosContrato, $servicosIds] = $this->servicosLiberadosPorContrato($cliente);
 
         $precos = $this->precosPorContrato($contratoAtivo, $servicosIds);
-        $valoresAsoPorTipo = $this->valoresAsoPorTipo($contratoAtivo, $servicosIds['aso'] ?? null);
         $tabela = $this->tabelaAtiva($cliente);
         if (empty(array_filter($precos))) {
             $precos = $this->precosPorServico($cliente, $tabela);
@@ -47,6 +46,7 @@ class ClienteDashboardController extends Controller
         $faturaTotal = $this->faturaTotal($cliente);
         $tarefasEmAndamento = $this->tarefasEmAndamento($cliente, false);
         $totalEmAndamento = $this->totalEmAndamento($contratoAtivo, $tarefasEmAndamento);
+        $faturaTotal += $totalEmAndamento;
 
         $totalPago = (float) ContaReceberItem::query()
             ->where('empresa_id', $cliente->empresa_id)
@@ -65,7 +65,6 @@ class ClienteDashboardController extends Controller
             'cliente'      => $cliente,
             'temTabela'    => $temTabela,
             'precos'       => $precos,
-            'valoresAsoPorTipo' => $valoresAsoPorTipo,
             'faturaTotal'  => $faturaTotal,
             'totalEmAndamento' => $totalEmAndamento,
             'contratoAtivo' => $contratoAtivo,
@@ -98,7 +97,6 @@ class ClienteDashboardController extends Controller
 
         [$contratoAtivo, $servicosContrato, $servicosIds] = $this->servicosLiberadosPorContrato($cliente);
         $precos = $this->precosPorContrato($contratoAtivo, $servicosIds);
-        $valoresAsoPorTipo = $this->valoresAsoPorTipo($contratoAtivo, $servicosIds['aso'] ?? null);
         $tabela = $this->tabelaAtiva($cliente);
         if (empty(array_filter($precos))) {
             $precos = $this->precosPorServico($cliente, $tabela);
@@ -122,7 +120,7 @@ class ClienteDashboardController extends Controller
         $tarefasEmAndamento = $this->tarefasEmAndamento($cliente, false);
         $totalEmAndamento = $this->totalEmAndamento($contratoAtivo, $tarefasEmAndamento);
 
-        $totalFaturaAberto = $contasAbertasNaoVencidas + $totalEmAndamento;
+        $totalFaturaAberto = $this->faturaTotal($cliente) + $totalEmAndamento;
         $totalPago = (float) ContaReceberItem::query()
             ->where('empresa_id', $cliente->empresa_id)
             ->where('cliente_id', $cliente->id)
@@ -230,17 +228,18 @@ class ClienteDashboardController extends Controller
             ->orderByDesc('data_realizacao')
             ->paginate(10)
             ->withQueryString();
+        $itensEmAberto = $this->itensEmAndamento($contratoAtivo, $cliente);
 
         return view('clientes.faturas.index', [
             'user'         => $user,
             'cliente'      => $cliente,
             'temTabela'    => $temTabela,
             'precos'       => $precos,
-            'valoresAsoPorTipo' => $valoresAsoPorTipo,
             'totalFaturaAberto' => $totalFaturaAberto,
             'totalPago' => $totalPago,
             'totalVencido' => $totalVencido,
             'itens'        => $itens,
+            'itensEmAberto' => $itensEmAberto,
             'filtros' => [
                 'data_inicio' => $dataInicio,
                 'data_fim' => $dataFim,
@@ -345,6 +344,8 @@ class ClienteDashboardController extends Controller
             $precos[$slug] = $this->precoDoServico($tabela, $servicoId);
         }
 
+        $precos['aso'] = null;
+
         return $precos;
     }
 
@@ -404,14 +405,15 @@ class ClienteDashboardController extends Controller
         }
 
         $asoServicoId = app(AsoGheService::class)->resolveServicoAsoIdFromContrato($contratoAtivo);
-        $tiposAso = $this->tiposAsoPorTarefaIds($tarefas, $asoServicoId);
+        $dadosAso = $this->dadosAsoPorTarefaIds($tarefas, $asoServicoId);
         $itensPorServico = $contratoAtivo->itens->keyBy('servico_id');
         $total = 0.0;
 
         foreach ($tarefas as $tarefa) {
             if ($asoServicoId && (int) $tarefa->servico_id === (int) $asoServicoId) {
-                $tipoAso = $tiposAso[$tarefa->id] ?? null;
-                $valorAso = $this->valorAsoContratoPorTipo($contratoAtivo, $asoServicoId, $tipoAso);
+                $tipoAso = $dadosAso[$tarefa->id]['tipo_aso'] ?? null;
+                $funcaoId = $dadosAso[$tarefa->id]['funcao_id'] ?? null;
+                $valorAso = $this->valorAsoContratoPorFuncao($contratoAtivo, $funcaoId, $tipoAso);
                 if ($valorAso !== null) {
                     $total += $valorAso;
                     continue;
@@ -439,12 +441,13 @@ class ClienteDashboardController extends Controller
         }
 
         $asoServicoId = app(AsoGheService::class)->resolveServicoAsoIdFromContrato($contratoAtivo);
-        $tiposAso = $this->tiposAsoPorTarefaIds($tarefas, $asoServicoId);
+        $dadosAso = $this->dadosAsoPorTarefaIds($tarefas, $asoServicoId);
         $itensPorServico = $contratoAtivo->itens->keyBy('servico_id');
         foreach ($tarefas as $tarefa) {
             if ($asoServicoId && (int) $tarefa->servico_id === (int) $asoServicoId) {
-                $tipoAso = $tiposAso[$tarefa->id] ?? null;
-                $valorAso = $this->valorAsoContratoPorTipo($contratoAtivo, $asoServicoId, $tipoAso);
+                $tipoAso = $dadosAso[$tarefa->id]['tipo_aso'] ?? null;
+                $funcaoId = $dadosAso[$tarefa->id]['funcao_id'] ?? null;
+                $valorAso = $this->valorAsoContratoPorFuncao($contratoAtivo, $funcaoId, $tipoAso);
                 if ($valorAso !== null) {
                     $tarefa->setAttribute('valor_estimado', $valorAso);
                     $total += $valorAso;
@@ -463,7 +466,7 @@ class ClienteDashboardController extends Controller
         return $total;
     }
 
-    private function tiposAsoPorTarefaIds(iterable $tarefas, ?int $asoServicoId): array
+    private function dadosAsoPorTarefaIds(iterable $tarefas, ?int $asoServicoId): array
     {
         if (!$asoServicoId) {
             return [];
@@ -482,17 +485,83 @@ class ClienteDashboardController extends Controller
 
         return AsoSolicitacoes::query()
             ->whereIn('tarefa_id', $ids)
-            ->pluck('tipo_aso', 'tarefa_id')
+            ->with('funcionario:id,funcao_id')
+            ->get()
+            ->mapWithKeys(function ($aso) {
+                return [
+                    $aso->tarefa_id => [
+                        'tipo_aso' => $aso->tipo_aso,
+                        'funcao_id' => $aso->funcionario?->funcao_id,
+                    ],
+                ];
+            })
             ->all();
     }
 
-    private function valorAsoContratoPorTipo(?ClienteContrato $contrato, ?int $servicoId, ?string $tipoAso): ?float
+    private function valorAsoContratoPorFuncao(?ClienteContrato $contrato, ?int $funcaoId, ?string $tipoAso): ?float
     {
-        if (!$contrato || !$servicoId || !$tipoAso) {
+        if (!$contrato || !$funcaoId || !$tipoAso) {
             return null;
         }
 
-        return app(AsoGheService::class)->totalAsoContratoPorTipo($contrato, $servicoId, $tipoAso);
+        return app(AsoGheService::class)->resolvePrecoAsoPorFuncaoTipo($contrato, $funcaoId, $tipoAso);
+    }
+
+    private function itensEmAndamento(?ClienteContrato $contratoAtivo, Cliente $cliente): \Illuminate\Support\Collection
+    {
+        if (!$contratoAtivo) {
+            return collect();
+        }
+
+        $tarefas = $this->tarefasEmAndamento($cliente, true);
+        if ($tarefas->isEmpty()) {
+            return collect();
+        }
+
+        $ids = $tarefas->pluck('id')->filter()->values()->all();
+        if (!empty($ids)) {
+            $idsComVenda = Venda::query()
+                ->whereIn('tarefa_id', $ids)
+                ->pluck('tarefa_id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+            if (!empty($idsComVenda)) {
+                $tarefas = $tarefas->reject(fn ($t) => in_array((int) $t->id, $idsComVenda, true));
+            }
+        }
+
+        if ($tarefas->isEmpty()) {
+            return collect();
+        }
+
+        $asoServicoId = app(AsoGheService::class)->resolveServicoAsoIdFromContrato($contratoAtivo);
+        $dadosAso = $this->dadosAsoPorTarefaIds($tarefas, $asoServicoId);
+        $itensPorServico = $contratoAtivo->itens->keyBy('servico_id');
+
+        return $tarefas->map(function ($tarefa) use ($asoServicoId, $dadosAso, $itensPorServico, $contratoAtivo) {
+            $valor = null;
+            if ($asoServicoId && (int) $tarefa->servico_id === (int) $asoServicoId) {
+                $tipoAso = $dadosAso[$tarefa->id]['tipo_aso'] ?? null;
+                $funcaoId = $dadosAso[$tarefa->id]['funcao_id'] ?? null;
+                $valor = $this->valorAsoContratoPorFuncao($contratoAtivo, $funcaoId, $tipoAso);
+            } else {
+                $valor = (float) ($itensPorServico->get($tarefa->servico_id)->preco_unitario_snapshot ?? 0);
+            }
+
+            if ($valor === null) {
+                return null;
+            }
+
+            return (object) [
+                'origem' => 'andamento',
+                'servico' => $tarefa->servico?->nome ?? 'Serviço',
+                'status' => 'EM ANDAMENTO',
+                'data_realizacao' => $tarefa->created_at,
+                'vencimento' => null,
+                'valor' => $valor,
+                'valor_real' => $valor,
+            ];
+        })->filter()->values();
     }
 
     private function contratoAtivo(Cliente $cliente): ?ClienteContrato
@@ -620,7 +689,7 @@ class ClienteDashboardController extends Controller
             }
 
             if ($slug === 'aso') {
-                $precos[$slug] = $this->precoAsoPorContrato($contrato, $servicoId);
+                $precos[$slug] = null;
                 continue;
             }
 
@@ -643,76 +712,6 @@ class ClienteDashboardController extends Controller
         }
 
         return $precos;
-    }
-
-    private function precoAsoPorContrato(ClienteContrato $contrato, int $servicoId): ?float
-    {
-        $asoService = app(AsoGheService::class);
-        $tipos = $asoService->resolveTiposAsoContrato($contrato);
-        $tipoPreferido = $this->tipoPreferencialAso($tipos);
-
-        if ($tipoPreferido) {
-            $valor = $asoService->totalAsoContratoPorTipo($contrato, $servicoId, $tipoPreferido);
-            if ($valor !== null) {
-                return $valor;
-            }
-        }
-
-        $item = $contrato->itens()
-            ->where('servico_id', $servicoId)
-            ->where('ativo', true)
-            ->orderBy('descricao_snapshot')
-            ->first();
-
-        return $item?->preco_unitario_snapshot ? (float) $item->preco_unitario_snapshot : null;
-    }
-
-    private function tipoPreferencialAso(array $tipos): ?string
-    {
-        $ordem = ['admissional', 'periodico', 'demissional', 'mudanca_funcao', 'retorno_trabalho'];
-        foreach ($ordem as $tipo) {
-            if (in_array($tipo, $tipos, true)) {
-                return $tipo;
-            }
-        }
-
-        return $tipos[0] ?? null;
-    }
-
-    private function valoresAsoPorTipo(?ClienteContrato $contrato, ?int $servicoId): array
-    {
-        if (!$contrato || !$servicoId) {
-            return [];
-        }
-
-        $asoService = app(AsoGheService::class);
-        $tipos = $asoService->resolveTiposAsoContrato($contrato);
-        if (empty($tipos)) {
-            return [];
-        }
-
-        $labels = [
-            'admissional' => 'Admissional',
-            'periodico' => 'Periódico',
-            'demissional' => 'Demissional',
-            'mudanca_funcao' => 'Mudança de Função',
-            'retorno_trabalho' => 'Retorno ao Trabalho',
-        ];
-
-        $valores = [];
-        foreach ($tipos as $tipo) {
-            $total = $asoService->totalAsoContratoPorTipo($contrato, $servicoId, $tipo);
-            if ($total === null) {
-                continue;
-            }
-            $valores[] = [
-                'tipo' => $tipo,
-                'label' => $labels[$tipo] ?? ucfirst(str_replace('_', ' ', $tipo)),
-                'valor' => $total,
-            ];
-        }
-
-        return $valores;
     }
 
     private function telefoneVendedor(Cliente $cliente, ?ClienteContrato $contratoAtivo): string

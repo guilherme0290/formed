@@ -190,6 +190,7 @@
 
                                 <select name="funcionario_id"
                                         id="funcionario_id"
+                                        data-funcionario-url="{{ route('operacional.kanban.aso.funcionario', ['cliente' => $cliente, 'funcionario' => 'FUNCIONARIO_ID']) }}"
                                         class="w-full rounded-xl border border-slate-200 text-sm py-2.5 px-3">
                                     <option value="">Novo colaborador</option>
                                     @foreach($funcionarios as $func)
@@ -232,6 +233,32 @@
                                     :funcoes="$funcoes"
                                     :selected="old('funcao_id', $funcionario->funcao_id ?? null)"
                                 />
+                            </div>
+
+                            <div id="asoResumo"
+                                 data-aso-resumo-url="{{ $asoResumoUrl ?? '' }}"
+                                 class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                                <div class="flex items-center justify-between">
+                                    <h4 class="text-xs font-semibold text-slate-700">Resumo do ASO</h4>
+                                    <span class="text-[10px] text-slate-400">GHE + Grupo de Exames</span>
+                                </div>
+                                <p id="asoResumoStatus" class="mt-2 text-xs text-slate-500">
+                                    Selecione o tipo de ASO e a função para visualizar os exames.
+                                </p>
+                                <div class="mt-3 flex items-center justify-between">
+                                    <button type="button"
+                                            id="asoResumoToggle"
+                                            class="text-xs font-medium text-sky-600 hover:text-sky-700 hidden">
+                                        Ver exames
+                                    </button>
+                                    <span id="asoResumoCount" class="text-[11px] text-slate-400 hidden"></span>
+                                </div>
+
+                                <div id="asoResumoBadges" class="mt-3 flex flex-wrap gap-2 hidden"></div>
+                                <div id="asoResumoTotal" class="mt-3 flex items-center justify-between text-xs font-semibold text-slate-700 hidden">
+                                    <span>Total estimado</span>
+                                    <span id="asoResumoTotalValor">R$ 0,00</span>
+                                </div>
                             </div>
 
                             {{-- CPF / RG / Data Nascimento --}}
@@ -424,6 +451,7 @@
                         {{-- Botão final --}}
                         <div class="mt-4">
                             <button type="submit"
+                                    id="btnSubmitAso"
                                     @disabled(!$temTiposAsoPermitidos || !$tipoAsoSelecionadoPermitido)
                                     class="w-full px-6 py-3 rounded-xl bg-sky-500 hover:bg-sky-600 text-white text-sm font-medium shadow-sm {{ (!$temTiposAsoPermitidos || !$tipoAsoSelecionadoPermitido) ? 'opacity-60 cursor-not-allowed hover:bg-sky-500' : '' }}">
                                 {{ $isEdit ? 'Atualizar Tarefa ASO' : 'Criar Tarefa ASO' }}
@@ -664,6 +692,8 @@
                 const selectFuncionario = document.getElementById('funcionario_id');
                 const selectTipoAso = document.querySelector('select[name="tipo_aso"]');
                 const selectFuncao = document.getElementById('campo_funcao');
+                const resumoEl = document.getElementById('asoResumo');
+                const btnSubmitAso = document.getElementById('btnSubmitAso');
 
                 if (!selectFuncionario) return;
 
@@ -710,6 +740,219 @@
                 selectFuncionario.addEventListener('change', toggleCamposFuncionario);
                 if (selectTipoAso) {
                     selectTipoAso.addEventListener('change', toggleCamposFuncionario);
+                }
+
+                if (selectFuncionario) {
+                    const funcionarioUrlTemplate = selectFuncionario.dataset.funcionarioUrl || '';
+                    const campoNome = document.getElementById('campo_nome');
+                    const campoCpf = document.getElementById('campo_cpf');
+                    const campoRg = document.getElementById('campo_rg');
+                    const campoDataNascimento = document.getElementById('campo_data_nascimento');
+                    const campoCelular = document.querySelector('input[name="celular"]');
+
+                    const preencherCamposFuncionario = (dados) => {
+                        if (!dados) return;
+                        if (campoNome) campoNome.value = dados.nome || '';
+                        if (campoCpf) campoCpf.value = dados.cpf || '';
+                        if (campoRg) campoRg.value = dados.rg || '';
+                        if (campoDataNascimento) campoDataNascimento.value = dados.data_nascimento || '';
+                        if (campoCelular) campoCelular.value = dados.celular || '';
+                        if (selectFuncao && dados.funcao_id) {
+                            selectFuncao.value = String(dados.funcao_id);
+                            selectFuncao.dispatchEvent(new Event('change'));
+                        }
+                    };
+
+                    selectFuncionario.addEventListener('change', function () {
+                        const funcionarioId = selectFuncionario.value;
+                        if (!funcionarioId || !funcionarioUrlTemplate) {
+                            return;
+                        }
+                        const url = funcionarioUrlTemplate.replace('FUNCIONARIO_ID', funcionarioId);
+                        fetch(url, { headers: { 'Accept': 'application/json' } })
+                            .then((response) => response.json().then((json) => ({ ok: response.ok, json })))
+                            .then(({ ok, json }) => {
+                                if (!ok || !json.ok) {
+                                    return;
+                                }
+                                preencherCamposFuncionario(json.funcionario || {});
+                            })
+                            .catch(() => {});
+                    });
+                }
+
+                if (resumoEl) {
+                    const resumoUrl = resumoEl.dataset.asoResumoUrl;
+                    const statusEl = document.getElementById('asoResumoStatus');
+                    const toggleEl = document.getElementById('asoResumoToggle');
+                    const countEl = document.getElementById('asoResumoCount');
+                    const badgesEl = document.getElementById('asoResumoBadges');
+                    const rateadoEl = document.getElementById('asoResumoRateado');
+                    const totalEl = document.getElementById('asoResumoTotal');
+                    const totalValorEl = document.getElementById('asoResumoTotalValor');
+                    let controller = null;
+                    let resumoValido = true;
+
+                    const setSubmitBlocked = (blocked) => {
+                        resumoValido = !blocked;
+                        if (!btnSubmitAso) {
+                            return;
+                        }
+                        const baseDisabled = btnSubmitAso.hasAttribute('data-base-disabled');
+                        if (blocked || baseDisabled) {
+                            btnSubmitAso.setAttribute('disabled', 'disabled');
+                            btnSubmitAso.classList.add('opacity-60', 'cursor-not-allowed');
+                            btnSubmitAso.classList.remove('hover:bg-sky-600');
+                        } else {
+                            btnSubmitAso.removeAttribute('disabled');
+                            btnSubmitAso.classList.remove('opacity-60', 'cursor-not-allowed');
+                            btnSubmitAso.classList.add('hover:bg-sky-600');
+                        }
+                    };
+
+                    if (btnSubmitAso && btnSubmitAso.hasAttribute('disabled')) {
+                        btnSubmitAso.setAttribute('data-base-disabled', '1');
+                    }
+
+                    const formatBRL = (value) => {
+                        if (value === null || value === undefined || isNaN(value)) {
+                            return 'R$ 0,00';
+                        }
+                        return value.toLocaleString('pt-BR', {
+                            style: 'currency',
+                            currency: 'BRL',
+                            minimumFractionDigits: 2,
+                        });
+                    };
+
+                    const setStatus = (text, block = false) => {
+                        if (statusEl) {
+                            statusEl.textContent = text;
+                            statusEl.classList.remove('hidden');
+                        }
+                        if (badgesEl) {
+                            badgesEl.classList.add('hidden');
+                            badgesEl.innerHTML = '';
+                        }
+                        if (rateadoEl) {
+                            rateadoEl.classList.add('hidden');
+                        }
+                        if (toggleEl) {
+                            toggleEl.classList.add('hidden');
+                        }
+                        if (countEl) {
+                            countEl.classList.add('hidden');
+                            countEl.textContent = '';
+                        }
+                        if (totalEl) {
+                            totalEl.classList.add('hidden');
+                        }
+                        setSubmitBlocked(block);
+                    };
+
+                    const renderResumo = (data) => {
+                        if (!badgesEl || !totalEl || !totalValorEl || !toggleEl || !countEl) {
+                            return;
+                        }
+                        const exames = Array.isArray(data.exames) ? data.exames : [];
+                        badgesEl.innerHTML = '';
+                        if (exames.length === 0) {
+                            setStatus('Nenhum exame configurado para esta combinação. Entre em contato com o comercial.', true);
+                            return;
+                        }
+
+                        exames.forEach((exame) => {
+                            const badge = document.createElement('span');
+                            badge.className = 'inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] text-slate-700';
+                            const titulo = document.createElement('span');
+                            titulo.textContent = exame.titulo || 'Exame';
+                            const preco = document.createElement('span');
+                            preco.className = 'text-slate-400';
+                            preco.textContent = formatBRL(Number(exame.preco || 0));
+                            badge.appendChild(titulo);
+                            badge.appendChild(preco);
+                            badgesEl.appendChild(badge);
+                        });
+
+                        if (statusEl) {
+                            statusEl.classList.add('hidden');
+                        }
+                        badgesEl.classList.add('hidden');
+                        toggleEl.classList.remove('hidden');
+                        countEl.classList.remove('hidden');
+                        countEl.textContent = `${exames.length} exame(s)`;
+                        totalEl.classList.remove('hidden');
+                        totalValorEl.textContent = formatBRL(Number(data.total || 0));
+                        if (rateadoEl && data.rateado) {
+                            rateadoEl.classList.remove('hidden');
+                        }
+                        setSubmitBlocked(false);
+                    };
+
+                    const carregarResumo = () => {
+                        if (!resumoUrl) {
+                            return;
+                        }
+
+                        const tipoAso = selectTipoAso ? selectTipoAso.value : '';
+                        const funcaoId = selectFuncao ? selectFuncao.value : '';
+
+                        if (!tipoAso || !funcaoId) {
+                            setStatus('Selecione o tipo de ASO e a função para visualizar os exames.');
+                            return;
+                        }
+
+                        setStatus('Carregando exames...');
+
+                        if (controller) {
+                            controller.abort();
+                        }
+                        controller = new AbortController();
+
+                        const params = new URLSearchParams({
+                            tipo_aso: tipoAso,
+                            funcao_id: funcaoId,
+                        });
+
+                        fetch(`${resumoUrl}?${params.toString()}`, {
+                            headers: {
+                                'Accept': 'application/json',
+                            },
+                            signal: controller.signal,
+                        })
+                            .then((response) => response.json().then((json) => ({ ok: response.ok, json })))
+                            .then(({ ok, json }) => {
+                                if (!ok || !json.ok) {
+                                    const msg = json && json.message ? json.message : 'Não foi possível carregar o resumo.';
+                                    setStatus(msg, true);
+                                    return;
+                                }
+                                renderResumo(json);
+                            })
+                            .catch((err) => {
+                                if (err && err.name === 'AbortError') {
+                                    return;
+                                }
+                                setStatus('Não foi possível carregar o resumo.', true);
+                            });
+                    };
+
+                    if (selectTipoAso) {
+                        selectTipoAso.addEventListener('change', carregarResumo);
+                    }
+                    if (selectFuncao) {
+                        selectFuncao.addEventListener('change', carregarResumo);
+                    }
+
+                    if (toggleEl && badgesEl) {
+                        toggleEl.addEventListener('click', function () {
+                            const isHidden = badgesEl.classList.contains('hidden');
+                            badgesEl.classList.toggle('hidden', !isHidden);
+                            toggleEl.textContent = isHidden ? 'Ocultar exames' : 'Ver exames';
+                        });
+                    }
+
+                    carregarResumo();
                 }
             });
         </script>

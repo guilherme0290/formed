@@ -50,6 +50,20 @@ class FuncoesController extends Controller
         ]);
     }
 
+    public function indexJson(Request $request)
+    {
+        $this->autorizarAcesso($request);
+
+        $empresaId = $request->user()->empresa_id;
+
+        $funcoes = Funcao::query()
+            ->where('empresa_id', $empresaId)
+            ->orderBy('nome')
+            ->get(['id', 'nome', 'descricao', 'ativo']);
+
+        return response()->json(['data' => $funcoes]);
+    }
+
     public function store(Request $request)
     {
         $this->autorizarAcesso($request);

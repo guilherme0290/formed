@@ -7,6 +7,8 @@ use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\Comercial\EsocialFaixaController;
 use App\Http\Controllers\Comercial\ExamesTabPrecoController;
 use App\Http\Controllers\Comercial\ClienteGheController;
+use App\Http\Controllers\Comercial\GheController;
+use App\Http\Controllers\Comercial\ClienteAsoGrupoController;
 use App\Http\Controllers\Comercial\ProtocolosExamesController;
 use App\Http\Controllers\Comercial\PropostaPrecoController;
 use App\Http\Controllers\Master\AcessosController;
@@ -190,6 +192,12 @@ Route::middleware('auth')->group(function () {
 
             Route::post('/aso/clientes/{cliente}', [AsoController::class, 'asoStore'])
                 ->name('aso.store');
+
+            Route::get('/aso/clientes/{cliente}/resumo', [AsoController::class, 'resumo'])
+                ->name('aso.resumo');
+
+            Route::get('/aso/clientes/{cliente}/funcionario/{funcionario}', [AsoController::class, 'funcionarioDados'])
+                ->name('aso.funcionario');
 
             Route::put('/aso/{tarefa}', [AsoController::class, 'update'])->name('aso.update');
 
@@ -667,6 +675,8 @@ Route::middleware('auth')->group(function () {
             Route::prefix('funcoes')->name('funcoes.')->group(function () {
                 Route::get('/', [ComercialFuncoesController::class, 'index'])
                     ->name('index');
+                Route::get('/json', [ComercialFuncoesController::class, 'indexJson'])
+                    ->name('indexJson');
                 Route::post('/', [ComercialFuncoesController::class, 'store'])
                     ->name('store');
                 Route::post('/import', [ComercialFuncoesController::class, 'import'])
@@ -773,6 +783,24 @@ Route::middleware('auth')->group(function () {
                     ->name('update');
                 Route::delete('/{ghe}', [ClienteGheController::class, 'destroy'])
                     ->name('destroy');
+            });
+
+            // GHE (global)
+            Route::prefix('ghes')->name('ghes.')->group(function () {
+                Route::get('/', [GheController::class, 'indexJson'])
+                    ->name('indexJson');
+                Route::post('/', [GheController::class, 'store'])
+                    ->name('store');
+                Route::put('/{ghe}', [GheController::class, 'update'])
+                    ->name('update');
+                Route::delete('/{ghe}', [GheController::class, 'destroy'])
+                    ->name('destroy');
+            });
+
+            // ASO (cliente x GHE)
+            Route::prefix('clientes-aso-grupos')->name('clientes-aso-grupos.')->group(function () {
+                Route::get('/', [ClienteAsoGrupoController::class, 'indexJson'])
+                    ->name('indexJson');
             });
 
             // Minhas Comissões (vendedor)

@@ -140,7 +140,9 @@ class AsoController extends Controller
                 $descricao .= " | Mudança de função: {$funcaoAnteriorNome} → {$funcaoNovaNome}";
             }
 
-            $this->assertGheParaFuncao($empresaId, $cliente->id, $funcionario->funcao_id);
+            $funcaoIdCheck = $data['funcao_id'] ?? $funcionario->funcao_id;
+            $this->assertGheParaFuncao($empresaId, $cliente->id, $funcaoIdCheck);
+            $this->assertGheParaFuncaoTipo($empresaId, $cliente->id, $funcaoIdCheck, $data['tipo_aso']);
 
             if (!empty($data['vai_fazer_treinamento']) && !empty($data['treinamentos'])) {
                 $labels = [];
@@ -243,8 +245,18 @@ class AsoController extends Controller
             ->orderBy('nome')
             ->get();
 
+        $contratoAtivo = app(ContratoClienteService::class)
+            ->getContratoAtivo($cliente->id, $empresaId, null);
+        if ($contratoAtivo && !$contratoAtivo->relationLoaded('itens')) {
+            $contratoAtivo->load('itens');
+        }
+
         $funcoes = app(AsoGheService::class)
-            ->funcoesDisponiveisParaCliente($empresaId, $cliente->id);
+            ->funcoesDisponiveisParaContrato($contratoAtivo, $empresaId);
+        if ($funcoes->isEmpty()) {
+            $funcoes = app(AsoGheService::class)
+                ->funcoesDisponiveisParaCliente($empresaId, $cliente->id);
+        }
 
         $treinamentosDisponiveis = $this->getTreinamentosDisponiveis($empresaId);
 
@@ -323,6 +335,7 @@ class AsoController extends Controller
             'treinamentosPermitidos' => $treinamentosPermitidos,
             'treinamentosSelecionados' => $treinamentosSelecionados,
             'isEdit' => true,
+            'asoResumoUrl' => route('operacional.kanban.aso.resumo', ['cliente' => $cliente]),
         ]);
     }
 
@@ -426,7 +439,9 @@ class AsoController extends Controller
                 $descricao .= " | Mudança de função: {$funcaoAnteriorNome} → {$funcaoNovaNome}";
             }
 
-            $this->assertGheParaFuncao($empresaId, $cliente->id, $funcionario->funcao_id);
+            $funcaoIdCheck = $data['funcao_id'] ?? $funcionario->funcao_id;
+            $this->assertGheParaFuncao($empresaId, $cliente->id, $funcaoIdCheck);
+            $this->assertGheParaFuncaoTipo($empresaId, $cliente->id, $funcaoIdCheck, $data['tipo_aso']);
 
             if (!empty($data['vai_fazer_treinamento']) && !empty($treinamentos)) {
                 $labels = [];
@@ -513,8 +528,18 @@ class AsoController extends Controller
             ->get();
 
         // Funções
+        $contratoAtivo = app(ContratoClienteService::class)
+            ->getContratoAtivo($cliente->id, $empresaId, null);
+        if ($contratoAtivo && !$contratoAtivo->relationLoaded('itens')) {
+            $contratoAtivo->load('itens');
+        }
+
         $funcoes = app(AsoGheService::class)
-            ->funcoesDisponiveisParaCliente($empresaId, $cliente->id);
+            ->funcoesDisponiveisParaContrato($contratoAtivo, $empresaId);
+        if ($funcoes->isEmpty()) {
+            $funcoes = app(AsoGheService::class)
+                ->funcoesDisponiveisParaCliente($empresaId, $cliente->id);
+        }
 
         // Tipos de ASO
         $tiposAso = [
@@ -552,11 +577,38 @@ class AsoController extends Controller
             'dataAso'                  => $dataAso,
             'unidadeSelecionada'       => $unidadeSelecionada,
             'anexos'                   => collect(),
+            'asoResumoUrl'             => route('operacional.kanban.aso.resumo', ['cliente' => $cliente]),
         ]);
     }
 
     private function assertGheParaFuncao(int $empresaId, int $clienteId, ?int $funcaoId): void
     {
+        if (!$funcaoId) {
+            throw ValidationException::withMessages([
+                'funcao_id' => 'Informe a função do colaborador para precificação do ASO via GHE.',
+            ]);
+        }
+
+        $contratoAtivo = app(ContratoClienteService::class)
+            ->getContratoAtivo($clienteId, $empresaId, null);
+        if ($contratoAtivo && !$contratoAtivo->relationLoaded('itens')) {
+            $contratoAtivo->load('itens');
+        }
+
+        $asoService = app(AsoGheService::class);
+        $snapshot = $asoService->resolveAsoSnapshotFromContrato($contratoAtivo);
+        $map = $snapshot['funcao_ghe_map'] ?? [];
+
+        if (!empty($map)) {
+            if (!array_key_exists((string) $funcaoId, $map)) {
+                throw ValidationException::withMessages([
+                    'ghe' => 'Não existe GHE precificado para a função informada. Ajuste o GHE do cliente antes de criar a solicitação.',
+                ]);
+            }
+
+            return;
+        }
+
         $temGhe = ClienteGhe::query()
             ->where('empresa_id', $empresaId)
             ->where('cliente_id', $clienteId)
@@ -566,12 +618,6 @@ class AsoController extends Controller
         if (!$temGhe) {
             throw ValidationException::withMessages([
                 'ghe' => 'Não é possível criar a solicitação de ASO porque o cliente não possui GHE cadastrado. Cadastre o GHE do cliente e tente novamente.',
-            ]);
-        }
-
-        if (!$funcaoId) {
-            throw ValidationException::withMessages([
-                'funcao_id' => 'Informe a função do colaborador para precificação do ASO via GHE.',
             ]);
         }
 
@@ -589,6 +635,125 @@ class AsoController extends Controller
                 'ghe' => 'Não existe GHE precificado para a função informada. Ajuste o GHE do cliente antes de criar a solicitação.',
             ]);
         }
+    }
+
+    private function assertGheParaFuncaoTipo(int $empresaId, int $clienteId, ?int $funcaoId, string $tipoAso): void
+    {
+        if (!$funcaoId) {
+            throw ValidationException::withMessages([
+                'funcao_id' => 'Informe a função do colaborador para validar o ASO.',
+            ]);
+        }
+
+        $contratoAtivo = app(ContratoClienteService::class)
+            ->getContratoAtivo($clienteId, $empresaId, null);
+        if ($contratoAtivo && !$contratoAtivo->relationLoaded('itens')) {
+            $contratoAtivo->load('itens');
+        }
+
+        $asoService = app(AsoGheService::class);
+        $snapshot = $asoService->resolveAsoSnapshotFromContrato($contratoAtivo);
+        if (!$snapshot || empty($snapshot['ghes'])) {
+            throw ValidationException::withMessages([
+                'ghe' => 'Não foi possível localizar configuração de GHE para este cliente. Entre em contato com o comercial.',
+            ]);
+        }
+
+        $ghe = $asoService->resolveGheSnapshotByFuncao($snapshot, $funcaoId);
+        if (!$ghe) {
+            throw ValidationException::withMessages([
+                'ghe' => 'Não existe GHE configurado para a função informada. Entre em contato com o comercial.',
+            ]);
+        }
+
+        $preco = $asoService->resolvePrecoAsoPorFuncaoTipo($contratoAtivo, $funcaoId, $tipoAso);
+        if ($preco === null) {
+            throw ValidationException::withMessages([
+                'ghe' => 'Não existe configuração de ASO para esta função e tipo. Entre em contato com o comercial.',
+            ]);
+        }
+    }
+
+    public function funcionarioDados(Cliente $cliente, Funcionario $funcionario, Request $request)
+    {
+        $usuario = $request->user();
+        $empresaId = $usuario->empresa_id;
+
+        abort_if($cliente->empresa_id !== $empresaId, 403);
+        abort_if($funcionario->empresa_id !== $empresaId, 403);
+        abort_if($funcionario->cliente_id !== $cliente->id, 403);
+
+        return response()->json([
+            'ok' => true,
+            'funcionario' => [
+                'id' => $funcionario->id,
+                'nome' => $funcionario->nome,
+                'cpf' => $funcionario->cpf,
+                'rg' => $funcionario->rg,
+                'data_nascimento' => $funcionario->data_nascimento?->format('Y-m-d'),
+                'celular' => $funcionario->celular,
+                'funcao_id' => $funcionario->funcao_id,
+            ],
+        ]);
+    }
+
+    public function resumo(Request $request, Cliente $cliente)
+    {
+        $usuario = $request->user();
+        $empresaId = $usuario->empresa_id;
+
+        abort_if($cliente->empresa_id !== $empresaId, 403);
+
+        $data = $request->validate([
+            'tipo_aso' => ['required', 'in:admissional,periodico,demissional,mudanca_funcao,retorno_trabalho'],
+            'funcao_id' => ['required', 'integer', 'exists:funcoes,id'],
+        ]);
+
+        $contratoAtivo = app(ContratoClienteService::class)
+            ->getContratoAtivo($cliente->id, $empresaId, null);
+        if ($contratoAtivo && !$contratoAtivo->relationLoaded('itens')) {
+            $contratoAtivo->load('itens');
+        }
+
+        if (!$contratoAtivo) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Cliente sem contrato ativo.',
+            ], 422);
+        }
+
+        $asoService = app(AsoGheService::class);
+        $snapshot = $asoService->resolveAsoSnapshotFromContrato($contratoAtivo);
+        if (!$snapshot || empty($snapshot['ghes'])) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Nenhuma configuração de ASO encontrada no contrato.',
+            ], 422);
+        }
+
+        $ghe = $asoService->resolveGheSnapshotByFuncao($snapshot, (int) $data['funcao_id']);
+        if (!$ghe) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Não existe GHE precificado para a função informada.',
+            ], 422);
+        }
+
+        $exames = $asoService->resolveExamesAsoPorFuncaoTipo($contratoAtivo, (int) $data['funcao_id'], $data['tipo_aso']);
+        $total = $asoService->resolvePrecoAsoPorFuncaoTipo($contratoAtivo, (int) $data['funcao_id'], $data['tipo_aso']);
+
+        $rateado = (bool) ($ghe['rateado_por_tipo'][$data['tipo_aso']] ?? false);
+
+        return response()->json([
+            'ok' => true,
+            'ghe' => [
+                'id' => $ghe['id'] ?? null,
+                'nome' => $ghe['nome'] ?? null,
+            ],
+            'exames' => $exames,
+            'total' => $total,
+            'rateado' => $rateado,
+        ]);
     }
 
     private function normalizeTreinamentosInput(Request $request): void

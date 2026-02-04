@@ -91,7 +91,7 @@
                 </span>
             </header>
 
-            @if($itens->isEmpty())
+            @if($itens->isEmpty() && ($itensEmAberto ?? collect())->isEmpty())
                 <div class="p-6 text-sm text-slate-500">
                     Nenhuma cobrança encontrada. Assim que houver contas geradas, elas aparecerão aqui.
                 </div>
@@ -108,6 +108,35 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100">
+                            @foreach(($itensEmAberto ?? collect()) as $item)
+                                @php
+                                    $servicoNome = $item->servico ?? 'Serviço';
+                                    $status = 'EM ANDAMENTO';
+                                    $vencimento = null;
+                                    $valorReal = isset($item->valor_real) ? (float) $item->valor_real : (float) $item->valor;
+                                    $badge = 'bg-sky-50 text-sky-700 border-sky-100';
+                                    $label = 'Em andamento';
+                                @endphp
+                                <tr class="hover:bg-slate-50/60">
+                                    <td class="px-4 py-3 text-slate-700">
+                                        {{ $item->data_realizacao ? \Carbon\Carbon::parse($item->data_realizacao)->format('d/m/Y') : 'N/A' }}
+                                    </td>
+                                    <td class="px-4 py-3 text-slate-800">
+                                        {{ $servicoNome }}
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[12px] font-semibold {{ $badge }}">
+                                            {{ $label }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3 text-slate-700">
+                                        —
+                                    </td>
+                                    <td class="px-4 py-3 text-right font-semibold text-slate-900">
+                                        R$ {{ number_format($valorReal, 2, ',', '.') }}
+                                    </td>
+                                </tr>
+                            @endforeach
                             @foreach($itens as $item)
                                 @php
                                     $servicoNome = $item->servico ?? 'Serviço';

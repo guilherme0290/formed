@@ -79,15 +79,23 @@ class PrecificacaoService
             ]);
         }
 
-        $itensContrato = $this->asoGheService->resolveItensContratoAsoPorTipo(
+        $funcaoId = $aso->funcionario?->funcao_id;
+        if (!$funcaoId) {
+            throw ValidationException::withMessages([
+                'contrato' => 'Não é possível precificar o ASO porque a função do colaborador não foi informada.',
+            ]);
+        }
+
+        $itensContrato = $this->asoGheService->resolveItensContratoAsoPorFuncaoTipo(
             $contrato,
             (int) $tarefa->servico_id,
+            (int) $funcaoId,
             (string) $aso->tipo_aso
         );
 
         if ($itensContrato->isEmpty()) {
             throw ValidationException::withMessages([
-                'contrato' => 'Não é possível precificar o ASO porque o tipo solicitado não está contratado. Solicite ao Comercial para ajustar a proposta e fechar novamente.',
+                'contrato' => 'Não é possível precificar o ASO porque não existe configuração para o tipo e função informados. Solicite ao Comercial para ajustar a proposta e fechar novamente.',
             ]);
         }
 

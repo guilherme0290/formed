@@ -4,10 +4,13 @@ namespace App\Http\Controllers\Comercial;
 
 use App\Http\Controllers\Controller;
 use App\Models\Cliente;
+use App\Models\ClienteAsoGrupo;
+use App\Models\ClienteGhe;
 use App\Models\ClienteContratoItem;
 use App\Models\ClienteContratoLog;
 use App\Models\Empresa;
 use App\Models\Funcao;
+use App\Models\Ghe;
 use App\Models\Proposta;
 use App\Models\PropostaAsoGrupo;
 use App\Models\PropostaItens;
@@ -209,7 +212,7 @@ class PropostaController extends Controller
         $proposta->load('itens');
         $propostaAsoGrupos = \App\Models\PropostaAsoGrupo::query()
             ->where('proposta_id', $proposta->id)
-            ->with('grupo')
+            ->with(['grupo', 'clienteGhe'])
             ->get();
 
         return view('comercial.propostas.create', compact('clientes','servicos','formasPagamento','user','treinamentos','proposta','funcoes','propostaAsoGrupos'));
@@ -522,10 +525,13 @@ class PropostaController extends Controller
             'esocial_qtd_funcionarios' => ['nullable','integer','min:0'],
             'esocial_valor_mensal' => ['nullable','numeric','min:0'],
 
-            'aso_grupos' => ['nullable','array'],
-            'aso_grupos.*' => ['array'],
-            'aso_grupos.*.*.grupo_id' => ['nullable','integer','exists:protocolos_exames,id'],
-            'aso_grupos.*.*.total_exames' => ['nullable','numeric','min:0'],
+            'cliente_aso_grupos' => ['nullable','array'],
+            'cliente_aso_grupos.*.ghe_id' => ['nullable','integer','exists:ghes,id'],
+            'cliente_aso_grupos.*.cliente_ghe_id' => ['nullable','integer','exists:cliente_ghes,id'],
+            'cliente_aso_grupos.*.ghe_nome' => ['nullable','string','max:255'],
+            'cliente_aso_grupos.*.tipos' => ['nullable','array'],
+            'cliente_aso_grupos.*.tipos.*.grupo_id' => ['nullable','integer','exists:protocolos_exames,id'],
+            'cliente_aso_grupos.*.tipos.*.total_exames' => ['nullable','numeric','min:0'],
 
             'itens' => ['required','array','min:1'],
             'itens.*.servico_id' => ['nullable','integer'],
@@ -590,22 +596,91 @@ class PropostaController extends Controller
         }
 
         $asoTipos = ['admissional', 'periodico', 'demissional', 'mudanca_funcao', 'retorno_trabalho'];
-        $asoGruposInput = $data['aso_grupos'] ?? [];
+        $clienteAsoInput = $data['cliente_aso_grupos'] ?? [];
+        $clienteAsoGrupos = [];
         $asoGrupos = [];
-        foreach ($asoTipos as $tipo) {
-            $rows = $asoGruposInput[$tipo] ?? [];
-            if (!is_array($rows)) {
+        $clienteGheCache = [];
+        foreach ($clienteAsoInput as $cfg) {
+            $clienteGheId = (int) ($cfg['cliente_ghe_id'] ?? 0);
+            $gheId = (int) ($cfg['ghe_id'] ?? 0);
+            $gheNome = trim((string) ($cfg['ghe_nome'] ?? ''));
+
+            $clienteGhe = null;
+            if ($clienteGheId > 0) {
+                $clienteGhe = ClienteGhe::query()
+                    ->where('empresa_id', $empresaId)
+                    ->where('cliente_id', $data['cliente_id'])
+                    ->where('id', $clienteGheId)
+                    ->first();
+                abort_if(!$clienteGhe, 403);
+            } elseif ($gheId > 0) {
+                if (isset($clienteGheCache['ghe:' . $gheId])) {
+                    $clienteGhe = $clienteGheCache['ghe:' . $gheId];
+                } else {
+                    $ghe = Ghe::query()
+                        ->where('empresa_id', $empresaId)
+                        ->where('id', $gheId)
+                        ->first();
+                    abort_if(!$ghe, 403);
+                    $clienteGhe = ClienteGhe::query()
+                        ->where('empresa_id', $empresaId)
+                        ->where('cliente_id', $data['cliente_id'])
+                        ->where('ghe_id', $gheId)
+                        ->first();
+                    if (!$clienteGhe) {
+                        $clienteGhe = ClienteGhe::create([
+                            'empresa_id' => $empresaId,
+                            'cliente_id' => $data['cliente_id'],
+                            'ghe_id' => $gheId,
+                            'nome' => $gheNome !== '' ? $gheNome : $ghe->nome,
+                            'protocolo_id' => $ghe->grupo_exames_id,
+                            'base_aso_admissional' => (float) ($ghe->base_aso_admissional ?? 0),
+                            'base_aso_periodico' => (float) ($ghe->base_aso_periodico ?? 0),
+                            'base_aso_demissional' => (float) ($ghe->base_aso_demissional ?? 0),
+                            'base_aso_mudanca_funcao' => (float) ($ghe->base_aso_mudanca_funcao ?? 0),
+                            'base_aso_retorno_trabalho' => (float) ($ghe->base_aso_retorno_trabalho ?? 0),
+                            'preco_fechado_admissional' => $ghe->preco_fechado_admissional ?? null,
+                            'preco_fechado_periodico' => $ghe->preco_fechado_periodico ?? null,
+                            'preco_fechado_demissional' => $ghe->preco_fechado_demissional ?? null,
+                            'preco_fechado_mudanca_funcao' => $ghe->preco_fechado_mudanca_funcao ?? null,
+                            'preco_fechado_retorno_trabalho' => $ghe->preco_fechado_retorno_trabalho ?? null,
+                            'ativo' => true,
+                        ]);
+                        $gheFuncoes = $ghe->funcoes()->pluck('funcao_id')->all();
+                        foreach ($gheFuncoes as $funcaoId) {
+                            \App\Models\ClienteGheFuncao::create([
+                                'cliente_ghe_id' => $clienteGhe->id,
+                                'funcao_id' => $funcaoId,
+                            ]);
+                        }
+                    }
+                    $clienteGheCache['ghe:' . $gheId] = $clienteGhe;
+                }
+            }
+
+            if (!$clienteGhe) {
                 continue;
             }
-            foreach ($rows as $row) {
+
+            $tipos = is_array($cfg['tipos'] ?? null) ? $cfg['tipos'] : [];
+            foreach ($asoTipos as $tipo) {
+                $row = $tipos[$tipo] ?? [];
                 $grupoId = (int) ($row['grupo_id'] ?? 0);
                 if ($grupoId <= 0) {
                     continue;
                 }
-                $asoGrupos[] = [
+                $totalExames = (float) ($row['total_exames'] ?? 0);
+                $clienteAsoGrupos[] = [
+                    'cliente_ghe_id' => $clienteGhe->id,
                     'tipo_aso' => $tipo,
                     'grupo_id' => $grupoId,
-                    'total_exames' => (float) ($row['total_exames'] ?? 0),
+                    'total_exames' => $totalExames,
+                ];
+                $asoGrupos[] = [
+                    'cliente_ghe_id' => $clienteGhe->id,
+                    'tipo_aso' => $tipo,
+                    'grupo_id' => $grupoId,
+                    'total_exames' => $totalExames,
                 ];
             }
         }
@@ -720,7 +795,7 @@ class PropostaController extends Controller
         $prazoDias = (int) $data['prazo_dias'];
         $vencimentoServicos = $data['vencimento_servicos'];
 
-        return DB::transaction(function () use ($empresaId, $data, $codigo, $valorTotal, $incluirEsocial, $valorEsocial, $valorEsocialCampo, $proposta, $prazoDias, $vencimentoServicos,$asoGrupos) {
+        return DB::transaction(function () use ($empresaId, $data, $codigo, $valorTotal, $incluirEsocial, $valorEsocial, $valorEsocialCampo, $proposta, $prazoDias, $vencimentoServicos, $asoGrupos, $clienteAsoGrupos) {
             $payload = [
                 'empresa_id' => $empresaId,
                 'cliente_id' => $data['cliente_id'],
@@ -764,10 +839,28 @@ class PropostaController extends Controller
             PropostaAsoGrupo::query()
                 ->where('proposta_id', $proposta->id)
                 ->delete();
+
+            ClienteAsoGrupo::query()
+                ->where('empresa_id', $empresaId)
+                ->where('cliente_id', $data['cliente_id'])
+                ->delete();
+
+            foreach ($clienteAsoGrupos as $row) {
+                ClienteAsoGrupo::create([
+                    'empresa_id' => $empresaId,
+                    'cliente_id' => $data['cliente_id'],
+                    'cliente_ghe_id' => $row['cliente_ghe_id'],
+                    'tipo_aso' => $row['tipo_aso'],
+                    'grupo_exames_id' => $row['grupo_id'],
+                    'total_exames' => $row['total_exames'],
+                ]);
+            }
+
             foreach ($asoGrupos as $row) {
                 PropostaAsoGrupo::create([
                     'empresa_id' => $empresaId,
                     'cliente_id' => $data['cliente_id'],
+                    'cliente_ghe_id' => $row['cliente_ghe_id'] ?? null,
                     'proposta_id' => $proposta->id,
                     'tipo_aso' => $row['tipo_aso'],
                     'grupo_exames_id' => $row['grupo_id'],
@@ -851,6 +944,9 @@ class PropostaController extends Controller
                         ->buildSnapshotForCliente((int) $data['cliente_id'], $empresaId);
                     if (empty($asoSnapshot['ghes'])) {
                         $asoSnapshot = null;
+                    } else {
+                        $asoSnapshot = app(AsoGheService::class)
+                            ->applyAsoGrupoOverrides($asoSnapshot, $asoGrupos);
                     }
                 }
 
@@ -969,6 +1065,10 @@ class PropostaController extends Controller
         if ($proposta->cliente_id) {
             $gheSnapshot = app(AsoGheService::class)
                 ->buildSnapshotForCliente($proposta->cliente_id, $user->empresa_id);
+            if (!empty($gheSnapshot['ghes']) && $proposta->asoGrupos->isNotEmpty()) {
+                $gheSnapshot = app(AsoGheService::class)
+                    ->applyAsoGrupoOverrides($gheSnapshot, $proposta->asoGrupos);
+            }
         }
 
 
@@ -1007,6 +1107,10 @@ class PropostaController extends Controller
         if ($proposta->cliente_id) {
             $gheSnapshot = app(AsoGheService::class)
                 ->buildSnapshotForCliente($proposta->cliente_id, $user->empresa_id);
+            if (!empty($gheSnapshot['ghes']) && $proposta->asoGrupos->isNotEmpty()) {
+                $gheSnapshot = app(AsoGheService::class)
+                    ->applyAsoGrupoOverrides($gheSnapshot, $proposta->asoGrupos);
+            }
         }
 
         $logoPath = public_path('storage/logo.png');
@@ -1050,6 +1154,10 @@ class PropostaController extends Controller
         if ($proposta->cliente_id) {
             $gheSnapshot = app(AsoGheService::class)
                 ->buildSnapshotForCliente($proposta->cliente_id, $user->empresa_id);
+            if (!empty($gheSnapshot['ghes']) && $proposta->asoGrupos->isNotEmpty()) {
+                $gheSnapshot = app(AsoGheService::class)
+                    ->applyAsoGrupoOverrides($gheSnapshot, $proposta->asoGrupos);
+            }
         }
 
         $logoPath = public_path('storage/logo.png');
@@ -1127,6 +1235,12 @@ class PropostaController extends Controller
             $snapshot = ['aso_tipo' => $asoTipo];
             if (!empty($meta['grupo_id'])) {
                 $snapshot['grupo_id'] = (int) $meta['grupo_id'];
+            }
+            if (!empty($asoSnapshot['ghes'])) {
+                $snapshot['ghes'] = $asoSnapshot['ghes'];
+            }
+            if (!empty($asoSnapshot['funcao_ghe_map'])) {
+                $snapshot['funcao_ghe_map'] = $asoSnapshot['funcao_ghe_map'];
             }
             return $snapshot;
         }

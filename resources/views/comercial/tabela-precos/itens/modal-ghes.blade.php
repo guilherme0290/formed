@@ -5,8 +5,8 @@
         <div class="bg-white w-full max-w-6xl rounded-2xl shadow-xl overflow-hidden max-h-[88vh] flex flex-col text-base">
             <div class="px-6 py-4 bg-amber-700 text-white flex items-center justify-between">
                 <div>
-                    <h2 class="text-lg font-semibold">GHE do Cliente</h2>
-                    <p class="text-xs opacity-90">Defina o nome e as funções do GHE.</p>
+                    <h2 class="text-lg font-semibold">GHE Global</h2>
+                    <p class="text-xs opacity-90">Defina o nome, funções e grupo de exames do GHE.</p>
                 </div>
                 <button type="button"
                         onclick="closeGheModal()"
@@ -18,15 +18,7 @@
             <div class="p-6 space-y-4 overflow-y-auto">
                 <div id="gheAlert" class="hidden"></div>
 
-                <div class="flex flex-wrap items-center justify-between gap-3">
-                    <div class="flex items-center gap-3">
-                        <label class="text-sm font-semibold text-slate-700">Cliente</label>
-                        <input type="hidden" id="gheClienteId" value="">
-                        <input id="gheClienteNome" type="text" readonly
-                               class="rounded-xl border border-slate-200 text-sm px-3 py-2 min-w-[240px] bg-slate-100 cursor-not-allowed"
-                               placeholder="Cliente não selecionado">
-                    </div>
-
+                <div class="flex flex-wrap items-center justify-end gap-3">
                     <button type="button"
                             onclick="openGheForm(null)"
                             class="inline-flex items-center justify-center gap-2 rounded-2xl
@@ -61,7 +53,7 @@
                 <div class="space-y-5">
                     <section class="space-y-3">
                         <div class="text-xs font-semibold text-slate-600 uppercase tracking-wide">1. Identificação</div>
-                        <div class="grid md:grid-cols-2 gap-4">
+                        <div class="grid md:grid-cols-3 gap-4">
                             <div>
                                 <label class="text-xs font-semibold text-slate-600">Nome do GHE *</label>
                                 <input  required id="ghe_nome" type="text"
@@ -69,13 +61,27 @@
                                        placeholder="Ex: Trabalho em Altura">
                             </div>
                             <div>
+                                <label class="text-xs font-semibold text-slate-600">Grupo de Exames (opcional)</label>
+                                <select id="ghe_protocolo" class="w-full mt-1 rounded-xl border-slate-200 text-sm px-3 py-2">
+                                    <option value="">Selecione...</option>
+                                </select>
+                                <div id="gheProtocoloResumo" class="mt-2 text-xs text-slate-500">Nenhum exame selecionado.</div>
+                            </div>
+                            <div class="md:col-span-3">
                                 <div class="flex items-center justify-between">
                                     <label class="text-xs font-semibold text-slate-600">Funções do GHE (opcional)</label>
-                                    <a href="{{ route('comercial.funcoes.index') }}"
-                                       class="text-[11px] font-semibold text-amber-700 hover:text-amber-800"
-                                       target="_blank" rel="noopener">
-                                        Gerenciar funções
-                                    </a>
+                                    <div class="flex items-center gap-2 text-[11px] font-semibold">
+                                        <button type="button"
+                                                id="gheFuncoesReload"
+                                                class="text-amber-700 hover:text-amber-800 underline decoration-dotted">
+                                            Recarregar lista
+                                        </button>
+                                        <a href="{{ route('comercial.funcoes.index') }}"
+                                           class="text-amber-700 hover:text-amber-800 underline decoration-dotted"
+                                           target="_blank" rel="noopener">
+                                            Gerenciar funções
+                                        </a>
+                                    </div>
                                 </div>
                                 <input id="gheFuncoesFilter" type="text"
                                        class="mt-1 w-full rounded-xl border-slate-200 text-sm px-3 py-2"
@@ -195,28 +201,31 @@
 
             const GHE = {
                 urls: {
-                    list:   @json(route($routePrefix.'.clientes-ghes.indexJson')),
-                    store:  @json(route($routePrefix.'.clientes-ghes.store')),
-                    update: (id) => @json(route($routePrefix.'.clientes-ghes.update', ['ghe' => '__ID__'])).replace('__ID__', id),
-                    destroy:(id) => @json(route($routePrefix.'.clientes-ghes.destroy', ['ghe' => '__ID__'])).replace('__ID__', id),
+                    list:   @json(route($routePrefix.'.ghes.indexJson')),
+                    store:  @json(route($routePrefix.'.ghes.store')),
+                    update: (id) => @json(route($routePrefix.'.ghes.update', ['ghe' => '__ID__'])).replace('__ID__', id),
+                    destroy:(id) => @json(route($routePrefix.'.ghes.destroy', ['ghe' => '__ID__'])).replace('__ID__', id),
+                    protocolos: @json(route($routePrefix.'.protocolos-exames.indexJson')),
+                    funcoes: @json(route($routePrefix.'.funcoes.indexJson')),
                 },
-                state: { ghes: [] },
+                state: { ghes: [], protocolos: [], funcoes: FUNCOES || [] },
                 dom: {
                     modal: document.getElementById('modalGhe'),
                     list: document.getElementById('gheList'),
                     alert: document.getElementById('gheAlert'),
-                    clienteId: document.getElementById('gheClienteId'),
-                    clienteNome: document.getElementById('gheClienteNome'),
                     modalForm: document.getElementById('modalGheForm'),
                     form: document.getElementById('formGhe'),
                     title: document.getElementById('gheFormTitle'),
                     id: document.getElementById('ghe_id'),
                     nome: document.getElementById('ghe_nome'),
+                    protocolo: document.getElementById('ghe_protocolo'),
+                    protocoloResumo: document.getElementById('gheProtocoloResumo'),
                     funcoesList: document.getElementById('gheFuncoesList'),
                     funcoesFilter: document.getElementById('gheFuncoesFilter'),
                     funcoesSelectAll: document.getElementById('gheFuncoesSelectAll'),
                     funcoesSelectedCount: document.getElementById('gheFuncoesSelectedCount'),
                     funcoesClear: document.getElementById('gheFuncoesClear'),
+                    funcoesReload: document.getElementById('gheFuncoesReload'),
                     baseAdm: document.getElementById('ghe_base_adm'),
                     basePer: document.getElementById('ghe_base_per'),
                     baseDem: document.getElementById('ghe_base_dem'),
@@ -260,24 +269,59 @@
 
 
             async function loadGhes(){
-                const clienteId = GHE.dom.clienteId?.value;
-                if(!clienteId) {
-                    GHE.state.ghes = [];
-                    renderGhes();
-                    notifyGheUpdated();
-                    return;
-                }
                 try{
                     alertHide();
-                    const res = await fetch(`${GHE.urls.list}?cliente_id=${clienteId}`, { headers:{'Accept':'application/json'} });
+                    const res = await fetch(GHE.urls.list, { headers:{'Accept':'application/json'} });
                     const json = await res.json();
                     GHE.state.ghes = json.data || [];
                     renderGhes();
-                    notifyGheUpdated();
                 } catch(e){
                     console.error(e);
-                    alertBox('err','Falha ao carregar GHEs.');
+                    alertBox('err','Falha ao carregar GHEs globais.');
                 }
+            }
+
+            async function loadProtocolos(){
+                try{
+                    const res = await fetch(GHE.urls.protocolos, { headers:{'Accept':'application/json'} });
+                    const json = await res.json();
+                    GHE.state.protocolos = json.data || [];
+                    renderProtocolosSelect();
+                } catch(e){
+                    console.error(e);
+                    alertBox('err','Falha ao carregar grupos de exames.');
+                }
+            }
+
+            function renderProtocolosSelect(){
+                if (!GHE.dom.protocolo) return;
+                const current = String(GHE.dom.protocolo.value || '');
+                GHE.dom.protocolo.innerHTML = '<option value="">Selecione...</option>';
+                GHE.state.protocolos.forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p.id;
+                    opt.textContent = p.titulo;
+                    GHE.dom.protocolo.appendChild(opt);
+                });
+                if (current) {
+                    GHE.dom.protocolo.value = current;
+                }
+                updateProtocoloResumo();
+            }
+
+            function updateProtocoloResumo(){
+                if (!GHE.dom.protocoloResumo) return;
+                const id = Number(GHE.dom.protocolo?.value || 0);
+                if (!id) {
+                    GHE.dom.protocoloResumo.textContent = 'Nenhum exame selecionado.';
+                    return;
+                }
+                const grupo = GHE.state.protocolos.find(p => Number(p.id) === id);
+                const total = Number(grupo?.total || 0);
+                const count = grupo?.exames?.length ?? 0;
+                GHE.dom.protocoloResumo.textContent = count
+                    ? `${count} exame(s) • Total ${brl(total)}`
+                    : 'Grupo sem exames.';
             }
 
             function renderGhes(){
@@ -285,7 +329,7 @@
                 if(!wrap) return;
                 wrap.innerHTML = '';
                 if(!GHE.state.ghes.length){
-                    wrap.innerHTML = `<div class="text-sm text-slate-500 py-3">Nenhum GHE cadastrado para este cliente.</div>`;
+                    wrap.innerHTML = `<div class="text-sm text-slate-500 py-3">Nenhum GHE cadastrado.</div>`;
                     return;
                 }
                 GHE.state.ghes.forEach(g=>{
@@ -343,12 +387,54 @@
                 updateSelectedCount();
             }
 
-            function notifyGheUpdated() {
-                const total = (GHE.state.ghes || []).reduce((sum, ghe) => {
-                    return sum + Number(ghe.total_exames_por_tipo?.admissional ?? ghe.total_exames ?? 0);
-                }, 0);
-                const hasGhe = (GHE.state.ghes || []).length > 0;
-                window.dispatchEvent(new CustomEvent('ghe:updated', { detail: { hasGhe, total } }));
+            function renderFuncoesList() {
+                const list = GHE.dom.funcoesList;
+                if (!list) return;
+                list.innerHTML = '';
+                if (!GHE.state.funcoes.length) {
+                    list.innerHTML = '<div class="text-sm text-slate-500">Nenhuma função cadastrada.</div>';
+                    return;
+                }
+                const selected = new Set(getSelectedFuncoes());
+                GHE.state.funcoes.forEach(funcao => {
+                    const descricao = String(funcao?.descricao || '').trim();
+                    const search = (String(funcao?.nome || '') + ' ' + descricao).trim().toLowerCase();
+                    const row = document.createElement('label');
+                    row.className = 'flex items-start gap-2';
+                    row.dataset.search = search;
+                    row.innerHTML = `
+                        <input type="checkbox" value="${funcao.id}">
+                        <span>
+                            <span class="block">${escapeHtml(funcao.nome || '')}</span>
+                            ${descricao ? `<span class="block text-xs text-slate-500">${escapeHtml(descricao)}</span>` : ``}
+                        </span>
+                    `;
+                    const cb = row.querySelector('input[type="checkbox"]');
+                    if (selected.has(Number(funcao.id))) cb.checked = true;
+                    list.appendChild(row);
+                });
+                applyFuncoesFilter();
+                updateSelectAllState();
+                updateSelectedCount();
+            }
+
+            async function reloadFuncoes(){
+                try{
+                    const selected = getSelectedFuncoes();
+                    const res = await fetch(GHE.urls.funcoes, { headers:{'Accept':'application/json'} });
+                    const json = await res.json();
+                    GHE.state.funcoes = (json.data || []).map(f => ({
+                        id: Number(f.id),
+                        nome: f.nome,
+                        descricao: f.descricao || '',
+                        ativo: !!f.ativo,
+                    }));
+                    renderFuncoesList();
+                    setSelectedFuncoes(selected);
+                } catch(e){
+                    console.error(e);
+                    alertBox('err','Falha ao recarregar funções.');
+                }
             }
 
             function applyFuncoesFilter(){
@@ -363,12 +449,9 @@
 
             async function saveGhe(e){
                 e.preventDefault();
-                const clienteId = GHE.dom.clienteId?.value;
-                if(!clienteId) return alertBox('err','Selecione um cliente.');
-
                 const payload = {
-                    cliente_id: Number(clienteId),
                     nome: GHE.dom.nome.value.trim(),
+                    grupo_exames_id: Number(GHE.dom.protocolo?.value || 0) || null,
                     funcoes: getSelectedFuncoes(),
                     base: {
                         admissional: Number(GHE.dom.baseAdm.value || 0),
@@ -406,6 +489,7 @@
                     if(!res.ok) throw new Error('fail');
                     await loadGhes();
                     closeGheForm();
+                    window.dispatchEvent(new CustomEvent('ghes:updated'));
                 } catch(e){
                     console.error(e);
                     alertBox('err','Falha ao salvar GHE.');
@@ -422,6 +506,7 @@
                     });
                     if(!res.ok) throw new Error('fail');
                     await loadGhes();
+                    window.dispatchEvent(new CustomEvent('ghes:updated'));
                 } catch(e){
                     console.error(e);
                     alertBox('err','Falha ao excluir GHE.');
@@ -430,16 +515,9 @@
 
             window.openGheModal = async function(){
                 GHE.dom.modal?.classList.remove('hidden');
+                await loadProtocolos();
+                renderFuncoesList();
                 await loadGhes();
-            };
-            window.setGheCliente = function(clienteId, clienteNome){
-                if (GHE.dom.clienteId) {
-                    GHE.dom.clienteId.value = clienteId || '';
-                }
-                if (GHE.dom.clienteNome) {
-                    GHE.dom.clienteNome.value = clienteNome || '';
-                }
-                loadGhes();
             };
             window.closeGheModal = () => GHE.dom.modal?.classList.add('hidden');
 
@@ -448,6 +526,11 @@
                 GHE.dom.title.textContent = ghe ? 'Editar GHE' : 'Novo GHE';
                 GHE.dom.id.value = ghe?.id || '';
                 GHE.dom.nome.value = ghe?.nome || '';
+                if (GHE.dom.protocolo) {
+                    GHE.dom.protocolo.value = ghe?.grupo_exames_id || '';
+                    updateProtocoloResumo();
+                }
+                renderFuncoesList();
                 setSelectedFuncoes(ghe?.funcoes?.map(f => f.id) || []);
                 GHE.dom.baseAdm.value = Number(ghe?.base?.admissional || 0).toFixed(2);
                 GHE.dom.basePer.value = Number(ghe?.base?.periodico || 0).toFixed(2);
@@ -467,7 +550,9 @@
             window.closeGheForm = () => GHE.dom.modalForm?.classList.add('hidden');
 
             GHE.dom.form?.addEventListener('submit', saveGhe);
+            GHE.dom.protocolo?.addEventListener('change', updateProtocoloResumo);
             GHE.dom.funcoesFilter?.addEventListener('input', applyFuncoesFilter);
+            GHE.dom.funcoesReload?.addEventListener('click', reloadFuncoes);
             GHE.dom.funcoesSelectAll?.addEventListener('change', (e) => {
                 const checked = e.target.checked;
                 GHE.dom.funcoesList.querySelectorAll('label:not(.hidden) input[type="checkbox"]').forEach(cb => {

@@ -20,8 +20,6 @@
         $servicosIds = $servicosIds ?? [];
         $temContratoAtivo = (bool) $contratoAtivo;
         $servicosExecutados = $servicosExecutados ?? [];
-        $valoresAsoPorTipo = $valoresAsoPorTipo ?? [];
-
         $permitidos = [
             'aso' => $temContratoAtivo
                 && in_array($servicosIds['aso'] ?? null, $servicosContrato)
@@ -188,9 +186,6 @@
                     if (!$badge && array_key_exists('preco', $card)) {
                         $badge = $card['preco'] ? 'R$ '.number_format($card['preco'], 2, ',', '.') : '';
                     }
-                    if (($card['slug'] ?? '') === 'aso' && !empty($valoresAsoPorTipo)) {
-                        $badge = null;
-                    }
                     $showComercial = array_key_exists('preco', $card) && !($card['permitido'] ?? true);
                     $whatsappMensagem = 'Olá! Gostaria de contratar o serviço "'.$card['titulo'].'" para minha empresa. '.$cliente->razao_social;
                     $whatsappUrl = $vendedorTelefone
@@ -221,18 +216,6 @@
                         <p class="mt-1 text-xs text-slate-500">
                             {{ $card['desc'] }}
                         </p>
-                        @if($card['slug'] === 'aso' && !empty($valoresAsoPorTipo))
-                            <div class="mt-2 text-[11px] text-slate-600 space-y-1 opacity-0 max-h-0 overflow-hidden transition-all duration-200 group-hover:opacity-100 group-hover:max-h-64">
-                                @foreach($valoresAsoPorTipo as $row)
-                                    <div class="flex items-center justify-between gap-2">
-                                        <span class="truncate">ASO {{ $row['label'] ?? '' }}</span>
-                                        <span class="font-semibold text-slate-700">
-                                            R$ {{ number_format((float) ($row['valor'] ?? 0), 2, ',', '.') }}
-                                        </span>
-                                    </div>
-                                @endforeach
-                            </div>
-                        @endif
                     </div>
 
                     <div class="mt-4 flex items-center justify-between text-xs">

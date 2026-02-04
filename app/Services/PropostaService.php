@@ -38,6 +38,10 @@ class PropostaService
 
         $asoGheService = app(AsoGheService::class);
         $gheSnapshot = $asoGheService->buildSnapshotForCliente($proposta->cliente_id, $proposta->empresa_id);
+        $proposta->loadMissing('asoGrupos');
+        if (!empty($gheSnapshot['ghes']) && $proposta->asoGrupos->isNotEmpty()) {
+            $gheSnapshot = $asoGheService->applyAsoGrupoOverrides($gheSnapshot, $proposta->asoGrupos);
+        }
         $temGhe = !empty($gheSnapshot['ghes']);
         $isAsoItem = function (PropostaItens $item): bool {
             if (strtoupper((string) $item->tipo) === 'ASO_TIPO') {
@@ -203,6 +207,12 @@ class PropostaService
             $snapshot = ['aso_tipo' => $asoTipo];
             if (!empty($meta['grupo_id'])) {
                 $snapshot['grupo_id'] = (int) $meta['grupo_id'];
+            }
+            if (!empty($asoSnapshot['ghes'])) {
+                $snapshot['ghes'] = $asoSnapshot['ghes'];
+            }
+            if (!empty($asoSnapshot['funcao_ghe_map'])) {
+                $snapshot['funcao_ghe_map'] = $asoSnapshot['funcao_ghe_map'];
             }
             return $snapshot;
         }

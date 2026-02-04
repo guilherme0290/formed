@@ -13,6 +13,7 @@ class ClienteGhe extends Model
     protected $fillable = [
         'empresa_id',
         'cliente_id',
+        'ghe_id',
         'nome',
         'protocolo_id',
         'protocolo_admissional_id',
@@ -52,6 +53,11 @@ class ClienteGhe extends Model
         return $this->belongsTo(Cliente::class);
     }
 
+    public function ghe(): BelongsTo
+    {
+        return $this->belongsTo(Ghe::class, 'ghe_id');
+    }
+
     public function protocolo(): BelongsTo
     {
         return $this->belongsTo(ProtocoloExame::class, 'protocolo_id');
@@ -85,5 +91,10 @@ class ClienteGhe extends Model
     public function funcoes(): HasMany
     {
         return $this->hasMany(ClienteGheFuncao::class, 'cliente_ghe_id');
+    }
+
+    public function asoGrupos(): HasMany
+    {
+        return $this->hasMany(ClienteAsoGrupo::class, 'cliente_ghe_id');
     }
 }

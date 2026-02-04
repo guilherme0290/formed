@@ -269,6 +269,7 @@
                     if(!res.ok) throw new Error('fail');
                     await loadProtocolos();
                     closeProtocoloForm();
+                    window.dispatchEvent(new CustomEvent('protocolos:updated'));
                 } catch(e){
                     console.error(e);
                     alertBox('err','Falha ao salvar grupo.');
@@ -285,6 +286,7 @@
                     });
                     if(!res.ok) throw new Error('fail');
                     await loadProtocolos();
+                    window.dispatchEvent(new CustomEvent('protocolos:updated'));
                 } catch(e){
                     console.error(e);
                     alertBox('err','Falha ao excluir grupo.');

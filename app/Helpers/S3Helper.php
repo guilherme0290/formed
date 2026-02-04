@@ -7,6 +7,20 @@ use Illuminate\Support\Facades\Storage;
 
 class S3Helper
 {
+    private static function useLocalDisk(): bool
+    {
+        $appUrl = (string) config('app.url', '');
+
+        return app()->environment('local')
+            || str_contains($appUrl, 'localhost')
+            || str_contains($appUrl, '127.0.0.1');
+    }
+
+    private static function diskName(): string
+    {
+        return self::useLocalDisk() ? 'public' : 's3';
+    }
+
     /**
      * Faz upload de um arquivo para o S3 dentro da pasta "formed".
      * Retorna o caminho salvo (para guardar no banco).
@@ -20,8 +34,16 @@ class S3Helper
         }
 
         try {
+            $disk = self::diskName();
+            if (self::useLocalDisk()) {
+                \Log::info('Upload em modo local (S3 ignorado).', [
+                    'basePath' => $basePath,
+                    'clientName' => $file->getClientOriginalName(),
+                ]);
+            }
+
             // você pode usar tanto store() quanto Storage::disk()->putFile()
-            $path = $file->store($basePath, 's3');
+            $path = $file->store($basePath, $disk);
 
             if ($path === false || $path === null) {
                 \Log::error('S3 upload retornou false', [
@@ -47,7 +69,12 @@ class S3Helper
      */
     public static function temporaryUrl(string $path, int $minutes = 10): string
     {
-        return Storage::disk('s3')->temporaryUrl(
+        $disk = self::diskName();
+        if ($disk === 'public') {
+            return Storage::disk($disk)->url($path);
+        }
+
+        return Storage::disk($disk)->temporaryUrl(
             $path,
             now()->addMinutes($minutes)
         );
@@ -55,7 +82,12 @@ class S3Helper
 
     public static function url(string $path, int $minutes = 10): string
     {
-        return Storage::disk('s3')->temporaryUrl(
+        $disk = self::diskName();
+        if ($disk === 'public') {
+            return Storage::disk($disk)->url($path);
+        }
+
+        return Storage::disk($disk)->temporaryUrl(
             $path,
             now()->addMinutes($minutes)
         );
@@ -66,7 +98,7 @@ class S3Helper
      */
     public static function delete(string $path): bool
     {
-        return Storage::disk('s3')->delete($path);
+        return Storage::disk(self::diskName())->delete($path);
     }
 
     /**
@@ -74,6 +106,6 @@ class S3Helper
      */
     public static function exists(string $path): bool
     {
-        return Storage::disk('s3')->exists($path);
+        return Storage::disk(self::diskName())->exists($path);
     }
 }
