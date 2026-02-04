@@ -14,7 +14,7 @@
 @extends($layout)
 
 @section('content')
-@php($routePrefix = $routePrefix ?? 'clientes')@endphp
+@php($routePrefix = $routePrefix ?? 'clientes')
     <div class="max-w-3xl mx-auto px-4 py-6">
 
         @if (session('ok'))
@@ -66,12 +66,18 @@
                     <p><strong>E-mail sugerido:</strong> {{ $cliente->email ?? '—' }}</p>
                     <p class="text-xs text-slate-500">Uma senha temporária será gerada e o usuário deve trocar no primeiro login.</p>
                 </div>
-                <form method="POST" action="{{ route($routePrefix.'.acesso', $cliente) }}" data-confirm="Criar acesso para este cliente?">
-                    @csrf
-                    <button class="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 {{ $cliente->email ? '' : 'opacity-50 cursor-not-allowed' }}" {{ $cliente->email ? '' : 'disabled' }}>
-                        🔑 Criar usuário do cliente
-                    </button>
-                </form>
+                @if($cliente->email)
+    <a href="{{ route($routePrefix.'.acesso.form', $cliente) }}"
+       class="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700">
+        🔑 Criar usuário do cliente
+    </a>
+@else
+    <button type="button"
+            class="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold opacity-50 cursor-not-allowed"
+            disabled>
+        🔑 Criar usuário do cliente
+    </button>
+@endif
             </div>
 
             <div class="flex flex-col md:flex-row justify-end md:items-start gap-2">
@@ -89,3 +95,4 @@
 
     </div>
 @endsection
+
