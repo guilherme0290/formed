@@ -37,15 +37,16 @@
 
 
 
-        <form method="POST"
+            <form method="POST"
               enctype="multipart/form-data"
               action="{{ $modo === 'edit'
-                    ? route('operacional.kanban.pgr.update', $tarefa)
-                    : route('operacional.kanban.pgr.store', $cliente) }}">
+                    ? route('operacional.kanban.pgr.update', ['tarefa' => $tarefa, 'origem' => $origem])
+                    : route('operacional.kanban.pgr.store', ['cliente' => $cliente, 'origem' => $origem]) }}">
             @csrf
             @if($modo === 'edit')
                 @method('PUT')
             @endif
+            <input type="hidden" name="origem" value="{{ $origem }}">
 
             <input type="hidden" name="tipo" value="{{ old('tipo', $tipo ?? ($pgr->tipo ?? 'matriz')) }}">
 

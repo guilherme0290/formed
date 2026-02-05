@@ -1,4 +1,4 @@
-@extends(request()->query('origem') === 'cliente' ? 'layouts.cliente' : 'layouts.operacional')
+@extends((request()->query('origem') === 'cliente' || session('portal_cliente_id')) ? 'layouts.cliente' : 'layouts.operacional')
 
 @section('title', 'PGR - Selecione o Tipo')
 

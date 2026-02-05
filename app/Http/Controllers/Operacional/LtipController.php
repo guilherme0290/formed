@@ -163,6 +163,13 @@ class LtipController extends Controller
             ]);
         });
 
+        $origem = $request->query('origem', $request->input('origem'));
+        if ($origem === 'cliente' || $user->isCliente()) {
+            return redirect()
+                ->route('cliente.dashboard')
+                ->with('ok', 'Solicitação de LTIP criada com sucesso e enviada para análise.');
+        }
+
         return redirect()
             ->route('operacional.kanban')
             ->with('ok', 'Tarefa LTIP criada com sucesso!');
@@ -210,6 +217,13 @@ class LtipController extends Controller
                 ]);
             }
         });
+
+        $origem = $request->query('origem', $request->input('origem'));
+        if ($origem === 'cliente' || $user->isCliente()) {
+            return redirect()
+                ->route('cliente.dashboard')
+                ->with('ok', 'LTIP atualizado com sucesso!');
+        }
 
         return redirect()
             ->route('operacional.kanban')

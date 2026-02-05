@@ -311,6 +311,13 @@ class TreinamentoNrController extends Controller
             ]);
         });
 
+        $origem = $request->query('origem', $request->input('origem'));
+        if ($origem === 'cliente' || (method_exists($usuario, 'isCliente') && $usuario->isCliente())) {
+            return redirect()
+                ->route('cliente.dashboard')
+                ->with('ok', 'Treinamento de NRs atualizado com sucesso.');
+        }
+
         return redirect()
             ->route('operacional.kanban')
             ->with('ok', 'Treinamento de NRs atualizado com sucesso.');
