@@ -4,10 +4,14 @@
 @section('title', 'PGR - PCMSO')
 
 @section('content')
+    @php
+        $origem = request()->query('origem');
+        $rotaVoltar = $origem === 'cliente' ? route('cliente.dashboard') : route('operacional.kanban');
+    @endphp
     <div class="w-full px-2 sm:px-3 md:px-4 xl:px-5 py-4 md:py-6">
 
         <div class="mb-4">
-            <a href="{{ route('operacional.kanban') }}"
+            <a href="{{ $rotaVoltar }}"
                class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 bg-white text-sm text-slate-700 hover:bg-slate-50">
                 <span>←</span>
                 <span>Voltar ao Painel</span>
@@ -25,8 +29,9 @@
             </div>
 
             <div class="px-4 sm:px-5 md:px-6 py-5 md:py-6">
-                <form method="POST" action="{{ route('operacional.kanban.pgr.pcmso.store', $tarefa) }}" class="space-y-3">
+                <form method="POST" action="{{ route('operacional.kanban.pgr.pcmso.store', ['tarefa' => $tarefa, 'origem' => $origem]) }}" class="space-y-3">
                     @csrf
+                    <input type="hidden" name="origem" value="{{ $origem }}">
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <button type="submit" name="com_pcms0" value="1"

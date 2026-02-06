@@ -3,13 +3,14 @@
 
 @php
     $titulo = $tipo === 'especifico' ? 'PCMSO - Específico' : 'PCMSO - Matriz';
+    $origem = request()->query('origem');
 @endphp
 
 @section('pageTitle', $titulo)
 
 @section('content')
     <div class="container mx-auto px-4 py-8">
-        <a href="{{ route('operacional.pcmso.tipo', $cliente) }}"
+        <a href="{{ route('operacional.pcmso.tipo', ['cliente' => $cliente, 'origem' => $origem]) }}"
            class="inline-flex items-center gap-2 mb-4 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
             ← Voltar ao Início
         </a>
@@ -40,20 +41,20 @@
 
                     <div class="space-y-3">
                         {{-- Sim, tenho PGR --}}
-                        <a href="{{ route('operacional.pcmso.create-com-pgr', [$cliente, $tipo]) }}"
+                        <a href="{{ route('operacional.pcmso.create-com-pgr', ['cliente' => $cliente, 'tipo' => $tipo, 'origem' => $origem]) }}"
                            class="block w-full text-center rounded-lg bg-emerald-500 hover:bg-emerald-600
                                   text-white text-sm font-semibold py-2.5 transition">
                             ✅ Sim, tenho o PGR e vou inserir
                         </a>
 
                         {{-- Não, quero que a FORMED faça o PGR --}}
-                        <a href="{{ route('operacional.kanban.pgr.tipo', $cliente) }}"
+                        <a href="{{ route('operacional.kanban.pgr.tipo', ['cliente' => $cliente, 'origem' => $origem]) }}"
                            class="block w-full text-center rounded-lg border border-rose-300 text-rose-600
                                   text-sm font-semibold py-2.5 hover:bg-rose-50 transition">
                             Não, solicitar que a FORMED realize o PGR
                         </a>
 
-                        <a href="{{ route('operacional.pcmso.tipo', $cliente) }}"
+                        <a href="{{ route('operacional.pcmso.tipo', ['cliente' => $cliente, 'origem' => $origem]) }}"
                            class="block w-full text-center rounded-lg bg-slate-50 border border-slate-200
                                   text-slate-600 text-sm font-semibold py-2.5 hover:bg-slate-100 transition">
                             Voltar
@@ -64,3 +65,4 @@
         </div>
     </div>
 @endsection
+

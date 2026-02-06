@@ -263,6 +263,13 @@ class PgrController extends Controller
             ]);
         }
 
+        $origem = $request->query('origem', $request->input('origem'));
+        if ($origem === 'cliente' || $usuario->isCliente()) {
+            return redirect()
+                ->route('cliente.dashboard')
+                ->with('ok', 'PGR atualizado com sucesso.');
+        }
+
         return redirect()
             ->route('operacional.kanban')
             ->with('ok', 'PGR atualizado com sucesso.');
@@ -447,8 +454,12 @@ class PgrController extends Controller
         }
 
         // redireciona para pergunta de PCMSO
+        $origem = $request->query('origem', $request->input('origem'));
         return redirect()
-            ->route('operacional.kanban.pgr.pcmso', $tarefaId);
+            ->route('operacional.kanban.pgr.pcmso', [
+                'tarefa' => $tarefaId,
+                'origem' => $origem,
+            ]);
     }
 
 
@@ -471,6 +482,7 @@ class PgrController extends Controller
             'tarefa'  => $tarefa,
             'pgr'     => $pgr,
             'cliente' => $cliente,
+            'origem'  => $request->query('origem', $request->input('origem')),
         ]);
     }
 
@@ -510,7 +522,8 @@ class PgrController extends Controller
             'descricao' => $descricao,
         ]);
 
-        if ($usuario->isCliente()) {
+        $origem = $request->query('origem', $request->input('origem'));
+        if ($origem === 'cliente' || $usuario->isCliente()) {
             return redirect()
                 ->route('cliente.dashboard')
                 ->with('ok', 'Solicitação de PGR criada com sucesso e enviada para análise.');

@@ -31,13 +31,14 @@
 
             <form method="POST"
                   action="{{ !empty($isEdit) && $tarefa
-                        ? route('operacional.treinamentos-nr.update', $tarefa)
-                        : route('operacional.treinamentos-nr.store', $cliente) }}"
+                        ? route('operacional.treinamentos-nr.update', ['tarefa' => $tarefa, 'origem' => $origem])
+                        : route('operacional.treinamentos-nr.store', ['cliente' => $cliente, 'origem' => $origem]) }}"
                   class="px-4 sm:px-5 md:px-6 py-5 md:py-6 space-y-6">
                 @csrf
                 @if(!empty($isEdit) && $tarefa)
                     @method('PUT')
                 @endif
+                <input type="hidden" name="origem" value="{{ $origem }}">
 
                 {{-- Erros --}}
                 @if ($errors->any())

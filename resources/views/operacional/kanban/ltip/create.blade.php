@@ -4,9 +4,14 @@
 @section('pageTitle', 'LTIP - Insalubridade e Periculosidade')
 
 @section('content')
+    @php
+        $origem = request()->query('origem');
+    @endphp
     <div class="w-full px-2 sm:px-3 md:px-4 xl:px-5 py-4 md:py-6">
         <div class="mb-4 flex items-center justify-between">
-            <a href="{{ route('operacional.kanban.servicos', $cliente) }}"
+            <a href="{{ $origem === 'cliente'
+                    ? route('cliente.dashboard')
+                    : route('operacional.kanban.servicos', $cliente) }}"
                class="inline-flex items-center gap-2 mb-4 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50">
                 ← Voltar
             </a>
@@ -25,13 +30,14 @@
 
             <form method="POST"
                   action="{{ !empty($isEdit) && $ltip
-                        ? route('operacional.ltip.update', $ltip)
-                        : route('operacional.ltip.store', $cliente) }}"
+                        ? route('operacional.ltip.update', ['ltip' => $ltip, 'origem' => $origem])
+                        : route('operacional.ltip.store', ['cliente' => $cliente, 'origem' => $origem]) }}"
                   class="px-4 sm:px-5 md:px-6 py-5 md:py-6 space-y-6">
                 @csrf
                 @if(!empty($isEdit) && $ltip)
                     @method('PUT')
                 @endif
+                <input type="hidden" name="origem" value="{{ $origem }}">
 
                 @if ($errors->any())
                     <div class="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-700">

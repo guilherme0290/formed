@@ -6,6 +6,7 @@
     /** @var \App\Models\PcmsoSolicitacoes|null $pcmso */
     $isEdit = isset($pcmso);
     $anexos = $anexos ?? collect();
+    $origem = request()->query('origem');
     use Illuminate\Support\Str;
     use App\Helpers\S3Helper;
 @endphp
@@ -14,7 +15,7 @@
 
 @section('content')
     <div class="container mx-auto px-4 py-8">
-        <a href="{{ route('operacional.pcmso.possui-pgr', [$cliente, 'especifico']) }}"
+        <a href="{{ route('operacional.pcmso.possui-pgr', ['cliente' => $cliente, 'tipo' => 'especifico', 'origem' => $origem]) }}"
            class="inline-flex items-center gap-2 text-xs text-slate-600 mb-4">
             ← Voltar
         </a>
@@ -29,14 +30,15 @@
 
             <form method="POST"
                   action="{{ $isEdit
-                        ? route('operacional.kanban.pcmso.update', $pcmso->tarefa_id)
-                        : route('operacional.pcmso.store-com-pgr', [$cliente, 'especifico']) }}"
+                        ? route('operacional.kanban.pcmso.update', ['tarefa' => $pcmso->tarefa_id, 'origem' => $origem])
+                        : route('operacional.pcmso.store-com-pgr', ['cliente' => $cliente, 'tipo' => 'especifico', 'origem' => $origem]) }}"
                   enctype="multipart/form-data"
                   class="p-6 space-y-4">
                 @csrf
                 @if($isEdit)
                     @method('PUT')
                 @endif
+                <input type="hidden" name="origem" value="{{ $origem }}">
 
                 @if ($errors->any())
                     <div class="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-700 mb-3">
@@ -238,7 +240,7 @@
                     </div>
 
                     <div class="flex items-center justify-between gap-3 pt-2">
-                        <a href="{{ route('operacional.pcmso.possui-pgr', [$cliente, 'especifico']) }}"
+                        <a href="{{ route('operacional.pcmso.possui-pgr', ['cliente' => $cliente, 'tipo' => 'especifico', 'origem' => $origem]) }}"
                            class="flex-1 text-center rounded-lg bg-slate-50 border border-slate-200 text-sm font-semibold
                                   text-slate-700 py-2.5 hover:bg-slate-100 transition">
                             Voltar

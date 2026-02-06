@@ -1849,6 +1849,22 @@
                                     state.gheConfigs = state.gheConfigs.filter(c => getGheConfigKey(c) !== baseKey);
                                 }
                             }
+                        } else {
+                            // Compatibilidade com itens ASO legados (sem meta.aso_key):
+                            // remove o item diretamente e tenta limpar a config equivalente.
+                            const tipo = String(item?.meta?.aso_tipo || '');
+                            const grupoId = Number(item?.meta?.grupo_id || 0);
+                            state.itens = state.itens.filter(x => x.id !== itemId);
+
+                            state.gheConfigs.forEach((cfg) => {
+                                const row = cfg?.tipos?.[tipo];
+                                if (!row) return;
+                                const rowGrupoId = Number(row.grupo_id || 0);
+                                if (!grupoId || rowGrupoId === grupoId) {
+                                    delete cfg.tipos[tipo];
+                                }
+                            });
+                            state.gheConfigs = state.gheConfigs.filter(cfg => Object.keys(cfg?.tipos || {}).length);
                         }
                         syncAsoTipoItems();
                         renderGheConfigsTable();

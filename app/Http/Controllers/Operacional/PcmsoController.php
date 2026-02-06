@@ -51,6 +51,7 @@ class PcmsoController extends Controller
         return view('operacional.kanban.pcmso.possui-pgr', [
             'cliente' => $cliente,
             'tipo'    => $tipo,
+            'origem'  => $request->query('origem', $request->input('origem')),
         ]);
     }
 
@@ -74,6 +75,7 @@ class PcmsoController extends Controller
                 'tipo'    => $tipo,
                 'funcoes' => $funcoes,
                 'anexos'  => collect(),
+                'origem'  => $request->query('origem', $request->input('origem')),
             ]);
         }
 
@@ -82,6 +84,7 @@ class PcmsoController extends Controller
             'tipo'    => $tipo,
             'funcoes' => $funcoes,
             'anexos'  => collect(),
+            'origem'  => $request->query('origem', $request->input('origem')),
         ]);
     }
 
@@ -272,6 +275,7 @@ class PcmsoController extends Controller
                 'pcmso'   => $pcmso,
                 'isEdit'  => true,
                 'anexos'  => $anexos,
+                'origem'  => $request->query('origem', $request->input('origem')),
             ]);
         }
 
@@ -282,6 +286,7 @@ class PcmsoController extends Controller
             'pcmso'   => $pcmso,
             'isEdit'  => true,
             'anexos'  => $anexos,
+            'origem'  => $request->query('origem', $request->input('origem')),
         ]);
     }
 
@@ -396,6 +401,13 @@ class PcmsoController extends Controller
         ]);
 
         $pcmso->update($updateData);
+
+        $origem = $request->query('origem', $request->input('origem'));
+        if ($origem === 'cliente' || $usuario->isCliente()) {
+            return redirect()
+                ->route('cliente.dashboard')
+                ->with('ok', 'PCMSO atualizado com sucesso!');
+        }
 
         return redirect()
             ->route('operacional.kanban')

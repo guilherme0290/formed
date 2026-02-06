@@ -28,11 +28,59 @@
         </div>
 
         @php
+            $clienteSidebar = $cliente ?? null;
+            if (!$clienteSidebar) {
+                $clienteSidebarId = (int) (session('portal_cliente_id') ?: (auth()->user()->cliente_id ?? 0));
+                if ($clienteSidebarId > 0) {
+                    $clienteSidebar = \App\Models\Cliente::query()->find($clienteSidebarId);
+                }
+            }
+
             $temTabelaSidebar = $temTabela ?? false;
             $precosSidebar = $precos ?? [];
             $contratoAtivoSidebar = $contratoAtivo ?? null;
             $servicosContratoSidebar = $servicosContrato ?? [];
             $servicosIdsSidebar = $servicosIds ?? [];
+
+            if (!$contratoAtivoSidebar && $clienteSidebar) {
+                $contratoAtivoSidebar = app(\App\Services\ContratoClienteService::class)
+                    ->getContratoAtivo((int) $clienteSidebar->id, (int) $clienteSidebar->empresa_id, null);
+                if ($contratoAtivoSidebar && !$contratoAtivoSidebar->relationLoaded('itens')) {
+                    $contratoAtivoSidebar->load('itens');
+                }
+            }
+
+            if (empty($servicosContratoSidebar) && $contratoAtivoSidebar) {
+                $servicosContratoSidebar = $contratoAtivoSidebar->itens
+                    ->pluck('servico_id')
+                    ->filter()
+                    ->unique()
+                    ->values()
+                    ->all();
+            }
+
+            if (empty($servicosIdsSidebar) && $clienteSidebar) {
+                $servicosMap = [
+                    'aso' => ['aso'],
+                    'pgr' => ['pgr'],
+                    'pcmso' => ['pcmso'],
+                    'ltcat' => ['ltcat'],
+                    'apr' => ['apr'],
+                    'treinamentos' => ['treinamentos nrs', 'treinamentos nr'],
+                ];
+                $servicosEmpresa = \App\Models\Servico::query()
+                    ->where('empresa_id', (int) $clienteSidebar->empresa_id)
+                    ->get(['id', 'nome']);
+
+                foreach ($servicosMap as $slug => $nomes) {
+                    $servico = $servicosEmpresa->first(function ($row) use ($nomes) {
+                        $nome = mb_strtolower(trim((string) $row->nome));
+                        return in_array($nome, $nomes, true);
+                    });
+                    $servicosIdsSidebar[$slug] = $servico?->id ? (int) $servico->id : null;
+                }
+            }
+
             $temContratoAtivoSidebar = (bool) $contratoAtivoSidebar;
             $permitidosSidebar = [
                 'aso' => $temContratoAtivoSidebar && in_array($servicosIdsSidebar['aso'] ?? null, $servicosContratoSidebar),
