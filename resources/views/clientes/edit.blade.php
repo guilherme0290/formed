@@ -42,14 +42,48 @@
             </h1>
         </div>
 
-        <form method="POST"
-              action="{{ $cliente->exists ? route($routePrefix.'.update', $cliente) : route($routePrefix.'.store') }}"
-              class="bg-white rounded-xl shadow border p-6 space-y-6">
+        @if($cliente->exists)
+            <div class="mb-6">
+                <div class="flex flex-wrap gap-2" data-tabs="cliente">
+                    <button type="button"
+                            class="px-4 py-2 rounded-full text-sm font-semibold text-slate-600 hover:bg-slate-100"
+                            data-tab="dados">
+                        Dados do Cliente
+                    </button>
+                    <button type="button"
+                            class="px-4 py-2 rounded-full text-sm font-semibold text-slate-600 hover:bg-slate-100"
+                            data-tab="parametros">
+                        Parâmetros
+                    </button>
+                    <button type="button"
+                            class="px-4 py-2 rounded-full text-sm font-semibold text-slate-600 hover:bg-slate-100"
+                            data-tab="esocial">
+                        eSocial
+                    </button>
+                    <button type="button"
+                            class="px-4 py-2 rounded-full text-sm font-semibold text-slate-600 hover:bg-slate-100"
+                            data-tab="forma-pagamento">
+                        Forma de Pagamento
+                    </button>
+                </div>
+            </div>
+        @endif
 
-            @csrf
-            @if($cliente->exists)
-                @method('PUT')
-            @endif
+        <div data-tabs-scope="cliente">
+            <div data-tab-panel="dados" data-tab-panel-root="cliente">
+                <div class="w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+                    <div class="bg-white rounded-2xl shadow border border-slate-200 overflow-hidden">
+                        <div class="px-6 py-4 border-b bg-blue-600 text-white">
+                            <h1 class="text-lg font-semibold">Dados do Cliente</h1>
+                        </div>
+                        <form method="POST"
+                              action="{{ $cliente->exists ? route($routePrefix.'.update', $cliente) : route($routePrefix.'.store') }}"
+                              class="p-6 space-y-6">
+
+                @csrf
+                @if($cliente->exists)
+                    @method('PUT')
+                @endif
 
             {{-- ATIVO --}}
             <div class="flex items-center gap-3">
@@ -230,12 +264,62 @@
                     {{ $cliente->exists ? 'Salvar Alterações' : 'Cadastrar' }}
                 </button>
             </div>
-        </form>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            @if($cliente->exists)
+                @include('clientes.partials.parametros')
+            @endif
+        </div>
     </div>
 
     {{-- jQuery + MÁSCARAS (CNPJ, CEP, Telefone) --}}
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
+    <script>
+        (function () {
+            const tabsWrap = document.querySelector('[data-tabs="cliente"]');
+            if (!tabsWrap) return;
+
+            const tabs = Array.from(tabsWrap.querySelectorAll('[data-tab]'));
+            const scope = tabsWrap.closest('[data-tabs-scope="cliente"]') || document;
+            const panels = Array.from(scope.querySelectorAll('[data-tab-panel-root="cliente"]'));
+
+            function activate(tabName) {
+                const activeClasses = {
+                    'dados': ['bg-blue-600', 'text-white'],
+                    'parametros': ['bg-emerald-600', 'text-white'],
+                    'esocial': ['bg-amber-600', 'text-white'],
+                    'forma-pagamento': ['bg-indigo-600', 'text-white'],
+                };
+
+                tabs.forEach(btn => {
+                    const active = btn.dataset.tab === tabName;
+                    const classes = activeClasses[btn.dataset.tab] || ['bg-blue-600', 'text-white'];
+                    btn.classList.remove('bg-blue-600', 'bg-emerald-600', 'bg-amber-600', 'bg-indigo-600', 'text-white');
+                    if (active) {
+                        btn.classList.add(...classes);
+                    }
+                    btn.classList.toggle('text-slate-600', !active);
+                });
+                panels.forEach(panel => {
+                    if (!panel.dataset.tabPanel) return;
+                    panel.classList.toggle('hidden', panel.dataset.tabPanel !== tabName);
+                });
+            }
+
+            tabs.forEach(btn => {
+                btn.addEventListener('click', () => activate(btn.dataset.tab));
+            });
+
+            const urlTab = new URLSearchParams(window.location.search).get('tab');
+            const initialTab = tabs.some(btn => btn.dataset.tab === urlTab) ? urlTab : 'dados';
+            activate(initialTab);
+        })();
+    </script>
+
     <script>
         $(function () {
             // CNPJ

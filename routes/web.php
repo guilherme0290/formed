@@ -661,6 +661,10 @@ Route::middleware('auth')->group(function () {
                 Route::get('/{cliente}/edit', [ClienteController::class, 'edit'])->name('edit');
                 Route::put('/{cliente}',      [ClienteController::class, 'update'])->name('update');
                 Route::delete('/{cliente}',   [ClienteController::class, 'destroy'])->name('destroy');
+                Route::post('/{cliente}/parametros', [\App\Http\Controllers\ClienteParametroController::class, 'save'])
+                    ->name('parametros.save');
+                Route::get('/{cliente}/parametros', [\App\Http\Controllers\ClienteParametroController::class, 'show'])
+                    ->name('parametros.show');
                 Route::get('/{cliente}/acesso', [ClienteController::class, 'acessoForm'])->name('acesso.form');
                 Route::post('/{cliente}/acesso', [ClienteController::class, 'criarAcesso'])->name('acesso');
 
@@ -883,6 +887,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/{cliente}/edit', [ClienteController::class, 'edit'])->name('edit');
         Route::put('/{cliente}',      [ClienteController::class, 'update'])->name('update');
         Route::delete('/{cliente}',   [ClienteController::class, 'destroy'])->name('destroy');
+        Route::post('/{cliente}/parametros', [\App\Http\Controllers\ClienteParametroController::class, 'save'])
+            ->name('parametros.save');
+        Route::get('/{cliente}/parametros', [\App\Http\Controllers\ClienteParametroController::class, 'show'])
+            ->name('parametros.show');
         Route::get('/{cliente}/acesso', [ClienteController::class, 'acessoForm'])->name('acesso.form');
         Route::post('/{cliente}/acesso', [ClienteController::class, 'criarAcesso'])->name('acesso');
 

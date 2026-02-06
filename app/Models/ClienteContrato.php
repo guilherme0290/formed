@@ -15,6 +15,7 @@ class ClienteContrato extends Model
         'cliente_id',
         'vendedor_id',
         'proposta_id_origem',
+        'parametro_cliente_id_origem',
         'status',
         'vigencia_inicio',
         'vigencia_fim',
@@ -53,6 +54,11 @@ class ClienteContrato extends Model
     public function propostaOrigem(): BelongsTo
     {
         return $this->belongsTo(Proposta::class, 'proposta_id_origem');
+    }
+
+    public function parametroOrigem(): BelongsTo
+    {
+        return $this->belongsTo(ParametroCliente::class, 'parametro_cliente_id_origem');
     }
 
     public function vigencias(): HasMany
