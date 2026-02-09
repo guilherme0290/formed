@@ -93,19 +93,18 @@
                 {{-- Linha 1 --}}
                 <div class="grid gap-4 md:grid-cols-5">
                     {{-- Criar Proposta --}}
-                    <a href="{{ route('comercial.propostas.index') }}"
-                       class="group rounded-2xl border border-blue-100 bg-blue-50/80 hover:bg-blue-100 transition shadow-sm p-4 flex flex-col justify-between">
+                    <div class="rounded-2xl border border-slate-200 bg-slate-50/80 shadow-sm p-4 flex flex-col justify-between opacity-60 cursor-not-allowed">
                         <div>
-                            <div class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500 text-white mb-3">
+                            <div class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-slate-400 text-white mb-3">
                                 +
                             </div>
                             <h3 class="text-sm font-semibold text-slate-800">Criar Proposta</h3>
-                            <p class="text-xs text-slate-500 mt-1">Nova proposta comercial</p>
+                            <p class="text-xs text-slate-500 mt-1">Indisponível</p>
                         </div>
-                        <span class="mt-3 text-[11px] font-medium text-blue-700 group-hover:text-blue-800">
-                            Acessar →
+                        <span class="mt-3 text-[11px] font-medium text-slate-500">
+                            Somente leitura
                         </span>
-                    </a>
+                    </div>
 
                     {{-- Gerar Apresentação --}}
                     <a href="{{ route('comercial.apresentacao.cliente') }}"

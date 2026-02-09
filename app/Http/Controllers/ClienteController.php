@@ -5,6 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\Cidade;
 use App\Models\Cliente;
 use App\Models\Estado;
+use App\Models\Funcao;
+use App\Models\ParametroCliente;
+use App\Models\ParametroClienteAsoGrupo;
+use App\Models\Servico;
+use App\Models\TabelaPrecoItem;
+use App\Models\TabelaPrecoPadrao;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 
@@ -265,6 +271,7 @@ class ClienteController extends Controller
         $this->authorizeCliente($cliente);
 
         $estados = Estado::orderBy('uf')->get(['uf', 'nome']);
+        $empresaId = $cliente->empresa_id ?? (auth()->user()->empresa_id ?? 1);
 
         // se não tiver cidade associada, isso aqui vira null sem quebrar
         $ufSelecionada = optional(optional($cliente->cidade)->estado)->uf;
@@ -280,6 +287,55 @@ class ClienteController extends Controller
 
         $routePrefix = $this->routePrefix();
 
+        $esocialId = config('services.esocial_id');
+        $servicos = Servico::where('empresa_id', $empresaId)
+            ->where('ativo', true)
+            ->when($esocialId, fn($q) => $q->where('id', '!=', $esocialId))
+            ->orderBy('nome')
+            ->get();
+        $funcoes = Funcao::where('empresa_id', $empresaId)->orderBy('nome')->get(['id', 'nome']);
+
+        $treinamentos = collect();
+        $treinamentoId = (int) (config('services.treinamento_id') ?? 0);
+        $padrao = TabelaPrecoPadrao::where('empresa_id', $empresaId)
+            ->where('ativa', true)
+            ->first();
+        if ($padrao && $treinamentoId > 0) {
+            $treinamentos = TabelaPrecoItem::query()
+                ->where('tabela_preco_padrao_id', $padrao->id)
+                ->where('servico_id', $treinamentoId)
+                ->where('ativo', true)
+                ->whereNotNull('codigo')
+                ->orderBy('codigo')
+                ->selectRaw('id, codigo, descricao as titulo')
+                ->get();
+        }
+
+        $formasPagamento = [
+            'Pix',
+            'Boleto',
+            'Cartão de crédito',
+            'Cartão de débito',
+            'Transferência',
+        ];
+
+        $parametro = ParametroCliente::query()
+            ->where('empresa_id', $empresaId)
+            ->where('cliente_id', $cliente->id)
+            ->latest('id')
+            ->first();
+
+        if ($parametro) {
+            $parametro->load('itens');
+        }
+
+        $parametroAsoGrupos = $parametro
+            ? ParametroClienteAsoGrupo::query()
+                ->where('parametro_cliente_id', $parametro->id)
+                ->with(['grupo', 'clienteGhe'])
+                ->get()
+            : collect();
+
         return view('clientes.edit', [
             'cliente'         => $cliente,
             'estados'         => $estados,
@@ -287,6 +343,12 @@ class ClienteController extends Controller
             'ufSelecionada'   => $ufSelecionada,
             'modo'            => 'edit',
             'routePrefix'     => $routePrefix,
+            'servicos'        => $servicos,
+            'funcoes'         => $funcoes,
+            'treinamentos'    => $treinamentos,
+            'formasPagamento' => $formasPagamento,
+            'parametro'       => $parametro,
+            'parametroAsoGrupos' => $parametroAsoGrupos,
         ]);
     }
 

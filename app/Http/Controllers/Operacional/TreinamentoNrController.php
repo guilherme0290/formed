@@ -360,13 +360,18 @@ class TreinamentoNrController extends Controller
             ->latest('id')
             ->first();
 
-        if (!$contrato || !$contrato->propostaOrigem) {
+        if (!$contrato) {
             return collect();
         }
 
-        $contrato->loadMissing('propostaOrigem.itens');
+        $contrato->loadMissing('propostaOrigem.itens', 'parametroOrigem.itens');
 
-        $codigosContratados = $contrato->propostaOrigem->itens
+        $itensOrigem = $contrato->propostaOrigem?->itens ?? $contrato->parametroOrigem?->itens;
+        if (!$itensOrigem) {
+            return collect();
+        }
+
+        $codigosContratados = $itensOrigem
             ->filter(fn ($it) => strtoupper((string) $it->tipo) === 'TREINAMENTO_NR')
             ->map(function ($it) {
                 $codigo = $it->meta['codigo'] ?? null;
