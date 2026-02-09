@@ -131,7 +131,7 @@
                                         data-cliente-nome="{{ $cliente->razao_social }}"
                                         data-user-id="{{ $cliente->userCliente->id }}"
                                         data-user-name="{{ $cliente->userCliente->name }}"
-                                        data-user-email="{{ $cliente->userCliente->email }}"
+                                        data-user-login="{{ $cliente->userCliente->email ?: $cliente->userCliente->documento }}"
                                         data-user-status="{{ $cliente->userCliente->ativo ? 'Ativo' : 'Inativo' }}"
                                         data-user-created="{{ optional($cliente->userCliente->created_at)->format('d/m/Y H:i') }}">
                                     🔓
@@ -181,16 +181,15 @@
                                 </form>
 
                                 <a href="{{ route($routePrefix.'.acesso.form', $cliente) }}"
-                                   class="px-3 py-2 text-indigo-700 bg-indigo-100 rounded-lg text-xs {{ $cliente->email ? '' : 'opacity-50 cursor-not-allowed' }}"
+                                   class="px-3 py-2 text-indigo-700 bg-indigo-100 rounded-lg text-xs"
                                    title="{{ $cliente->userCliente ? 'Ver acesso' : 'Criar acesso' }}"
                                    aria-label="{{ $cliente->userCliente ? 'Ver acesso' : 'Criar acesso' }}"
-                                   {{ $cliente->email ? '' : 'aria-disabled=true tabindex=-1' }}
                                    @if($cliente->userCliente)
                                        onclick="openAcessoModal(this); return false;"
                                        data-cliente-nome="{{ $cliente->razao_social }}"
                                        data-user-id="{{ $cliente->userCliente->id }}"
                                        data-user-name="{{ $cliente->userCliente->name }}"
-                                       data-user-email="{{ $cliente->userCliente->email }}"
+                                       data-user-login="{{ $cliente->userCliente->email ?: $cliente->userCliente->documento }}"
                                        data-user-status="{{ $cliente->userCliente->ativo ? 'Ativo' : 'Inativo' }}"
                                        data-user-created="{{ optional($cliente->userCliente->created_at)->format('d/m/Y H:i') }}"
                                    @endif>
@@ -228,7 +227,7 @@
                     <div class="space-y-2 text-sm text-slate-700">
                         <div><span class="text-slate-500">Cliente:</span> <span id="acessoClienteNome">-</span></div>
                         <div><span class="text-slate-500">Usuário:</span> <span id="acessoUserNome">-</span></div>
-                        <div><span class="text-slate-500">E-mail:</span> <span id="acessoUserEmail">-</span></div>
+                        <div><span class="text-slate-500">Login:</span> <span id="acessoUserLogin">-</span></div>
                         <div><span class="text-slate-500">Status:</span> <span id="acessoUserStatus">-</span></div>
                         <div><span class="text-slate-500">Criado em:</span> <span id="acessoUserCreated">-</span></div>
                     </div>
@@ -256,7 +255,7 @@
 
                 document.getElementById('acessoClienteNome').textContent = data.clienteNome || '-';
                 document.getElementById('acessoUserNome').textContent = data.userName || '-';
-                document.getElementById('acessoUserEmail').textContent = data.userEmail || '-';
+                document.getElementById('acessoUserLogin').textContent = data.userLogin || '-';
                 document.getElementById('acessoUserStatus').textContent = data.userStatus || '-';
                 document.getElementById('acessoUserCreated').textContent = data.userCreated || '-';
 

@@ -18,6 +18,7 @@
     $telefoneLimpo = preg_replace('/\\D+/', '', $cliente->telefone ?? '');
     $senhaPadrao = $senhaSugerida ?? \Illuminate\Support\Str::password(10);
     $emailSugerido = $cliente->email ?? '';
+    $documentoSugerido = $cliente->cnpj ?? '';
 @endphp
 
 @section('content')
@@ -34,15 +35,19 @@
 
             @if($userExistente)
                 <div class="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
-                    Já existe um usuário para este cliente ({{ $userExistente->email }}). Você pode criar outro apenas se usar um e-mail diferente.
+                    Já existe um usuário para este cliente ({{ $userExistente->email ?: $userExistente->documento }}). Você pode criar outro apenas se usar um documento/e-mail diferente.
                 </div>
             @endif
 
             <form id="acessoForm" method="POST" action="{{ route($routePrefix.'.acesso', $cliente) }}" class="space-y-4">
                 @csrf
                 <div class="space-y-1">
-                    <label class="text-sm font-semibold text-slate-700">E-mail (login)</label>
-                    <input type="email" name="email" value="{{ old('email', $emailSugerido) }}" required class="w-full rounded-xl border border-slate-200 px-3 py-2">
+                    <label class="text-sm font-semibold text-slate-700">CNPJ (login)</label>
+                    <input type="text" name="documento" id="documentoInput" value="{{ old('documento', $documentoSugerido) }}" required class="w-full rounded-xl border border-slate-200 px-3 py-2" placeholder="00.000.000/0000-00">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-sm font-semibold text-slate-700">E-mail (opcional)</label>
+                    <input type="email" name="email" value="{{ old('email', $emailSugerido) }}" class="w-full rounded-xl border border-slate-200 px-3 py-2">
                 </div>
                 <div class="space-y-1">
                     <div class="flex items-center justify-between">
@@ -127,8 +132,9 @@
             const btnWhatsapp = document.getElementById('btnWhatsapp');
             const btnEmail = document.getElementById('btnEmail');
             const emailInput = document.querySelector('input[name=\"email\"]');
+            const documentoInput = document.getElementById('documentoInput');
             const telefone = '{{ $telefoneLimpo }}';
-            const sistemaUrl = @json(route('login'));
+            const sistemaUrl = @json(route('login.cliente'));
             const modalEmail = document.getElementById('modalEmailAcesso');
             const emailModalTo = document.getElementById('emailModalTo');
             const emailModalSubject = document.getElementById('emailModalSubject');
@@ -152,14 +158,14 @@
                 });
             }
 
-            function montarMensagem(email, senha) {
-                return `Olá! Aqui estão seus acessos ao portal:\nLogin: ${email}\nSenha temporária: ${senha}\nAcesse: ${sistemaUrl}\nAltere a senha no primeiro login.`;
+            function montarMensagem(login, senha) {
+                return `Olá! Aqui estão seus acessos ao portal:\nLogin: ${login}\nSenha temporária: ${senha}\nAcesse: ${sistemaUrl}\nAltere a senha no primeiro login.`;
             }
 
             function atualizarLinks() {
-                const email = emailInput.value || '';
+                const login = (documentoInput?.value || emailInput.value || '').trim();
                 const senha = senhaInput.value || '';
-                const texto = encodeURIComponent(montarMensagem(email, senha));
+                const texto = encodeURIComponent(montarMensagem(login, senha));
 
                 if (telefone) {
                     btnWhatsapp.href = `https://wa.me/${telefone}?text=${texto}`;
@@ -172,7 +178,8 @@
                 if (!modalEmail) return;
                 const email = emailInput.value || '';
                 const senha = senhaInput.value || '';
-                const mensagem = montarMensagem(email, senha);
+                const login = (documentoInput?.value || email || '').trim();
+                const mensagem = montarMensagem(login, senha);
 
                 if (emailModalTo) emailModalTo.value = email;
                 if (emailModalSubject && !emailModalSubject.value) {
@@ -197,14 +204,39 @@
             btnGerar?.addEventListener('click', gerarSenha);
             btnCopiar?.addEventListener('click', copiarSenha);
             emailInput?.addEventListener('input', atualizarLinks);
+            documentoInput?.addEventListener('input', atualizarLinks);
             senhaInput?.addEventListener('input', atualizarLinks);
             btnEmail?.addEventListener('click', abrirEmailModal);
             emailModalTo?.addEventListener('input', atualizarEmailModalLink);
             emailModalSubject?.addEventListener('input', atualizarEmailModalLink);
             emailModalBody?.addEventListener('input', atualizarEmailModalLink);
 
+            function formatDocumento(value) {
+                const digits = (value || '').replace(/\D+/g, '').slice(0, 14);
+                if (digits.length <= 2) return digits;
+                if (digits.length <= 5) {
+                    return `${digits.slice(0, 2)}.${digits.slice(2)}`;
+                }
+                if (digits.length <= 8) {
+                    return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5)}`;
+                }
+                if (digits.length <= 12) {
+                    return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8)}`;
+                }
+                return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12)}`;
+            }
+
+            if (documentoInput) {
+                documentoInput.addEventListener('input', () => {
+                    const pos = documentoInput.selectionStart;
+                    documentoInput.value = formatDocumento(documentoInput.value);
+                    documentoInput.setSelectionRange(pos, pos);
+                });
+            }
+
             atualizarLinks();
         })();
     </script>
 @endsection
 BLADE
+

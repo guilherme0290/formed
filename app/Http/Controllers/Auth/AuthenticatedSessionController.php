@@ -29,8 +29,20 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerate();
 
         $destino   = $request->input('redirect', 'master');
+        $loginRaw  = trim((string) $request->input('login'));
         $user      = $request->user();
         $papelNome = mb_strtolower(optional($user->papel)->nome ?? '');
+
+        // Internos só podem autenticar com e-mail
+        if ($papelNome !== 'cliente' && $loginRaw !== '' && !str_contains($loginRaw, '@')) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect()
+                ->route('login')
+                ->withErrors(['login' => 'Usuários internos devem acessar com e-mail.']);
+        }
 
         if ($user->must_change_password ?? false) {
             return redirect()->route('password.force');
