@@ -1004,6 +1004,7 @@ Route::middleware('auth')->group(function () {
         // CRUD de Funções
         Route::prefix('funcoes')->name('funcoes.')->group(function () {
             Route::get('/', [FuncaoController::class, 'index'])->name('index');
+            Route::get('/json', [FuncaoController::class, 'index'])->name('indexJson');
             Route::post('/', [FuncaoController::class, 'store'])->name('store');
             Route::put('/{funcao}', [FuncaoController::class, 'update'])->name('update');
             Route::delete('/{funcao}', [FuncaoController::class, 'destroy'])->name('destroy');
@@ -1096,6 +1097,16 @@ Route::middleware('auth')->group(function () {
             Route::delete('/{protocolo}', [ProtocolosExamesController::class, 'destroy'])
                 ->name('destroy');
         });
+        Route::prefix('ghes')->name('ghes.')->group(function () {
+            Route::get('/', [GheController::class, 'indexJson'])
+                ->name('indexJson');
+            Route::post('/', [GheController::class, 'store'])
+                ->name('store');
+            Route::put('/{ghe}', [GheController::class, 'update'])
+                ->name('update');
+            Route::delete('/{ghe}', [GheController::class, 'destroy'])
+                ->name('destroy');
+        });
 
         // GHE do Cliente
         Route::prefix('clientes-ghes')->name('clientes-ghes.')->group(function () {
@@ -1135,3 +1146,5 @@ Route::get('operacional/tarefas/documento/{token}', [TarefaController::class, 'd
     ->name('operacional.tarefas.documento');
 
 require __DIR__.'/auth.php';
+
+
