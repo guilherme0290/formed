@@ -501,14 +501,38 @@
                                         @php
                                             $treiFuncs = $tarefa->treinamentoNr()->with('funcionario')->get();
                                             $treiDet   = $tarefa->treinamentoNrDetalhes;
-                                            $listaNomes = $treiFuncs->pluck('funcionario.nome')->join(', ');
+                                            $listaNomesArr = $treiFuncs->pluck('funcionario.nome')
+                                                ->filter()
+                                                ->sort()
+                                                ->values()
+                                                ->all();
+                                            $listaNomes = implode(', ', $listaNomesArr);
                                             $listaFuncoes = $treiFuncs->pluck('funcionario.funcao')->join(', ');
+                                            $treiPayload = $treiDet->treinamentos ?? [];
+                                            $treiModo = is_array($treiPayload) ? ($treiPayload['modo'] ?? null) : null;
+                                            $treiPacote = '';
+                                            $treiCodigos = [];
+                                            if ($treiModo === 'pacote') {
+                                                $treiPacote = (string) data_get($treiPayload, 'pacote.nome', '');
+                                                $treiCodigos = (array) data_get($treiPayload, 'pacote.codigos', []);
+                                            } else {
+                                                if (is_array($treiPayload) && array_key_exists('codigos', $treiPayload)) {
+                                                    $treiCodigos = (array) ($treiPayload['codigos'] ?? []);
+                                                } else {
+                                                    $treiCodigos = (array) $treiPayload;
+                                                }
+                                            }
+                                            $treiCodigos = array_values(array_filter(array_map('strval', $treiCodigos)));
+                                            $treiCodigosLabel = implode(', ', $treiCodigos);
                                         @endphp
 
-                                        data-treinamento-participantes="{{ $listaNomes }}"
+                                        data-treinamento-participantes='@json($listaNomesArr)'
                                         data-treinamento-funcoes="{{ $listaFuncoes }}"
                                         data-treinamento-local="{{ $treiDet->local_tipo }}"
                                         data-treinamento-unidade="{{ optional($treiDet->unidade)->nome ?? '' }}"
+                                        data-treinamento-modo="{{ $treiModo }}"
+                                        data-treinamento-pacote="{{ $treiPacote }}"
+                                        data-treinamento-codigos="{{ $treiCodigosLabel }}"
                                     @endif
                                     >
 
@@ -983,6 +1007,21 @@
                         <p><b>Unidade / Clínica:</b> <span id="modal-treinamento-unidade"></span></p>
 
                         <div class="mt-2">
+                            <p class="text-[11px] font-semibold text-indigo-700">Modo</p>
+                            <p id="modal-treinamento-modo" class="text-sm">—</p>
+                        </div>
+
+                        <div class="mt-2">
+                            <p class="text-[11px] font-semibold text-indigo-700">Treinamentos selecionados</p>
+                            <p id="modal-treinamento-codigos" class="text-sm">—</p>
+                        </div>
+
+                        <div class="mt-2">
+                            <p class="text-[11px] font-semibold text-indigo-700">Pacote selecionado</p>
+                            <p id="modal-treinamento-pacote" class="text-sm">—</p>
+                        </div>
+
+                        <div class="mt-2">
                             <p class="text-[11px] font-semibold text-indigo-700">Participantes</p>
                             <p id="modal-treinamento-participantes" class="text-sm">—</p>
                         </div>
@@ -1323,6 +1362,9 @@
             const spanTreinUnidade = document.getElementById('modal-treinamento-unidade');
             const spanTreinPart = document.getElementById('modal-treinamento-participantes');
             const spanTreinFuncs = document.getElementById('modal-treinamento-funcoes');
+            const spanTreinModo = document.getElementById('modal-treinamento-modo');
+            const spanTreinCodigos = document.getElementById('modal-treinamento-codigos');
+            const spanTreinPacote = document.getElementById('modal-treinamento-pacote');
 
             // Link do documento da tarefa (arquivo_cliente_path)
             const arquivoWrapper = document.getElementById('modal-arquivo-wrapper');
@@ -1695,15 +1737,36 @@
 
                     blocoTreinamento.classList.remove('hidden');
 
-                    const localTipo = card.querySelector('[data-trei-local]')?.dataset.treiLocal || '—';
-                    const unidade = card.querySelector('[data-trei-unidade]')?.dataset.treiUnidade || '—';
-                    const participantes = card.querySelector('[data-trei-participantes]')?.dataset.treiParticipantes || '—';
-                    const funcoes = card.querySelector('[data-trei-funcoes]')?.dataset.treiFuncoes || '—';
+                    const localTipo = card.dataset.treinamentoLocal || '—';
+                    const unidade = card.dataset.treinamentoUnidade || '—';
+                    let participantes = card.dataset.treinamentoParticipantes || '';
+                    const funcoes = card.dataset.treinamentoFuncoes || '—';
+                    const modo = card.dataset.treinamentoModo || '';
+                    const pacote = card.dataset.treinamentoPacote || '';
+                    const codigos = card.dataset.treinamentoCodigos || '';
 
                     spanTreinLocal.textContent = localTipo === 'clinica' ? 'Clínica' : 'In Company';
                     spanTreinUnidade.textContent = unidade;
-                    spanTreinPart.textContent = participantes;
+                    try {
+                        const lista = participantes ? JSON.parse(participantes) : [];
+                        if (Array.isArray(lista) && lista.length) {
+                            spanTreinPart.innerHTML = lista.map(nome => String(nome)).join('<br>');
+                        } else {
+                            spanTreinPart.textContent = '—';
+                        }
+                    } catch (e) {
+                        spanTreinPart.textContent = participantes || '—';
+                    }
                     spanTreinFuncs.textContent = funcoes;
+                    if (spanTreinModo) {
+                        spanTreinModo.textContent = modo === 'pacote' ? 'Pacote' : (modo === 'avulso' ? 'Avulso' : '—');
+                    }
+                    if (spanTreinCodigos) {
+                        spanTreinCodigos.textContent = codigos || '—';
+                    }
+                    if (spanTreinPacote) {
+                        spanTreinPacote.textContent = pacote || '—';
+                    }
 
                 } else {
                     blocoTreinamento.classList.add('hidden');

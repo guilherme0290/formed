@@ -834,7 +834,19 @@
 
                     selectFuncionario.addEventListener('change', function () {
                         const funcionarioId = selectFuncionario.value;
-                        if (!funcionarioId || !funcionarioUrlTemplate) {
+                        if (!funcionarioId) {
+                            if (campoNome) campoNome.value = '';
+                            if (campoCpf) campoCpf.value = '';
+                            if (campoRg) campoRg.value = '';
+                            if (campoDataNascimento) campoDataNascimento.value = '';
+                            if (campoCelular) campoCelular.value = '';
+                            if (selectFuncao) {
+                                selectFuncao.value = '';
+                                selectFuncao.dispatchEvent(new Event('change'));
+                            }
+                            return;
+                        }
+                        if (!funcionarioUrlTemplate) {
                             return;
                         }
                         const url = funcionarioUrlTemplate.replace('FUNCIONARIO_ID', funcionarioId);

@@ -8,6 +8,7 @@ use App\Models\PgrSolicitacoes;
 use App\Models\Servico;
 use App\Models\Tarefa;
 use App\Models\TreinamentoNrDetalhes;
+use App\Models\TreinamentoNR;
 use App\Models\AsoSolicitacoes;
 use Carbon\Carbon;
 use Illuminate\Validation\ValidationException;
@@ -172,6 +173,12 @@ class PrecificacaoService
 
         $detalhes = TreinamentoNrDetalhes::where('tarefa_id', $tarefa->id)->first();
         $treinamentosPayload = $detalhes?->treinamentos ?? [];
+        $quantidadeParticipantes = TreinamentoNR::where('tarefa_id', $tarefa->id)->count();
+        if ($quantidadeParticipantes <= 0) {
+            throw ValidationException::withMessages([
+                'contrato' => 'Treinamento sem participantes para precificação.',
+            ]);
+        }
 
         if (is_array($treinamentosPayload) && ($treinamentosPayload['modo'] ?? null) === 'pacote') {
             $pacote = (array) ($treinamentosPayload['pacote'] ?? []);
@@ -203,7 +210,7 @@ class PrecificacaoService
                     'servico_id' => $tarefa->servico_id,
                     'descricao_snapshot' => $descricao,
                     'preco_unitario_snapshot' => (float) $itemContrato->preco_unitario_snapshot,
-                    'quantidade' => 1,
+                    'quantidade' => $quantidadeParticipantes,
                 ]],
             ];
         }
@@ -307,7 +314,7 @@ class PrecificacaoService
                 'servico_id' => $tarefa->servico_id,
                 'descricao_snapshot' => $descricao,
                 'preco_unitario_snapshot' => (float) $itemContrato->preco_unitario_snapshot,
-                'quantidade' => 1,
+                'quantidade' => $quantidadeParticipantes,
             ];
         }
 

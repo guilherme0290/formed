@@ -43,7 +43,6 @@ class TreinamentoNrController extends Controller
         $contratoAtivo = $this->contratoAtivo($cliente);
         $treinamentosFinalizados = $this->getTreinamentosFinalizados($empresaId, $cliente, $contratoAtivo);
         $pacotesTreinamentos = $this->getPacotesTreinamentos($empresaId, $cliente, $contratoAtivo);
-        $pacotesTreinamentos = $this->getPacotesTreinamentos($empresaId, $cliente, $contratoAtivo);
 
         return view('operacional.kanban.treinamentos-nr.create', [
             'cliente'      => $cliente,
@@ -68,15 +67,14 @@ class TreinamentoNrController extends Controller
 
         // Validação única
         $treinamentosDisponiveis = $this->getTreinamentosDisponiveis($empresaId, $cliente);
+        $pacotesTreinamentos = $this->getPacotesTreinamentos($empresaId, $cliente, $this->contratoAtivo($cliente));
+        $pacotesIds = collect($pacotesTreinamentos)->pluck('contrato_item_id')->filter()->values()->all();
         $treinamentosCodigos = $treinamentosDisponiveis->pluck('codigo')->filter()->values()->all();
-        if (empty($treinamentosCodigos)) {
+        if (empty($treinamentosCodigos) && empty($pacotesIds)) {
             return back()
                 ->withErrors(['treinamentos' => 'Nenhum treinamento contratado para este cliente.'])
                 ->withInput();
         }
-
-        $pacotesTreinamentos = $this->getPacotesTreinamentos($empresaId, $cliente, $this->contratoAtivo($cliente));
-        $pacotesIds = collect($pacotesTreinamentos)->pluck('contrato_item_id')->filter()->values()->all();
 
         $data = $request->validate([
             'funcionarios'   => ['required', 'array', 'min:1'],
@@ -115,6 +113,11 @@ class TreinamentoNrController extends Controller
             $tipoLabel,
             $pacotesTreinamentos
         ) {
+            $unidadeNome = null;
+            if ($data['local_tipo'] === 'clinica' && !empty($data['unidade_id'])) {
+                $unidadeNome = UnidadeClinica::query()->where('empresa_id', $empresaId)->find($data['unidade_id'])?->nome;
+            }
+
             // Cria a tarefa no padrão das demais
             $inicioPrevisto = now();
             $fimPrevisto = app(TempoTarefaService::class)
@@ -129,7 +132,7 @@ class TreinamentoNrController extends Controller
                 'titulo'          => "Treinamento NR",
                 'descricao'       => "Treinamento NR - {$tipoLabel} · Local: {$data['local_tipo']}"
                     . ($data['local_tipo'] === 'clinica'
-                        ? " · Unidade ID: {$data['unidade_id']}"
+                        ? " · Unidade: " . ($unidadeNome ?: '—')
                         : ' · In Company'),
                 'inicio_previsto' => $inicioPrevisto,
                 'fim_previsto'    => $fimPrevisto,
@@ -230,6 +233,7 @@ class TreinamentoNrController extends Controller
         $treinamentosDisponiveis = $this->getTreinamentosDisponiveis($empresaId, $cliente);
         $contratoAtivo = $this->contratoAtivo($cliente);
         $treinamentosFinalizados = $this->getTreinamentosFinalizados($empresaId, $cliente, $contratoAtivo);
+        $pacotesTreinamentos = $this->getPacotesTreinamentos($empresaId, $cliente, $contratoAtivo);
 
         return view('operacional.kanban.treinamentos-nr.create', [
             'cliente'      => $cliente,
@@ -260,15 +264,14 @@ class TreinamentoNrController extends Controller
         $cliente = $tarefa->cliente;
 
         $treinamentosDisponiveis = $this->getTreinamentosDisponiveis($empresaId, $cliente);
+        $pacotesTreinamentos = $this->getPacotesTreinamentos($empresaId, $cliente, $this->contratoAtivo($cliente));
+        $pacotesIds = collect($pacotesTreinamentos)->pluck('contrato_item_id')->filter()->values()->all();
         $treinamentosCodigos = $treinamentosDisponiveis->pluck('codigo')->filter()->values()->all();
-        if (empty($treinamentosCodigos)) {
+        if (empty($treinamentosCodigos) && empty($pacotesIds)) {
             return back()
                 ->withErrors(['treinamentos' => 'Nenhum treinamento contratado para este cliente.'])
                 ->withInput();
         }
-
-        $pacotesTreinamentos = $this->getPacotesTreinamentos($empresaId, $cliente, $this->contratoAtivo($cliente));
-        $pacotesIds = collect($pacotesTreinamentos)->pluck('contrato_item_id')->filter()->values()->all();
 
         $data = $request->validate([
             'funcionarios'   => ['required', 'array', 'min:1'],
@@ -286,6 +289,12 @@ class TreinamentoNrController extends Controller
         ]);
 
         DB::transaction(function () use ($data, $tarefa, $usuario, $pacotesTreinamentos) {
+            $unidadeNome = null;
+            if ($data['local_tipo'] === 'clinica' && !empty($data['unidade_id'])) {
+                $unidadeNome = UnidadeClinica::query()
+                    ->where('empresa_id', $tarefa->empresa_id)
+                    ->find($data['unidade_id'])?->nome;
+            }
 
             // Atualiza / cria detalhes de local
             $detalhes = TreinamentoNrDetalhes::firstOrNew([
@@ -303,7 +312,7 @@ class TreinamentoNrController extends Controller
             $tarefa->update([
                 'descricao' => "Treinamento NR · Local: {$data['local_tipo']}" .
                     ($data['local_tipo'] === 'clinica'
-                        ? " · Unidade ID: {$detalhes->unidade_id}"
+                        ? " · Unidade: " . ($unidadeNome ?: '—')
                         : ' · In Company'),
             ]);
 
@@ -391,16 +400,9 @@ class TreinamentoNrController extends Controller
         $codigosContratados = $itensOrigem
             ->filter(function ($it) {
                 $tipo = strtoupper((string) ($it->tipo ?? ''));
-                return $tipo === 'TREINAMENTO_NR' || $tipo === 'PACOTE_TREINAMENTOS';
+                return $tipo === 'TREINAMENTO_NR';
             })
             ->flatMap(function ($it) {
-                $tipo = strtoupper((string) ($it->tipo ?? ''));
-                if ($tipo === 'PACOTE_TREINAMENTOS') {
-                    return collect((array) ($it->meta['treinamentos'] ?? []))
-                        ->map(fn ($trein) => $trein['codigo'] ?? null)
-                        ->filter();
-                }
-
                 $codigo = $it->meta['codigo'] ?? null;
                 if (!$codigo) {
                     $nome = (string) ($it->nome ?? '');

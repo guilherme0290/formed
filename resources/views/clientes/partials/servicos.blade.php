@@ -183,7 +183,7 @@
                     $badge = $card['badge'] ?? null;
                     $servicoIdAtual = $servicosIds[$card['slug']] ?? null;
                     $executado = $servicoIdAtual && in_array($servicoIdAtual, $servicosExecutados, true);
-                    if (!$badge && array_key_exists('preco', $card)) {
+                    if (!$badge && array_key_exists('preco', $card) && $card['slug'] !== 'treinamentos') {
                         $badge = $card['preco'] ? 'R$ '.number_format($card['preco'], 2, ',', '.') : '';
                     }
                     $showComercial = array_key_exists('preco', $card) && !($card['permitido'] ?? true);
