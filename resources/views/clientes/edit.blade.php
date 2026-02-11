@@ -1,5 +1,6 @@
 @php
     $user = auth()->user();
+    $vendedores = $vendedores ?? collect();
 
     // default
     $layout = 'layouts.app';
@@ -69,6 +70,11 @@
                             class="px-4 py-2 rounded-full text-sm font-semibold text-slate-600 hover:bg-slate-100"
                             data-tab="forma-pagamento">
                         Forma de Pagamento
+                    </button>
+                    <button type="button"
+                            class="px-4 py-2 rounded-full text-sm font-semibold text-slate-600 hover:bg-slate-100"
+                            data-tab="vendedor">
+                        Vendedor
                     </button>
                 </div>
             </div>
@@ -249,21 +255,7 @@
             </div>
 
             {{-- BOTÕES --}}
-            <div class="flex flex-wrap justify-end gap-3">
-
-                @if(!$cliente->exists)
-                    <button type="submit" name="after_action" value="proposta"
-                            class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg">
-                        Criar Proposta
-                    </button>
-
-                    <button type="submit" name="after_action" value="apresentacao"
-                            class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg">
-                        Criar apresentações
-                    </button>
-                @endif
-
-                <button class="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-base font-semibold shadow-md shadow-blue-200">
+            <div class="flex flex-wrap justify-end gap-3"><button class="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-base font-semibold shadow-md shadow-blue-200">
                     {{ $cliente->exists ? 'Salvar Alterações' : 'Cadastrar' }}
                 </button>
             </div>
@@ -274,6 +266,48 @@
 
             @if($cliente->exists)
                 @include('clientes.partials.parametros')
+            @endif
+
+            @if($cliente->exists)
+                <div data-tab-panel="vendedor" data-tab-panel-root="cliente" class="hidden">
+                    <div class="w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+                        <div class="bg-white rounded-2xl shadow border border-slate-200 overflow-hidden">
+                            <div class="px-6 py-4 border-b bg-slate-900 text-white">
+                                <h1 class="text-lg font-semibold">Vendedor</h1>
+                            </div>
+                            <form method="POST"
+                                  action="{{ route($routePrefix.'.update', $cliente) }}"
+                                  class="p-6 space-y-6">
+                                @csrf
+                                @method('PUT')
+                                <input type="hidden" name="update_vendedor" value="1">
+
+                                <div>
+                                    <label class="text-sm font-medium text-slate-700">Vendedor responsável</label>
+                                    <select name="vendedor_id"
+                                            class="w-full mt-2 border-slate-300 rounded-lg px-3 py-2">
+                                        <option value="">Selecione...</option>
+                                        @foreach($vendedores as $vendedor)
+                                            <option value="{{ $vendedor->id }}"
+                                                @selected((string) old('vendedor_id', $cliente->vendedor_id) === (string) $vendedor->id)>
+                                                {{ $vendedor->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    @error('vendedor_id')
+                                    <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                                    @enderror
+                                </div>
+
+                                <div class="flex justify-end">
+                                    <button class="px-5 py-2 rounded-xl bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800">
+                                        Salvar vendedor
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
             @endif
         </div>
     </div>
@@ -296,12 +330,13 @@
                     'parametros': ['bg-emerald-600', 'text-white'],
                     'esocial': ['bg-amber-600', 'text-white'],
                     'forma-pagamento': ['bg-indigo-600', 'text-white'],
+                    'vendedor': ['bg-slate-900', 'text-white'],
                 };
 
                 tabs.forEach(btn => {
                     const active = btn.dataset.tab === tabName;
                     const classes = activeClasses[btn.dataset.tab] || ['bg-blue-600', 'text-white'];
-                    btn.classList.remove('bg-blue-600', 'bg-emerald-600', 'bg-amber-600', 'bg-indigo-600', 'text-white');
+                    btn.classList.remove('bg-blue-600', 'bg-emerald-600', 'bg-amber-600', 'bg-indigo-600', 'bg-slate-900', 'text-white');
                     if (active) {
                         btn.classList.add(...classes);
                     }
@@ -666,3 +701,4 @@
     </script>
 
 @endsection
+

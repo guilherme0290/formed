@@ -130,20 +130,48 @@
                     <label class="block text-[11px] font-semibold text-slate-500 tracking-wide mb-1">
                         Data inicial
                     </label>
-                    <input type="date" name="de" value="{{ $filtroDe }}"
-                           class="w-full rounded-xl border border-slate-200 bg-slate-50/60 py-2 px-3 text-sm
-                              text-slate-700
-                              focus:bg-white focus:ring-2 focus:ring-sky-400 focus:border-sky-400">
+                    <div class="relative">
+                        <input type="text"
+                               inputmode="numeric"
+                               placeholder="dd/mm/aaaa"
+                               class="w-full rounded-xl border border-slate-200 bg-slate-50/60 py-2 pl-3 pr-10 text-sm
+                                  text-slate-700 js-date-text
+                                  focus:bg-white focus:ring-2 focus:ring-sky-400 focus:border-sky-400"
+                               data-date-target="kanban_de">
+                        <button type="button"
+                                class="absolute right-0 top-0 h-full w-8 flex items-center justify-center text-slate-400 hover:text-slate-600 date-picker-btn z-10"
+                                data-date-target="kanban_de"
+                                aria-label="Abrir calendÃ¡rio">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v2H2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 2 0v1zm15 8H2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V10z"/>
+                            </svg>
+                        </button>
+                        <input type="hidden" id="kanban_de" name="de" value="{{ $filtroDe }}">
+                    </div>
                 </div>
 
                 <div>
                     <label class="block text-[11px] font-semibold text-slate-500 tracking-wide mb-1">
                         Data final
                     </label>
-                    <input type="date" name="ate" value="{{ $filtroAte }}"
-                           class="w-full rounded-xl border border-slate-200 bg-slate-50/60 py-2 px-3 text-sm
-                              text-slate-700
-                              focus:bg-white focus:ring-2 focus:ring-sky-400 focus:border-sky-400">
+                    <div class="relative">
+                        <input type="text"
+                               inputmode="numeric"
+                               placeholder="dd/mm/aaaa"
+                               class="w-full rounded-xl border border-slate-200 bg-slate-50/60 py-2 pl-3 pr-10 text-sm
+                                  text-slate-700 js-date-text
+                                  focus:bg-white focus:ring-2 focus:ring-sky-400 focus:border-sky-400"
+                               data-date-target="kanban_ate">
+                        <button type="button"
+                                class="absolute right-0 top-0 h-full w-8 flex items-center justify-center text-slate-400 hover:text-slate-600 date-picker-btn z-10"
+                                data-date-target="kanban_ate"
+                                aria-label="Abrir calendÃ¡rio">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v2H2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 2 0v1zm15 8H2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V10z"/>
+                            </svg>
+                        </button>
+                        <input type="hidden" id="kanban_ate" name="ate" value="{{ $filtroAte }}">
+                    </div>
                 </div>
 
                 <div class="flex items-end">
@@ -501,14 +529,38 @@
                                         @php
                                             $treiFuncs = $tarefa->treinamentoNr()->with('funcionario')->get();
                                             $treiDet   = $tarefa->treinamentoNrDetalhes;
-                                            $listaNomes = $treiFuncs->pluck('funcionario.nome')->join(', ');
+                                            $listaNomesArr = $treiFuncs->pluck('funcionario.nome')
+                                                ->filter()
+                                                ->sort()
+                                                ->values()
+                                                ->all();
+                                            $listaNomes = implode(', ', $listaNomesArr);
                                             $listaFuncoes = $treiFuncs->pluck('funcionario.funcao')->join(', ');
+                                            $treiPayload = $treiDet->treinamentos ?? [];
+                                            $treiModo = is_array($treiPayload) ? ($treiPayload['modo'] ?? null) : null;
+                                            $treiPacote = '';
+                                            $treiCodigos = [];
+                                            if ($treiModo === 'pacote') {
+                                                $treiPacote = (string) data_get($treiPayload, 'pacote.nome', '');
+                                                $treiCodigos = (array) data_get($treiPayload, 'pacote.codigos', []);
+                                            } else {
+                                                if (is_array($treiPayload) && array_key_exists('codigos', $treiPayload)) {
+                                                    $treiCodigos = (array) ($treiPayload['codigos'] ?? []);
+                                                } else {
+                                                    $treiCodigos = (array) $treiPayload;
+                                                }
+                                            }
+                                            $treiCodigos = array_values(array_filter(array_map('strval', $treiCodigos)));
+                                            $treiCodigosLabel = implode(', ', $treiCodigos);
                                         @endphp
 
-                                        data-treinamento-participantes="{{ $listaNomes }}"
+                                        data-treinamento-participantes='@json($listaNomesArr)'
                                         data-treinamento-funcoes="{{ $listaFuncoes }}"
                                         data-treinamento-local="{{ $treiDet->local_tipo }}"
                                         data-treinamento-unidade="{{ optional($treiDet->unidade)->nome ?? '' }}"
+                                        data-treinamento-modo="{{ $treiModo }}"
+                                        data-treinamento-pacote="{{ $treiPacote }}"
+                                        data-treinamento-codigos="{{ $treiCodigosLabel }}"
                                     @endif
                                     >
 
@@ -983,6 +1035,21 @@
                         <p><b>Unidade / Clínica:</b> <span id="modal-treinamento-unidade"></span></p>
 
                         <div class="mt-2">
+                            <p class="text-[11px] font-semibold text-indigo-700">Modo</p>
+                            <p id="modal-treinamento-modo" class="text-sm">—</p>
+                        </div>
+
+                        <div class="mt-2">
+                            <p class="text-[11px] font-semibold text-indigo-700">Treinamentos selecionados</p>
+                            <p id="modal-treinamento-codigos" class="text-sm">—</p>
+                        </div>
+
+                        <div class="mt-2">
+                            <p class="text-[11px] font-semibold text-indigo-700">Pacote selecionado</p>
+                            <p id="modal-treinamento-pacote" class="text-sm">—</p>
+                        </div>
+
+                        <div class="mt-2">
                             <p class="text-[11px] font-semibold text-indigo-700">Participantes</p>
                             <p id="modal-treinamento-participantes" class="text-sm">—</p>
                         </div>
@@ -1257,8 +1324,75 @@
 @endsection
 
 @push('scripts')
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+            if (window.flatpickr) {
+                if (flatpickr.l10ns && flatpickr.l10ns.pt) {
+                    flatpickr.localize(flatpickr.l10ns.pt);
+                }
+
+                function maskBrDate(value) {
+                    const digits = (value || '').replace(/\D+/g, '').slice(0, 8);
+                    if (digits.length <= 2) return digits;
+                    if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+                    return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+                }
+
+                document.querySelectorAll('.js-date-text').forEach((textInput) => {
+                    const hiddenId = textInput.dataset.dateTarget;
+                    const hiddenInput = hiddenId ? document.getElementById(hiddenId) : null;
+                    const defaultDate = hiddenInput && hiddenInput.value ? hiddenInput.value : null;
+
+                    const fp = flatpickr(textInput, {
+                        allowInput: true,
+                        dateFormat: 'd/m/Y',
+                        defaultDate: defaultDate,
+                        onChange: function (selectedDates) {
+                            if (!hiddenInput) return;
+                            hiddenInput.value = selectedDates.length
+                                ? flatpickr.formatDate(selectedDates[0], 'Y-m-d')
+                                : '';
+                        },
+                        onClose: function (selectedDates) {
+                            if (!hiddenInput) return;
+                            hiddenInput.value = selectedDates.length
+                                ? flatpickr.formatDate(selectedDates[0], 'Y-m-d')
+                                : '';
+                        },
+                    });
+
+                    textInput.addEventListener('input', () => {
+                        textInput.value = maskBrDate(textInput.value);
+                        if (!hiddenInput) return;
+                        if (textInput.value.length === 10) {
+                            const parsed = fp.parseDate(textInput.value, 'd/m/Y');
+                            hiddenInput.value = parsed ? fp.formatDate(parsed, 'Y-m-d') : '';
+                        }
+                    });
+
+                    textInput.addEventListener('blur', () => {
+                        if (!hiddenInput) return;
+                        const parsed = fp.parseDate(textInput.value, 'd/m/Y');
+                        hiddenInput.value = parsed ? fp.formatDate(parsed, 'Y-m-d') : '';
+                    });
+                });
+
+                document.querySelectorAll('.date-picker-btn').forEach((btn) => {
+                    btn.addEventListener('click', () => {
+                        const targetId = btn.dataset.dateTarget;
+                        const textInput = targetId
+                            ? document.querySelector(`.js-date-text[data-date-target="${targetId}"]`)
+                            : null;
+                        if (textInput && textInput._flatpickr) {
+                            textInput.focus();
+                            textInput._flatpickr.open();
+                        }
+                    });
+                });
+            }
 
             // =========================================================
             //  MODAL DE DETALHES DA TAREFA
@@ -1323,6 +1457,9 @@
             const spanTreinUnidade = document.getElementById('modal-treinamento-unidade');
             const spanTreinPart = document.getElementById('modal-treinamento-participantes');
             const spanTreinFuncs = document.getElementById('modal-treinamento-funcoes');
+            const spanTreinModo = document.getElementById('modal-treinamento-modo');
+            const spanTreinCodigos = document.getElementById('modal-treinamento-codigos');
+            const spanTreinPacote = document.getElementById('modal-treinamento-pacote');
 
             // Link do documento da tarefa (arquivo_cliente_path)
             const arquivoWrapper = document.getElementById('modal-arquivo-wrapper');
@@ -1695,15 +1832,36 @@
 
                     blocoTreinamento.classList.remove('hidden');
 
-                    const localTipo = card.querySelector('[data-trei-local]')?.dataset.treiLocal || '—';
-                    const unidade = card.querySelector('[data-trei-unidade]')?.dataset.treiUnidade || '—';
-                    const participantes = card.querySelector('[data-trei-participantes]')?.dataset.treiParticipantes || '—';
-                    const funcoes = card.querySelector('[data-trei-funcoes]')?.dataset.treiFuncoes || '—';
+                    const localTipo = card.dataset.treinamentoLocal || '—';
+                    const unidade = card.dataset.treinamentoUnidade || '—';
+                    let participantes = card.dataset.treinamentoParticipantes || '';
+                    const funcoes = card.dataset.treinamentoFuncoes || '—';
+                    const modo = card.dataset.treinamentoModo || '';
+                    const pacote = card.dataset.treinamentoPacote || '';
+                    const codigos = card.dataset.treinamentoCodigos || '';
 
                     spanTreinLocal.textContent = localTipo === 'clinica' ? 'Clínica' : 'In Company';
                     spanTreinUnidade.textContent = unidade;
-                    spanTreinPart.textContent = participantes;
+                    try {
+                        const lista = participantes ? JSON.parse(participantes) : [];
+                        if (Array.isArray(lista) && lista.length) {
+                            spanTreinPart.innerHTML = lista.map(nome => String(nome)).join('<br>');
+                        } else {
+                            spanTreinPart.textContent = '—';
+                        }
+                    } catch (e) {
+                        spanTreinPart.textContent = participantes || '—';
+                    }
                     spanTreinFuncs.textContent = funcoes;
+                    if (spanTreinModo) {
+                        spanTreinModo.textContent = modo === 'pacote' ? 'Pacote' : (modo === 'avulso' ? 'Avulso' : '—');
+                    }
+                    if (spanTreinCodigos) {
+                        spanTreinCodigos.textContent = codigos || '—';
+                    }
+                    if (spanTreinPacote) {
+                        spanTreinPacote.textContent = pacote || '—';
+                    }
 
                 } else {
                     blocoTreinamento.classList.add('hidden');

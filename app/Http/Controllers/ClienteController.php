@@ -11,8 +11,10 @@ use App\Models\ParametroClienteAsoGrupo;
 use App\Models\Servico;
 use App\Models\TabelaPrecoItem;
 use App\Models\TabelaPrecoPadrao;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Validation\Rule;
 
 class ClienteController extends Controller
 {
@@ -154,6 +156,7 @@ class ClienteController extends Controller
 
         $data['empresa_id'] = $empresaId;
         $data['ativo']      = true;
+        $data['vendedor_id'] = $r->user()?->id;
 
 
         try {
@@ -181,7 +184,7 @@ class ClienteController extends Controller
             }
 
             return redirect()
-                ->route($this->routeName('index'))
+                ->route($this->routeName('edit'), $cliente)
                 ->with('ok', 'Cliente cadastrado com sucesso!');
         } catch (\Throwable $e) {
             report($e);
@@ -385,6 +388,14 @@ class ClienteController extends Controller
                 ->get()
             : collect();
 
+        $vendedores = User::query()
+            ->where('empresa_id', $empresaId)
+            ->whereHas('papel', function ($q) {
+                $q->whereIn('nome', ['Master', 'Comercial']);
+            })
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
         return view('clientes.edit', [
             'cliente'         => $cliente,
             'estados'         => $estados,
@@ -398,6 +409,7 @@ class ClienteController extends Controller
             'formasPagamento' => $formasPagamento,
             'parametro'       => $parametro,
             'parametroAsoGrupos' => $parametroAsoGrupos,
+            'vendedores'      => $vendedores,
         ]);
     }
 
@@ -407,6 +419,31 @@ class ClienteController extends Controller
     public function update(Request $r, Cliente $cliente)
     {
         $this->authorizeCliente($cliente);
+
+        if ($r->boolean('update_vendedor')) {
+            $empresaId = $cliente->empresa_id ?? ($r->user()->empresa_id ?? 1);
+            $data = $r->validate([
+                'vendedor_id' => [
+                    'required',
+                    'integer',
+                    Rule::exists('users', 'id')->where(function ($q) use ($empresaId) {
+                        $q->where('empresa_id', $empresaId);
+                    }),
+                    function ($attribute, $value, $fail) {
+                        $user = User::with('papel')->find($value);
+                        if (!$user || !$user->hasPapel(['Master', 'Comercial'])) {
+                            $fail('Selecione um vendedor com perfil Master ou Comercial.');
+                        }
+                    },
+                ],
+            ]);
+
+            $cliente->update(['vendedor_id' => $data['vendedor_id']]);
+
+            return redirect()
+                ->route($this->routeName('edit'), $cliente)
+                ->with('ok', 'Vendedor atualizado com sucesso.');
+        }
 
         $data = $this->validateData($r);
 
@@ -468,24 +505,9 @@ class ClienteController extends Controller
                     'required',
                     'string',
                     'max:20',
-                    function ($attribute, $value, $fail) use ($empresaId, $clienteId) {
-                        $cnpjLimpo = preg_replace('/\D+/', '', (string) $value);
-                        if ($cnpjLimpo === '') {
-                            return;
-                        }
-
-                        $query = Cliente::query()
-                            ->where('empresa_id', $empresaId)
-                            ->whereRaw("REPLACE(REPLACE(REPLACE(cnpj, '.', ''), '-', ''), '/', '') = ?", [$cnpjLimpo]);
-
-                        if ($clienteId) {
-                            $query->where('id', '!=', $clienteId);
-                        }
-
-                        if ($query->exists()) {
-                            $fail('Já existe um cliente cadastrado com este CNPJ.');
-                        }
-                    },
+                    Rule::unique('clientes', 'cnpj')
+                        ->where(fn ($q) => $q->where('empresa_id', $empresaId))
+                        ->ignore($clienteId),
                 ],
                 'email'          => ['nullable', 'email', 'max:255'],
                 'telefone'       => ['nullable', 'string', 'max:30'],

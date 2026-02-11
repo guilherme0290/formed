@@ -107,10 +107,27 @@
                         <label class="block text-xs font-medium text-slate-600 mb-1">
                             Data de Admissão *
                         </label>
-                        <input type="date"
-                               name="data_admissao"
-                               value="{{ old('data_admissao', ($funcionario && $funcionario->data_admissao) ? \Carbon\Carbon::parse($funcionario->data_admissao)->format('Y-m-d') : '') }}"
-                               class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
+                        <div class="relative">
+                            <input type="text"
+                                   inputmode="numeric"
+                                   placeholder="dd/mm/aaaa"
+                                   value="{{ old('data_admissao_br', '') }}"
+                                   class="w-full border border-slate-300 rounded-lg pl-3 pr-10 py-2 text-sm js-date-text"
+                                   data-date-target="campo_data_admissao">
+                            <button type="button"
+                                    class="absolute right-0 top-0 h-full w-8 flex items-center justify-center text-slate-400 hover:text-slate-600 date-picker-btn z-10"
+                                    data-date-target="campo_data_admissao"
+                                    aria-label="Abrir calendÃ¡rio">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v2H2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 2 0v1zm15 8H2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V10z"/>
+                                </svg>
+                            </button>
+                            <input type="date"
+                                   id="campo_data_admissao"
+                                   name="data_admissao"
+                                   value="{{ old('data_admissao', ($funcionario && $funcionario->data_admissao) ? \Carbon\Carbon::parse($funcionario->data_admissao)->format('Y-m-d') : '') }}"
+                                   class="absolute right-0 top-0 h-full w-10 opacity-0 pointer-events-none js-date-hidden">
+                        </div>
                         @error('data_admissao')
                         <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
                         @enderror
@@ -238,4 +255,78 @@
             );
         });
     </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        if (!window.flatpickr) {
+            return;
+        }
+
+        if (flatpickr.l10ns && flatpickr.l10ns.pt) {
+            flatpickr.localize(flatpickr.l10ns.pt);
+        }
+
+        function maskBrDate(value) {
+            const digits = (value || '').replace(/\D+/g, '').slice(0, 8);
+            if (digits.length <= 2) return digits;
+            if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+            return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+        }
+
+        document.querySelectorAll('.js-date-text').forEach((textInput) => {
+            const hiddenId = textInput.dataset.dateTarget;
+            const hiddenInput = hiddenId ? document.getElementById(hiddenId) : null;
+            const defaultDate = hiddenInput && hiddenInput.value ? hiddenInput.value : null;
+
+            const fp = flatpickr(textInput, {
+                allowInput: true,
+                dateFormat: 'd/m/Y',
+                defaultDate: defaultDate,
+                onChange: function (selectedDates) {
+                    if (!hiddenInput) return;
+                    hiddenInput.value = selectedDates.length
+                        ? flatpickr.formatDate(selectedDates[0], 'Y-m-d')
+                        : '';
+                },
+                onClose: function (selectedDates) {
+                    if (!hiddenInput) return;
+                    hiddenInput.value = selectedDates.length
+                        ? flatpickr.formatDate(selectedDates[0], 'Y-m-d')
+                        : '';
+                },
+            });
+
+            textInput.addEventListener('input', () => {
+                textInput.value = maskBrDate(textInput.value);
+                if (!hiddenInput) return;
+                if (textInput.value.length === 10) {
+                    const parsed = fp.parseDate(textInput.value, 'd/m/Y');
+                    hiddenInput.value = parsed ? fp.formatDate(parsed, 'Y-m-d') : '';
+                }
+            });
+
+            textInput.addEventListener('blur', () => {
+                if (!hiddenInput) return;
+                const parsed = fp.parseDate(textInput.value, 'd/m/Y');
+                hiddenInput.value = parsed ? fp.formatDate(parsed, 'Y-m-d') : '';
+            });
+        });
+
+        document.querySelectorAll('.date-picker-btn').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const targetId = btn.dataset.dateTarget;
+                const textInput = targetId
+                    ? document.querySelector(`.js-date-text[data-date-target="${targetId}"]`)
+                    : null;
+                if (textInput && textInput._flatpickr) {
+                    textInput.focus();
+                    textInput._flatpickr.open();
+                }
+            });
+        });
+    });
+</script>
 @endpush
+
