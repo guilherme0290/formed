@@ -255,21 +255,7 @@
             </div>
 
             {{-- BOTÕES --}}
-            <div class="flex flex-wrap justify-end gap-3">
-
-                @if(!$cliente->exists)
-                    <button type="submit" name="after_action" value="proposta"
-                            class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg">
-                        Criar Proposta
-                    </button>
-
-                    <button type="submit" name="after_action" value="apresentacao"
-                            class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg">
-                        Criar apresentações
-                    </button>
-                @endif
-
-                <button class="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-base font-semibold shadow-md shadow-blue-200">
+            <div class="flex flex-wrap justify-end gap-3"><button class="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-base font-semibold shadow-md shadow-blue-200">
                     {{ $cliente->exists ? 'Salvar Alterações' : 'Cadastrar' }}
                 </button>
             </div>
@@ -715,3 +701,4 @@
     </script>
 
 @endsection
+

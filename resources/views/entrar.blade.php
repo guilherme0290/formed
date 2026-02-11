@@ -70,7 +70,7 @@
 
                     <div class="mt-6">
                         @guest
-                            <a href="{{ route('login', ['redirect' => 'cliente']) }}"
+                            <a href="{{ route('login.cliente') }}"
                                class="inline-flex items-center gap-1 text-xs md:text-sm font-medium text-sky-300 hover:text-sky-200 transition">
                                 <span>Acessar painel</span>
                                 <span class="text-base md:text-lg">›</span>
@@ -203,3 +203,4 @@
         </div>
     </div>
 @endsection
+

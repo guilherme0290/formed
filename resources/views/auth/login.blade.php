@@ -99,6 +99,10 @@
             {{-- Lado direito: card de login --}}
             <div class="bg-slate-950/80 border border-slate-800/80 rounded-3xl shadow-2xl shadow-slate-950/70 px-7 py-8 sm:px-9 sm:py-10 backdrop-blur">
                 {{-- Logo / título (mobile + desktop) --}}
+                @php
+                    $redirect = old('redirect', request('redirect', 'master'));
+                @endphp
+
                 <div class="flex items-center gap-3 mb-6">
                     {{-- Logo compacta pra mobile / card --}}
                     <div class="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-700 flex items-center justify-center shadow-lg shadow-slate-900/60 overflow-hidden">
@@ -114,7 +118,7 @@
                             Entrar
                         </h2>
                         <p class="text-[13px] text-slate-400">
-                            Acesse o painel com seu e-mail corporativo.
+                            Adicione sua credencial de acesso.
                         </p>
                     </div>
                 </div>
@@ -141,26 +145,26 @@
                     @csrf
 
                     {{-- redirect vindo da query string /login?redirect=xxx --}}
-                    <input type="hidden" name="redirect" value="{{ request('redirect', 'master') }}">
+                    <input type="hidden" name="redirect" id="redirectInput" value="{{ $redirect }}">
 
                     <div class="space-y-1.5">
-                        <label class="block text-xs font-medium text-slate-300">
-                            E-mail
-                        </label>
+                        <label class="block text-xs font-medium text-slate-300">E-mail ou CNPJ</label>
                         <div class="relative">
                             <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-500 text-sm">
                                 @
                             </span>
                             <input
-                                type="email"
-                                name="email"
-                                value="{{ old('email') }}"
+                                type="text"
+                                name="login"
+                                id="loginInput"
+                                value="{{ old('login') }}"
                                 required autofocus
                                 class="w-full rounded-xl border border-slate-700 bg-slate-900/60 px-8 py-2.5 text-sm text-slate-100
                                        placeholder:text-slate-500
                                        focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                placeholder="seuemail@empresa.com.br">
+                                placeholder="Digite seu e-mail ou CNPJ">
                         </div>
+                        <p class="mt-1 text-[11px] text-slate-500">Use e-mail ou CNPJ.</p>
                     </div>
 
                     <div class="space-y-1.5">
@@ -228,6 +232,52 @@
         </div>
     </div>
 </div>
+
+<script>
+    (function () {
+        const input = document.getElementById('loginInput');
+        if (!input) return;
+
+        function formatCnpj(value) {
+            const digits = (value || '').replace(/\D+/g, '').slice(0, 14);
+            if (digits.length <= 2) return digits;
+            if (digits.length <= 5) return `${digits.slice(0, 2)}.${digits.slice(2)}`;
+            if (digits.length <= 8) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5)}`;
+            if (digits.length <= 12) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8)}`;
+            return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12)}`;
+        }
+
+        function countDigits(str, endIndex) {
+            const slice = str.slice(0, Math.max(0, endIndex));
+            return (slice.match(/\d/g) || []).length;
+        }
+
+        function positionFromDigits(formatted, digitCount) {
+            if (digitCount <= 0) return 0;
+            let count = 0;
+            for (let i = 0; i < formatted.length; i++) {
+                if (/\d/.test(formatted[i])) {
+                    count++;
+                    if (count === digitCount) return i + 1;
+                }
+            }
+            return formatted.length;
+        }
+
+        input.addEventListener('input', () => {
+            const value = input.value || '';
+            if (value.includes('@') || /[a-zA-Z]/.test(value)) {
+                return;
+            }
+            const cursor = input.selectionStart ?? value.length;
+            const digitsBefore = countDigits(value, cursor);
+            const formatted = formatCnpj(value);
+            input.value = formatted;
+            const newPos = positionFromDigits(formatted, digitsBefore);
+            input.setSelectionRange(newPos, newPos);
+        });
+    })();
+</script>
 
 </body>
 </html>

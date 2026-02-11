@@ -27,7 +27,7 @@ class LoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'string', 'email'],
+            'login' => ['required', 'string'],
             'password' => ['required', 'string'],
         ];
     }
@@ -41,11 +41,31 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        $login = trim((string) $this->input('login'));
+        if ($login === '') {
+            throw ValidationException::withMessages([
+                'login' => 'Informe um e-mail ou CNPJ para entrar.',
+            ]);
+        }
+
+        $isEmail = str_contains($login, '@');
+        if ($isEmail) {
+            $credentials = ['email' => $login, 'password' => $this->input('password')];
+        } else {
+            $documento = preg_replace('/\D+/', '', $login);
+            if (strlen($documento) !== 14) {
+                throw ValidationException::withMessages([
+                    'login' => 'Informe um CNPJ (14 dígitos) válido.',
+                ]);
+            }
+            $credentials = ['documento' => $documento, 'password' => $this->input('password')];
+        }
+
+        if (! Auth::attempt($credentials, $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
-                'email' => 'E-mail ou senha incorretos. Verifique e tente novamente.',
+                'login' => 'Login ou senha incorretos. Verifique e tente novamente.',
             ]);
         }
 
@@ -68,7 +88,7 @@ class LoginRequest extends FormRequest
         $seconds = RateLimiter::availableIn($this->throttleKey());
 
         throw ValidationException::withMessages([
-            'email' => 'Muitas tentativas de login. Aguarde '.$seconds.' segundos e tente novamente.',
+            'login' => 'Muitas tentativas de login. Aguarde '.$seconds.' segundos e tente novamente.',
         ]);
     }
 
@@ -77,6 +97,9 @@ class LoginRequest extends FormRequest
      */
     public function throttleKey(): string
     {
-        return Str::transliterate(Str::lower($this->string('email')).'|'.$this->ip());
+        $login = trim((string) $this->input('login'));
+        $login = $login === '' ? 'login' : $login;
+        $login = str_contains($login, '@') ? $login : preg_replace('/\D+/', '', $login);
+        return Str::transliterate(Str::lower($login).'|'.$this->ip());
     }
 }
