@@ -111,9 +111,45 @@
                 </div>
 
                 <div class="flex items-center gap-3 text-xs md:text-sm text-blue-50">
-                    <span class="hidden md:inline">
-                        {{ auth()->user()->name ?? '' }}
-                    </span>
+                    <div x-data="{ open: false }" class="relative">
+                        <button type="button"
+                                class="flex items-center gap-2 rounded-full bg-blue-600/40 px-2.5 py-1.5 hover:bg-blue-600/60 transition"
+                                @click="open = !open"
+                                @keydown.escape="open = false"
+                                :aria-expanded="open.toString()"
+                                aria-haspopup="true">
+                            <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-500 text-white text-xs font-semibold">
+                                {{ \Illuminate\Support\Str::of(auth()->user()->name ?? 'U')->substr(0,1) }}
+                            </span>
+                            <span class="hidden md:inline">
+                                {{ auth()->user()->name ?? '' }}
+                            </span>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-100" fill="none"
+                                 viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </button>
+
+                        <div x-show="open"
+                             x-transition
+                             @click.away="open = false"
+                             class="absolute right-0 mt-2 w-56 rounded-xl bg-white text-slate-700 shadow-lg border border-slate-200 overflow-hidden z-30">
+                            <a href="{{ route('master.acessos', ['tab' => 'senhas']) }}"
+                               data-only-my-password
+                               class="flex items-center gap-2 px-4 py-3 text-sm hover:bg-slate-50">
+                                <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600">🔒</span>
+                                <span>Alterar Senha</span>
+                            </a>
+                            <form method="POST" action="{{ route('logout') }}">
+                                @csrf
+                                <button type="submit"
+                                        class="w-full flex items-center gap-2 px-4 py-3 text-sm hover:bg-slate-50 text-left">
+                                    <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-600">🚪</span>
+                                    <span>Sair</span>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
                 </div>
             </div>
         </header>

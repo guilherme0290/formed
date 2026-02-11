@@ -2306,7 +2306,7 @@
 
                     const item = {
                         id: uid(),
-                        servico_id: null,
+                        servico_id: SERVICO_TREINAMENTO_ID ? Number(SERVICO_TREINAMENTO_ID) : null,
                         tipo: 'PACOTE_TREINAMENTOS',
                         nome: nomePacote,
                         descricao: treinamentos.map(t => `${t.codigo} ${t.titulo}`).join(', '),

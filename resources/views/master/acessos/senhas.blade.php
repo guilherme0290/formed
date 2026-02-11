@@ -36,8 +36,8 @@
 @endif
 
 {{-- SENHAS (visual moderno) --}}
-<div class="grid md:grid-cols-2 gap-6">
-    <div class="bg-white rounded-2xl shadow-sm border p-6">
+<div id="senhaCardsGrid" class="grid md:grid-cols-2 gap-6">
+    <div id="senhaMinhaCard" class="bg-white rounded-2xl shadow-sm border p-6">
         <h3 class="text-lg font-semibold mb-4">Alterar Minha Senha</h3>
         <form method="POST" action="{{ route('password.update') }}" class="space-y-3">
             @csrf
@@ -108,7 +108,7 @@
         </ul>
     </div>
 
-    <div class="bg-white rounded-2xl shadow-sm border p-6">
+    <div id="senhaOutrosCard" class="bg-white rounded-2xl shadow-sm border p-6">
         <h3 class="text-lg font-semibold mb-4">Redefinir Senha de Usuário</h3>
         {{-- mantém layout, apenas liga os botões às rotas --}}
         <form id="senhaOutrosForm" method="POST" action="#" class="space-y-3">
@@ -163,13 +163,39 @@
                 <button type="button" class="px-4 py-2 rounded-xl bg-indigo-600 text-white" onclick="definirNovaSenha()">
                     Definir Nova Senha
                 </button>
-                <button type="button" class="px-4 py-2 rounded-xl border" onclick="gerarLinkReset()">
-                    Gerar Link
-                </button>
+{{--                <button type="button" class="px-4 py-2 rounded-xl border" onclick="gerarLinkReset()">--}}
+{{--                    Gerar Link--}}
+{{--                </button>--}}
             </div>
         </form>
     </div>
 </div>
+
+<script>
+    (function () {
+        let onlyMe = false;
+        try {
+            onlyMe = localStorage.getItem('acessosOnlyMe') === '1';
+            if (onlyMe) localStorage.removeItem('acessosOnlyMe');
+        } catch (err) {
+            onlyMe = false;
+        }
+        if (!onlyMe) return;
+
+        const grid = document.getElementById('senhaCardsGrid');
+        const otherCard = document.getElementById('senhaOutrosCard');
+        const tabs = document.querySelector('[data-acessos-tabs]');
+        const header = document.querySelector('[data-acessos-header]');
+
+        if (otherCard) otherCard.classList.add('hidden');
+        if (grid) {
+            grid.classList.remove('md:grid-cols-2');
+            grid.classList.add('md:grid-cols-1');
+        }
+        if (tabs) tabs.classList.add('hidden');
+        if (header) header.classList.add('hidden');
+    })();
+</script>
 
 {{-- JS mínimo: aponta o form para as rotas corretas --}}
 <script>

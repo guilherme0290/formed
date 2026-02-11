@@ -53,21 +53,56 @@
                 'active' => request()->routeIs('master.empresa.*'),
             ],
             [
-                'label' => 'Agenda Vendedores',
-                'icon' => '📅',
-                'route' => route('master.agenda-vendedores.index'),
-                'active' => request()->routeIs('master.agenda-vendedores.*'),
-            ],            [
                 'label' => 'Comercial',
                 'icon' => '🧭',
-                'route' => route('comercial.dashboard'),
-                'active' => request()->routeIs('comercial.*'),
-            ],
-            [
-                'label' => 'Propostas',
-                'icon' => '📑',
-                'route' => route('comercial.propostas.index'),
-                'active' => request()->routeIs('comercial.propostas.*'),
+                'route' => '#',
+                'active' => request()->routeIs('comercial.*')
+                    || request()->routeIs('master.agenda-vendedores.*')
+                    || request()->routeIs('master.tabela-precos.*')
+                    || request()->routeIs('master.comissoes*')
+                    || request()->routeIs('comercial.funcoes.*'),
+                'children' => [
+                    [
+                        'label' => 'Agenda Vendedores',
+                        'icon' => '📅',
+                        'route' => route('master.agenda-vendedores.index'),
+                        'active' => request()->routeIs('master.agenda-vendedores.*'),
+                    ],
+//                    [
+//                        'label' => 'Propostas',
+//                        'icon' => '📑',
+//                        'route' => route('comercial.propostas.index'),
+//                        'active' => request()->routeIs('comercial.propostas.*'),
+//                    ],
+                    [
+                        'label' => 'Tabela de Preços',
+                        'icon' => '💰',
+                        'route' => route('master.tabela-precos.itens.index'),
+                        'active' => request()->routeIs('master.tabela-precos.*'),
+                    ],
+                    [
+                        'label' => 'Comissões',
+                        'icon' => '💸',
+                        'route' => route('master.comissoes.index'),
+                        'active' => request()->routeIs('master.comissoes.index')
+                            || request()->routeIs('master.comissoes.store')
+                            || request()->routeIs('master.comissoes.update')
+                            || request()->routeIs('master.comissoes.destroy')
+                            || request()->routeIs('master.comissoes.bulk'),
+                    ],
+                    [
+                        'label' => 'Comissões (Vendedores)',
+                        'icon' => '📈',
+                        'route' => route('master.comissoes.vendedores'),
+                        'active' => request()->routeIs('master.comissoes.vendedores'),
+                    ],
+                    [
+                        'label' => 'Funções',
+                        'icon' => '🧩',
+                        'route' => route('comercial.funcoes.index'),
+                        'active' => request()->routeIs('comercial.funcoes.*'),
+                    ],
+                ],
             ],
             [
                 'label' => 'Operacional',
@@ -88,34 +123,10 @@
                 'active' => request()->routeIs('master.acessos*'),
             ],
             [
-                'label' => 'Tabela de Preços',
-                'icon' => '💰',
-                'route' => route('master.tabela-precos.itens.index'),
-                'active' => request()->routeIs('master.tabela-precos.*'),
-            ],
-            [
-                'label' => 'Comissões',
-                'icon' => '💸',
-                'route' => route('master.comissoes.index'),
-                'active' => request()->routeIs('master.comissoes*'),
-            ],
-            [
-                'label' => 'Comissões (Vendedores)',
-                'icon' => '📈',
-                'route' => route('master.comissoes.vendedores'),
-                'active' => request()->routeIs('master.comissoes.vendedores'),
-            ],
-            [
                 'label' => 'Clientes',
                 'icon' => '👤',
                 'route' => route('clientes.index'),
                 'active' => request()->routeIs('clientes.*'),
-            ],
-            [
-                'label' => 'Funções',
-                'icon' => '🧩',
-                'route' => route('comercial.funcoes.index'),
-                'active' => request()->routeIs('comercial.funcoes.*'),
             ],
             [
                 'label' => 'Configuração',
@@ -134,16 +145,62 @@
                 $activeClasses = $isActive
                     ? 'bg-slate-800 text-slate-50 font-semibold'
                     : 'text-slate-200 hover:bg-slate-800';
+                $children = $item['children'] ?? [];
             @endphp
-            <a href="{{ $item['route'] }}"
-               class="{{ $baseClasses }} {{ $activeClasses }}">
-                @if(!empty($item['icon']))
-                    <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800">
-                        {{ $item['icon'] }}
-                    </span>
-                @endif
-                <span data-sidebar-label>{{ $item['label'] }}</span>
-            </a>
+
+            @if(!empty($children))
+                <details class="group" @if($isActive) open @endif>
+                    <summary class="{{ $baseClasses }} {{ $activeClasses }} cursor-pointer list-none">
+                        <a href="{{ route('comercial.dashboard') }}"
+                           class="flex items-center gap-2 flex-1"
+                           onclick="event.stopPropagation()">
+                            @if(!empty($item['icon']))
+                                <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800">
+                                    {{ $item['icon'] }}
+                                </span>
+                            @endif
+                            <span data-sidebar-label>{{ $item['label'] }}</span>
+                        </a>
+                        <span class="ml-auto inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-200 bg-slate-900/60 border border-slate-700 group-open:rotate-180 transition-transform" aria-hidden="true">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                 viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </span>
+                        <span class="sr-only">Expandir/Recolher menu Comercial</span>
+                    </summary>
+
+                    <div class="mt-1 space-y-1 pl-5">
+                        @foreach($children as $child)
+                            @php
+                                $childBase = 'flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition';
+                                $childActive = $child['active']
+                                    ? 'bg-slate-800 text-slate-50 font-semibold'
+                                    : 'text-slate-200 hover:bg-slate-800';
+                            @endphp
+                            <a href="{{ $child['route'] }}"
+                               class="{{ $childBase }} {{ $childActive }}">
+                                @if(!empty($child['icon']))
+                                    <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800">
+                                        {{ $child['icon'] }}
+                                    </span>
+                                @endif
+                                <span data-sidebar-label>{{ $child['label'] }}</span>
+                            </a>
+                        @endforeach
+                    </div>
+                </details>
+            @else
+                <a href="{{ $item['route'] }}"
+                   class="{{ $baseClasses }} {{ $activeClasses }}">
+                    @if(!empty($item['icon']))
+                        <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800">
+                            {{ $item['icon'] }}
+                        </span>
+                    @endif
+                    <span data-sidebar-label>{{ $item['label'] }}</span>
+                </a>
+            @endif
         @endforeach
     </nav>
 
@@ -157,10 +214,6 @@
         </form>
     </div>
 </aside>
-
-
-
-
 
 
 
