@@ -302,4 +302,20 @@ class ClienteFuncionarioController extends Controller
             ->with('ok', $mensagem);
     }
 
+    public function destroy(Request $request, Funcionario $funcionario)
+    {
+        $clienteIdSessao = $request->session()->get('portal_cliente_id');
+
+        abort_unless(
+            $clienteIdSessao && (int) $funcionario->cliente_id === (int) $clienteIdSessao,
+            403
+        );
+
+        $funcionario->delete();
+
+        return redirect()
+            ->route('cliente.funcionarios.index')
+            ->with('ok', 'Funcionário removido com sucesso.');
+    }
+
 }

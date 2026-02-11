@@ -43,7 +43,7 @@ class ContasReceberController extends Controller
         $clienteId = $request->input('cliente_id');
 
         $vendaItensQuery = VendaItem::query()
-            ->with(['venda.cliente', 'servico', 'venda.tarefa'])
+            ->with(['venda.cliente', 'servico', 'venda.tarefa.funcionario'])
             ->whereHas('venda', function ($q) use ($empresaId) {
                 $q->where('empresa_id', $empresaId)
                     ->where('status', 'ABERTA');

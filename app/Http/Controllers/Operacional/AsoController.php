@@ -39,8 +39,12 @@ class AsoController extends Controller
         $this->normalizeTreinamentosInput($request);
 
         $treinamentosDisponiveis = $this->getTreinamentosDisponiveis($empresaId);
-        $treinamentosPermitidos = $this->getTreinamentosPermitidos($empresaId, $cliente->id, $treinamentosDisponiveis);
-        $treinamentosCodigos = $treinamentosPermitidos;
+        $pacotesTreinamentos = $this->getPacotesTreinamentos($empresaId, $cliente->id);
+        $treinamentosPermitidos = $this->getTreinamentosPermitidosAvulsos($empresaId, $cliente->id, $treinamentosDisponiveis);
+        $codigosPacotes = $this->getTreinamentosCodigosPacotes($pacotesTreinamentos, $treinamentosDisponiveis);
+        $treinamentosCodigos = array_values(array_unique(array_merge($treinamentosPermitidos, $codigosPacotes)));
+        $temTreinamentosPermitidos = !empty($treinamentosPermitidos) || !empty($pacotesTreinamentos);
+        $pacotesIds = collect($pacotesTreinamentos)->pluck('contrato_item_id')->filter()->values()->all();
 
         $data = $request->validate([
             'funcionario_id' => ['nullable', 'exists:funcionarios,id'],
@@ -54,6 +58,8 @@ class AsoController extends Controller
             'data_aso' => ['required', 'date_format:Y-m-d'],
             'unidade_id' => ['required', 'exists:unidades_clinicas,id'],
             'vai_fazer_treinamento' => ['nullable', 'boolean'],
+            'treinamento_modo' => ['nullable', Rule::in(['avulsos', 'pacotes'])],
+            'pacote_id' => ['nullable', 'integer', Rule::in($pacotesIds)],
             'treinamentos' => ['array'],
             'treinamentos.*' => ['string', Rule::in($treinamentosCodigos)],
             'email_aso' => ['nullable', 'email'],
@@ -71,13 +77,15 @@ class AsoController extends Controller
             ]);
         }
 
-        if (!empty($data['vai_fazer_treinamento']) && empty($treinamentosPermitidos)) {
+        if (!empty($data['vai_fazer_treinamento']) && !$temTreinamentosPermitidos) {
             throw ValidationException::withMessages([
                 'treinamentos' => 'Serviço não contratado converse com seu comercial',
             ]);
         }
 
-        $tarefa = DB::transaction(function () use ($data, $empresaId, $cliente, $usuario,$request) {
+        $pacoteSelecionado = $this->resolvePacoteTreinamento($data, $pacotesTreinamentos);
+
+        $tarefa = DB::transaction(function () use ($data, $empresaId, $cliente, $usuario, $request, $pacoteSelecionado) {
 
             // 1) Resolve funcionário (existente ou novo)
             if (!empty($data['funcionario_id'])) {
@@ -151,6 +159,9 @@ class AsoController extends Controller
                 }
                 $descricao .= ' | Treinamentos: ' . implode(', ', $labels);
             }
+            if (!empty($data['vai_fazer_treinamento']) && !empty($pacoteSelecionado['nome'])) {
+                $descricao .= ' | Pacote: ' . $pacoteSelecionado['nome'];
+            }
 
             $inicioPrevisto = Carbon::createFromFormat('Y-m-d H:i:s', $data['data_aso'] . ' 07:00:00');
             $fimPrevisto = app(TempoTarefaService::class)
@@ -182,6 +193,7 @@ class AsoController extends Controller
                 'email_aso' => $data['email_aso'] ?? null,
                 'vai_fazer_treinamento' => !empty($data['vai_fazer_treinamento']),
                 'treinamentos' => $data['treinamentos'] ?? [],
+                'treinamento_pacote' => !empty($data['vai_fazer_treinamento']) ? $pacoteSelecionado : null,
             ]);
 
             // 6) Log inicial
@@ -297,11 +309,13 @@ class AsoController extends Controller
         }
 
         $treinamentosSelecionados = $this->normalizeTreinamentosValues($treinamentosSelecionados);
-        $treinamentosPermitidos = $this->getTreinamentosPermitidos($empresaId, $cliente->id, $treinamentosDisponiveis);
-        $treinamentosPermitidos = array_values(array_unique(array_merge(
-            $treinamentosPermitidos,
-            $treinamentosSelecionados
-        )));
+        $treinamentosPermitidos = $this->getTreinamentosPermitidosAvulsos($empresaId, $cliente->id, $treinamentosDisponiveis);
+        if (!$aso || empty($aso->treinamento_pacote)) {
+            $treinamentosPermitidos = array_values(array_unique(array_merge(
+                $treinamentosPermitidos,
+                $treinamentosSelecionados
+            )));
+        }
 
         // VAI FAZER TREINAMENTO
         $vaiFazerTreinamento = (int)old(
@@ -334,6 +348,7 @@ class AsoController extends Controller
             'treinamentosDisponiveis' => $treinamentosDisponiveis,
             'treinamentosPermitidos' => $treinamentosPermitidos,
             'treinamentosSelecionados' => $treinamentosSelecionados,
+            'pacotesTreinamentos' => $pacotesTreinamentos,
             'isEdit' => true,
             'asoResumoUrl' => route('operacional.kanban.aso.resumo', ['cliente' => $cliente]),
         ]);
@@ -347,8 +362,12 @@ class AsoController extends Controller
         $this->normalizeTreinamentosInput($request);
 
         $treinamentosDisponiveis = $this->getTreinamentosDisponiveis($empresaId);
-        $treinamentosPermitidos = $this->getTreinamentosPermitidos($empresaId, $cliente->id, $treinamentosDisponiveis);
-        $treinamentosCodigos = $treinamentosPermitidos;
+        $treinamentosPermitidos = $this->getTreinamentosPermitidosAvulsos($empresaId, $cliente->id, $treinamentosDisponiveis);
+        $pacotesTreinamentos = $this->getPacotesTreinamentos($empresaId, $cliente->id);
+        $codigosPacotes = $this->getTreinamentosCodigosPacotes($pacotesTreinamentos, $treinamentosDisponiveis);
+        $treinamentosCodigos = array_values(array_unique(array_merge($treinamentosPermitidos, $codigosPacotes)));
+        $temTreinamentosPermitidos = !empty($treinamentosPermitidos) || !empty($pacotesTreinamentos);
+        $pacotesIds = collect($pacotesTreinamentos)->pluck('contrato_item_id')->filter()->values()->all();
 
         $data = $request->validate([
             'funcionario_id' => ['nullable', 'exists:funcionarios,id'],
@@ -362,6 +381,8 @@ class AsoController extends Controller
             'data_aso' => ['required', 'date_format:Y-m-d'],
             'unidade_id' => ['required', 'exists:unidades_clinicas,id'],
             'vai_fazer_treinamento' => ['nullable', 'boolean'],
+            'treinamento_modo' => ['nullable', Rule::in(['avulsos', 'pacotes'])],
+            'pacote_id' => ['nullable', 'integer', Rule::in($pacotesIds)],
             'treinamentos' => ['array'],
             'treinamentos.*' => ['string', Rule::in($treinamentosCodigos)],
             'email_aso' => ['nullable', 'email'],
@@ -379,13 +400,15 @@ class AsoController extends Controller
             ]);
         }
 
-        if (!empty($data['vai_fazer_treinamento']) && empty($treinamentosPermitidos)) {
+        if (!empty($data['vai_fazer_treinamento']) && !$temTreinamentosPermitidos) {
             throw ValidationException::withMessages([
                 'treinamentos' => 'Serviço não contratado converse com seu comercial',
             ]);
         }
 
-        DB::transaction(function () use ($data, $empresaId, $cliente, $tarefa, $request) {
+        $pacoteSelecionado = $this->resolvePacoteTreinamento($data, $pacotesTreinamentos);
+
+        DB::transaction(function () use ($data, $empresaId, $cliente, $tarefa, $request, $pacoteSelecionado) {
 
             // FUNCIONÁRIO (reaproveita/atualiza)
             if (!empty($data['funcionario_id'])) {
@@ -450,6 +473,9 @@ class AsoController extends Controller
                 }
                 $descricao .= ' | Treinamentos: ' . implode(', ', $labels);
             }
+            if (!empty($data['vai_fazer_treinamento']) && !empty($pacoteSelecionado['nome'])) {
+                $descricao .= ' | Pacote: ' . $pacoteSelecionado['nome'];
+            }
 
             $inicioPrevisto = $tarefa->inicio_previsto
                 ?: Carbon::createFromFormat('Y-m-d H:i:s', $data['data_aso'] . ' 07:00:00');
@@ -479,6 +505,7 @@ class AsoController extends Controller
                 'email_aso' => $data['email_aso'] ?? null,
                 'vai_fazer_treinamento' => !empty($data['vai_fazer_treinamento']),
                 'treinamentos' => $treinamentos,
+                'treinamento_pacote' => !empty($data['vai_fazer_treinamento']) ? $pacoteSelecionado : null,
             ]);
 
             Anexos::salvarDoRequest($request, 'anexos', [
@@ -553,7 +580,8 @@ class AsoController extends Controller
 
         // Treinamentos disponíveis
         $treinamentosDisponiveis = $this->getTreinamentosDisponiveis($empresaId);
-        $treinamentosPermitidos = $this->getTreinamentosPermitidos($empresaId, $cliente->id, $treinamentosDisponiveis);
+        $treinamentosPermitidos = $this->getTreinamentosPermitidosAvulsos($empresaId, $cliente->id, $treinamentosDisponiveis);
+        $pacotesTreinamentos = $this->getPacotesTreinamentos($empresaId, $cliente->id);
 
         // Valores default para a view em modo "create"
         $treinamentosSelecionados = [];
@@ -574,6 +602,7 @@ class AsoController extends Controller
             'treinamentosDisponiveis'  => $treinamentosDisponiveis,
             'treinamentosPermitidos'   => $treinamentosPermitidos,
             'treinamentosSelecionados' => $treinamentosSelecionados,
+            'pacotesTreinamentos'      => $pacotesTreinamentos,
             'vaiFazerTreinamento'      => $vaiFazerTreinamento,
             'dataAso'                  => $dataAso,
             'unidadeSelecionada'       => $unidadeSelecionada,
@@ -790,6 +819,32 @@ class AsoController extends Controller
         return array_values(array_unique($normalized));
     }
 
+    private function resolvePacoteTreinamento(array $data, array $pacotesTreinamentos): ?array
+    {
+        $modo = $data['treinamento_modo'] ?? null;
+        if (empty($data['vai_fazer_treinamento']) || $modo !== 'pacotes') {
+            return null;
+        }
+
+        $pacoteId = (int) ($data['pacote_id'] ?? 0);
+        if ($pacoteId <= 0) {
+            return null;
+        }
+
+        $pacote = collect($pacotesTreinamentos)->firstWhere('contrato_item_id', $pacoteId);
+        if (!$pacote) {
+            return null;
+        }
+
+        return [
+            'contrato_item_id' => $pacote['contrato_item_id'] ?? null,
+            'nome' => $pacote['nome'] ?? 'Pacote de Treinamentos',
+            'descricao' => $pacote['descricao'] ?? null,
+            'valor' => $pacote['valor'] ?? 0,
+            'codigos' => $pacote['codigos'] ?? [],
+        ];
+    }
+
     private function getTreinamentosDisponiveis(int $empresaId): array
     {
         $treinamentoServicoId = $this->treinamentoServicoId($empresaId);
@@ -850,7 +905,7 @@ class AsoController extends Controller
             ->value('id');
     }
 
-    private function getTreinamentosPermitidos(int $empresaId, int $clienteId, array $treinamentosDisponiveis): array
+    private function getTreinamentosPermitidosAvulsos(int $empresaId, int $clienteId, array $treinamentosDisponiveis): array
     {
         if (empty($treinamentosDisponiveis)) {
             return [];
@@ -861,18 +916,33 @@ class AsoController extends Controller
             return [];
         }
 
-        $tabelaCliente = $this->tabelaClienteAtiva($empresaId, $clienteId);
-        if (!$tabelaCliente) {
+        $contrato = app(ContratoClienteService::class)->getContratoAtivo($clienteId, $empresaId, null);
+        if (!$contrato) {
             return [];
         }
 
-        $codigos = ClienteTabelaPrecoItem::query()
-            ->where('cliente_tabela_preco_id', $tabelaCliente->id)
-            ->where('servico_id', $treinamentoServicoId)
-            ->where('ativo', true)
-            ->whereNotNull('codigo')
-            ->orderBy('codigo')
-            ->pluck('codigo')
+        $contrato->loadMissing('parametroOrigem.itens');
+        $itensOrigem = $contrato->parametroOrigem?->itens ?? collect();
+        if ($itensOrigem->isEmpty()) {
+            return [];
+        }
+
+        $codigos = $itensOrigem
+            ->filter(function ($item) {
+                $tipo = strtoupper((string) ($item->tipo ?? ''));
+                return $tipo === 'TREINAMENTO_NR';
+            })
+            ->flatMap(function ($item) {
+                $codigo = $item->meta['codigo'] ?? null;
+                if (!$codigo) {
+                    $nome = (string) ($item->nome ?? '');
+                    if ($nome !== '' && preg_match('/^(NR[-\\s]?\\d+[A-Z]?)/i', $nome, $m)) {
+                        $codigo = str_replace(' ', '-', $m[1]);
+                    }
+                }
+
+                return $codigo ? [$codigo] : [];
+            })
             ->map(fn ($codigo) => trim((string) $codigo))
             ->filter()
             ->values()
@@ -886,6 +956,81 @@ class AsoController extends Controller
         $disponiveis = array_keys($treinamentosDisponiveis);
 
         return array_values(array_intersect($disponiveis, $codigos));
+    }
+
+    private function getTreinamentosCodigosPacotes(array $pacotesTreinamentos, array $treinamentosDisponiveis): array
+    {
+        if (empty($pacotesTreinamentos) || empty($treinamentosDisponiveis)) {
+            return [];
+        }
+
+        $codigos = collect($pacotesTreinamentos)
+            ->flatMap(fn ($pacote) => (array) ($pacote['codigos'] ?? []))
+            ->map(fn ($codigo) => trim((string) $codigo))
+            ->filter()
+            ->values()
+            ->all();
+
+        if (empty($codigos)) {
+            return [];
+        }
+
+        $codigos = $this->normalizeTreinamentosValues($codigos);
+        $disponiveis = array_keys($treinamentosDisponiveis);
+
+        return array_values(array_intersect($disponiveis, $codigos));
+    }
+
+    private function getPacotesTreinamentos(int $empresaId, int $clienteId): array
+    {
+        $contrato = app(ContratoClienteService::class)->getContratoAtivo($clienteId, $empresaId, null);
+        if (!$contrato) {
+            return [];
+        }
+
+        $contrato->loadMissing('itens', 'parametroOrigem.itens');
+        $itensOrigem = $contrato->parametroOrigem?->itens ?? collect();
+        if ($itensOrigem->isEmpty()) {
+            return [];
+        }
+
+        $pacotes = [];
+        $pacotesOrigem = $itensOrigem
+            ->filter(fn ($it) => strtoupper((string) ($it->tipo ?? '')) === 'PACOTE_TREINAMENTOS')
+            ->values();
+
+        $treinamentoServicoId = $this->treinamentoServicoId($empresaId);
+        foreach ($pacotesOrigem as $item) {
+            $descricao = trim((string) ($item->descricao ?? $item->nome ?? ''));
+            $treinamentosMeta = (array) ($item->meta['treinamentos'] ?? []);
+            $codigos = collect($treinamentosMeta)
+                ->map(fn ($trein) => $trein['codigo'] ?? null)
+                ->filter()
+                ->values()
+                ->all();
+            $codigos = $this->normalizeTreinamentosValues($codigos);
+
+            $contratoItem = $contrato->itens
+                ->first(function ($it) use ($treinamentoServicoId, $descricao) {
+                    return (int) $it->servico_id === (int) $treinamentoServicoId
+                        && trim((string) ($it->descricao_snapshot ?? '')) === $descricao;
+                });
+
+            if (!$contratoItem) {
+                $contratoItem = $contrato->itens
+                    ->first(fn ($it) => (int) $it->servico_id === (int) $treinamentoServicoId);
+            }
+
+            $pacotes[] = [
+                'contrato_item_id' => $contratoItem?->id,
+                'nome' => (string) ($item->nome ?? 'Pacote de Treinamentos'),
+                'descricao' => $descricao,
+                'codigos' => $codigos,
+                'valor' => (float) ($contratoItem?->preco_unitario_snapshot ?? 0),
+            ];
+        }
+
+        return array_values($pacotes);
     }
 
     private function tiposAsoPermitidos(int $clienteId, int $empresaId): array

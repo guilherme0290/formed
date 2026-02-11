@@ -327,6 +327,18 @@ class ClienteParametroController extends Controller
             }
         }
 
+        foreach ($data['itens'] as $it) {
+            if (strtoupper((string) ($it['tipo'] ?? '')) === 'PACOTE_TREINAMENTOS') {
+                $valorPacote = (float) ($it['valor_total'] ?? $it['valor_unitario'] ?? 0);
+                if ($valorPacote <= 0) {
+                    $nomePacote = $it['nome'] ?? 'Pacote de treinamentos';
+                    return back()
+                        ->withInput()
+                        ->withErrors(['itens' => "Defina um valor para o pacote de treinamentos \"{$nomePacote}\"."]);
+                }
+            }
+        }
+
         $valorItens = 0.0;
         $temItemEsocial = false;
         foreach ($data['itens'] as $it) {

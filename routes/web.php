@@ -446,6 +446,9 @@ Route::middleware('auth')->group(function () {
                 Route::get('/{funcionario}', [ClienteFuncionarioController::class, 'show'])
                     ->name('show');
 
+                Route::delete('/{funcionario}', [ClienteFuncionarioController::class, 'destroy'])
+                    ->name('destroy');
+
                 // 🔁 Ativar / Inativar funcionário (portal do cliente)
                 Route::patch('/{funcionario}/toggle-status',
                     [ClienteFuncionarioController::class, 'toggleStatus']
@@ -1154,5 +1157,4 @@ Route::get('operacional/tarefas/documento/{token}', [TarefaController::class, 'd
     ->name('operacional.tarefas.documento');
 
 require __DIR__.'/auth.php';
-
 

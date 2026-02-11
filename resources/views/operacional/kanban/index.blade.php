@@ -246,6 +246,9 @@
                                         $funcionarioCpf    = $funcionario->cpf ?? null;
                                         $funcionarioFuncao = $funcionario->funcao_nome ?? null;
                                         $funcionarioCelular = $funcionario->celular ?? null;
+                                        $funcionarioNascimento = $funcionario->data_nascimento
+                                            ? \Carbon\Carbon::parse($funcionario->data_nascimento)->format('d/m/Y')
+                                            : null;
 
                                         $slaData      = $tarefa->fim_previsto
                                                         ? \Carbon\Carbon::parse($tarefa->fim_previsto)->format('d/m/Y')
@@ -266,6 +269,7 @@
                                         $asoTreinamentoFlag   = '';
                                         $asoTreinamentosLista = '';
                                         $asoEmail             = '';
+                                        $asoPacoteNome        = '';
 
                                         if ($aso) {
                                             $mapTiposAso = [
@@ -304,6 +308,11 @@
                                                 $labelsTrein[] = $mapTrein[$code] ?? strtoupper($code);
                                             }
                                             $asoTreinamentosLista = implode(', ', $labelsTrein);
+
+                                            if (!empty($aso->treinamento_pacote)) {
+                                                $pacote = (array) $aso->treinamento_pacote;
+                                                $asoPacoteNome = $pacote['nome'] ?? '';
+                                            }
                                         }
 
                                         $isAsoTask = (bool) $aso;
@@ -389,12 +398,14 @@
                                     data-funcionario-funcao="{{ $funcionarioFuncao }}"
                                     data-funcionario-cpf="{{ $funcionarioCpf }}"
                                     data-funcionario-celular="{{ $funcionarioCelular }}"
+                                    data-funcionario-nascimento="{{ $funcionarioNascimento }}"
 
                                     data-aso-tipo="{{ $asoTipoLabel }}"
                                     data-aso-data="{{ $asoDataFormatada }}"
                                     data-aso-unidade="{{ $asoUnidadeNome }}"
                                     data-aso-treinamento="{{ $asoTreinamentoFlag }}"
                                     data-aso-treinamentos="{{ $asoTreinamentosLista }}"
+                                    data-aso-pacote="{{ $asoPacoteNome }}"
                                     data-aso-email="{{ $asoEmail }}"
                                     data-is-aso="{{ $isAsoTask ? '1' : '0' }}"
 
@@ -789,6 +800,10 @@
                                         <dt class="text-[11px] text-slate-500">Função</dt>
                                         <dd class="font-medium" id="modal-funcionario-funcao">—</dd>
                                     </div>
+                                    <div>
+                                        <dt class="text-[11px] text-slate-500">Data de Nascimento</dt>
+                                        <dd class="font-medium" id="modal-funcionario-nascimento">—</dd>
+                                    </div>
                                 </div>
 
                                 <div class="space-y-1">
@@ -817,11 +832,15 @@
                                     </div>
                                 </div>
 
-                                <div class="md:col-span-2 mt-1">
-                                    <dt class="text-[11px] text-slate-500">Treinamentos selecionados</dt>
-                                    <dd class="font-medium text-sm" id="modal-aso-treinamentos">—</dd>
+                                    <div class="md:col-span-2 mt-1">
+                                        <dt class="text-[11px] text-slate-500">Treinamentos selecionados</dt>
+                                        <dd class="font-medium text-sm" id="modal-aso-treinamentos">—</dd>
+                                    </div>
+                                    <div class="md:col-span-2 mt-1">
+                                        <dt class="text-[11px] text-slate-500">Pacote de Treinamento</dt>
+                                        <dd class="font-medium text-sm" id="modal-aso-pacote">—</dd>
+                                    </div>
                                 </div>
-                            </div>
 
                         </dl>
                     </section>
@@ -1255,11 +1274,13 @@
             const spanFuncionarioFuncao = document.getElementById('modal-funcionario-funcao');
             const spanFuncionarioCpf = document.getElementById('modal-funcionario-cpf');
             const spanFuncionarioCelular = document.getElementById('modal-funcionario-celular');
+            const spanFuncionarioNascimento = document.getElementById('modal-funcionario-nascimento');
             const spanAsoTipo = document.getElementById('modal-aso-tipo');
             const spanAsoData = document.getElementById('modal-aso-data');
             const spanAsoUnidade = document.getElementById('modal-aso-unidade');
             const spanAsoTreinamento = document.getElementById('modal-aso-treinamento');
             const spanAsoTreinamentos = document.getElementById('modal-aso-treinamentos');
+            const spanAsoPacote = document.getElementById('modal-aso-pacote');
             const spanAsoEmail = document.getElementById('modal-aso-email');
             const blocoAso = document.getElementById('modal-bloco-aso');
 
@@ -1448,6 +1469,9 @@
 
                 spanFuncionario.textContent = card.dataset.funcionario || '—';
                 spanFuncionarioFuncao.textContent = card.dataset.funcionarioFuncao || '—';
+                if (spanFuncionarioNascimento) {
+                    spanFuncionarioNascimento.textContent = card.dataset.funcionarioNascimento || '—';
+                }
                 if (spanFuncionarioCelular) {
                     spanFuncionarioCelular.textContent = formatTelefone(card.dataset.funcionarioCelular || '');
                 }
@@ -1542,6 +1566,9 @@
                         if (spanFuncionarioCpf) {
                             spanFuncionarioCpf.textContent = card.dataset.funcionarioCpf || '—';
                         }
+                        if (spanFuncionarioNascimento) {
+                            spanFuncionarioNascimento.textContent = card.dataset.funcionarioNascimento || '—';
+                        }
                         if (spanFuncionarioCelular) {
                             spanFuncionarioCelular.textContent = formatTelefone(card.dataset.funcionarioCelular || '');
                         }
@@ -1559,6 +1586,9 @@
                         }
                         if (spanAsoTreinamentos) {
                             spanAsoTreinamentos.textContent = card.dataset.asoTreinamentos || '—';
+                        }
+                        if (spanAsoPacote) {
+                            spanAsoPacote.textContent = card.dataset.asoPacote || '—';
                         }
                         if (spanAsoEmail) {
                             spanAsoEmail.textContent = card.dataset.asoEmail || '—';
