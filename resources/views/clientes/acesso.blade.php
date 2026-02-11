@@ -19,6 +19,13 @@
     $senhaPadrao = $senhaSugerida ?? \Illuminate\Support\Str::password(10);
     $emailSugerido = $cliente->email ?? '';
     $documentoSugerido = $cliente->cnpj ?? '';
+    $temEmail = trim($emailSugerido) !== '';
+    $temDocumento = trim($documentoSugerido) !== '';
+    $loginTipoPadrao = $temDocumento ? 'documento' : 'email';
+    $loginTipoAtual = old('login_tipo', $loginTipoPadrao);
+    if (!$temEmail && $loginTipoAtual === 'email') {
+        $loginTipoAtual = 'documento';
+    }
 @endphp
 
 @section('content')
@@ -30,7 +37,7 @@
                     <h1 class="text-xl font-semibold text-slate-900">Criar acesso para {{ $cliente->razao_social }}</h1>
                     <p class="text-sm text-slate-500">O usuário deverá trocar a senha no primeiro login.</p>
                 </div>
-                <a href="{{ route($routePrefix.'.index') }}" class="text-sm text-slate-600 hover:text-slate-800">← Voltar</a>
+                {{-- botão movido para junto do "Criar acesso" --}}
             </div>
 
             @if($userExistente)
@@ -41,13 +48,51 @@
 
             <form id="acessoForm" method="POST" action="{{ route($routePrefix.'.acesso', $cliente) }}" class="space-y-4">
                 @csrf
-                <div class="space-y-1">
-                    <label class="text-sm font-semibold text-slate-700">CNPJ (login)</label>
-                    <input type="text" name="documento" id="documentoInput" value="{{ old('documento', $documentoSugerido) }}" required class="w-full rounded-xl border border-slate-200 px-3 py-2" placeholder="00.000.000/0000-00">
+                <div class="space-y-2">
+                    <label class="text-sm font-semibold text-slate-700">Tipo de login</label>
+                    <div class="flex flex-col gap-2">
+                        <label class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 px-3 py-2">
+                            <span class="text-sm text-slate-700">CNPJ</span>
+                            <span class="relative inline-flex items-center">
+                                <input type="radio" name="login_tipo" value="documento"
+                                       class="peer sr-only"
+                                       {{ $loginTipoAtual === 'documento' ? 'checked' : '' }}>
+                                <span class="w-11 h-6 rounded-full bg-slate-200 transition-colors peer-checked:bg-indigo-600"></span>
+                                <span class="absolute left-1 top-1 h-4 w-4 rounded-full bg-white transition-transform peer-checked:translate-x-5"></span>
+                            </span>
+                        </label>
+
+                        <label class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 px-3 py-2 {{ $temEmail ? '' : 'opacity-50 cursor-not-allowed' }}">
+                            <div class="flex items-center gap-2">
+                                <span class="text-sm text-slate-700">E-mail</span>
+                                @if(!$temEmail)
+                                    <span class="text-xs text-slate-500">(sem e-mail cadastrado)</span>
+                                @endif
+                            </div>
+                            <span class="relative inline-flex items-center">
+                                <input type="radio" name="login_tipo" value="email"
+                                       class="peer sr-only"
+                                       {{ $loginTipoAtual === 'email' ? 'checked' : '' }}
+                                       {{ $temEmail ? '' : 'disabled' }}>
+                                <span class="w-11 h-6 rounded-full bg-slate-200 transition-colors peer-checked:bg-indigo-600"></span>
+                                <span class="absolute left-1 top-1 h-4 w-4 rounded-full bg-white transition-transform peer-checked:translate-x-5"></span>
+                            </span>
+                        </label>
+                    </div>
                 </div>
                 <div class="space-y-1">
-                    <label class="text-sm font-semibold text-slate-700">E-mail (opcional)</label>
-                    <input type="email" name="email" value="{{ old('email', $emailSugerido) }}" class="w-full rounded-xl border border-slate-200 px-3 py-2">
+                    <label class="text-sm font-semibold text-slate-700">CNPJ (login)</label>
+                    <input type="text" name="documento" id="documentoInput" value="{{ old('documento', $documentoSugerido) }}"
+                           {{ $loginTipoAtual === 'documento' ? 'required' : '' }}
+                           {{ $loginTipoAtual === 'documento' ? '' : 'disabled' }}
+                           class="w-full rounded-xl border border-slate-200 px-3 py-2" placeholder="00.000.000/0000-00">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-sm font-semibold text-slate-700">E-mail (login)</label>
+                    <input type="email" name="email" value="{{ old('email', $emailSugerido) }}"
+                           {{ $loginTipoAtual === 'email' && $temEmail ? 'required' : '' }}
+                           {{ $loginTipoAtual === 'email' && $temEmail ? '' : 'disabled' }}
+                           class="w-full rounded-xl border border-slate-200 px-3 py-2">
                 </div>
                 <div class="space-y-1">
                     <div class="flex items-center justify-between">
@@ -61,10 +106,13 @@
                     <p class="text-xs text-slate-500">O usuário deverá definir nova senha no primeiro login.</p>
                 </div>
 
-                <div class="grid sm:grid-cols-3 gap-2">
+                <div class="grid sm:grid-cols-2 gap-2">
                     <button type="submit" class="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 w-full">
                         Criar acesso
                     </button>
+                    <a href="{{ route($routePrefix.'.index') }}" class="px-4 py-2 rounded-xl bg-white text-slate-700 border border-slate-200 text-sm font-semibold text-center hover:bg-slate-50 w-full">
+                        Voltar
+                    </a>
 {{--                    <a id="btnWhatsapp" href="#" target="_blank" class="px-4 py-2 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 text-sm font-semibold text-center hover:bg-emerald-100 w-full">--}}
 {{--                        Enviar no WhatsApp--}}
 {{--                    </a>--}}
@@ -133,6 +181,7 @@
             const btnEmail = document.getElementById('btnEmail');
             const emailInput = document.querySelector('input[name=\"email\"]');
             const documentoInput = document.getElementById('documentoInput');
+            const loginTipoRadios = document.querySelectorAll('input[name=\"login_tipo\"]');
             const telefone = '{{ $telefoneLimpo }}';
             const sistemaUrl = @json(route('login.cliente'));
             const modalEmail = document.getElementById('modalEmailAcesso');
@@ -162,8 +211,14 @@
                 return `Olá! Aqui estão seus acessos ao portal:\nLogin: ${login}\nSenha temporária: ${senha}\nAcesse: ${sistemaUrl}\nAltere a senha no primeiro login.`;
             }
 
+            function getLoginTipo() {
+                const checked = document.querySelector('input[name=\"login_tipo\"]:checked');
+                return checked?.value || 'documento';
+            }
+
             function atualizarLinks() {
-                const login = (documentoInput?.value || emailInput.value || '').trim();
+                const loginTipo = getLoginTipo();
+                const login = (loginTipo === 'email' ? emailInput?.value : documentoInput?.value || emailInput?.value || '').trim();
                 const senha = senhaInput.value || '';
                 const texto = encodeURIComponent(montarMensagem(login, senha));
 
@@ -178,7 +233,8 @@
                 if (!modalEmail) return;
                 const email = emailInput.value || '';
                 const senha = senhaInput.value || '';
-                const login = (documentoInput?.value || email || '').trim();
+                const loginTipo = getLoginTipo();
+                const login = (loginTipo === 'email' ? email : documentoInput?.value || email || '').trim();
                 const mensagem = montarMensagem(login, senha);
 
                 if (emailModalTo) emailModalTo.value = email;
@@ -201,6 +257,30 @@
 
             window.closeEmailModal = () => modalEmail?.classList.add('hidden');
 
+            function toggleLoginInputs() {
+                const loginTipo = getLoginTipo();
+                if (loginTipo === 'email') {
+                    if (documentoInput) {
+                        documentoInput.disabled = true;
+                        documentoInput.required = false;
+                    }
+                    if (emailInput) {
+                        emailInput.disabled = false;
+                        emailInput.required = true;
+                    }
+                } else {
+                    if (documentoInput) {
+                        documentoInput.disabled = false;
+                        documentoInput.required = true;
+                    }
+                    if (emailInput) {
+                        emailInput.disabled = true;
+                        emailInput.required = false;
+                    }
+                }
+                atualizarLinks();
+            }
+
             btnGerar?.addEventListener('click', gerarSenha);
             btnCopiar?.addEventListener('click', copiarSenha);
             emailInput?.addEventListener('input', atualizarLinks);
@@ -210,6 +290,9 @@
             emailModalTo?.addEventListener('input', atualizarEmailModalLink);
             emailModalSubject?.addEventListener('input', atualizarEmailModalLink);
             emailModalBody?.addEventListener('input', atualizarEmailModalLink);
+            loginTipoRadios?.forEach((radio) => {
+                radio.addEventListener('change', toggleLoginInputs);
+            });
 
             function formatDocumento(value) {
                 const digits = (value || '').replace(/\D+/g, '').slice(0, 14);
@@ -234,9 +317,9 @@
                 });
             }
 
+            toggleLoginInputs();
             atualizarLinks();
         })();
     </script>
 @endsection
 BLADE
-
