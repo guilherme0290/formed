@@ -101,7 +101,7 @@
                             @php
                                 $comArtOld = old('com_art', isset($pgr) ? (string) (int) $pgr->com_art : null);
                             @endphp
-                            <div class="grid grid-cols-2 gap-4 mb-3">
+                            <div class="grid grid-cols-1 gap-3 mb-3">
                                 <label class="flex items-center gap-2 text-sm font-semibold text-slate-700">
                                     <input type="radio"
                                            id="com_art_sim"

@@ -152,7 +152,7 @@ class AsoController extends Controller
                 $descricao .= ' | Treinamentos: ' . implode(', ', $labels);
             }
 
-            $inicioPrevisto = Carbon::parse($data['data_aso']);
+            $inicioPrevisto = Carbon::createFromFormat('Y-m-d H:i:s', $data['data_aso'] . ' 07:00:00');
             $fimPrevisto = app(TempoTarefaService::class)
                 ->calcularFimPrevisto($inicioPrevisto, $empresaId, $servicoAsoId);
 
@@ -451,7 +451,8 @@ class AsoController extends Controller
                 $descricao .= ' | Treinamentos: ' . implode(', ', $labels);
             }
 
-            $inicioPrevisto = Carbon::parse($data['data_aso']);
+            $inicioPrevisto = $tarefa->inicio_previsto
+                ?: Carbon::createFromFormat('Y-m-d H:i:s', $data['data_aso'] . ' 07:00:00');
             $fimPrevisto = app(TempoTarefaService::class)
                 ->calcularFimPrevisto($inicioPrevisto, $empresaId, (int) $tarefa->servico_id);
 
