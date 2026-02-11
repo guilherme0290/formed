@@ -82,11 +82,41 @@
                     <div class="grid gap-3 md:grid-cols-2">
                         <div>
                             <label class="text-xs font-semibold text-slate-600">Vencimento padr√£o</label>
-                            <input type="date" name="vencimento" required class="w-full rounded-lg border-slate-200 bg-white text-slate-900 text-sm" />
+                            <div class="relative">
+    <input type="text"
+           inputmode="numeric"
+           placeholder="dd/mm/aaaa"
+           class="w-full rounded-lg border-slate-200 bg-white text-slate-900 text-sm pl-3 pr-10 py-2 js-date-text"
+           data-date-target="cr_vencimento" />
+    <button type="button"
+            class="absolute right-0 top-0 h-full w-8 flex items-center justify-center text-slate-400 hover:text-slate-600 date-picker-btn z-10"
+            data-date-target="cr_vencimento"
+            aria-label="Abrir calend·rio">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v2H2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 2 0v1zm15 8H2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V10z"/>
+        </svg>
+    </button>
+    <input type="hidden" id="cr_vencimento" name="vencimento" required />
+</div>
                         </div>
                         <div>
                             <label class="text-xs font-semibold text-slate-600">Pago em (opcional)</label>
-                            <input type="date" name="pago_em" class="w-full rounded-lg border-slate-200 bg-white text-slate-900 text-sm" />
+                            <div class="relative">
+    <input type="text"
+           inputmode="numeric"
+           placeholder="dd/mm/aaaa"
+           class="w-full rounded-lg border-slate-200 bg-white text-slate-900 text-sm pl-3 pr-10 py-2 js-date-text"
+           data-date-target="cr_pago_em" />
+    <button type="button"
+            class="absolute right-0 top-0 h-full w-8 flex items-center justify-center text-slate-400 hover:text-slate-600 date-picker-btn z-10"
+            data-date-target="cr_pago_em"
+            aria-label="Abrir calend·rio">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v2H2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 2 0v1zm15 8H2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V10z"/>
+        </svg>
+    </button>
+    <input type="hidden" id="cr_pago_em" name="pago_em" />
+</div>
                         </div>
                     </div>
                     <button class="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700">
@@ -125,12 +155,42 @@
 
                 <div>
                     <label class="text-xs font-semibold text-slate-600">Data</label>
-                    <input type="date" id="modalData" class="w-full rounded-lg border-slate-200 bg-white text-slate-900 text-sm" />
+                    <div class="relative">
+    <input type="text"
+           inputmode="numeric"
+           placeholder="dd/mm/aaaa"
+           class="w-full rounded-lg border-slate-200 bg-white text-slate-900 text-sm pl-3 pr-10 py-2 js-date-text"
+           data-date-target="modalData" />
+    <button type="button"
+            class="absolute right-0 top-0 h-full w-8 flex items-center justify-center text-slate-400 hover:text-slate-600 date-picker-btn z-10"
+            data-date-target="modalData"
+            aria-label="Abrir calend·rio">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v2H2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 2 0v1zm15 8H2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V10z"/>
+        </svg>
+    </button>
+    <input type="hidden" id="modalData" />
+</div>
                 </div>
 
                 <div>
                     <label class="text-xs font-semibold text-slate-600">Vencimento</label>
-                    <input type="date" id="modalVencimento" class="w-full rounded-lg border-slate-200 bg-white text-slate-900 text-sm" />
+                    <div class="relative">
+    <input type="text"
+           inputmode="numeric"
+           placeholder="dd/mm/aaaa"
+           class="w-full rounded-lg border-slate-200 bg-white text-slate-900 text-sm pl-3 pr-10 py-2 js-date-text"
+           data-date-target="modalVencimento" />
+    <button type="button"
+            class="absolute right-0 top-0 h-full w-8 flex items-center justify-center text-slate-400 hover:text-slate-600 date-picker-btn z-10"
+            data-date-target="modalVencimento"
+            aria-label="Abrir calend·rio">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v2H2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 2 0v1zm15 8H2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V10z"/>
+        </svg>
+    </button>
+    <input type="hidden" id="modalVencimento" />
+</div>
                 </div>
 
                 <div>
@@ -227,4 +287,79 @@
             });
         });
     </script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        if (!window.flatpickr) {
+            return;
+        }
+
+        if (flatpickr.l10ns && flatpickr.l10ns.pt) {
+            flatpickr.localize(flatpickr.l10ns.pt);
+        }
+
+        function maskBrDate(value) {
+            const digits = (value || '').replace(/\D+/g, '').slice(0, 8);
+            if (digits.length <= 2) return digits;
+            if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+            return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+        }
+
+        document.querySelectorAll('.js-date-text').forEach((textInput) => {
+            const hiddenId = textInput.dataset.dateTarget;
+            const hiddenInput = hiddenId ? document.getElementById(hiddenId) : null;
+            const defaultDate = hiddenInput && hiddenInput.value ? hiddenInput.value : null;
+
+            const fp = flatpickr(textInput, {
+                allowInput: true,
+                dateFormat: 'd/m/Y',
+                defaultDate: defaultDate,
+                onChange: function (selectedDates) {
+                    if (!hiddenInput) return;
+                    hiddenInput.value = selectedDates.length
+                        ? flatpickr.formatDate(selectedDates[0], 'Y-m-d')
+                        : '';
+                },
+                onClose: function (selectedDates) {
+                    if (!hiddenInput) return;
+                    hiddenInput.value = selectedDates.length
+                        ? flatpickr.formatDate(selectedDates[0], 'Y-m-d')
+                        : '';
+                },
+            });
+
+            textInput.addEventListener('input', () => {
+                textInput.value = maskBrDate(textInput.value);
+                if (!hiddenInput) return;
+                if (textInput.value.length === 10) {
+                    const parsed = fp.parseDate(textInput.value, 'd/m/Y');
+                    hiddenInput.value = parsed ? fp.formatDate(parsed, 'Y-m-d') : '';
+                }
+            });
+
+            textInput.addEventListener('blur', () => {
+                if (!hiddenInput) return;
+                const parsed = fp.parseDate(textInput.value, 'd/m/Y');
+                hiddenInput.value = parsed ? fp.formatDate(parsed, 'Y-m-d') : '';
+            });
+        });
+
+        document.querySelectorAll('.date-picker-btn').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const targetId = btn.dataset.dateTarget;
+                const textInput = targetId
+                    ? document.querySelector(`.js-date-text[data-date-target="${targetId}"]`)
+                    : null;
+                if (textInput && textInput._flatpickr) {
+                    textInput.focus();
+                    textInput._flatpickr.open();
+                }
+            });
+        });
+    });
+</script>
 @endsection
+
+

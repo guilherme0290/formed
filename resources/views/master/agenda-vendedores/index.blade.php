@@ -491,4 +491,41 @@
             });
         })();
     </script>
-@endsection
+@push('scripts')
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            if (!window.flatpickr) {
+                return;
+            }
+            if (flatpickr.l10ns && flatpickr.l10ns.pt) {
+                flatpickr.localize(flatpickr.l10ns.pt);
+            }
+            function maskBrDate(value) {
+                const digits = (value || '').replace(/\D+/g, '').slice(0, 8);
+                if (digits.length <= 2) return digits;
+                if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+                return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+            }
+            document.querySelectorAll('input[type="date"]').forEach((input) => {
+                if (input.dataset.fpBound) return;
+                input.dataset.fpBound = '1';
+                const fp = flatpickr(input, {
+                    allowInput: true,
+                    dateFormat: 'Y-m-d',
+                    altInput: true,
+                    altFormat: 'd/m/Y',
+                    altInputClass: input.className,
+                });
+                if (fp && fp.altInput) {
+                    fp.altInput.addEventListener('input', () => {
+                        fp.altInput.value = maskBrDate(fp.altInput.value);
+                    });
+                }
+            });
+        });
+    </script>
+@endpush@endsection
+
