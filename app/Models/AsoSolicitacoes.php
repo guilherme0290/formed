@@ -22,12 +22,14 @@ class AsoSolicitacoes extends Model
         'email_aso',
         'vai_fazer_treinamento',
         'treinamentos',
+        'treinamento_pacote',
     ];
 
     protected $casts = [
         'data_aso'              => 'date',
         'vai_fazer_treinamento' => 'boolean',
         'treinamentos'          => 'array',
+        'treinamento_pacote'    => 'array',
     ];
 
     public function tarefa()

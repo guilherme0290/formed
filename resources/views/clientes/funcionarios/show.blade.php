@@ -23,11 +23,23 @@
                     ← Voltar para lista
                 </a>
             </div>
-            <a href="{{ route('cliente.funcionarios.edit', $funcionario) }}"
-               class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold
-                      bg-indigo-600 text-white hover:bg-indigo-700">
-                ✏️ Editar informações
-            </a>
+            <div class="flex items-center gap-2">
+                <a href="{{ route('cliente.funcionarios.edit', $funcionario) }}"
+                   class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold
+                          bg-indigo-600 text-white hover:bg-indigo-700">
+                    ✏️ Editar informações
+                </a>
+                <form method="POST" action="{{ route('cliente.funcionarios.destroy', $funcionario) }}"
+                      onsubmit="return confirm('Deseja remover este funcionário?');">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit"
+                            class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold
+                                   bg-red-600 text-white hover:bg-red-700">
+                        🗑️ Deletar
+                    </button>
+                </form>
+            </div>
         </div>
 
         {{-- Card principal do funcionário --}}

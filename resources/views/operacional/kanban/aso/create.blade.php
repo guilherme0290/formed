@@ -27,11 +27,19 @@
     );
 
     $treinamentosPermitidos = $treinamentosPermitidos ?? [];
-    $temTreinamentosPermitidos = !empty($treinamentosPermitidos);
+    $temTreinamentosPermitidos = !empty($treinamentosPermitidos) || !empty($pacotesTreinamentos ?? []);
     $treinamentosDisponiveis = $treinamentosDisponiveis ?? [];
+    $pacotesTreinamentos = $pacotesTreinamentos ?? [];
     $treinamentosBloqueados = array_diff(array_keys($treinamentosDisponiveis), $treinamentosPermitidos);
     $temTreinamentosBloqueados = !empty($treinamentosDisponiveis) && !empty($treinamentosBloqueados);
     $treinamentoAviso = 'Serviço não contratado, converse com seu comercial';
+    $pacoteSelecionadoId = old(
+        'pacote_id',
+        $aso && !empty($aso->treinamento_pacote['contrato_item_id'])
+            ? $aso->treinamento_pacote['contrato_item_id']
+            : ''
+    );
+    $modoTreinamento = old('treinamento_modo', $pacoteSelecionadoId ? 'pacotes' : 'avulsos');
     if (!$temTreinamentosPermitidos) {
         $vaiFazerTreinamento = 0;
     }
@@ -373,41 +381,102 @@
                                 </button>
                             </div>
 
-                            {{-- Lista de treinamentos --}}
-                            <div id="listaTreinamentos"
-                                 class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2 {{ $vaiFazerTreinamento ? '' : 'hidden' }}">
-                                @if(empty($treinamentosDisponiveis))
-                                    <p class="text-[11px] text-slate-400 md:col-span-2">
-                                        Nenhum treinamento disponível para seleção.
-                                    </p>
-                                @else
-                                    @foreach($treinamentosDisponiveis as $key => $label)
-                                        @php
-                                            $permitido = in_array($key, $treinamentosPermitidos, true);
-                                            $selecionado = in_array($key, (array) $treinamentosSelecionados, true);
-                                        @endphp
-                                        <label class="inline-flex items-center gap-2 text-sm {{ $permitido ? 'text-slate-700' : 'text-slate-400' }}"
-                                               title="{{ $permitido ? '' : $treinamentoAviso }}">
-                                            <input type="checkbox"
-                                                   name="treinamentos[]"
-                                                   value="{{ $key }}"
-                                                   @checked($selecionado)
-                                                   {{ $permitido ? '' : 'disabled' }}
-                                                   class="rounded border-slate-300 text-sky-500 focus:ring-sky-400">
-                                            <span>{{ $label }}</span>
-                                        </label>
-                                    @endforeach
+                            <div id="treinamentosWrap" class="{{ $vaiFazerTreinamento ? '' : 'hidden' }}">
+                                <input type="hidden" name="treinamento_modo" id="treinamentoModoAso" value="{{ $modoTreinamento }}">
 
-                                    <p class="mt-1 text-[11px] text-slate-400 md:col-span-2">
-                                        Você pode selecionar mais de um treinamento.
-                                    </p>
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <button type="button"
+                                            id="btnModoPacotes"
+                                            class="px-3 py-2 rounded-xl border text-xs font-semibold bg-white text-slate-700 border-slate-300">
+                                        Pacotes
+                                    </button>
+                                    <button type="button"
+                                            id="btnModoAvulsos"
+                                            class="px-3 py-2 rounded-xl border text-xs font-semibold bg-slate-900 text-white border-slate-900">
+                                        Avulsos
+                                    </button>
+                                </div>
 
-                                    @if(!$temTreinamentosPermitidos || $temTreinamentosBloqueados)
-                                        <p class="text-[11px] text-slate-400 md:col-span-2">
-                                            {{ $treinamentoAviso }}
-                                        </p>
-                                    @endif
+                                {{-- Pacotes --}}
+                                @if(!empty($pacotesTreinamentos))
+                                    <div id="pacotesTreinamentosAso" data-treinamento-mode="pacotes"
+                                         class="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3 hidden">
+                                        <div class="text-xs font-semibold text-slate-700">Pacotes de Treinamentos</div>
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                            @foreach($pacotesTreinamentos as $pacote)
+                                                @php
+                                                    $pacoteCodigos = $pacote['codigos'] ?? [];
+                                                @endphp
+                                                <label class="block border rounded-2xl px-3 py-3 text-xs cursor-pointer bg-white hover:bg-slate-50">
+                                                    <div class="flex items-start gap-2">
+                                                        <input type="radio"
+                                                               name="pacote_id"
+                                                               value="{{ $pacote['contrato_item_id'] ?? '' }}"
+                                                               @checked((string) ($pacote['contrato_item_id'] ?? '') === (string) $pacoteSelecionadoId)
+                                                               class="mt-1 border-slate-300 text-sky-500 focus:ring-sky-400"
+                                                               data-treinamento-pacote
+                                                               data-codigos='@json($pacoteCodigos)'>
+                                                        <div>
+                                                            <p class="font-semibold text-slate-800 text-sm">
+                                                                {{ $pacote['nome'] ?? 'Pacote de Treinamentos' }}
+                                                            </p>
+                                                            @if(!empty($pacote['descricao']))
+                                                                <p class="text-[11px] text-slate-500">
+                                                                    {{ $pacote['descricao'] }}
+                                                                </p>
+                                                            @endif
+                                                            @if(!empty($pacoteCodigos))
+                                                                <p class="text-[11px] text-slate-500 mt-1">
+                                                                    Inclui: {{ implode(', ', $pacoteCodigos) }}
+                                                                </p>
+                                                            @endif
+                                                            <p class="text-[11px] text-emerald-700 mt-1 font-semibold">
+                                                                Valor do pacote: R$ {{ number_format((float) ($pacote['valor'] ?? 0), 2, ',', '.') }}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </label>
+                                            @endforeach
+                                        </div>
+                                    </div>
                                 @endif
+
+                                {{-- Avulsos --}}
+                                <div id="listaTreinamentos" data-treinamento-mode="avulsos"
+                                     class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
+                                    @if(empty($treinamentosDisponiveis))
+                                        <p class="text-[11px] text-slate-400 md:col-span-2">
+                                            Nenhum treinamento disponível para seleção.
+                                        </p>
+                                    @else
+                                        @foreach($treinamentosDisponiveis as $key => $label)
+                                            @php
+                                                $permitido = in_array($key, $treinamentosPermitidos, true);
+                                                $selecionado = in_array($key, (array) $treinamentosSelecionados, true);
+                                            @endphp
+                                            <label class="inline-flex items-center gap-2 text-sm {{ $permitido ? 'text-slate-700' : 'text-slate-400' }}"
+                                                   title="{{ $permitido ? '' : $treinamentoAviso }}">
+                                                <input type="checkbox"
+                                                       name="treinamentos[]"
+                                                       value="{{ $key }}"
+                                                       @checked($selecionado)
+                                                       {{ $permitido ? '' : 'disabled' }}
+                                                       class="rounded border-slate-300 text-sky-500 focus:ring-sky-400">
+                                                <span>{{ $label }}</span>
+                                            </label>
+                                        @endforeach
+
+                                        <p class="mt-1 text-[11px] text-slate-400 md:col-span-2">
+                                            Você pode selecionar mais de um treinamento.
+                                        </p>
+
+                                        @if(empty($pacotesTreinamentos) && (!$temTreinamentosPermitidos || $temTreinamentosBloqueados))
+                                            <p class="text-[11px] text-slate-400 md:col-span-2">
+                                                {{ $treinamentoAviso }}
+                                            </p>
+                                        @endif
+                                    @endif
+                                </div>
                             </div>
                         </div>
 
@@ -964,8 +1033,31 @@
                 const btnSim = document.getElementById('btn_treina_sim');
                 const btnNao = document.getElementById('btn_treina_nao');
                 const lista = document.getElementById('listaTreinamentos');
+                const pacotes = document.getElementById('pacotesTreinamentosAso');
+                const wrapTreinos = document.getElementById('treinamentosWrap');
+                const pacotesInputs = document.querySelectorAll('[data-treinamento-pacote]');
 
                 if (!campo || !btnSim || !btnNao || !lista) return;
+
+                function limparPacotesSelecionados() {
+                    if (!pacotesInputs.length) return;
+                    pacotesInputs.forEach(input => {
+                        input.checked = false;
+                        try {
+                            const codigos = JSON.parse(input.dataset.codigos || '[]');
+                            if (Array.isArray(codigos)) {
+                                codigos.forEach(codigo => {
+                                    const checkbox = document.querySelector(`input[name="treinamentos[]"][value="${codigo}"]`);
+                                    if (checkbox && !checkbox.disabled) {
+                                        checkbox.checked = false;
+                                    }
+                                });
+                            }
+                        } catch (e) {
+                            // ignora erro de parse
+                        }
+                    });
+                }
 
                 function atualizarTreinamento() {
                     if (btnSim.disabled) {
@@ -975,9 +1067,10 @@
                     const ativo = campo.value === '1';
 
                     if (ativo) {
-                        lista.classList.remove('hidden');
+                        if (wrapTreinos) wrapTreinos.classList.remove('hidden');
                     } else {
-                        lista.classList.add('hidden');
+                        if (wrapTreinos) wrapTreinos.classList.add('hidden');
+                        limparPacotesSelecionados();
                     }
 
                     if (ativo) {
@@ -1009,6 +1102,93 @@
                 });
 
                 atualizarTreinamento();
+            });
+        </script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const btnPacotes = document.getElementById('btnModoPacotes');
+                const btnAvulsos = document.getElementById('btnModoAvulsos');
+                const modoInput = document.getElementById('treinamentoModoAso');
+                const blocoPacotes = document.querySelector('[data-treinamento-mode="pacotes"]');
+                const blocoAvulsos = document.querySelector('[data-treinamento-mode="avulsos"]');
+                const pacotes = document.querySelectorAll('[data-treinamento-pacote]');
+
+                function setModoTreinamento(modo) {
+                    if (modoInput) modoInput.value = modo;
+                    if (blocoPacotes) blocoPacotes.classList.toggle('hidden', modo !== 'pacotes');
+                    if (blocoAvulsos) blocoAvulsos.classList.toggle('hidden', modo !== 'avulsos');
+
+                    if (btnPacotes && btnAvulsos) {
+                        if (modo === 'pacotes') {
+                            btnPacotes.classList.add('bg-slate-900', 'text-white', 'border-slate-900');
+                            btnPacotes.classList.remove('bg-white', 'text-slate-700', 'border-slate-300');
+                            btnAvulsos.classList.add('bg-white', 'text-slate-700', 'border-slate-300');
+                            btnAvulsos.classList.remove('bg-slate-900', 'text-white', 'border-slate-900');
+                        } else {
+                            btnAvulsos.classList.add('bg-slate-900', 'text-white', 'border-slate-900');
+                            btnAvulsos.classList.remove('bg-white', 'text-slate-700', 'border-slate-300');
+                            btnPacotes.classList.add('bg-white', 'text-slate-700', 'border-slate-300');
+                            btnPacotes.classList.remove('bg-slate-900', 'text-white', 'border-slate-900');
+                        }
+                    }
+                }
+
+                if (btnPacotes) btnPacotes.addEventListener('click', () => setModoTreinamento('pacotes'));
+                if (btnAvulsos) btnAvulsos.addEventListener('click', () => setModoTreinamento('avulsos'));
+
+                const initialMode = modoInput?.value || 'avulsos';
+                setModoTreinamento(initialMode);
+
+                if (!pacotes.length) return;
+
+                function toggleCodigos(codigos, checked) {
+                    if (!Array.isArray(codigos)) return;
+                    codigos.forEach(codigo => {
+                        const input = document.querySelector(`input[name="treinamentos[]"][value="${codigo}"]`);
+                        if (input && !input.disabled) {
+                            input.checked = checked;
+                        }
+                    });
+                }
+
+                function limparPacotes() {
+                    pacotes.forEach(pacote => {
+                        pacote.checked = false;
+                    });
+                    const todosCodigos = [];
+                    pacotes.forEach(pacote => {
+                        try {
+                            const codigos = JSON.parse(pacote.dataset.codigos || '[]');
+                            if (Array.isArray(codigos)) {
+                                codigos.forEach(codigo => todosCodigos.push(codigo));
+                            }
+                        } catch (e) {
+                            // ignora erro de parse
+                        }
+                    });
+                    toggleCodigos(Array.from(new Set(todosCodigos)), false);
+                }
+
+                if (btnAvulsos) {
+                    btnAvulsos.addEventListener('click', () => limparPacotes());
+                }
+
+                pacotes.forEach(pacote => {
+                    pacote.addEventListener('change', () => {
+                        if (!pacote.checked) {
+                            return;
+                        }
+                        limparPacotes();
+                        pacote.checked = true;
+                        let codigos = [];
+                        try {
+                            codigos = JSON.parse(pacote.dataset.codigos || '[]');
+                        } catch (e) {
+                            codigos = [];
+                        }
+                        toggleCodigos(codigos, pacote.checked);
+                    });
+                });
             });
         </script>
         <script>

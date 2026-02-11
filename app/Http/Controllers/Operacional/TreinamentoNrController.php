@@ -42,6 +42,8 @@ class TreinamentoNrController extends Controller
         $treinamentosDisponiveis = $this->getTreinamentosDisponiveis($empresaId, $cliente);
         $contratoAtivo = $this->contratoAtivo($cliente);
         $treinamentosFinalizados = $this->getTreinamentosFinalizados($empresaId, $cliente, $contratoAtivo);
+        $pacotesTreinamentos = $this->getPacotesTreinamentos($empresaId, $cliente, $contratoAtivo);
+        $pacotesTreinamentos = $this->getPacotesTreinamentos($empresaId, $cliente, $contratoAtivo);
 
         return view('operacional.kanban.treinamentos-nr.create', [
             'cliente'      => $cliente,
@@ -54,6 +56,7 @@ class TreinamentoNrController extends Controller
             'selecionados' => [],
             'treinamentosDisponiveis' => $treinamentosDisponiveis,
             'treinamentosFinalizados' => $treinamentosFinalizados,
+            'pacotesTreinamentos' => $pacotesTreinamentos,
             'isEdit'       => false,
         ]);
     }
@@ -72,11 +75,16 @@ class TreinamentoNrController extends Controller
                 ->withInput();
         }
 
+        $pacotesTreinamentos = $this->getPacotesTreinamentos($empresaId, $cliente, $this->contratoAtivo($cliente));
+        $pacotesIds = collect($pacotesTreinamentos)->pluck('contrato_item_id')->filter()->values()->all();
+
         $data = $request->validate([
             'funcionarios'   => ['required', 'array', 'min:1'],
             'funcionarios.*' => ['integer', 'exists:funcionarios,id'],
-            'treinamentos'   => ['required', 'array', 'min:1'],
+            'treinamento_modo' => ['required', Rule::in(['avulso', 'pacote'])],
+            'treinamentos'   => ['required_if:treinamento_modo,avulso', 'array', 'min:1'],
             'treinamentos.*' => ['string', Rule::in($treinamentosCodigos)],
+            'pacote_id' => ['required_if:treinamento_modo,pacote', 'nullable', 'integer', Rule::in($pacotesIds)],
 
             'local_tipo' => ['required', 'in:clinica,empresa'],
             'unidade_id' => ['required_if:local_tipo,clinica', 'nullable', 'integer', 'exists:unidades_clinicas,id'],
@@ -104,7 +112,8 @@ class TreinamentoNrController extends Controller
             $empresaId,
             $colunaInicial,
             $servicoTreinamentosNr,
-            $tipoLabel
+            $tipoLabel,
+            $pacotesTreinamentos
         ) {
             // Cria a tarefa no padrão das demais
             $inicioPrevisto = now();
@@ -135,11 +144,13 @@ class TreinamentoNrController extends Controller
             }
 
             // Detalhes de local/unidade
+            $treinamentosPayload = $this->buildTreinamentosPayload($data, $pacotesTreinamentos);
+
             TreinamentoNrDetalhes::create([
                 'tarefa_id'  => $tarefa->id,
                 'local_tipo' => $data['local_tipo'],
                 'unidade_id' => $data['unidade_id'] ?? null,
-                'treinamentos' => $data['treinamentos'],
+                'treinamentos' => $treinamentosPayload,
             ]);
         });
 
@@ -231,6 +242,7 @@ class TreinamentoNrController extends Controller
             'selecionados' => $selecionados,
             'treinamentosDisponiveis' => $treinamentosDisponiveis,
             'treinamentosFinalizados' => $treinamentosFinalizados,
+            'pacotesTreinamentos' => $pacotesTreinamentos,
             'isEdit'       => true,
         ]);
     }
@@ -255,11 +267,16 @@ class TreinamentoNrController extends Controller
                 ->withInput();
         }
 
+        $pacotesTreinamentos = $this->getPacotesTreinamentos($empresaId, $cliente, $this->contratoAtivo($cliente));
+        $pacotesIds = collect($pacotesTreinamentos)->pluck('contrato_item_id')->filter()->values()->all();
+
         $data = $request->validate([
             'funcionarios'   => ['required', 'array', 'min:1'],
             'funcionarios.*' => ['integer', 'exists:funcionarios,id'],
-            'treinamentos'   => ['required', 'array', 'min:1'],
+            'treinamento_modo' => ['required', Rule::in(['avulso', 'pacote'])],
+            'treinamentos'   => ['required_if:treinamento_modo,avulso', 'array', 'min:1'],
             'treinamentos.*' => ['string', Rule::in($treinamentosCodigos)],
+            'pacote_id' => ['required_if:treinamento_modo,pacote', 'nullable', 'integer', Rule::in($pacotesIds)],
 
             'local_tipo' => ['required', 'in:clinica,empresa'],
             'unidade_id' => ['required_if:local_tipo,clinica', 'nullable', 'integer', 'exists:unidades_clinicas,id'],
@@ -268,7 +285,7 @@ class TreinamentoNrController extends Controller
             'treinamentos.required' => 'Selecione pelo menos um treinamento.',
         ]);
 
-        DB::transaction(function () use ($data, $tarefa, $usuario) {
+        DB::transaction(function () use ($data, $tarefa, $usuario, $pacotesTreinamentos) {
 
             // Atualiza / cria detalhes de local
             $detalhes = TreinamentoNrDetalhes::firstOrNew([
@@ -279,7 +296,7 @@ class TreinamentoNrController extends Controller
             $detalhes->unidade_id = $data['local_tipo'] === 'clinica'
                 ? ($data['unidade_id'] ?? null)
                 : null;
-            $detalhes->treinamentos = $data['treinamentos'];
+            $detalhes->treinamentos = $this->buildTreinamentosPayload($data, $pacotesTreinamentos);
             $detalhes->save();
 
             // Atualiza descrição da tarefa (opcional, mas útil)
@@ -364,16 +381,26 @@ class TreinamentoNrController extends Controller
             return collect();
         }
 
-        $contrato->loadMissing('propostaOrigem.itens', 'parametroOrigem.itens');
+        $contrato->loadMissing('parametroOrigem.itens');
 
-        $itensOrigem = $contrato->propostaOrigem?->itens ?? $contrato->parametroOrigem?->itens;
-        if (!$itensOrigem) {
+        $itensOrigem = $contrato->parametroOrigem?->itens ?? collect();
+        if ($itensOrigem->isEmpty()) {
             return collect();
         }
 
         $codigosContratados = $itensOrigem
-            ->filter(fn ($it) => strtoupper((string) $it->tipo) === 'TREINAMENTO_NR')
-            ->map(function ($it) {
+            ->filter(function ($it) {
+                $tipo = strtoupper((string) ($it->tipo ?? ''));
+                return $tipo === 'TREINAMENTO_NR' || $tipo === 'PACOTE_TREINAMENTOS';
+            })
+            ->flatMap(function ($it) {
+                $tipo = strtoupper((string) ($it->tipo ?? ''));
+                if ($tipo === 'PACOTE_TREINAMENTOS') {
+                    return collect((array) ($it->meta['treinamentos'] ?? []))
+                        ->map(fn ($trein) => $trein['codigo'] ?? null)
+                        ->filter();
+                }
+
                 $codigo = $it->meta['codigo'] ?? null;
                 if (!$codigo) {
                     $nome = (string) ($it->nome ?? '');
@@ -381,11 +408,11 @@ class TreinamentoNrController extends Controller
                         $codigo = str_replace(' ', '-', $m[1]);
                     }
                 }
-                $codigo = strtoupper(trim((string) $codigo));
-                return $codigo !== '' ? $codigo : null;
+
+                return $codigo ? [$codigo] : [];
             })
+            ->map(fn ($codigo) => trim((string) $codigo))
             ->filter()
-            ->unique()
             ->values()
             ->all();
 
@@ -393,12 +420,120 @@ class TreinamentoNrController extends Controller
             return collect();
         }
 
+        $codigosContratados = $this->normalizeTreinamentosCodigos($codigosContratados);
+
         return $treinamentos
             ->filter(function ($treinamento) use ($codigosContratados) {
                 $codigo = strtoupper(trim((string) $treinamento->codigo));
                 return $codigo !== '' && in_array($codigo, $codigosContratados, true);
             })
             ->values();
+    }
+
+    private function getPacotesTreinamentos(int $empresaId, Cliente $cliente, ?\App\Models\ClienteContrato $contratoAtivo): array
+    {
+        if (!$contratoAtivo) {
+            return [];
+        }
+
+        $servicoTreinamentoId = Servico::where('empresa_id', $empresaId)
+            ->where('nome', 'Treinamentos NRs')
+            ->value('id');
+
+        if (!$servicoTreinamentoId) {
+            return [];
+        }
+
+        $contratoAtivo->loadMissing('itens', 'parametroOrigem.itens');
+        $itensOrigem = $contratoAtivo->parametroOrigem?->itens ?? collect();
+        if ($itensOrigem->isEmpty()) {
+            return [];
+        }
+
+        $pacotes = [];
+        $pacotesOrigem = $itensOrigem
+            ->filter(fn ($it) => strtoupper((string) ($it->tipo ?? '')) === 'PACOTE_TREINAMENTOS')
+            ->values();
+
+        foreach ($pacotesOrigem as $item) {
+            $descricao = trim((string) ($item->descricao ?? $item->nome ?? ''));
+            $treinamentosMeta = (array) ($item->meta['treinamentos'] ?? []);
+            $codigos = collect($treinamentosMeta)
+                ->map(fn ($trein) => $trein['codigo'] ?? null)
+                ->filter()
+                ->values()
+                ->all();
+            $codigos = $this->normalizeTreinamentosCodigos($codigos);
+
+            $contratoItem = $contratoAtivo->itens
+                ->first(function ($it) use ($servicoTreinamentoId, $descricao) {
+                    return (int) $it->servico_id === (int) $servicoTreinamentoId
+                        && trim((string) ($it->descricao_snapshot ?? '')) === $descricao;
+                });
+
+            if (!$contratoItem) {
+                $contratoItem = $contratoAtivo->itens
+                    ->first(fn ($it) => (int) $it->servico_id === (int) $servicoTreinamentoId);
+            }
+
+            $pacotes[] = [
+                'contrato_item_id' => $contratoItem?->id,
+                'nome' => (string) ($item->nome ?? 'Pacote de Treinamentos'),
+                'descricao' => $descricao,
+                'codigos' => $codigos,
+                'valor' => (float) ($contratoItem?->preco_unitario_snapshot ?? 0),
+            ];
+        }
+
+        return array_values($pacotes);
+    }
+
+    private function buildTreinamentosPayload(array $data, array $pacotesTreinamentos): array
+    {
+        $modo = $data['treinamento_modo'] ?? 'avulso';
+        if ($modo === 'pacote') {
+            $pacoteId = (int) ($data['pacote_id'] ?? 0);
+            $pacote = collect($pacotesTreinamentos)->firstWhere('contrato_item_id', $pacoteId);
+
+            return [
+                'modo' => 'pacote',
+                'pacote' => [
+                    'contrato_item_id' => $pacote['contrato_item_id'] ?? null,
+                    'nome' => $pacote['nome'] ?? 'Pacote de Treinamentos',
+                    'descricao' => $pacote['descricao'] ?? null,
+                    'valor' => $pacote['valor'] ?? 0,
+                    'codigos' => $pacote['codigos'] ?? [],
+                ],
+            ];
+        }
+
+        $codigos = $this->normalizeTreinamentosCodigos($data['treinamentos'] ?? []);
+
+        return [
+            'modo' => 'avulso',
+            'codigos' => $codigos,
+        ];
+    }
+
+    private function normalizeTreinamentosCodigos(array $codigos): array
+    {
+        $normalized = [];
+        foreach ($codigos as $value) {
+            $value = trim((string) $value);
+            if ($value === '') {
+                continue;
+            }
+
+            if (preg_match('/^nr[_-]?(\\d+)$/i', $value, $m)) {
+                $numero = str_pad($m[1], 2, '0', STR_PAD_LEFT);
+                $normalized[] = 'NR-' . $numero;
+                continue;
+            }
+
+            $normalized[] = strtoupper($value);
+        }
+
+        return array_values(array_unique($normalized));
     }
 
     private function contratoAtivo(Cliente $cliente): ?\App\Models\ClienteContrato
@@ -453,11 +588,16 @@ class TreinamentoNrController extends Controller
             ->whereIn('tarefa_id', $tarefaIds)
             ->get(['treinamentos'])
             ->flatMap(function ($row) {
-                return array_map(
-                    fn ($codigo) => strtoupper(trim((string) $codigo)),
-                    (array) ($row->treinamentos ?? [])
-                );
+                $payload = $row->treinamentos ?? [];
+                if (is_array($payload) && isset($payload['modo'])) {
+                    if ($payload['modo'] === 'pacote') {
+                        return (array) ($payload['pacote']['codigos'] ?? []);
+                    }
+                    return (array) ($payload['codigos'] ?? []);
+                }
+                return (array) $payload;
             })
+            ->map(fn ($codigo) => strtoupper(trim((string) $codigo)))
             ->filter()
             ->unique()
             ->values()

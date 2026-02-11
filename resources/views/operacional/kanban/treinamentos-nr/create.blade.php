@@ -169,13 +169,82 @@
 
                 {{-- 2. Selecione os Treinamentos --}}
                 @php
-                    $treinamentosSelecionados = old('treinamentos', $detalhes->treinamentos ?? []);
+                    $treinamentosData = $detalhes->treinamentos ?? null;
+                    $treinamentoModo = old('treinamento_modo', data_get($treinamentosData, 'modo', 'avulso'));
+                    $treinamentosSelecionados = old(
+                        'treinamentos',
+                        data_get($treinamentosData, 'codigos', is_array($treinamentosData) ? $treinamentosData : [])
+                    );
+                    $pacoteSelecionado = old('pacote_id', data_get($treinamentosData, 'pacote.contrato_item_id'));
                     $treinamentosFinalizados = $treinamentosFinalizados ?? [];
+                    $pacotesTreinamentos = $pacotesTreinamentos ?? [];
                 @endphp
 
                 <section class="space-y-3 pt-4 border-t border-slate-100 mt-4">
                     <h2 class="text-sm font-semibold text-slate-800">2. Selecione os Treinamentos</h2>
 
+                    <div class="flex flex-wrap items-center gap-4 text-xs">
+                        <label class="inline-flex items-center gap-2 font-semibold text-slate-700">
+                            <input type="radio"
+                                   name="treinamento_modo"
+                                   value="avulso"
+                                   class="h-4 w-4 text-indigo-600"
+                                   @checked($treinamentoModo === 'avulso')>
+                            Avulso (NRs individuais)
+                        </label>
+                        <label class="inline-flex items-center gap-2 font-semibold text-slate-700">
+                            <input type="radio"
+                                   name="treinamento_modo"
+                                   value="pacote"
+                                   class="h-4 w-4 text-indigo-600"
+                                   @checked($treinamentoModo === 'pacote')>
+                            Pacote de Treinamentos
+                        </label>
+                    </div>
+
+                    <div id="pacotesTreinamentosWrap" class="{{ $treinamentoModo === 'pacote' ? '' : 'hidden' }}">
+                        @if(empty($pacotesTreinamentos))
+                            <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[11px] text-amber-800">
+                                Nenhum pacote de treinamentos contratado para este cliente.
+                            </div>
+                        @else
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                @foreach($pacotesTreinamentos as $pacote)
+                                    @php
+                                        $pacoteId = (int) ($pacote['contrato_item_id'] ?? 0);
+                                        $pacoteCodigos = $pacote['codigos'] ?? [];
+                                    @endphp
+                                    <label class="block border rounded-xl px-3 py-3 text-xs cursor-pointer bg-slate-50 hover:bg-slate-100">
+                                        <div class="flex items-start gap-2">
+                                            <input type="radio"
+                                                   name="pacote_id"
+                                                   value="{{ $pacoteId }}"
+                                                   class="mt-1 h-3 w-3 text-indigo-600 border-slate-300"
+                                                   @checked((string) $pacoteSelecionado === (string) $pacoteId)>
+                                            <div>
+                                                <p class="font-semibold text-slate-800 text-sm">
+                                                    {{ $pacote['nome'] ?? 'Pacote de Treinamentos' }}
+                                                </p>
+                                                <p class="text-[11px] text-slate-500">
+                                                    {{ $pacote['descricao'] ?? '' }}
+                                                </p>
+                                                @if(!empty($pacoteCodigos))
+                                                    <p class="text-[11px] text-slate-400 mt-1">
+                                                        Inclui: {{ implode(', ', $pacoteCodigos) }}
+                                                    </p>
+                                                @endif
+                                                <p class="text-[11px] text-emerald-700 mt-1 font-semibold">
+                                                    Valor do pacote: R$ {{ number_format((float) ($pacote['valor'] ?? 0), 2, ',', '.') }}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </label>
+                                @endforeach
+                            </div>
+                        @endif
+                    </div>
+
+                    <div id="treinamentosAvulsosWrap" class="{{ $treinamentoModo === 'avulso' ? '' : 'hidden' }}">
                     @if($treinamentosDisponiveis->isEmpty())
                         <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[11px] text-amber-800">
                             Não há treinamentos contratados para este cliente.
@@ -214,6 +283,7 @@
                             @endforeach
                         </div>
                     @endif
+                    </div>
                 </section>
 
                 {{-- 3. Onde será realizado? --}}
@@ -428,6 +498,31 @@
                 });
 
                 atualizarContador();
+
+                // ----- Modo: pacote x avulso -----
+                const modoRadios = document.querySelectorAll('input[name="treinamento_modo"]');
+                const wrapPacotes = document.getElementById('pacotesTreinamentosWrap');
+                const wrapAvulsos = document.getElementById('treinamentosAvulsosWrap');
+
+                function atualizarModoTreinamento() {
+                    let modo = 'avulso';
+                    modoRadios.forEach(r => { if (r.checked) modo = r.value; });
+
+                    if (wrapPacotes) wrapPacotes.classList.toggle('hidden', modo !== 'pacote');
+                    if (wrapAvulsos) wrapAvulsos.classList.toggle('hidden', modo !== 'avulso');
+
+                    if (modo === 'pacote' && wrapAvulsos) {
+                        wrapAvulsos.querySelectorAll('input[type="checkbox"][name="treinamentos[]"]')
+                            .forEach(cb => { cb.checked = false; });
+                    }
+                    if (modo === 'avulso' && wrapPacotes) {
+                        wrapPacotes.querySelectorAll('input[type="radio"][name="pacote_id"]')
+                            .forEach(rb => { rb.checked = false; });
+                    }
+                }
+
+                modoRadios.forEach(r => r.addEventListener('change', atualizarModoTreinamento));
+                atualizarModoTreinamento();
 
                 // ----- Local: Na clínica x In Company -----
                 const localCards   = document.querySelectorAll('.local-radio-card');

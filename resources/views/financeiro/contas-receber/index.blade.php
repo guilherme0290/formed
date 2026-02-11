@@ -97,6 +97,7 @@
                         <thead class="bg-slate-50 text-slate-600">
                             <tr>
                                 <th class="px-4 py-3 text-left font-semibold"></th>
+                                <th class="px-4 py-3 text-left font-semibold">Tarefa</th>
                                 <th class="px-4 py-3 text-left font-semibold">Cliente</th>
                                 <th class="px-4 py-3 text-left font-semibold">Serviço</th>
                                 <th class="px-4 py-3 text-left font-semibold">Data</th>
@@ -108,20 +109,29 @@
                             @forelse($vendaItens as $item)
                                 @php
                                     $venda = $item->venda;
+                                    $tarefaId = $venda?->tarefa?->id;
                                     $dataVenda = $venda?->created_at;
                                     $dataFinalizacao = $venda?->tarefa?->finalizado_em;
                                     $dataReferencia = $filtros['tipo_data'] === 'finalizacao' ? $dataFinalizacao : $dataVenda;
                                     $clienteNome = $venda?->cliente?->razao_social ?? 'Cliente';
                                     $servicoNome = $item->servico?->nome ?? $item->descricao_snapshot ?? 'Serviço';
+                                    $isAso = strtolower((string) ($item->servico?->nome ?? '')) === 'aso';
+                                    $funcionarioNome = $venda?->tarefa?->funcionario?->nome;
+                                    if ($isAso && $funcionarioNome) {
+                                        $servicoNome = 'ASO - ' . $funcionarioNome;
+                                    }
                                 @endphp
                                 <tr class="odd:bg-white even:bg-slate-50 hover:bg-slate-100">
                                     <td class="px-4 py-3">
                                         <input type="checkbox" name="itens[]" value="{{ $item->id }}" class="rounded border-slate-300">
                                     </td>
+                                    <td class="px-4 py-3 text-slate-700">
+                                        {{ $tarefaId ? '#' . $tarefaId : '—' }}
+                                    </td>
                                     <td class="px-4 py-3 text-slate-700">{{ $clienteNome }}</td>
                                     <td class="px-4 py-3 text-slate-800">{{ $servicoNome }}</td>
                                     <td class="px-4 py-3 text-slate-600">
-                                        {{ $dataReferencia?->format('d/m/Y') ?? '—' }}
+                                        {{ $dataReferencia?->format('d/m/Y H:i') ?? '—' }}
                                     </td>
                                     <td class="px-4 py-3">
                                         <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-100">
@@ -134,7 +144,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="6" class="px-4 py-6 text-center text-sm text-slate-500">
+                                    <td colspan="7" class="px-4 py-6 text-center text-sm text-slate-500">
                                         Nenhuma venda em aberto encontrada.
                                     </td>
                                 </tr>

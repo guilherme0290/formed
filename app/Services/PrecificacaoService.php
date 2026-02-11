@@ -7,9 +7,8 @@ use App\Models\ClienteContratoItem;
 use App\Models\PgrSolicitacoes;
 use App\Models\Servico;
 use App\Models\Tarefa;
-use App\Models\TabelaPrecoItem;
-use App\Models\TabelaPrecoPadrao;
 use App\Models\TreinamentoNrDetalhes;
+use App\Models\AsoSolicitacoes;
 use Carbon\Carbon;
 use Illuminate\Validation\ValidationException;
 
@@ -112,15 +111,33 @@ class PrecificacaoService
             ? ($itemContrato?->descricao_snapshot ?: 'ASO')
             : $this->descricaoAsoPorTipo((string) $aso->tipo_aso);
 
-        return [
-            'contrato' => $contrato,
-            'itemContrato' => $itemContrato,
-            'itensVenda' => [[
+        $itensVenda = [[
                 'servico_id' => $tarefa->servico_id,
                 'descricao_snapshot' => $descricao,
                 'preco_unitario_snapshot' => $valorTotal,
                 'quantidade' => 1,
-            ]],
+            ]];
+
+        if ($aso->vai_fazer_treinamento) {
+            $servicoTreinamentoId = (int) Servico::query()
+                ->where('empresa_id', $tarefa->empresa_id)
+                ->where('nome', 'Treinamentos NRs')
+                ->value('id');
+
+            if (!$servicoTreinamentoId) {
+                throw ValidationException::withMessages([
+                    'contrato' => 'Serviço de Treinamentos NRs não cadastrado para esta empresa.',
+                ]);
+            }
+
+            $treinoItens = $this->precificarTreinamentosAso($contrato, $servicoTreinamentoId, $aso);
+            $itensVenda = array_merge($itensVenda, $treinoItens);
+        }
+
+        return [
+            'contrato' => $contrato,
+            'itemContrato' => $itemContrato,
+            'itensVenda' => $itensVenda,
         ];
     }
 
@@ -153,25 +170,50 @@ class PrecificacaoService
             ]);
         }
 
-        $itemContrato = $contrato->itens()
-            ->where('servico_id', $tarefa->servico_id)
-            ->where('ativo', true)
-            ->first();
-
-        if (!$itemContrato) {
-            throw ValidationException::withMessages([
-                'contrato' => 'Não é possível concluir esta tarefa porque o cliente não possui preço definido para este serviço na proposta/contrato ativo. Solicite ao Comercial para ajustar a proposta e fechar novamente, ou cadastrar o valor do serviço no contrato do cliente.',
-            ]);
-        }
-
-        if ((float) $itemContrato->preco_unitario_snapshot <= 0) {
-            throw ValidationException::withMessages([
-                'contrato' => 'Não é possível concluir esta tarefa porque o serviço não possui valor válido no contrato ativo.',
-            ]);
-        }
-
         $detalhes = TreinamentoNrDetalhes::where('tarefa_id', $tarefa->id)->first();
-        $treinamentos = array_values($detalhes?->treinamentos ?? []);
+        $treinamentosPayload = $detalhes?->treinamentos ?? [];
+
+        if (is_array($treinamentosPayload) && ($treinamentosPayload['modo'] ?? null) === 'pacote') {
+            $pacote = (array) ($treinamentosPayload['pacote'] ?? []);
+            $contratoItemId = (int) ($pacote['contrato_item_id'] ?? 0);
+
+            $itemContrato = $contrato->itens()
+                ->where('id', $contratoItemId)
+                ->where('ativo', true)
+                ->first();
+
+            if (!$itemContrato) {
+                throw ValidationException::withMessages([
+                    'contrato' => 'Não foi possível localizar o pacote de treinamentos no contrato ativo.',
+                ]);
+            }
+
+            if ((float) $itemContrato->preco_unitario_snapshot <= 0) {
+                throw ValidationException::withMessages([
+                    'contrato' => 'Não é possível concluir esta tarefa porque o pacote não possui valor válido no contrato ativo.',
+                ]);
+            }
+
+            $descricao = $itemContrato->descricao_snapshot ?: ($pacote['nome'] ?? 'Pacote de Treinamentos');
+
+            return [
+                'contrato' => $contrato,
+                'itemContrato' => $itemContrato,
+                'itensVenda' => [[
+                    'servico_id' => $tarefa->servico_id,
+                    'descricao_snapshot' => $descricao,
+                    'preco_unitario_snapshot' => (float) $itemContrato->preco_unitario_snapshot,
+                    'quantidade' => 1,
+                ]],
+            ];
+        }
+
+        $treinamentos = [];
+        if (is_array($treinamentosPayload) && ($treinamentosPayload['modo'] ?? null) === 'avulso') {
+            $treinamentos = array_values($treinamentosPayload['codigos'] ?? []);
+        } else {
+            $treinamentos = array_values((array) $treinamentosPayload);
+        }
 
         if (empty($treinamentos)) {
             throw ValidationException::withMessages([
@@ -179,54 +221,238 @@ class PrecificacaoService
             ]);
         }
 
-        $padrao = TabelaPrecoPadrao::where('empresa_id', $tarefa->empresa_id)
-            ->where('ativa', true)
-            ->first();
+        $contrato->loadMissing('itens', 'parametroOrigem.itens');
+        $itensContrato = $contrato->itens
+            ->where('servico_id', $tarefa->servico_id)
+            ->where('ativo', true)
+            ->values();
 
-        if (!$padrao) {
+        if ($itensContrato->isEmpty()) {
             throw ValidationException::withMessages([
-                'contrato' => 'Tabela de preço padrão não encontrada para esta empresa.',
+                'contrato' => 'Não é possível concluir esta tarefa porque o cliente não possui preço definido para este serviço na proposta/contrato ativo. Solicite ao Comercial para ajustar a proposta e fechar novamente, ou cadastrar o valor do serviço no contrato do cliente.',
             ]);
         }
 
-        $itensTreinamentos = TabelaPrecoItem::query()
-            ->where('tabela_preco_padrao_id', $padrao->id)
-            ->where('servico_id', $tarefa->servico_id)
-            ->whereIn('codigo', $treinamentos)
-            ->where('ativo', true)
-            ->get();
+        $mapaContrato = [];
 
-        $encontrados = $itensTreinamentos->pluck('codigo')->all();
-        $faltantes = array_values(array_diff($treinamentos, $encontrados));
+        $itensOrigem = $contrato->parametroOrigem?->itens ?? collect();
+        if ($itensOrigem->isNotEmpty()) {
+            foreach ($itensOrigem as $origem) {
+                if (strtoupper((string) ($origem->tipo ?? '')) !== 'TREINAMENTO_NR') {
+                    continue;
+                }
+                $codigo = $origem->meta['codigo'] ?? null;
+                if (!$codigo) {
+                    $nome = (string) ($origem->nome ?? $origem->descricao ?? '');
+                    if ($nome !== '' && preg_match('/^(NR[-\\s]?\\d+[A-Z]?)/i', $nome, $m)) {
+                        $codigo = str_replace(' ', '-', $m[1]);
+                    }
+                }
+                $codigo = strtoupper(trim((string) $codigo));
+                if ($codigo === '') {
+                    continue;
+                }
 
-        if (!empty($faltantes)) {
-            throw ValidationException::withMessages([
-                'contrato' => 'Treinamento(s) sem preço definido na tabela: ' . implode(', ', $faltantes) . '.',
-            ]);
+                if (preg_match('/^NR[-_]?\\d+$/i', $codigo)) {
+                    $numero = preg_replace('/\\D/', '', $codigo);
+                    $codigo = 'NR-' . str_pad($numero, 2, '0', STR_PAD_LEFT);
+                }
+
+                $descricaoSnapshot = $origem->descricao ?? $origem->nome;
+                $contratoItem = $itensContrato->first(function ($item) use ($descricaoSnapshot) {
+                    return trim((string) ($item->descricao_snapshot ?? '')) === trim((string) $descricaoSnapshot);
+                });
+
+                if ($contratoItem) {
+                    $mapaContrato[$codigo] = $contratoItem;
+                }
+            }
+        }
+
+        foreach ($itensContrato as $item) {
+            $descricao = (string) ($item->descricao_snapshot ?? '');
+            if ($descricao !== '' && preg_match('/(NR[-\\s]?\\d+[A-Z]?)/i', $descricao, $m)) {
+                $codigo = strtoupper(str_replace(' ', '-', $m[1]));
+                if (preg_match('/^NR[-_]?\\d+$/i', $codigo)) {
+                    $numero = preg_replace('/\\D/', '', $codigo);
+                    $codigo = 'NR-' . str_pad($numero, 2, '0', STR_PAD_LEFT);
+                }
+                $mapaContrato[$codigo] = $item;
+            }
         }
 
         $itensVenda = [];
-        foreach ($itensTreinamentos as $item) {
-            if ((float) $item->preco <= 0) {
+        foreach ($treinamentos as $codigo) {
+            $codigo = strtoupper(trim((string) $codigo));
+            if (preg_match('/^NR[-_]?\\d+$/i', $codigo)) {
+                $numero = preg_replace('/\\D/', '', $codigo);
+                $codigo = 'NR-' . str_pad($numero, 2, '0', STR_PAD_LEFT);
+            }
+
+            $itemContrato = $mapaContrato[$codigo] ?? null;
+            if (!$itemContrato) {
                 throw ValidationException::withMessages([
-                    'contrato' => 'Treinamento sem preço válido na tabela: ' . ($item->codigo ?? 'NR') . '.',
+                    'contrato' => 'Treinamento sem preço no contrato ativo: ' . $codigo . '.',
                 ]);
             }
 
-            $descricao = trim(($item->codigo ?? '') . ' - ' . ($item->descricao ?? ''));
+            if ((float) $itemContrato->preco_unitario_snapshot <= 0) {
+                throw ValidationException::withMessages([
+                    'contrato' => 'Treinamento sem preço válido no contrato ativo: ' . $codigo . '.',
+                ]);
+            }
+
+            $descricao = $itemContrato->descricao_snapshot ?: $codigo;
             $itensVenda[] = [
                 'servico_id' => $tarefa->servico_id,
-                'descricao_snapshot' => $descricao ?: ($item->codigo ?? 'Treinamento'),
-                'preco_unitario_snapshot' => (float) $item->preco,
+                'descricao_snapshot' => $descricao,
+                'preco_unitario_snapshot' => (float) $itemContrato->preco_unitario_snapshot,
                 'quantidade' => 1,
             ];
         }
 
+        $itemContratoBase = $mapaContrato[array_key_first($mapaContrato)] ?? $itensContrato->first();
+
         return [
             'contrato' => $contrato,
-            'itemContrato' => $itemContrato,
+            'itemContrato' => $itemContratoBase,
             'itensVenda' => $itensVenda,
         ];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function precificarTreinamentosAso(ClienteContrato $contrato, int $servicoTreinamentoId, AsoSolicitacoes $aso): array
+    {
+        $treinamentoPacote = (array) ($aso->treinamento_pacote ?? []);
+        if (!empty($treinamentoPacote)) {
+            $contratoItemId = (int) ($treinamentoPacote['contrato_item_id'] ?? 0);
+            $itemContrato = $contrato->itens()
+                ->where('id', $contratoItemId)
+                ->where('ativo', true)
+                ->first();
+
+            if (!$itemContrato) {
+                throw ValidationException::withMessages([
+                    'contrato' => 'Não foi possível localizar o pacote de treinamentos no contrato ativo.',
+                ]);
+            }
+
+            if ((float) $itemContrato->preco_unitario_snapshot <= 0) {
+                throw ValidationException::withMessages([
+                    'contrato' => 'Não é possível concluir esta tarefa porque o pacote não possui valor válido no contrato ativo.',
+                ]);
+            }
+
+            $descricao = $itemContrato->descricao_snapshot ?: ($treinamentoPacote['nome'] ?? 'Pacote de Treinamentos');
+
+            return [[
+                'servico_id' => $servicoTreinamentoId,
+                'descricao_snapshot' => $descricao,
+                'preco_unitario_snapshot' => (float) $itemContrato->preco_unitario_snapshot,
+                'quantidade' => 1,
+            ]];
+        }
+
+        $treinamentos = array_values((array) ($aso->treinamentos ?? []));
+        if (empty($treinamentos)) {
+            throw ValidationException::withMessages([
+                'contrato' => 'Treinamento sem NRs informadas para precificação.',
+            ]);
+        }
+
+        $contrato->loadMissing('itens', 'parametroOrigem.itens');
+        $itensContrato = $contrato->itens
+            ->where('servico_id', $servicoTreinamentoId)
+            ->where('ativo', true)
+            ->values();
+
+        if ($itensContrato->isEmpty()) {
+            throw ValidationException::withMessages([
+                'contrato' => 'Não é possível concluir esta tarefa porque o cliente não possui preço definido para treinamentos no contrato ativo.',
+            ]);
+        }
+
+        $mapaContrato = [];
+
+        $itensOrigem = $contrato->parametroOrigem?->itens ?? collect();
+        if ($itensOrigem->isNotEmpty()) {
+            foreach ($itensOrigem as $origem) {
+                if (strtoupper((string) ($origem->tipo ?? '')) !== 'TREINAMENTO_NR') {
+                    continue;
+                }
+                $codigo = $origem->meta['codigo'] ?? null;
+                if (!$codigo) {
+                    $nome = (string) ($origem->nome ?? $origem->descricao ?? '');
+                    if ($nome !== '' && preg_match('/^(NR[-\\s]?\\d+[A-Z]?)/i', $nome, $m)) {
+                        $codigo = str_replace(' ', '-', $m[1]);
+                    }
+                }
+                $codigo = strtoupper(trim((string) $codigo));
+                if ($codigo === '') {
+                    continue;
+                }
+
+                if (preg_match('/^NR[-_]?\\d+$/i', $codigo)) {
+                    $numero = preg_replace('/\\D/', '', $codigo);
+                    $codigo = 'NR-' . str_pad($numero, 2, '0', STR_PAD_LEFT);
+                }
+
+                $descricaoSnapshot = $origem->descricao ?? $origem->nome;
+                $contratoItem = $itensContrato->first(function ($item) use ($descricaoSnapshot) {
+                    return trim((string) ($item->descricao_snapshot ?? '')) === trim((string) $descricaoSnapshot);
+                });
+
+                if ($contratoItem) {
+                    $mapaContrato[$codigo] = $contratoItem;
+                }
+            }
+        }
+
+        foreach ($itensContrato as $item) {
+            $descricao = (string) ($item->descricao_snapshot ?? '');
+            if ($descricao !== '' && preg_match('/(NR[-\\s]?\\d+[A-Z]?)/i', $descricao, $m)) {
+                $codigo = strtoupper(str_replace(' ', '-', $m[1]));
+                if (preg_match('/^NR[-_]?\\d+$/i', $codigo)) {
+                    $numero = preg_replace('/\\D/', '', $codigo);
+                    $codigo = 'NR-' . str_pad($numero, 2, '0', STR_PAD_LEFT);
+                }
+                $mapaContrato[$codigo] = $item;
+            }
+        }
+
+        $itensVenda = [];
+        foreach ($treinamentos as $codigo) {
+            $codigo = strtoupper(trim((string) $codigo));
+            if (preg_match('/^NR[-_]?\\d+$/i', $codigo)) {
+                $numero = preg_replace('/\\D/', '', $codigo);
+                $codigo = 'NR-' . str_pad($numero, 2, '0', STR_PAD_LEFT);
+            }
+
+            $itemContrato = $mapaContrato[$codigo] ?? null;
+            if (!$itemContrato) {
+                throw ValidationException::withMessages([
+                    'contrato' => 'Treinamento sem preço no contrato ativo: ' . $codigo . '.',
+                ]);
+            }
+
+            if ((float) $itemContrato->preco_unitario_snapshot <= 0) {
+                throw ValidationException::withMessages([
+                    'contrato' => 'Treinamento sem preço válido no contrato ativo: ' . $codigo . '.',
+                ]);
+            }
+
+            $descricao = $itemContrato->descricao_snapshot ?: $codigo;
+            $itensVenda[] = [
+                'servico_id' => $servicoTreinamentoId,
+                'descricao_snapshot' => $descricao,
+                'preco_unitario_snapshot' => (float) $itemContrato->preco_unitario_snapshot,
+                'quantidade' => 1,
+            ];
+        }
+
+        return $itensVenda;
     }
 
     /**
