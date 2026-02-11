@@ -98,24 +98,31 @@
                         <section>
                             <h2 class="text-sm font-semibold text-slate-800 mb-3">1. ART</h2>
 
-                            <div class="grid grid-cols-2 gap-2 mb-3">
-                                <button type="button"
-                                        data-art-value="1"
-                                        class="btn-art w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg text-sm font-semibold
-                                               border bg-slate-900 text-white {{ !($artDisponivel ?? true) ? 'opacity-50 cursor-not-allowed' : '' }}"
-                                        @if(!($artDisponivel ?? true)) disabled @endif>
-                                    Com ART
-                                </button>
-                                <button type="button"
-                                        data-art-value="0"
-                                        class="btn-art w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg text-sm font-semibold
-                                               border border-slate-200 bg-white text-slate-700">
-                                    Sem ART
-                                </button>
+                            @php
+                                $comArtOld = old('com_art', isset($pgr) ? (string) (int) $pgr->com_art : null);
+                            @endphp
+                            <div class="grid grid-cols-1 gap-3 mb-3">
+                                <label class="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                                    <input type="radio"
+                                           id="com_art_sim"
+                                           name="com_art"
+                                           value="1"
+                                           class="h-4 w-4 text-slate-900"
+                                           @if($comArtOld === '1') checked @endif
+                                           @if(!($artDisponivel ?? true)) disabled @endif
+                                           required>
+                                    <span>Com ART</span>
+                                </label>
+                                <label class="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                                    <input type="radio"
+                                           id="com_art_nao"
+                                           name="com_art"
+                                           value="0"
+                                           class="h-4 w-4 text-slate-900"
+                                           @if($comArtOld === '0') checked @endif>
+                                    <span>Sem ART</span>
+                                </label>
                             </div>
-
-                            <input type="hidden" name="com_art" id="input-com-art"
-                                   value="{{ ($artDisponivel ?? true) ? old('com_art', isset($pgr) ? (int)$pgr->com_art : 1) : 0 }}">
 
                             <div id="alert-art"
                                  class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
@@ -581,41 +588,23 @@
                 });
 
                 // ========= ART =========
-                const btnsArt = document.querySelectorAll('.btn-art');
-                const inputComArt = document.getElementById('input-com-art');
+                const radiosArt = document.querySelectorAll('input[name="com_art"]');
                 const alertArt = document.getElementById('alert-art');
 
                 function aplicarEstadoArt(valor) {
-                    if (!inputComArt) return;
-                    inputComArt.value = valor;
-
-                    btnsArt.forEach(b => {
-                        b.classList.remove('bg-slate-900', 'text-white');
-                        b.classList.add('bg-white', 'text-slate-700', 'border-slate-200');
-                    });
-
-                    btnsArt.forEach(b => {
-                        if (b.dataset.artValue === String(valor)) {
-                            b.classList.remove('bg-white', 'text-slate-700', 'border-slate-200');
-                            b.classList.add('bg-slate-900', 'text-white');
-                        }
-                    });
-
                     if (alertArt) {
                         alertArt.style.display = (String(valor) === '1') ? 'block' : 'none';
                     }
                 }
 
-                btnsArt.forEach(btn => {
-                    btn.addEventListener('click', () => {
-                        aplicarEstadoArt(btn.dataset.artValue);
+                radiosArt.forEach(radio => {
+                    radio.addEventListener('change', () => {
+                        aplicarEstadoArt(radio.value);
                     });
                 });
 
-                // ao carregar, aplica o valor que veio do backend (create ou edit)
-                if (inputComArt) {
-                    aplicarEstadoArt(inputComArt.value || '1');
-                }
+                const checkedArt = document.querySelector('input[name="com_art"]:checked');
+                aplicarEstadoArt(checkedArt ? checkedArt.value : '');
 
 
                 // ========= TOTAL TRABALHADORES =========

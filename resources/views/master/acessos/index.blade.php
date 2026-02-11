@@ -1,7 +1,7 @@
 @extends('layouts.master')
 
 @section('header')
-    <div class="flex items-center justify-between">
+    <div class="flex items-center justify-between" data-acessos-header>
         <h1 class="text-2xl font-semibold">Acessos & Usuários</h1>
         <div class="text-sm text-gray-500">Gerencie perfis, permissões e usuários</div>
     </div>
@@ -18,7 +18,7 @@
         {{-- Abas simples por query ?tab= --}}
         @php $tab = request('tab','usuarios'); @endphp
 
-        <div class="mb-4 flex flex-wrap gap-2 justify-center">
+        <div class="mb-4 flex flex-wrap gap-2 justify-center" data-acessos-tabs>
             <a href="{{ route('master.acessos',['tab'=>'usuarios']) }}"
                class="px-4 py-2 rounded-lg border text-sm md:text-base {{ $tab==='usuarios' ? 'bg-indigo-600 text-white' : 'bg-white hover:bg-gray-50' }}">
                 Usuários

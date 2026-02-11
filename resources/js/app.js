@@ -118,6 +118,15 @@ document.addEventListener('submit', async (e) => {
 });
 
 document.addEventListener('click', function (e) {
+    const senhaAtalho = e.target.closest('[data-only-my-password]');
+    if (senhaAtalho) {
+        try {
+            localStorage.setItem('acessosOnlyMe', '1');
+        } catch (err) {
+            // ignore storage failures
+        }
+        return;
+    }
     const btn = e.target.closest('[data-funcao-open-modal]');
     if (!btn) return;
 
