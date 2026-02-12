@@ -177,9 +177,13 @@
                                                         <div><span class="font-semibold">E-mail:</span> {{ $item->aso_email }}</div>
                                                     @endif
                                                     @if($temDetalhePgr)
+                                                        @php
+                                                            $rotuloPrincipalPgr = str_contains(mb_strtolower((string) ($servicoDisplay ?? $servicoNome)), 'pcmso') ? 'PCMSO' : 'PGR';
+                                                            $rotuloComplementarPgr = $rotuloPrincipalPgr === 'PCMSO' ? 'PGR' : 'PCMSO';
+                                                        @endphp
                                                         <div class="pt-1"></div>
                                                         @if(!empty($item->pgr_tipo))
-                                                            <div><span class="font-semibold">PGR:</span> {{ $item->pgr_tipo }}</div>
+                                                            <div><span class="font-semibold">{{ $rotuloPrincipalPgr }}:</span> {{ $item->pgr_tipo }}</div>
                                                         @endif
                                                         @if(!empty($item->pgr_obra))
                                                             <div><span class="font-semibold">Obra:</span> {{ $item->pgr_obra }}</div>
@@ -187,6 +191,7 @@
                                                         @if(!empty($item->pgr_total))
                                                             <div><span class="font-semibold">Trabalhadores:</span> {{ $item->pgr_total }}</div>
                                                         @endif
+                                                        <div><span class="font-semibold">{{ $rotuloComplementarPgr }}:</span> {{ !empty($item->pgr_com_pcms0) ? 'Com ' . $rotuloComplementarPgr : 'Sem ' . $rotuloComplementarPgr }}</div>
                                                         <div><span class="font-semibold">ART:</span> {{ !empty($item->pgr_com_art) ? 'Com ART' : 'Sem ART' }}</div>
                                                     @endif
                                                     @if($temDetalheTrein)
@@ -274,9 +279,13 @@
                                                         <div><span class="font-semibold">E-mail:</span> {{ $item->aso_email }}</div>
                                                     @endif
                                                     @if($temDetalhePgr)
+                                                        @php
+                                                            $rotuloPrincipalPgr = str_contains(mb_strtolower((string) ($servicoDisplay ?? $servicoNome)), 'pcmso') ? 'PCMSO' : 'PGR';
+                                                            $rotuloComplementarPgr = $rotuloPrincipalPgr === 'PCMSO' ? 'PGR' : 'PCMSO';
+                                                        @endphp
                                                         <div class="pt-1"></div>
                                                         @if(!empty($item->pgr_tipo))
-                                                            <div><span class="font-semibold">PGR:</span> {{ $item->pgr_tipo }}</div>
+                                                            <div><span class="font-semibold">{{ $rotuloPrincipalPgr }}:</span> {{ $item->pgr_tipo }}</div>
                                                         @endif
                                                         @if(!empty($item->pgr_obra))
                                                             <div><span class="font-semibold">Obra:</span> {{ $item->pgr_obra }}</div>
@@ -284,6 +293,7 @@
                                                         @if(!empty($item->pgr_total))
                                                             <div><span class="font-semibold">Trabalhadores:</span> {{ $item->pgr_total }}</div>
                                                         @endif
+                                                        <div><span class="font-semibold">{{ $rotuloComplementarPgr }}:</span> {{ !empty($item->pgr_com_pcms0) ? 'Com ' . $rotuloComplementarPgr : 'Sem ' . $rotuloComplementarPgr }}</div>
                                                         <div><span class="font-semibold">ART:</span> {{ !empty($item->pgr_com_art) ? 'Com ART' : 'Sem ART' }}</div>
                                                     @endif
                                                     @if($temDetalheTrein)

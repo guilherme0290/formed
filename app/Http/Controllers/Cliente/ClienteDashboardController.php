@@ -417,7 +417,16 @@ class ClienteDashboardController extends Controller
 
         $asoServicoId = app(AsoGheService::class)->resolveServicoAsoIdFromContrato($contratoAtivo);
         $dadosAso = $this->dadosAsoPorTarefaIds($tarefas, $asoServicoId);
+        $dadosPgr = $this->dadosPgrPorTarefaIds($tarefas);
         $itensPorServico = $contratoAtivo->itens->keyBy('servico_id');
+        $servicoArtId = (int) Servico::query()
+            ->where('empresa_id', $contratoAtivo->empresa_id)
+            ->whereRaw('LOWER(nome) = ?', ['art'])
+            ->value('id');
+        $servicoPcmsoId = (int) Servico::query()
+            ->where('empresa_id', $contratoAtivo->empresa_id)
+            ->whereRaw('LOWER(nome) = ?', ['pcmso'])
+            ->value('id');
         $total = 0.0;
 
         foreach ($tarefas as $tarefa) {
@@ -433,6 +442,22 @@ class ClienteDashboardController extends Controller
             $valor = (float) ($itensPorServico->get($tarefa->servico_id)->preco_unitario_snapshot ?? 0);
             if ($valor > 0) {
                 $total += $valor;
+            }
+
+            $pgrComArt = (bool) ($dadosPgr[$tarefa->id]['com_art'] ?? false);
+            if ($pgrComArt && $servicoArtId > 0) {
+                $valorArt = (float) ($itensPorServico->get($servicoArtId)->preco_unitario_snapshot ?? 0);
+                if ($valorArt > 0) {
+                    $total += $valorArt;
+                }
+            }
+
+            $pgrComPcmso = (bool) ($dadosPgr[$tarefa->id]['com_pcms0'] ?? false);
+            if ($pgrComPcmso && $servicoPcmsoId > 0) {
+                $valorPcmso = (float) ($itensPorServico->get($servicoPcmsoId)->preco_unitario_snapshot ?? 0);
+                if ($valorPcmso > 0) {
+                    $total += $valorPcmso;
+                }
             }
         }
 
@@ -509,6 +534,32 @@ class ClienteDashboardController extends Controller
             ->all();
     }
 
+    private function dadosPgrPorTarefaIds(iterable $tarefas): array
+    {
+        $ids = collect($tarefas)
+            ->pluck('id')
+            ->filter()
+            ->values()
+            ->all();
+
+        if (empty($ids)) {
+            return [];
+        }
+
+        return PgrSolicitacoes::query()
+            ->whereIn('tarefa_id', $ids)
+            ->get(['tarefa_id', 'com_art', 'com_pcms0'])
+            ->mapWithKeys(function ($pgr) {
+                return [
+                    (int) $pgr->tarefa_id => [
+                        'com_art' => (bool) $pgr->com_art,
+                        'com_pcms0' => (bool) $pgr->com_pcms0,
+                    ],
+                ];
+            })
+            ->all();
+    }
+
     private function valorAsoContratoPorFuncao(?ClienteContrato $contrato, ?int $funcaoId, ?string $tipoAso): ?float
     {
         if (!$contrato || !$funcaoId || !$tipoAso) {
@@ -547,9 +598,18 @@ class ClienteDashboardController extends Controller
 
         $asoServicoId = app(AsoGheService::class)->resolveServicoAsoIdFromContrato($contratoAtivo);
         $dadosAso = $this->dadosAsoPorTarefaIds($tarefas, $asoServicoId);
+        $dadosPgr = $this->dadosPgrPorTarefaIds($tarefas);
         $itensPorServico = $contratoAtivo->itens->keyBy('servico_id');
+        $servicoArtId = (int) Servico::query()
+            ->where('empresa_id', $contratoAtivo->empresa_id)
+            ->whereRaw('LOWER(nome) = ?', ['art'])
+            ->value('id');
+        $servicoPcmsoId = (int) Servico::query()
+            ->where('empresa_id', $contratoAtivo->empresa_id)
+            ->whereRaw('LOWER(nome) = ?', ['pcmso'])
+            ->value('id');
 
-        return $tarefas->map(function ($tarefa) use ($asoServicoId, $dadosAso, $itensPorServico, $contratoAtivo) {
+        return $tarefas->map(function ($tarefa) use ($asoServicoId, $dadosAso, $dadosPgr, $itensPorServico, $contratoAtivo, $servicoArtId, $servicoPcmsoId) {
             $valor = null;
             if ($asoServicoId && (int) $tarefa->servico_id === (int) $asoServicoId) {
                 $tipoAso = $dadosAso[$tarefa->id]['tipo_aso'] ?? null;
@@ -557,6 +617,26 @@ class ClienteDashboardController extends Controller
                 $valor = $this->valorAsoContratoPorFuncao($contratoAtivo, $funcaoId, $tipoAso);
             } else {
                 $valor = (float) ($itensPorServico->get($tarefa->servico_id)->preco_unitario_snapshot ?? 0);
+            }
+
+            $pgrComArt = (bool) ($dadosPgr[$tarefa->id]['com_art'] ?? false);
+            if ($pgrComArt && $servicoArtId > 0) {
+                $valorArt = (float) ($itensPorServico->get($servicoArtId)->preco_unitario_snapshot ?? 0);
+                if ($valor !== null) {
+                    $valor += $valorArt;
+                } else {
+                    $valor = $valorArt;
+                }
+            }
+
+            $pgrComPcmso = (bool) ($dadosPgr[$tarefa->id]['com_pcms0'] ?? false);
+            if ($pgrComPcmso && $servicoPcmsoId > 0) {
+                $valorPcmso = (float) ($itensPorServico->get($servicoPcmsoId)->preco_unitario_snapshot ?? 0);
+                if ($valor !== null) {
+                    $valor += $valorPcmso;
+                } else {
+                    $valor = $valorPcmso;
+                }
             }
 
             if ($valor === null) {
@@ -649,14 +729,24 @@ class ClienteDashboardController extends Controller
                 $item->pgr_tipo = $tipoLabel;
                 $item->pgr_obra = $pgr->obra_nome;
                 $item->pgr_com_art = (bool) $pgr->com_art;
+                $item->pgr_com_pcms0 = (bool) $pgr->com_pcms0;
                 $item->pgr_total = $pgr->total_trabalhadores;
                 $item->pgr_contratante = $pgr->contratante_nome;
                 $servicoAtual = mb_strtolower((string) ($item->servico ?? ''));
                 if (str_contains($servicoAtual, 'pgr')) {
+                    $tituloBase = $item->pgr_com_pcms0 ? 'PCMSO' : 'PGR';
+                    $composicoes = [];
+                    if ($item->pgr_com_art) {
+                        $composicoes[] = 'COM ART';
+                    }
+                    if ($item->pgr_com_pcms0) {
+                        $composicoes[] = $tituloBase === 'PCMSO' ? 'COM PGR' : 'COM PCMSO';
+                    }
+                    $sufixoComposicao = !empty($composicoes) ? ' (' . implode(' + ', $composicoes) . ')' : '';
                     if ($pgr->obra_nome) {
-                        $item->servico_detalhe = 'PGR - ' . $pgr->obra_nome;
+                        $item->servico_detalhe = $tituloBase . ' - ' . $pgr->obra_nome . $sufixoComposicao;
                     } elseif ($tipoLabel) {
-                        $item->servico_detalhe = 'PGR | ' . $tipoLabel;
+                        $item->servico_detalhe = $tituloBase . ' | ' . $tipoLabel . $sufixoComposicao;
                     }
                 } elseif (str_contains($servicoAtual, 'pcms')) {
                     if ($pgr->obra_nome) {

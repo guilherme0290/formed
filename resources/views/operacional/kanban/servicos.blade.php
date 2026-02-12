@@ -1,12 +1,13 @@
 @extends('layouts.operacional')
 
-@section('title', 'Nova Tarefa - Selecionar Serviço')
+@section('title', 'Nova Tarefa - Selecionar Servico')
 
 @section('content')
     @php
         $origem = request()->query('origem');
         $estaNoPortalCliente = session('portal_cliente_id') || $origem === 'cliente';
         $rotaVoltar = $estaNoPortalCliente ? route('cliente.dashboard') : route('operacional.kanban');
+        $rotaListaClientes = route('operacional.kanban.aso.clientes', $origem ? ['origem' => $origem] : []);
         $temContratoAtivo = (bool) ($contratoAtivo ?? false);
         $servicosContrato = $servicosContrato ?? [];
         $servicosIds = $servicosIds ?? [];
@@ -15,10 +16,15 @@
     <div class="max-w-6xl mx-auto px-6 py-8">
 
         {{-- Voltar --}}
-        <div class="mb-4">
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <a href="{{ $rotaListaClientes }}"
+               class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 bg-white text-sm text-slate-700 hover:bg-slate-50">
+                <span>&larr;</span>
+                <span>Voltar</span>
+            </a>
             <a href="{{ $rotaVoltar }}"
                class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 bg-white text-sm text-slate-700 hover:bg-slate-50">
-                <span>←</span>
+                <span>&larr;</span>
                 <span>Voltar ao Painel</span>
             </a>
         </div>
@@ -27,9 +33,9 @@
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
 
             {{-- Cabeçalho --}}
-            <div class="rounded-3xl mb-5 px-5 md:px-6 py-4 md:py-5
+            <div class="px-5 md:px-6 py-4 md:py-5
             flex flex-col md:flex-row md:items-center justify-between gap-4
-            bg-white border border-slate-200 shadow-sm">
+            bg-sky-50 border-b border-sky-100">
 
                 <div class="flex items-start gap-3">
                     <div class="w-10 h-10 rounded-2xl bg-[color:var(--color-brand-azul)]/10

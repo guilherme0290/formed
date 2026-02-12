@@ -23,8 +23,12 @@
     $temDocumento = trim($documentoSugerido) !== '';
     $loginTipoPadrao = $temDocumento ? 'documento' : 'email';
     $loginTipoAtual = old('login_tipo', $loginTipoPadrao);
+    $mostrarEscolhaLogin = $temEmail && $temDocumento;
     if (!$temEmail && $loginTipoAtual === 'email') {
         $loginTipoAtual = 'documento';
+    }
+    if (!$temDocumento && $loginTipoAtual === 'documento') {
+        $loginTipoAtual = 'email';
     }
 @endphp
 
@@ -48,46 +52,41 @@
 
             <form id="acessoForm" method="POST" action="{{ route($routePrefix.'.acesso', $cliente) }}" class="space-y-4">
                 @csrf
-                <div class="space-y-2">
-                    <label class="text-sm font-semibold text-slate-700">Tipo de login</label>
-                    <div class="flex flex-col gap-2">
-                        <label class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 px-3 py-2">
-                            <span class="text-sm text-slate-700">CNPJ</span>
-                            <span class="relative inline-flex items-center">
-                                <input type="radio" name="login_tipo" value="documento"
-                                       class="peer sr-only"
+                @if($mostrarEscolhaLogin)
+                    <div class="space-y-2">
+                        <label class="text-sm font-semibold text-slate-700">Tipo de login</label>
+                        <div class="grid grid-cols-1 gap-3">
+                            <label class="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                                <input type="radio"
+                                       name="login_tipo"
+                                       value="documento"
+                                       class="h-4 w-4 text-slate-900"
                                        {{ $loginTipoAtual === 'documento' ? 'checked' : '' }}>
-                                <span class="w-11 h-6 rounded-full bg-slate-200 transition-colors peer-checked:bg-indigo-600"></span>
-                                <span class="absolute left-1 top-1 h-4 w-4 rounded-full bg-white transition-transform peer-checked:translate-x-5"></span>
-                            </span>
-                        </label>
+                                <span>CNPJ</span>
+                            </label>
 
-                        <label class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 px-3 py-2 {{ $temEmail ? '' : 'opacity-50 cursor-not-allowed' }}">
-                            <div class="flex items-center gap-2">
-                                <span class="text-sm text-slate-700">E-mail</span>
-                                @if(!$temEmail)
-                                    <span class="text-xs text-slate-500">(sem e-mail cadastrado)</span>
-                                @endif
-                            </div>
-                            <span class="relative inline-flex items-center">
-                                <input type="radio" name="login_tipo" value="email"
-                                       class="peer sr-only"
-                                       {{ $loginTipoAtual === 'email' ? 'checked' : '' }}
-                                       {{ $temEmail ? '' : 'disabled' }}>
-                                <span class="w-11 h-6 rounded-full bg-slate-200 transition-colors peer-checked:bg-indigo-600"></span>
-                                <span class="absolute left-1 top-1 h-4 w-4 rounded-full bg-white transition-transform peer-checked:translate-x-5"></span>
-                            </span>
-                        </label>
+                            <label class="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                                <input type="radio"
+                                       name="login_tipo"
+                                       value="email"
+                                       class="h-4 w-4 text-slate-900"
+                                       {{ $loginTipoAtual === 'email' ? 'checked' : '' }}>
+                                <span>E-mail</span>
+                            </label>
+                        </div>
                     </div>
-                </div>
-                <div class="space-y-1">
+                @else
+                    <input type="hidden" name="login_tipo" value="{{ $temDocumento ? 'documento' : 'email' }}">
+                @endif
+
+                <div id="documentoGroup" class="space-y-1">
                     <label class="text-sm font-semibold text-slate-700">CNPJ (login)</label>
                     <input type="text" name="documento" id="documentoInput" value="{{ old('documento', $documentoSugerido) }}"
                            {{ $loginTipoAtual === 'documento' ? 'required' : '' }}
                            {{ $loginTipoAtual === 'documento' ? '' : 'disabled' }}
                            class="w-full rounded-xl border border-slate-200 px-3 py-2" placeholder="00.000.000/0000-00">
                 </div>
-                <div class="space-y-1">
+                <div id="emailGroup" class="space-y-1">
                     <label class="text-sm font-semibold text-slate-700">E-mail (login)</label>
                     <input type="email" name="email" value="{{ old('email', $emailSugerido) }}"
                            {{ $loginTipoAtual === 'email' && $temEmail ? 'required' : '' }}
@@ -213,7 +212,11 @@
 
             function getLoginTipo() {
                 const checked = document.querySelector('input[name=\"login_tipo\"]:checked');
-                return checked?.value || 'documento';
+                if (checked?.value) {
+                    return checked.value;
+                }
+                const fallback = document.querySelector('input[name=\"login_tipo\"]');
+                return fallback?.value || 'documento';
             }
 
             function atualizarLinks() {
@@ -268,6 +271,10 @@
                         emailInput.disabled = false;
                         emailInput.required = true;
                     }
+                    const documentoGroup = document.getElementById('documentoGroup');
+                    const emailGroup = document.getElementById('emailGroup');
+                    if (documentoGroup) documentoGroup.classList.add('hidden');
+                    if (emailGroup) emailGroup.classList.remove('hidden');
                 } else {
                     if (documentoInput) {
                         documentoInput.disabled = false;
@@ -277,6 +284,10 @@
                         emailInput.disabled = true;
                         emailInput.required = false;
                     }
+                    const documentoGroup = document.getElementById('documentoGroup');
+                    const emailGroup = document.getElementById('emailGroup');
+                    if (documentoGroup) documentoGroup.classList.remove('hidden');
+                    if (emailGroup) emailGroup.classList.add('hidden');
                 }
                 atualizarLinks();
             }

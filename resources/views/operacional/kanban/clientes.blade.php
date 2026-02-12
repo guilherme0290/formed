@@ -62,51 +62,73 @@
                 {{-- Grid de empresas --}}
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                     @forelse($clientes as $cliente)
-                        @php
-                            $temContrato = (bool) ($cliente->tem_contrato_ativo ?? false);
-                        @endphp
-                        <div class="group flex items-center justify-between px-4 py-3 rounded-xl border border-slate-200 bg-white {{ $temContrato ? 'hover:bg-sky-50 hover:border-sky-300' : 'opacity-60' }} transition">
-                            <div class="flex items-center gap-3">
-                                <div class="flex items-center justify-center w-9 h-9 rounded-xl bg-sky-50 text-sky-600 text-lg">
-                                    🏢
-                                </div>
-                                <div class="space-y-0.5">
-                                    <p class="text-sm font-medium text-slate-900">
-                                        {{ $cliente->razao_social ?? $cliente->nome_fantasia }}
-                                    </p>
-                                    <p class="text-[11px] text-slate-500">
-                                        @if($cliente->cnpj)
-                                            {{ $cliente->cnpj }}
-                                        @else
-                                            &nbsp;
-                                        @endif
-                                    </p>
-                                    @if($cliente->cidade)
-                                        <p class="text-[11px] text-slate-400">
-                                            {{ $cliente->cidade->nome }} - {{ $cliente->cidade->uf }}
-                                        </p>
-                                    @endif
-                                    @unless($temContrato)
-                                        <p class="text-[11px] text-amber-600">
-                                            Sem contrato ativo — acione o Comercial.
-                                        </p>
-                                    @endunless
-                                </div>
-                            </div>
+    @php
+        $temContrato = (bool) ($cliente->tem_contrato_ativo ?? false);
+    @endphp
+    @if($temContrato)
+        <a href="{{ route('operacional.kanban.servicos', $cliente) }}"
+           class="group flex items-center justify-between px-4 py-3 rounded-xl border border-slate-200 bg-white hover:bg-sky-50 hover:border-sky-300 transition cursor-pointer">
+            <div class="flex items-center gap-3">
+                <div class="flex items-center justify-center w-9 h-9 rounded-xl bg-sky-50 text-sky-600 text-lg">
+                    &#127970;
+                </div>
+                <div class="space-y-0.5">
+                    <p class="text-sm font-medium text-slate-900">
+                        {{ $cliente->razao_social ?? $cliente->nome_fantasia }}
+                    </p>
+                    <p class="text-[11px] text-slate-500">
+                        @if($cliente->cnpj)
+                            {{ $cliente->cnpj }}
+                        @else
+                            &nbsp;
+                        @endif
+                    </p>
+                    @if($cliente->cidade)
+                        <p class="text-[11px] text-slate-400">
+                            {{ $cliente->cidade->nome }} - {{ $cliente->cidade->uf }}
+                        </p>
+                    @endif
+                </div>
+            </div>
 
-                            @if($temContrato)
-                                <a href="{{ route('operacional.kanban.servicos', $cliente) }}"
-                                   class="flex items-center gap-1 text-xs font-medium text-sky-600 group-hover:text-sky-700">
-                                    <span>Selecionar</span>
-                                    <span>›</span>
-                                </a>
-                            @else
-                                <span class="text-[11px] text-slate-400">Bloqueado</span>
-                            @endif
-                        </div>
-                    @empty
-                        <p class="text-sm text-slate-500">Nenhum cliente encontrado.</p>
-                    @endforelse
+            <span class="flex items-center gap-1 text-xs font-medium text-sky-600 group-hover:text-sky-700">
+                <span>Selecionar</span>
+                <span>></span>
+            </span>
+        </a>
+    @else
+        <div class="group flex items-center justify-between px-4 py-3 rounded-xl border border-slate-200 bg-white opacity-60 transition">
+            <div class="flex items-center gap-3">
+                <div class="flex items-center justify-center w-9 h-9 rounded-xl bg-sky-50 text-sky-600 text-lg">
+                    &#127970;
+                </div>
+                <div class="space-y-0.5">
+                    <p class="text-sm font-medium text-slate-900">
+                        {{ $cliente->razao_social ?? $cliente->nome_fantasia }}
+                    </p>
+                    <p class="text-[11px] text-slate-500">
+                        @if($cliente->cnpj)
+                            {{ $cliente->cnpj }}
+                        @else
+                            &nbsp;
+                        @endif
+                    </p>
+                    @if($cliente->cidade)
+                        <p class="text-[11px] text-slate-400">
+                            {{ $cliente->cidade->nome }} - {{ $cliente->cidade->uf }}
+                        </p>
+                    @endif
+                    <p class="text-[11px] text-amber-600">
+                        Sem contrato ativo - acione o Comercial.
+                    </p>
+                </div>
+            </div>
+            <span class="text-[11px] text-slate-400">Bloqueado</span>
+        </div>
+    @endif
+@empty
+    <p class="text-sm text-slate-500">Nenhum cliente encontrado.</p>
+@endforelse
                 </div>
 
                 {{-- Paginação --}}
@@ -146,3 +168,4 @@
         });
     </script>
 @endpush
+
