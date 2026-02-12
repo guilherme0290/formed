@@ -17,6 +17,7 @@ use App\Models\Venda;
 use App\Models\TarefaLog;
 use App\Models\TreinamentoNR;
 use App\Models\User;
+use App\Models\Anexos;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -73,6 +74,8 @@ class PainelController extends Controller
                     'responsavel',
                     'coluna',
                     'funcionario',
+                    'anexos.uploader',
+                    'excluidoPor',
                     'logs.deColuna',
                     'logs.paraColuna',
                     'logs.user',
@@ -85,6 +88,8 @@ class PainelController extends Controller
                 'responsavel',
                 'coluna',
                 'funcionario',
+                'anexos.uploader',
+                'excluidoPor',
                 'logs.deColuna',
                 'logs.paraColuna',
                 'logs.user',
@@ -578,13 +583,18 @@ class PainelController extends Controller
     {
         $usuario = $request->user();
 
-        // só master pode excluir
-        abort_unless($usuario && $usuario->isMaster(), 403);
+        // master ou operacional podem excluir
+        abort_unless($usuario && $usuario->hasPapel(['Master', 'Operacional']), 403);
 
         // se quiser, garante que é da mesma empresa:
         abort_unless($tarefa->empresa_id === $usuario->empresa_id, 403);
 
-        $resultado = DB::transaction(function () use ($tarefa, $contaReceberService) {
+        $data = $request->validate([
+            'motivo_exclusao' => ['required', 'string', 'max:2000'],
+            'arquivo_exclusao' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'],
+        ]);
+
+        $resultado = DB::transaction(function () use ($tarefa, $contaReceberService, $usuario, $data, $request) {
             $vendas = Venda::query()
                 ->where('tarefa_id', $tarefa->id)
                 ->get();
@@ -635,6 +645,22 @@ class PainelController extends Controller
                 }
 
                 $venda->delete();
+            }
+
+            $tarefa->update([
+                'motivo_exclusao' => $data['motivo_exclusao'],
+                'excluido_por' => $usuario->id,
+            ]);
+
+            if ($request->hasFile('arquivo_exclusao')) {
+                Anexos::salvarDoRequest($request, 'arquivo_exclusao', [
+                    'empresa_id' => $tarefa->empresa_id,
+                    'cliente_id' => $tarefa->cliente_id,
+                    'tarefa_id' => $tarefa->id,
+                    'uploaded_by' => $usuario->id,
+                    'servico' => 'cancelamento_tarefa',
+                    'subpath' => 'anexos/' . $tarefa->id . '/cancelamento',
+                ]);
             }
 
             $tarefa->delete(); // Soft delete

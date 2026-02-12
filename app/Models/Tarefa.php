@@ -22,6 +22,8 @@ class Tarefa extends Model
         'cliente_id',
         'funcionario_id',
         'observacao_interna',
+        'motivo_exclusao',
+        'excluido_por',
         'ordem',
         'servico_id',
         'titulo',
@@ -62,6 +64,11 @@ class Tarefa extends Model
     public function responsavel()
     {
         return $this->belongsTo(User::class, 'responsavel_id');
+    }
+
+    public function excluidoPor()
+    {
+        return $this->belongsTo(User::class, 'excluido_por');
     }
 
     public function coluna()

@@ -441,6 +441,8 @@
                                     data-observacao-interna="{{ e($tarefa->observacao_interna) }}"
                                     data-observacao-url="{{ route('operacional.tarefas.observacao', $tarefa) }}"
                                     data-edit-url="{{ $editUrl }}"
+                                    data-excluido-por="{{ $tarefa->excluidoPor?->name ?? '' }}"
+                                    data-motivo-exclusao="{{ e($tarefa->motivo_exclusao ?? '') }}"
 
 
                                     {{-- PGR --}}
@@ -676,13 +678,16 @@
                                                 {{ $badgeLabel }}
                                             </span>
 
-                                                @if($isCancelada)
-                                                    <span
-                                                        class="inline-flex items-center px-2 py-0.5 rounded-full
-                                                       text-[10px] font-semibold bg-red-50 border border-red-200
-                                                       text-red-700 uppercase tracking-wide">
-                                                            Cancelada
-                                                    </span>
+                                            @if($isCancelada)
+                                                <span
+                                                    class="inline-flex items-center px-2 py-0.5 rounded-full
+                                                   text-[10px] font-semibold bg-red-50 border border-red-200
+                                                   text-red-700 uppercase tracking-wide">
+                                                        Cancelada
+                                                </span>
+                                                <span class="text-[10px] text-red-600">
+                                                    Excluída por: {{ $tarefa->excluidoPor?->name ?? '—' }}
+                                                </span>
                                             @endif
                                         </div>
                                     </div>
@@ -907,8 +912,22 @@
                         </h3>
                         <span id="modal-status-badge"
                               class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200">
-                        <span id="modal-status-text"></span>
-                    </span>
+                            <span id="modal-status-text"></span>
+                        </span>
+                        <div id="modal-exclusao-info" class="mt-3 hidden text-xs text-slate-600">
+                            <div>
+                                <span class="font-semibold">Excluída por:</span>
+                                <span id="modal-excluido-por">—</span>
+                            </div>
+                            <div class="mt-1">
+                                <span class="font-semibold">Motivo da exclusão:</span>
+                                <span id="modal-motivo-exclusao">—</span>
+                            </div>
+                            <div id="modal-exclusao-anexo-wrapper" class="mt-2 hidden">
+                                <span class="font-semibold">Print do cancelamento:</span>
+                                <ul id="modal-exclusao-anexo-list" class="mt-1 space-y-1"></ul>
+                            </div>
+                        </div>
                     </section>
 
                     {{-- 3. Descrição da tarefa --}}
@@ -1321,7 +1340,7 @@
                             Salvar Observação
                         </button>
                         @isset($usuario)
-                            @if($usuario->isMaster())
+                            @if($usuario->hasPapel(['Master', 'Operacional']))
                                 <button
                                     type="button"
                                     id="btn-excluir-tarefa"
@@ -1336,6 +1355,49 @@
 
 
                 </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Modal de Exclusão da Tarefa --}}
+    <div id="tarefa-excluir-modal"
+         class="fixed inset-0 z-[95] hidden items-center justify-center bg-black/60 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+            <div class="flex items-center justify-between px-5 py-4 bg-red-600 text-white">
+                <h3 class="text-sm font-semibold">Excluir Tarefa</h3>
+                <button type="button" id="tarefa-excluir-close" class="text-white/90 hover:text-white">✕</button>
+            </div>
+            <div class="p-5 space-y-4 text-sm text-slate-700">
+                <div class="text-xs text-slate-600 font-bold">
+                    Informe o motivo da exclusão e, se necessário, anexe o print da conversa.
+                </div>
+                <div>
+                    <label class="block text-[11px] text-slate-500 mb-1 font-bold">
+                        Motivo da exclusão
+                    </label>
+                    <textarea id="tarefa-excluir-motivo"
+                              rows="4"
+                              class="w-full rounded-lg border border-slate-300 text-sm px-3 py-2
+                                     focus:outline-none focus:ring-2 focus:ring-red-300 focus:border-red-300 resize-none"
+                              placeholder="Descreva o motivo..."></textarea>
+                </div>
+                <div>
+                    <label class="block text-[11px] text-slate-500 mb-1 font-bold">
+                        Arquivo (print do WhatsApp)
+                    </label>
+                    <input id="tarefa-excluir-arquivo" type="file" accept=".pdf,.jpg,.jpeg,.png"
+                           class="block w-full text-xs text-slate-600"/>
+                </div>
+            </div>
+            <div class="px-5 py-4 bg-slate-50 flex items-center justify-end gap-2">
+                <button type="button" id="tarefa-excluir-cancelar"
+                        class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 text-sm">
+                    Cancelar
+                </button>
+                <button type="button" id="tarefa-excluir-confirmar"
+                        class="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold">
+                    Confirmar exclusão
+                </button>
             </div>
         </div>
     </div>
@@ -1447,6 +1509,11 @@
             const spanPrioridade = document.getElementById('modal-prioridade');
             const spanStatusText = document.getElementById('modal-status-text');
             const badgeStatus = document.getElementById('modal-status-badge');
+            const exclusaoInfo = document.getElementById('modal-exclusao-info');
+            const spanExcluidoPor = document.getElementById('modal-excluido-por');
+            const spanMotivoExclusao = document.getElementById('modal-motivo-exclusao');
+            const exclusaoAnexoWrapper = document.getElementById('modal-exclusao-anexo-wrapper');
+            const exclusaoAnexoList = document.getElementById('modal-exclusao-anexo-list');
             const spanObs = document.getElementById('modal-observacoes');
             const textareaObsInterna = document.getElementById('modal-observacao-interna');
 
@@ -1689,12 +1756,22 @@
                     // 👉 Aqui no futuro você pode ir plugando mais anexos:
                     // if (card.dataset.algumaOutraCoisaUrl) { ... }
 
-                    if (anexos.length) {
+                    const mapAnexoLabel = (anexo) => {
+                        if (anexo && anexo.label) return anexo.label;
+                        if (anexo && anexo.servico === 'cancelamento_tarefa') {
+                            return 'Print do cancelamento';
+                        }
+                        return 'Documento';
+                    };
+
+                    const anexosDocs = anexos.filter(a => !a || a.servico !== 'cancelamento_tarefa');
+
+                    if (anexosDocs.length) {
                         docsWrapper.classList.remove('hidden');
-                        docsList.innerHTML = anexos.map(a => `
+                        docsList.innerHTML = anexosDocs.map(a => `
                                 <li>
                                     <a href="${a.url}" target="_blank" class="underline text-[13px] font-medium">
-                                        ${a.label || 'Documento'}
+                                        ${mapAnexoLabel(a)}
                                     </a>
                                     <span class="text-[11px] text-slate-500">
                                         (${a.tamanho || '-'} · ${a.mime || '-'}${a.data ? ' · ' + a.data : ''}${a.uploaded_by ? ' · ' + a.uploaded_by : ''})
@@ -1704,6 +1781,26 @@
                     } else {
                         docsWrapper.classList.add('hidden');
                         docsList.innerHTML = '';
+                    }
+                }
+
+                if (exclusaoAnexoWrapper && exclusaoAnexoList) {
+                    const anexosCancelamento = anexos.filter(a => a && a.servico === 'cancelamento_tarefa');
+                    if (anexosCancelamento.length) {
+                        exclusaoAnexoWrapper.classList.remove('hidden');
+                        exclusaoAnexoList.innerHTML = anexosCancelamento.map(a => `
+                            <li>
+                                <a href="${a.url}" target="_blank" class="underline text-[13px] font-medium">
+                                    ${a.nome || 'Print do cancelamento'}
+                                </a>
+                                <span class="text-[11px] text-slate-500">
+                                    (${a.tamanho || '-'} · ${a.mime || '-'}${a.data ? ' · ' + a.data : ''}${a.uploaded_by ? ' · ' + a.uploaded_by : ''})
+                                </span>
+                            </li>
+                        `).join('');
+                    } else {
+                        exclusaoAnexoWrapper.classList.add('hidden');
+                        exclusaoAnexoList.innerHTML = '';
                     }
                 }
 
@@ -1996,6 +2093,26 @@
                         badgeStatus.className += 'bg-rose-100 text-rose-700 border-rose-200';
                     } else {
                         badgeStatus.className += 'bg-slate-100 text-slate-700 border-slate-200';
+                    }
+                }
+
+                if (exclusaoInfo) {
+                    if (isCancelada) {
+                        exclusaoInfo.classList.remove('hidden');
+                        if (spanExcluidoPor) {
+                            spanExcluidoPor.textContent = card.dataset.excluidoPor || '—';
+                        }
+                        if (spanMotivoExclusao) {
+                            spanMotivoExclusao.textContent = card.dataset.motivoExclusao || '—';
+                        }
+                    } else {
+                        exclusaoInfo.classList.add('hidden');
+                        if (spanExcluidoPor) {
+                            spanExcluidoPor.textContent = '—';
+                        }
+                        if (spanMotivoExclusao) {
+                            spanMotivoExclusao.textContent = '—';
+                        }
                     }
                 }
 
@@ -2687,26 +2804,79 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const btnExcluir = document.getElementById('btn-excluir-tarefa');
+            const modalExcluir = document.getElementById('tarefa-excluir-modal');
+            const btnFecharExcluir = document.getElementById('tarefa-excluir-close');
+            const btnCancelarExcluir = document.getElementById('tarefa-excluir-cancelar');
+            const btnConfirmarExcluir = document.getElementById('tarefa-excluir-confirmar');
+            const inputMotivo = document.getElementById('tarefa-excluir-motivo');
+            const inputArquivo = document.getElementById('tarefa-excluir-arquivo');
+            const baseUrl = @json(url('operacional/tarefas'));
+
+            function openExcluirModal() {
+                if (!modalExcluir) return;
+                if (inputMotivo) inputMotivo.value = '';
+                if (inputArquivo) inputArquivo.value = '';
+                modalExcluir.classList.remove('hidden');
+                modalExcluir.classList.add('flex');
+            }
+
+            function closeExcluirModal() {
+                if (!modalExcluir) return;
+                modalExcluir.classList.add('hidden');
+                modalExcluir.classList.remove('flex');
+            }
 
             if (btnExcluir) {
-                btnExcluir.addEventListener('click', async () => {
-                    const ok = await window.uiConfirm('Tem certeza que deseja excluir esta tarefa?');
-                    if (!ok) return;
+                btnExcluir.addEventListener('click', () => {
+                    openExcluirModal();
+                });
+            }
 
+            [btnFecharExcluir, btnCancelarExcluir].forEach((btn) => {
+                if (!btn) return;
+                btn.addEventListener('click', () => {
+                    closeExcluirModal();
+                    window.uiAlert('Exclusão cancelada.', { icon: 'success', title: 'Ok' });
+                });
+            });
+
+            if (modalExcluir) {
+                modalExcluir.addEventListener('click', (e) => {
+                    if (e.target === modalExcluir) {
+                        closeExcluirModal();
+                    }
+                });
+            }
+
+            if (btnConfirmarExcluir) {
+                btnConfirmarExcluir.addEventListener('click', () => {
                     const idSpan = document.getElementById('modal-tarefa-id');
                     const tarefaId = idSpan ? idSpan.textContent.trim() : null;
+                    const motivo = inputMotivo ? inputMotivo.value.trim() : '';
 
                     if (!tarefaId) {
                         window.uiAlert('ID da tarefa não encontrado.');
                         return;
                     }
+                    if (!motivo) {
+                        window.uiAlert('Informe o motivo da exclusão.');
+                        return;
+                    }
 
-                    fetch(`{{ url('operacional/tarefas') }}/${tarefaId}`, {
-                        method: 'DELETE',
+                    const formData = new FormData();
+                    formData.append('_method', 'DELETE');
+                    formData.append('motivo_exclusao', motivo);
+                    if (inputArquivo && inputArquivo.files && inputArquivo.files[0]) {
+                        formData.append('arquivo_exclusao', inputArquivo.files[0]);
+                    }
+
+                    fetch(`${baseUrl}/${tarefaId}`, {
+                        method: 'POST',
                         headers: {
                             'X-CSRF-TOKEN': '{{ csrf_token() }}',
                             'Accept': 'application/json',
                         },
+                        body: formData,
                     })
                         .then(r => r.json())
                         .then(json => {
@@ -2715,11 +2885,10 @@
                                 return;
                             }
 
-                            // Fecha modal e faz refresh ou remove a card do Kanban via JS
+                            closeExcluirModal();
                             const modal = document.getElementById('tarefa-modal');
                             if (modal) modal.classList.add('hidden');
-
-                            // Se quiser ser simples:
+                            window.uiAlert('Tarefa excluída com sucesso.', { icon: 'success', title: 'Sucesso' });
                             window.location.reload();
                         })
                         .catch(() => {
@@ -2728,8 +2897,6 @@
                 });
             }
         });
-
-
     </script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
@@ -2753,3 +2920,4 @@
     </script>
 
 @endpush
+
