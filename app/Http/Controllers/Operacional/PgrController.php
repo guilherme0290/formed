@@ -503,6 +503,27 @@ class PgrController extends Controller
         $pgr = $tarefa->pgr;
         abort_if(!$pgr, 404);
 
+        if (!empty($data['com_pcms0'])) {
+            $contrato = app(\App\Services\ContratoClienteService::class)
+                ->getContratoAtivo($tarefa->cliente_id, $empresaId, null);
+
+            $servicoPcmsoId = \App\Models\Servico::query()
+                ->where('empresa_id', $empresaId)
+                ->where('nome', 'PCMSO')
+                ->value('id');
+
+            $itemPcmso = $contrato?->itens()
+                ->where('servico_id', $servicoPcmsoId)
+                ->where('ativo', true)
+                ->first();
+
+            if (!$contrato || !$servicoPcmsoId || !$itemPcmso || (float) $itemPcmso->preco_unitario_snapshot <= 0) {
+                return back()
+                    ->withErrors(['com_pcms0' => 'Serviço PCMSO não contratado. Converse com o comercial.'])
+                    ->withInput();
+            }
+        }
+
         $pgr->update([
             'com_pcms0' => (bool)$data['com_pcms0'],
         ]);

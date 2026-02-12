@@ -19,26 +19,19 @@
         $servicosContrato = $servicosContrato ?? [];
         $servicosIds = $servicosIds ?? [];
         $temContratoAtivo = (bool) $contratoAtivo;
-        $servicosExecutados = $servicosExecutados ?? [];
         $permitidos = [
             'aso' => $temContratoAtivo
-                && in_array($servicosIds['aso'] ?? null, $servicosContrato)
-                && !in_array($servicosIds['aso'] ?? null, $servicosExecutados, true),
+                && in_array($servicosIds['aso'] ?? null, $servicosContrato),
             'pgr' => $temContratoAtivo
-                && in_array($servicosIds['pgr'] ?? null, $servicosContrato)
-                && !in_array($servicosIds['pgr'] ?? null, $servicosExecutados, true),
+                && in_array($servicosIds['pgr'] ?? null, $servicosContrato),
             'pcmso' => $temContratoAtivo
-                && in_array($servicosIds['pcmso'] ?? null, $servicosContrato)
-                && !in_array($servicosIds['pcmso'] ?? null, $servicosExecutados, true),
+                && in_array($servicosIds['pcmso'] ?? null, $servicosContrato),
             'ltcat' => $temContratoAtivo
-                && in_array($servicosIds['ltcat'] ?? null, $servicosContrato)
-                && !in_array($servicosIds['ltcat'] ?? null, $servicosExecutados, true),
+                && in_array($servicosIds['ltcat'] ?? null, $servicosContrato),
             'apr' => $temContratoAtivo
-                && in_array($servicosIds['apr'] ?? null, $servicosContrato)
-                && !in_array($servicosIds['apr'] ?? null, $servicosExecutados, true),
+                && in_array($servicosIds['apr'] ?? null, $servicosContrato),
             'treinamentos' => $temContratoAtivo
-                && in_array($servicosIds['treinamentos'] ?? null, $servicosContrato)
-                && !in_array($servicosIds['treinamentos'] ?? null, $servicosExecutados, true),
+                && in_array($servicosIds['treinamentos'] ?? null, $servicosContrato),
         ];
 
         $vendedorTelefone = preg_replace('/\D+/', '', $vendedorTelefone ?? optional($cliente->vendedor)->telefone ?? '');

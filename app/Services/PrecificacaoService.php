@@ -502,7 +502,8 @@ class PrecificacaoService
         }
 
         $tipoLabel = $pgr->tipo === 'especifico' ? 'Específico' : 'Matriz';
-        $descricao = "PGR - {$tipoLabel}" . ($pgr->com_art ? ' (COM ART)' : '');
+        $obraLabel = $pgr->obra_nome ? ' - ' . $pgr->obra_nome : '';
+        $descricao = "PGR{$obraLabel}";
 
         $itensVenda = [[
             'servico_id' => $tarefa->servico_id,
@@ -510,6 +511,37 @@ class PrecificacaoService
             'preco_unitario_snapshot' => (float) $itemContrato->preco_unitario_snapshot,
             'quantidade' => 1,
         ]];
+
+        if ($pgr->com_pcms0) {
+            $servicoPcmsoId = Servico::query()
+                ->where('empresa_id', $tarefa->empresa_id)
+                ->where('nome', 'PCMSO')
+                ->value('id');
+
+            if (!$servicoPcmsoId) {
+                throw ValidationException::withMessages([
+                    'contrato' => 'Serviço PCMSO não cadastrado para esta empresa.',
+                ]);
+            }
+
+            $itemPcmso = $contrato->itens()
+                ->where('servico_id', $servicoPcmsoId)
+                ->where('ativo', true)
+                ->first();
+
+            if (!$itemPcmso || (float) $itemPcmso->preco_unitario_snapshot <= 0) {
+                throw ValidationException::withMessages([
+                    'contrato' => 'Não é possível concluir esta tarefa porque o cliente não possui PCMSO com valor válido no contrato ativo.',
+                ]);
+            }
+
+            $itensVenda[] = [
+                'servico_id' => $servicoPcmsoId,
+                'descricao_snapshot' => 'PCMSO' . $obraLabel,
+                'preco_unitario_snapshot' => (float) $itemPcmso->preco_unitario_snapshot,
+                'quantidade' => 1,
+            ];
+        }
 
         if ($pgr->com_art) {
             $servicoArtId = Servico::query()
@@ -536,7 +568,7 @@ class PrecificacaoService
 
             $itensVenda[] = [
                 'servico_id' => $servicoArtId,
-                'descricao_snapshot' => 'ART',
+                'descricao_snapshot' => 'ART' . $obraLabel,
                 'preco_unitario_snapshot' => (float) $itemArt->preco_unitario_snapshot,
                 'quantidade' => 1,
             ];

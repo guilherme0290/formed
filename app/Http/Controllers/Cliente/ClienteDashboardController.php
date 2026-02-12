@@ -11,8 +11,11 @@ use App\Models\ClienteTabelaPrecoItem;
 use App\Models\ContaReceberBaixa;
 
 use App\Models\ContaReceberItem;
+use App\Models\PgrSolicitacoes;
 use App\Models\Servico;
 use App\Models\Tarefa;
+use App\Models\TreinamentoNR;
+use App\Models\TreinamentoNrDetalhes;
 use App\Models\Venda;
 use App\Models\VendaItem;
 use App\Services\AsoGheService;
@@ -58,7 +61,7 @@ class ClienteDashboardController extends Controller
         $tarefasEmAndamento = $this->tarefasEmAndamento($cliente, false);
         $totalEmAndamento = $this->totalEmAndamento($contratoAtivo, $tarefasEmAndamento);
 
-        $servicosExecutados = $this->servicosExecutadosNoContrato($contratoAtivo, $cliente);
+        $servicosExecutados = [];
 
         return view('clientes.dashboard', [
             'user'         => $user,
@@ -152,6 +155,10 @@ class ClienteDashboardController extends Controller
         $contaQuery = DB::table('contas_receber_itens as cri')
             ->leftJoin('servicos as s', 's.id', '=', 'cri.servico_id')
             ->leftJoin('venda_itens as vi', 'vi.id', '=', 'cri.venda_item_id')
+            ->leftJoin('vendas as v', function ($join) {
+                $join->on('v.id', '=', 'cri.venda_id')
+                    ->orOn('v.id', '=', 'vi.venda_id');
+            })
             ->leftJoinSub($baixasSub, 'baixas', function ($join) {
                 $join->on('cri.id', '=', 'baixas.conta_receber_item_id');
             })
@@ -161,6 +168,7 @@ class ClienteDashboardController extends Controller
             ->selectRaw("'conta' as origem")
             ->selectRaw('cri.id as ref_id')
             ->selectRaw('COALESCE(s.nome, cri.descricao, vi.descricao_snapshot, "Serviço") as servico')
+            ->selectRaw('v.tarefa_id as tarefa_id')
             ->selectRaw('cri.data_realizacao as data_realizacao')
             ->selectRaw('cri.vencimento as vencimento')
             ->selectRaw('cri.status as status')
@@ -201,6 +209,7 @@ class ClienteDashboardController extends Controller
             ->selectRaw("'venda' as origem")
             ->selectRaw('vi.id as ref_id')
             ->selectRaw('COALESCE(s.nome, vi.descricao_snapshot, "Serviço") as servico')
+            ->selectRaw('t.id as tarefa_id')
             ->selectRaw('COALESCE(DATE(t.finalizado_em), DATE(v.created_at)) as data_realizacao')
             ->selectRaw('NULL as vencimento')
             ->selectRaw("'ABERTO' as status")
@@ -229,6 +238,8 @@ class ClienteDashboardController extends Controller
             ->paginate(10)
             ->withQueryString();
         $itensEmAberto = $this->itensEmAndamento($contratoAtivo, $cliente);
+        $itens->setCollection($this->anexarDetalhesServicos($itens->getCollection()));
+        $itensEmAberto = $this->anexarDetalhesServicos($itensEmAberto);
 
         return view('clientes.faturas.index', [
             'user'         => $user,
@@ -554,6 +565,7 @@ class ClienteDashboardController extends Controller
 
             return (object) [
                 'origem' => 'andamento',
+                'tarefa_id' => $tarefa->id,
                 'servico' => $tarefa->servico?->nome ?? 'Serviço',
                 'status' => 'EM ANDAMENTO',
                 'data_realizacao' => $tarefa->created_at,
@@ -563,6 +575,142 @@ class ClienteDashboardController extends Controller
             ];
         })->filter()->values();
     }
+
+    private function anexarDetalhesServicos(\Illuminate\Support\Collection $itens): \Illuminate\Support\Collection
+    {
+        if ($itens->isEmpty()) {
+            return $itens;
+        }
+
+        $tarefaIds = $itens->pluck('tarefa_id')
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        if (empty($tarefaIds)) {
+            return $itens;
+        }
+
+        $dadosAso = AsoSolicitacoes::query()
+            ->whereIn('tarefa_id', $tarefaIds)
+            ->with(['funcionario:id,nome', 'unidade:id,nome'])
+            ->get()
+            ->keyBy('tarefa_id');
+
+        $dadosPgr = PgrSolicitacoes::query()
+            ->whereIn('tarefa_id', $tarefaIds)
+            ->get()
+            ->keyBy('tarefa_id');
+
+        $treinamentoDetalhes = TreinamentoNrDetalhes::query()
+            ->whereIn('tarefa_id', $tarefaIds)
+            ->with('unidade:id,nome')
+            ->get()
+            ->keyBy('tarefa_id');
+
+        $treinamentoParticipantes = TreinamentoNR::query()
+            ->whereIn('tarefa_id', $tarefaIds)
+            ->with('funcionario:id,nome')
+            ->get()
+            ->groupBy('tarefa_id');
+
+        $mapTipo = [
+            'admissional' => 'Admissional',
+            'periodico' => 'Periódico',
+            'demissional' => 'Demissional',
+            'mudanca_funcao' => 'Mudança de Função',
+            'retorno_trabalho' => 'Retorno ao Trabalho',
+        ];
+
+        return $itens->map(function ($item) use ($dadosAso, $dadosPgr, $treinamentoDetalhes, $treinamentoParticipantes, $mapTipo) {
+            $tarefaId = (int) ($item->tarefa_id ?? 0);
+            if ($tarefaId > 0 && $dadosAso->has($tarefaId)) {
+                $aso = $dadosAso->get($tarefaId);
+                $tipo = $mapTipo[$aso->tipo_aso] ?? ($aso->tipo_aso ? ucfirst($aso->tipo_aso) : null);
+                $nome = $aso->funcionario?->nome;
+                $item->aso_colaborador = $nome;
+                $item->aso_tipo = $tipo;
+                $item->aso_data = $aso->data_aso;
+                $item->aso_unidade = $aso->unidade?->nome;
+                $item->aso_email = $aso->email_aso;
+                $item->aso_treinamentos = is_array($aso->treinamentos) ? $aso->treinamentos : [];
+                if ($nome || $tipo) {
+                    $item->servico_detalhe = 'ASO' . ($nome ? ' - ' . $nome : '') . ($tipo ? ' | ' . $tipo : '');
+                }
+            }
+
+            if ($tarefaId > 0 && $dadosPgr->has($tarefaId)) {
+                $pgr = $dadosPgr->get($tarefaId);
+                $tipoLabel = $pgr->tipo === 'especifico'
+                    ? 'Específico'
+                    : ($pgr->tipo === 'matriz' ? 'Matriz' : ($pgr->tipo ? ucfirst($pgr->tipo) : null));
+                $item->pgr_tipo = $tipoLabel;
+                $item->pgr_obra = $pgr->obra_nome;
+                $item->pgr_com_art = (bool) $pgr->com_art;
+                $item->pgr_total = $pgr->total_trabalhadores;
+                $item->pgr_contratante = $pgr->contratante_nome;
+                $servicoAtual = mb_strtolower((string) ($item->servico ?? ''));
+                if (str_contains($servicoAtual, 'pgr')) {
+                    if ($pgr->obra_nome) {
+                        $item->servico_detalhe = 'PGR - ' . $pgr->obra_nome;
+                    } elseif ($tipoLabel) {
+                        $item->servico_detalhe = 'PGR | ' . $tipoLabel;
+                    }
+                } elseif (str_contains($servicoAtual, 'pcms')) {
+                    if ($pgr->obra_nome) {
+                        $item->servico_detalhe = 'PCMSO - ' . $pgr->obra_nome;
+                    }
+                } elseif (str_contains($servicoAtual, 'art')) {
+                    if ($pgr->obra_nome) {
+                        $item->servico_detalhe = 'ART - ' . $pgr->obra_nome;
+                    }
+                }
+            }
+
+            if ($tarefaId > 0 && $treinamentoDetalhes->has($tarefaId)) {
+                $det = $treinamentoDetalhes->get($tarefaId);
+                $payload = $det->treinamentos ?? [];
+                $modo = is_array($payload) ? ($payload['modo'] ?? 'avulso') : 'avulso';
+                $codigos = [];
+                $pacote = null;
+                if ($modo === 'pacote') {
+                    $pacote = (array) ($payload['pacote'] ?? []);
+                    $codigos = (array) ($pacote['codigos'] ?? []);
+                } else {
+                    $codigos = (array) ($payload['codigos'] ?? $payload);
+                }
+                $codigos = array_values(array_filter(array_map('strval', $codigos)));
+                $participantes = $treinamentoParticipantes->get($tarefaId, collect())
+                    ->pluck('funcionario.nome')
+                    ->filter()
+                    ->sort()
+                    ->values()
+                    ->all();
+
+                $item->treinamento_modo = $modo;
+                $item->treinamento_codigos = $codigos;
+                $item->treinamento_pacote = $pacote['nome'] ?? null;
+                $item->treinamento_local = $det->local_tipo;
+                $item->treinamento_unidade = $det->unidade?->nome ?? null;
+                $item->treinamento_participantes = $participantes;
+                $item->treinamento_qtd = count($participantes);
+
+                $descricao = 'Treinamentos NRs';
+                if ($modo === 'pacote' && !empty($item->treinamento_pacote)) {
+                    $descricao .= ' - ' . $item->treinamento_pacote;
+                }
+                if (!empty($codigos)) {
+                    $descricao .= ' | ' . implode(', ', $codigos);
+                }
+                $item->servico_detalhe = $descricao;
+            }
+
+            return $item;
+        });
+    }
+
 
     private function contratoAtivo(Cliente $cliente): ?ClienteContrato
     {

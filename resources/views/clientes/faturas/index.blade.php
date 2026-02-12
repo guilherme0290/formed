@@ -140,6 +140,11 @@
                             @foreach(($itensEmAberto ?? collect()) as $item)
                                 @php
                                     $servicoNome = $item->servico ?? 'Serviço';
+                                    $servicoDisplay = $item->servico_detalhe ?? $servicoNome;
+                                    $temDetalheAso = !empty($item->aso_colaborador) || !empty($item->aso_tipo) || !empty($item->aso_data) || !empty($item->aso_unidade) || !empty($item->aso_email);
+                                    $temDetalhePgr = !empty($item->pgr_tipo) || !empty($item->pgr_obra) || !empty($item->pgr_contratante) || !empty($item->pgr_total);
+                                    $temDetalheTrein = !empty($item->treinamento_modo) || !empty($item->treinamento_codigos) || !empty($item->treinamento_pacote) || !empty($item->treinamento_participantes);
+                                    $temDetalhe = $temDetalheAso || $temDetalhePgr || $temDetalheTrein;
                                     $status = 'EM ANDAMENTO';
                                     $vencimento = null;
                                     $valorReal = isset($item->valor_real) ? (float) $item->valor_real : (float) $item->valor;
@@ -151,7 +156,65 @@
                                         {{ $item->data_realizacao ? \Carbon\Carbon::parse($item->data_realizacao)->format('d/m/Y') : 'N/A' }}
                                     </td>
                                     <td class="px-4 py-3 text-slate-800">
-                                        {{ $servicoNome }}
+                                        <div class="font-medium text-slate-800">{{ $servicoDisplay }}</div>
+                                        @if($temDetalhe)
+                                            <details class="mt-1">
+                                                <summary class="text-xs text-slate-500 cursor-pointer select-none">Detalhar</summary>
+                                                <div class="mt-2 text-xs text-slate-600 space-y-1">
+                                                    @if(!empty($item->aso_colaborador))
+                                                        <div><span class="font-semibold">Colaborador:</span> {{ $item->aso_colaborador }}</div>
+                                                    @endif
+                                                    @if(!empty($item->aso_tipo))
+                                                        <div><span class="font-semibold">Tipo:</span> {{ $item->aso_tipo }}</div>
+                                                    @endif
+                                                    @if(!empty($item->aso_data))
+                                                        <div><span class="font-semibold">Data:</span> {{ \Carbon\Carbon::parse($item->aso_data)->format('d/m/Y') }}</div>
+                                                    @endif
+                                                    @if(!empty($item->aso_unidade))
+                                                        <div><span class="font-semibold">Unidade:</span> {{ $item->aso_unidade }}</div>
+                                                    @endif
+                                                    @if(!empty($item->aso_email))
+                                                        <div><span class="font-semibold">E-mail:</span> {{ $item->aso_email }}</div>
+                                                    @endif
+                                                    @if($temDetalhePgr)
+                                                        <div class="pt-1"></div>
+                                                        @if(!empty($item->pgr_tipo))
+                                                            <div><span class="font-semibold">PGR:</span> {{ $item->pgr_tipo }}</div>
+                                                        @endif
+                                                        @if(!empty($item->pgr_obra))
+                                                            <div><span class="font-semibold">Obra:</span> {{ $item->pgr_obra }}</div>
+                                                        @endif
+                                                        @if(!empty($item->pgr_total))
+                                                            <div><span class="font-semibold">Trabalhadores:</span> {{ $item->pgr_total }}</div>
+                                                        @endif
+                                                        <div><span class="font-semibold">ART:</span> {{ !empty($item->pgr_com_art) ? 'Com ART' : 'Sem ART' }}</div>
+                                                    @endif
+                                                    @if($temDetalheTrein)
+                                                        <div class="pt-1"></div>
+                                                        <div><span class="font-semibold">Treinamento:</span> {{ $item->treinamento_modo === 'pacote' ? 'Pacote' : 'Avulso' }}</div>
+                                                        @if(!empty($item->treinamento_pacote))
+                                                            <div><span class="font-semibold">Pacote:</span> {{ $item->treinamento_pacote }}</div>
+                                                        @endif
+                                                        @if(!empty($item->treinamento_codigos))
+                                                            <div><span class="font-semibold">NRs:</span> {{ is_array($item->treinamento_codigos) ? implode(', ', $item->treinamento_codigos) : $item->treinamento_codigos }}</div>
+                                                        @endif
+                                                        @if(!empty($item->treinamento_local))
+                                                            <div><span class="font-semibold">Local:</span> {{ $item->treinamento_local === 'clinica' ? 'Clínica' : 'In Company' }}</div>
+                                                        @endif
+                                                        @if(!empty($item->treinamento_unidade))
+                                                            <div><span class="font-semibold">Unidade:</span> {{ $item->treinamento_unidade }}</div>
+                                                        @endif
+                                                        @if(!empty($item->treinamento_participantes))
+                                                            <div><span class="font-semibold">Participantes:</span>
+                                                                <div class="mt-1">
+                                                                    {!! implode('<br>', array_map('e', (array) $item->treinamento_participantes)) !!}
+                                                                </div>
+                                                            </div>
+                                                        @endif
+                                                    @endif
+                                                </div>
+                                            </details>
+                                        @endif
                                     </td>
                                     <td class="px-4 py-3">
                                         <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[12px] font-semibold {{ $badge }}">
@@ -169,6 +232,11 @@
                             @foreach($itens as $item)
                                 @php
                                     $servicoNome = $item->servico ?? 'Serviço';
+                                    $servicoDisplay = $item->servico_detalhe ?? $servicoNome;
+                                    $temDetalheAso = !empty($item->aso_colaborador) || !empty($item->aso_tipo) || !empty($item->aso_data) || !empty($item->aso_unidade) || !empty($item->aso_email);
+                                    $temDetalhePgr = !empty($item->pgr_tipo) || !empty($item->pgr_obra) || !empty($item->pgr_contratante) || !empty($item->pgr_total);
+                                    $temDetalheTrein = !empty($item->treinamento_modo) || !empty($item->treinamento_codigos) || !empty($item->treinamento_pacote) || !empty($item->treinamento_participantes);
+                                    $temDetalhe = $temDetalheAso || $temDetalhePgr || $temDetalheTrein;
                                     $status = strtoupper((string) $item->status);
                                     $vencimento = $item->vencimento ? \Carbon\Carbon::parse($item->vencimento) : null;
                                     $vencido = $vencimento?->lt(now()->startOfDay()) ?? false;
@@ -185,7 +253,65 @@
                                         {{ $item->data_realizacao ? \Carbon\Carbon::parse($item->data_realizacao)->format('d/m/Y') : 'N/A' }}
                                     </td>
                                     <td class="px-4 py-3 text-slate-800">
-                                        {{ $servicoNome }}
+                                        <div class="font-medium text-slate-800">{{ $servicoDisplay }}</div>
+                                        @if($temDetalhe)
+                                            <details class="mt-1">
+                                                <summary class="text-xs text-slate-500 cursor-pointer select-none">Detalhar</summary>
+                                                <div class="mt-2 text-xs text-slate-600 space-y-1">
+                                                    @if(!empty($item->aso_colaborador))
+                                                        <div><span class="font-semibold">Colaborador:</span> {{ $item->aso_colaborador }}</div>
+                                                    @endif
+                                                    @if(!empty($item->aso_tipo))
+                                                        <div><span class="font-semibold">Tipo:</span> {{ $item->aso_tipo }}</div>
+                                                    @endif
+                                                    @if(!empty($item->aso_data))
+                                                        <div><span class="font-semibold">Data:</span> {{ \Carbon\Carbon::parse($item->aso_data)->format('d/m/Y') }}</div>
+                                                    @endif
+                                                    @if(!empty($item->aso_unidade))
+                                                        <div><span class="font-semibold">Unidade:</span> {{ $item->aso_unidade }}</div>
+                                                    @endif
+                                                    @if(!empty($item->aso_email))
+                                                        <div><span class="font-semibold">E-mail:</span> {{ $item->aso_email }}</div>
+                                                    @endif
+                                                    @if($temDetalhePgr)
+                                                        <div class="pt-1"></div>
+                                                        @if(!empty($item->pgr_tipo))
+                                                            <div><span class="font-semibold">PGR:</span> {{ $item->pgr_tipo }}</div>
+                                                        @endif
+                                                        @if(!empty($item->pgr_obra))
+                                                            <div><span class="font-semibold">Obra:</span> {{ $item->pgr_obra }}</div>
+                                                        @endif
+                                                        @if(!empty($item->pgr_total))
+                                                            <div><span class="font-semibold">Trabalhadores:</span> {{ $item->pgr_total }}</div>
+                                                        @endif
+                                                        <div><span class="font-semibold">ART:</span> {{ !empty($item->pgr_com_art) ? 'Com ART' : 'Sem ART' }}</div>
+                                                    @endif
+                                                    @if($temDetalheTrein)
+                                                        <div class="pt-1"></div>
+                                                        <div><span class="font-semibold">Treinamento:</span> {{ $item->treinamento_modo === 'pacote' ? 'Pacote' : 'Avulso' }}</div>
+                                                        @if(!empty($item->treinamento_pacote))
+                                                            <div><span class="font-semibold">Pacote:</span> {{ $item->treinamento_pacote }}</div>
+                                                        @endif
+                                                        @if(!empty($item->treinamento_codigos))
+                                                            <div><span class="font-semibold">NRs:</span> {{ is_array($item->treinamento_codigos) ? implode(', ', $item->treinamento_codigos) : $item->treinamento_codigos }}</div>
+                                                        @endif
+                                                        @if(!empty($item->treinamento_local))
+                                                            <div><span class="font-semibold">Local:</span> {{ $item->treinamento_local === 'clinica' ? 'Clínica' : 'In Company' }}</div>
+                                                        @endif
+                                                        @if(!empty($item->treinamento_unidade))
+                                                            <div><span class="font-semibold">Unidade:</span> {{ $item->treinamento_unidade }}</div>
+                                                        @endif
+                                                        @if(!empty($item->treinamento_participantes))
+                                                            <div><span class="font-semibold">Participantes:</span>
+                                                                <div class="mt-1">
+                                                                    {!! implode('<br>', array_map('e', (array) $item->treinamento_participantes)) !!}
+                                                                </div>
+                                                            </div>
+                                                        @endif
+                                                    @endif
+                                                </div>
+                                            </details>
+                                        @endif
                                     </td>
                                     <td class="px-4 py-3">
                                         <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[12px] font-semibold

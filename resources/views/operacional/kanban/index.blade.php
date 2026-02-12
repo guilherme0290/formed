@@ -581,14 +581,16 @@
 
                                         // -------- PGR --------
                                         } elseif ($servicoNome === 'PGR') {
-                                            if ($pgr && $pgr->obra_nome) {
+                                            $temPgrPcmso = $pgr && !empty($pgr->com_pcms0);
+                                            if ($temPgrPcmso) {
+                                                $tituloCard = 'PGR + PCMSO - ' . $clienteNome;
+                                                $subtituloCard = $pgr->obra_nome ?: 'Obra não informada';
+                                                $badgeLabel = 'PGR + PCMSO';
+                                            } elseif ($pgr && $pgr->obra_nome) {
                                                 $tituloCard    = 'PGR - ' . $pgr->obra_nome;
                                                 $subtituloCard = $clienteNome;
                                             } else {
                                                 $tituloCard    = 'PGR - ' . $clienteNome;
-                                            }
-                                            if ($pgr && !empty($pgr->com_pcms0)) {
-                                                $badgeLabel = 'PGR + PCMSO';
                                             }
 
                                         // -------- PCMSO --------
