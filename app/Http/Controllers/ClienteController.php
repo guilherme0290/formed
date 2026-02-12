@@ -11,6 +11,7 @@ use App\Models\ParametroClienteAsoGrupo;
 use App\Models\Servico;
 use App\Models\TabelaPrecoItem;
 use App\Models\TabelaPrecoPadrao;
+use App\Models\Tarefa;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -318,7 +319,7 @@ class ClienteController extends Controller
     /**
      * FORM DE EDIÇÃO
      */
-    public function edit(Cliente $cliente)
+    public function edit(Request $request, Cliente $cliente)
     {
         $this->authorizeCliente($cliente);
 
@@ -396,6 +397,48 @@ class ClienteController extends Controller
             ->orderBy('name')
             ->get(['id', 'name']);
 
+        $arquivosQuery = Tarefa::query()
+            ->where('cliente_id', $cliente->id)
+            ->whereNotNull('path_documento_cliente')
+            ->with(['servico', 'coluna']);
+
+        if ($request->filled('q')) {
+            $q = trim((string) $request->input('q'));
+            $arquivosQuery->where('titulo', 'like', '%' . $q . '%');
+        }
+
+        if ($request->filled('data_inicio')) {
+            $arquivosQuery->whereDate('finalizado_em', '>=', $request->input('data_inicio'));
+        }
+
+        if ($request->filled('data_fim')) {
+            $arquivosQuery->whereDate('finalizado_em', '<=', $request->input('data_fim'));
+        }
+
+        if ($request->filled('servico')) {
+            $arquivosQuery->where('servico_id', (int) $request->input('servico'));
+        }
+
+        $arquivos = $arquivosQuery
+            ->orderByDesc('finalizado_em')
+            ->orderByDesc('updated_at')
+            ->get();
+
+        $servicosArquivosIds = Tarefa::query()
+            ->where('cliente_id', $cliente->id)
+            ->whereNotNull('path_documento_cliente')
+            ->distinct()
+            ->pluck('servico_id')
+            ->filter()
+            ->values();
+
+        $servicosArquivos = $servicosArquivosIds->isNotEmpty()
+            ? Servico::query()
+                ->whereIn('id', $servicosArquivosIds->all())
+                ->orderBy('nome')
+                ->get()
+            : collect();
+
         return view('clientes.edit', [
             'cliente'         => $cliente,
             'estados'         => $estados,
@@ -410,6 +453,8 @@ class ClienteController extends Controller
             'parametro'       => $parametro,
             'parametroAsoGrupos' => $parametroAsoGrupos,
             'vendedores'      => $vendedores,
+            'arquivos'        => $arquivos,
+            'servicosArquivos' => $servicosArquivos,
         ]);
     }
 
@@ -633,6 +678,5 @@ class ClienteController extends Controller
 
 
 }
-
 
 

@@ -1,19 +1,15 @@
-@extends('layouts.cliente')
-@section('title', 'Meus Arquivos')
-
-@section('content')
-    <div class="max-w-6xl mx-auto px-4 md:px-0 py-6 space-y-6">
-        <div class="flex items-center justify-between">
-            <div>
-                <h1 class="text-2xl font-semibold text-slate-900">Meus Arquivos</h1>
-                <p class="text-sm text-slate-500">Documentos liberados pelo operacional.</p>
+<div data-tab-panel="arquivos" data-tab-panel-root="cliente" class="hidden">
+    <div class="w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div class="bg-white rounded-2xl shadow border border-slate-200 overflow-hidden">
+            <div class="px-6 py-4 border-b bg-indigo-700 text-white">
+                <h1 class="text-lg font-semibold">Arquivos do Cliente</h1>
             </div>
-        </div>
 
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-            <div class="px-5 py-4 border-b border-slate-200 bg-slate-50/60">
-                <form method="GET" action="{{ route('cliente.arquivos.index') }}"
+            <div class="px-6 py-4 border-b border-slate-200 bg-slate-50/60">
+                <form method="GET" action="{{ route($routePrefix.'.edit', $cliente) }}"
                       class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+                    <input type="hidden" name="tab" value="arquivos">
+
                     <div class="md:col-span-2">
                         <label class="text-xs font-semibold text-slate-600">Pesquisar por título</label>
                         <input
@@ -56,7 +52,7 @@
                                    focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400"
                         >
                             <option value="">Todos</option>
-                            @foreach($servicos as $servico)
+                            @foreach($servicosArquivos as $servico)
                                 <option value="{{ $servico->id }}" @selected((string) $servico->id === request('servico'))>
                                     {{ $servico->nome }}
                                 </option>
@@ -73,7 +69,7 @@
                             Filtrar
                         </button>
                         <a
-                            href="{{ route('cliente.arquivos.index') }}"
+                            href="{{ route($routePrefix.'.edit', ['cliente' => $cliente, 'tab' => 'arquivos']) }}"
                             class="inline-flex items-center justify-center px-4 py-2 rounded-lg
                                    border border-slate-300 text-slate-700 text-sm font-semibold hover:bg-slate-100 transition"
                         >
@@ -95,51 +91,53 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
-                        @forelse($arquivos as $tarefa)
-                            @php
-                                $coluna = $tarefa->coluna;
-                                $statusLabel = $coluna?->nome ?? 'Finalizado';
-                                $badge = ($coluna && $coluna->finaliza)
-                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
-                                    : 'bg-slate-100 text-slate-700 border-slate-200';
-                            @endphp
-                            <tr class="hover:bg-slate-50/70">
-                                <td class="px-5 py-3 text-slate-800">
-                                    {{ $tarefa->servico->nome ?? 'Serviço' }}
-                                </td>
-                                <td class="px-5 py-3 text-slate-700">
-                                    {{ $tarefa->titulo ?? 'Tarefa' }}
-                                </td>
-                                <td class="px-5 py-3 text-slate-700">
-                                    {{ optional($tarefa->finalizado_em)->format('d/m/Y H:i') ?? '-' }}
-                                </td>
-                                <td class="px-5 py-3">
-                                    <span class="inline-flex items-center px-3 py-1 rounded-full border text-xs font-semibold {{ $badge }}">
-                                        {{ $statusLabel }}
-                                    </span>
-                                </td>
-                                <td class="px-5 py-3 text-center">
-                                    @if($tarefa->documento_link)
-                                        <a href="{{ $tarefa->documento_link }}"
-                                           class="px-3 py-2 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700"
-                                           target="_blank" rel="noopener">
-                                            Ver / Baixar
-                                        </a>
-                                    @else
-                                        <span class="text-xs text-slate-400">Indisponível</span>
-                                    @endif
-                                </td>
-                            </tr>
-                        @empty
+                        @if($arquivos->isEmpty())
                             <tr>
                                 <td colspan="5" class="px-5 py-6 text-center text-slate-500">
                                     Nenhum documento disponível até o momento.
                                 </td>
                             </tr>
-                        @endforelse
+                        @else
+                            @foreach($arquivos as $tarefa)
+                                @php
+                                    $coluna = $tarefa->coluna;
+                                    $statusLabel = $coluna?->nome ?? 'Finalizado';
+                                    $badge = ($coluna && $coluna->finaliza)
+                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                                        : 'bg-slate-100 text-slate-700 border-slate-200';
+                                @endphp
+                                <tr class="hover:bg-slate-50/70">
+                                    <td class="px-5 py-3 text-slate-800">
+                                        {{ $tarefa->servico->nome ?? 'Serviço' }}
+                                    </td>
+                                    <td class="px-5 py-3 text-slate-700">
+                                        {{ $tarefa->titulo ?? 'Tarefa' }}
+                                    </td>
+                                    <td class="px-5 py-3 text-slate-700">
+                                        {{ optional($tarefa->finalizado_em)->format('d/m/Y H:i') ?? '-' }}
+                                    </td>
+                                    <td class="px-5 py-3">
+                                        <span class="inline-flex items-center px-3 py-1 rounded-full border text-xs font-semibold {{ $badge }}">
+                                            {{ $statusLabel }}
+                                        </span>
+                                    </td>
+                                    <td class="px-5 py-3 text-center">
+                                        @if($tarefa->documento_link)
+                                            <a href="{{ $tarefa->documento_link }}"
+                                               class="px-3 py-2 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700"
+                                               target="_blank" rel="noopener">
+                                                Ver / Baixar
+                                            </a>
+                                        @else
+                                            <span class="text-xs text-slate-400">Indisponível</span>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+                        @endif
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
-@endsection
+</div>

@@ -104,6 +104,7 @@
                     'rota' => route('cliente.funcionarios.index'),
                     'disabled' => false,
                 ],
+
                 [
                     'titulo' => 'Agendar ASO',
                     'icone' => '📅',
@@ -140,6 +141,12 @@
                     'rota' => route('cliente.servicos.treinamentos'),
                     'disabled' => !($permitidosSidebar['treinamentos'] ?? false),
                 ],
+                [
+                    'titulo' => 'Meus Arquivos',
+                    'icone' => '🗂️',
+                    'rota' => route('cliente.arquivos.index'),
+                    'disabled' => false,
+                ],
             ];
         @endphp
 
@@ -161,16 +168,7 @@
                 </a>
             @endforeach
 
-            <div class="mt-4 px-2">
-                <p class="text-[11px] uppercase tracking-[0.16em] text-slate-400 mb-2">Status</p>
-                <div class="rounded-lg bg-slate-900/50 border border-slate-800 px-3 py-2 text-[12px] text-slate-200">
-                    @if($temTabelaSidebar)
-                        Tabela de preços ativa para este cliente.
-                    @else
-                        Tabela de preços não definida — alguns serviços ficam indisponíveis.
-                    @endif
-                </div>
-            </div>
+
         </nav>
 
         <div class="relative z-10 px-4 py-4 border-t border-slate-800 space-y-2 text-sm">

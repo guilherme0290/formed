@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Cliente;
 
 use App\Http\Controllers\Controller;
 use App\Models\Cliente;
+use App\Models\Servico;
 use App\Models\Tarefa;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -36,18 +37,53 @@ class ArquivoController extends Controller
                 ->with('error', 'Cliente inválido. Acesse novamente pelo portal do cliente.');
         }
 
-        $arquivos = Tarefa::query()
+        $arquivosQuery = Tarefa::query()
             ->where('cliente_id', $cliente->id)
             ->whereNotNull('path_documento_cliente')
+            ->with(['servico', 'coluna']);
+
+        if ($request->filled('q')) {
+            $q = trim((string) $request->input('q'));
+            $arquivosQuery->where('titulo', 'like', '%' . $q . '%');
+        }
+
+        if ($request->filled('data_inicio')) {
+            $arquivosQuery->whereDate('finalizado_em', '>=', $request->input('data_inicio'));
+        }
+
+        if ($request->filled('data_fim')) {
+            $arquivosQuery->whereDate('finalizado_em', '<=', $request->input('data_fim'));
+        }
+
+        if ($request->filled('servico')) {
+            $arquivosQuery->where('servico_id', (int) $request->input('servico'));
+        }
+
+        $arquivos = $arquivosQuery
             ->orderByDesc('finalizado_em')
             ->orderByDesc('updated_at')
-            ->with(['servico', 'coluna'])
             ->get();
+
+        $servicosIds = Tarefa::query()
+            ->where('cliente_id', $cliente->id)
+            ->whereNotNull('path_documento_cliente')
+            ->distinct()
+            ->pluck('servico_id')
+            ->filter()
+            ->values();
+
+        $servicos = $servicosIds->isNotEmpty()
+            ? Servico::query()
+                ->whereIn('id', $servicosIds->all())
+                ->orderBy('nome')
+                ->get()
+            : collect();
 
         return view('clientes.arquivos.index', [
             'cliente' => $cliente,
             'user' => $user,
             'arquivos' => $arquivos,
+            'servicos' => $servicos,
         ]);
     }
 }
