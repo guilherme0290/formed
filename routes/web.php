@@ -149,6 +149,10 @@ Route::middleware('auth')->group(function () {
                 [TarefaController::class, 'finalizarComArquivo']
             )->name('finalizar-com-arquivo');
 
+            Route::post('{tarefa}/documento-cliente',
+                [TarefaController::class, 'substituirDocumentoCliente']
+            )->name('documento-cliente');
+
             Route::post('{tarefa}/anexos', [AnexoController::class, 'store'])
                 ->name('anexos.store');
 
@@ -1157,4 +1161,3 @@ Route::get('operacional/tarefas/documento/{token}', [TarefaController::class, 'd
     ->name('operacional.tarefas.documento');
 
 require __DIR__.'/auth.php';
-

@@ -18,6 +18,7 @@ class S3Helper
 
     private static function diskName(): string
     {
+
         return self::useLocalDisk() ? 'public' : 's3';
     }
 

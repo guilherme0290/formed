@@ -568,7 +568,7 @@ class PainelController extends Controller
         ]);
 
         return response()->json([
-            'ok'                 => true,
+            'ok'=> true,
             'observacao_interna' => $tarefa->observacao_interna,
         ]);
     }

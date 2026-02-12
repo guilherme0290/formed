@@ -226,4 +226,37 @@ class TarefaController extends Controller
         return redirect()->away($url);
     }
 
+    public function substituirDocumentoCliente(Request $request, Tarefa $tarefa)
+    {
+        $request->validate([
+            'arquivo_cliente' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'],
+        ]);
+
+        $path = S3Helper::upload($request->file('arquivo_cliente'), 'tarefas');
+
+        $token = Str::uuid()->toString();
+        while (Tarefa::where('documento_token', $token)->exists()) {
+            $token = Str::uuid()->toString();
+        }
+
+        $tarefa->update([
+            'path_documento_cliente' => $path,
+            'documento_token' => $token,
+        ]);
+
+        TarefaLog::create([
+            'tarefa_id' => $tarefa->id,
+            'user_id' => Auth::id(),
+            'de_coluna_id' => $tarefa->coluna_id,
+            'para_coluna_id' => $tarefa->coluna_id,
+            'acao' => 'documento',
+            'observacao' => 'Documento do cliente substituído (temporário)',
+        ]);
+
+        return response()->json([
+            'ok' => true,
+            'documento_url' => $tarefa->documento_link,
+        ]);
+    }
+
 }

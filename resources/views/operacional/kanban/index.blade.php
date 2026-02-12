@@ -416,6 +416,7 @@
                                     data-move-url="{{ route('operacional.tarefas.mover', $tarefa) }}"
                                     data-finalizar-url="{{ route('operacional.tarefas.finalizar-com-arquivo', $tarefa) }}
                                     "
+                                    data-substituir-doc-url="{{ route('operacional.tarefas.documento-cliente', $tarefa) }}"
                                     data-prioridade="{{ ucfirst($tarefa->prioridade) }}"
                                     data-status="{{ $coluna->nome }}"
                                     data-finalizado="{{ (!empty($tarefa->finalizado_em) || ($coluna->finaliza ?? false)) ? '1' : '0' }}"
@@ -1253,9 +1254,25 @@
                            href="#"
                            target="_blank"
                            class="inline-flex items-center gap-2 text-xs font-semibold text-emerald-700
-                                 hover:text-emerald-900 underline">
+                                 hover:text-emerald-900 underline hidden">
                             📎 Abrir arquivo anexado
                         </a>
+                        <div class="mt-3">
+                            <input
+                                type="file"
+                                id="modal-arquivo-replace-input"
+                                class="hidden"
+                                accept=".pdf,.jpg,.jpeg,.png"
+                            >
+                            <button
+                                type="button"
+                                id="modal-arquivo-replace-btn"
+                                class="inline-flex items-center justify-center px-3 py-2 rounded-lg
+                                   border border-emerald-200 bg-white text-emerald-700 text-xs font-semibold
+                                   hover:bg-emerald-50 transition">
+                                Substituir documento
+                            </button>
+                        </div>
                         <button
                             type="button"
                             id="btn-notificar-cliente"
@@ -1467,6 +1484,8 @@
             const arquivoWrapper = document.getElementById('modal-arquivo-wrapper');
             const arquivoLink = document.getElementById('modal-arquivo-link');
             const btnNotificarCliente = document.getElementById('btn-notificar-cliente');
+            const arquivoReplaceInput = document.getElementById('modal-arquivo-replace-input');
+            const arquivoReplaceBtn = document.getElementById('modal-arquivo-replace-btn');
             let detalhesCurrentCard = null;
 
             function formatTelefone(raw) {
@@ -1623,16 +1642,16 @@
                 // Link do arquivo do cliente
                 if (arquivoWrapper && arquivoLink) {
                     const urlArquivo = card.dataset.arquivoClienteUrl || '';
-                    console.log(urlArquivo)
+                    arquivoWrapper.classList.remove('hidden');
                     if (urlArquivo) {
                         arquivoLink.href = urlArquivo;
-                        arquivoWrapper.classList.remove('hidden');
+                        arquivoLink.classList.remove('hidden');
                         if (btnNotificarCliente) {
                             btnNotificarCliente.classList.remove('hidden');
                         }
                     } else {
                         arquivoLink.href = '#';
-                        arquivoWrapper.classList.add('hidden');
+                        arquivoLink.classList.add('hidden');
                         if (btnNotificarCliente) {
                             btnNotificarCliente.classList.add('hidden');
                         }
@@ -2261,6 +2280,83 @@
                 if (detalhesCurrentCard) {
                     updateModalTempo(detalhesCurrentCard, nowMs);
                 }
+            }
+
+            function uploadDocumentoClienteTemporario(file) {
+                if (!file || !detalhesCurrentCard) return;
+                const url = detalhesCurrentCard.dataset.substituirDocUrl;
+                if (!url) {
+                    window.uiAlert('Não foi possível enviar o documento desta tarefa.');
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('arquivo_cliente', file);
+
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json',
+                    },
+                    body: formData,
+                })
+                    .then(async (r) => {
+                        const contentType = r.headers.get('content-type') || '';
+                        const isJson = contentType.includes('application/json');
+                        const data = isJson ? await r.json() : null;
+
+                        if (!r.ok) {
+                            const error =
+                                data?.error
+                                || data?.message
+                                || (data?.errors ? Object.values(data.errors).flat()[0] : null)
+                                || 'Erro ao enviar documento.';
+                            throw new Error(error);
+                        }
+
+                        return data;
+                    })
+                    .then((data) => {
+                        if (!data || !data.ok) {
+                            const error =
+                                data?.error
+                                || data?.message
+                                || (data?.errors ? Object.values(data.errors).flat()[0] : null)
+                                || 'Erro ao enviar documento.';
+                            window.uiAlert(error);
+                            return;
+                        }
+
+                        if (data.documento_url) {
+                            detalhesCurrentCard.dataset.arquivoClienteUrl = data.documento_url;
+                            if (arquivoLink) {
+                                arquivoLink.href = data.documento_url;
+                            }
+                            if (arquivoWrapper) {
+                                arquivoWrapper.classList.remove('hidden');
+                            }
+                            openDetalhesModal(detalhesCurrentCard);
+                        }
+                    })
+                    .catch((error) => {
+                        window.uiAlert(error?.message || 'Erro ao enviar documento.');
+                    });
+            }
+
+            if (arquivoReplaceBtn && arquivoReplaceInput) {
+                arquivoReplaceBtn.addEventListener('click', function () {
+                    if (arquivoReplaceInput) {
+                        arquivoReplaceInput.value = '';
+                        arquivoReplaceInput.click();
+                    }
+                });
+
+                arquivoReplaceInput.addEventListener('change', function () {
+                    const file = arquivoReplaceInput.files?.[0];
+                    if (!file) return;
+                    uploadDocumentoClienteTemporario(file);
+                });
             }
 
             function moveCardToColumn(card, colunaId, colunaNome) {
