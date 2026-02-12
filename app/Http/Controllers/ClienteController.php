@@ -222,23 +222,44 @@ class ClienteController extends Controller
     public function criarAcesso(Request $request, Cliente $cliente)
     {
         try {
+            $loginTipo = $request->input('login_tipo', 'documento');
+            if (!in_array($loginTipo, ['documento', 'email'], true)) {
+                $loginTipo = 'documento';
+            }
+
             $data = $request->validate([
+                'login_tipo' => ['required', 'in:documento,email'],
                 'documento' => [
-                    'required',
+                    $loginTipo === 'documento' ? 'required' : 'nullable',
                     'string',
-                    function ($attribute, $value, $fail) {
+                    function ($attribute, $value, $fail) use ($loginTipo) {
+                        if ($loginTipo !== 'documento') {
+                            return;
+                        }
                         $doc = preg_replace('/\D+/', '', (string) $value);
                         if (strlen($doc) !== 14) {
                             $fail('Informe um CNPJ (14 dígitos) válido.');
                         }
                     },
                 ],
-                'email' => ['nullable', 'email', 'max:255'],
+                'email' => [
+                    $loginTipo === 'email' ? 'required' : 'nullable',
+                    'email',
+                    'max:255',
+                ],
                 'password' => ['required','string','min:8'],
             ]);
 
-            $documento = preg_replace('/\D+/', '', (string) $data['documento']);
-            $email = $data['email'] ?? null;
+            $documento = null;
+            $email = null;
+
+            if ($loginTipo === 'documento') {
+                $documento = preg_replace('/\D+/', '', (string) ($data['documento'] ?? ''));
+            }
+
+            if ($loginTipo === 'email') {
+                $email = $data['email'] ?? null;
+            }
             if (is_string($email)) {
                 $email = trim($email);
             }
@@ -253,7 +274,7 @@ class ClienteController extends Controller
             }
 
             // evita conflito de documento
-            if (\App\Models\User::where('documento', $documento)->exists()) {
+            if ($documento && \App\Models\User::where('documento', $documento)->exists()) {
                 return back()->with('erro', 'Já existe um usuário com este CPF/CNPJ. Use outro documento.');
             }
 
@@ -612,3 +633,6 @@ class ClienteController extends Controller
 
 
 }
+
+
+

@@ -39,7 +39,7 @@
             </div>
         @endif
 
-        <div class="bg-white rounded-xl shadow border p-6 space-y-2">
+        <div class="bg-white rounded-xl shadow border p-6 space-y-4">
             <h1 class="text-xl font-semibold mb-2">{{ $cliente->razao_social }}</h1>
             @if($cliente->nome_fantasia)
                 <p class="text-sm text-gray-500 mb-2">{{ $cliente->nome_fantasia }}</p>
@@ -52,47 +52,20 @@
             <p><strong>Bairro:</strong> {{ $cliente->bairro ?? '-' }}</p>
             <p><strong>Endereço:</strong> {{ $cliente->endereco ?? '-' }}</p>
             <p><strong>Ativo:</strong> {{ $cliente->ativo ? 'Sim' : 'Não' }}</p>
-        </div>
-
-        <div class="mt-6 grid md:grid-cols-2 gap-3">
-            <div class="bg-white rounded-xl shadow border p-4 space-y-3">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm font-semibold text-slate-800">Acesso do Cliente</p>
-                        <p class="text-xs text-slate-500">Use o e-mail cadastrado como login</p>
-                    </div>
-                </div>
-                <div class="text-sm text-slate-600">
-                    <p><strong>E-mail sugerido:</strong> {{ $cliente->email ?? '—' }}</p>
-                    <p class="text-xs text-slate-500">Uma senha temporária será gerada e o usuário deve trocar no primeiro login.</p>
-                </div>
-                @if($cliente->email)
-    <a href="{{ route($routePrefix.'.acesso.form', $cliente) }}"
-       class="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700">
-        🔑 Criar usuário do cliente
-    </a>
-@else
-    <button type="button"
-            class="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold opacity-50 cursor-not-allowed"
-            disabled>
-        🔑 Criar usuário do cliente
-    </button>
-@endif
-            </div>
-
-            <div class="flex flex-col md:flex-row justify-end md:items-start gap-2">
+            <div class="pt-4 grid sm:grid-cols-2 gap-2">
                 <a href="{{ route($routePrefix.'.edit',$cliente) }}"
-                   class="bg-yellow-500 text-white px-4 py-2 rounded-lg text-center">
+                   class="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold text-center hover:bg-indigo-700 w-full">
                     Editar
                 </a>
                 <a href="{{ route($routePrefix.'.index') }}"
-                   class="bg-gray-500 text-white px-4 py-2 rounded-lg text-center">
+                   class="px-4 py-2 rounded-xl bg-white text-slate-700 border border-slate-200 text-sm font-semibold text-center hover:bg-slate-50 w-full">
                     Voltar
                 </a>
             </div>
         </div>
 
-
     </div>
 @endsection
+
+
 
