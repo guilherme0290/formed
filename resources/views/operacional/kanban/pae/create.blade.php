@@ -4,9 +4,14 @@
 @section('pageTitle', 'PAE - Plano de Atendimento a Emergências')
 
 @section('content')
+    @php
+        $origem = request()->query('origem');
+    @endphp
     <div class="w-full px-2 sm:px-3 md:px-4 xl:px-5 py-4 md:py-6">
         <div class="mb-4 flex items-center justify-between">
-            <a href="{{ route('operacional.kanban.servicos', $cliente) }}"
+            <a href="{{ $origem === 'cliente'
+                    ? route('cliente.agendamentos')
+                    : route('operacional.kanban.servicos', ['cliente' => $cliente->id, 'origem' => $origem]) }}"
                class="inline-flex items-center gap-2 text-xs px-3 py-1.5 rounded-full border border-slate-200 bg-white hover:bg-slate-50">
                 ← Voltar
             </a>
@@ -26,13 +31,14 @@
 
             <form method="POST"
                   action="{{ !empty($isEdit) && $pae
-                        ? route('operacional.pae.update', $pae)
-                        : route('operacional.pae.store', $cliente) }}"
+                        ? route('operacional.pae.update', ['pae' => $pae, 'origem' => $origem])
+                        : route('operacional.pae.store', ['cliente' => $cliente, 'origem' => $origem]) }}"
                   class="px-4 sm:px-5 md:px-6 py-5 md:py-6 space-y-6">
                 @csrf
                 @if(!empty($isEdit) && $pae)
                     @method('PUT')
                 @endif
+                <input type="hidden" name="origem" value="{{ $origem }}">
 
                 @if ($errors->any())
                     <div class="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-700">

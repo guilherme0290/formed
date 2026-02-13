@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Operacional;
 
 use App\Helpers\S3Helper;
+use App\Http\Controllers\Operacional\Concerns\ValidatesClientePortalTaskEditing;
 use App\Http\Controllers\Controller;
 use App\Models\Anexos;
 use App\Models\Cliente;
@@ -20,6 +21,8 @@ use Illuminate\Support\Facades\Storage;
 
 class PcmsoController extends Controller
 {
+    use ValidatesClientePortalTaskEditing;
+
     /**
      * Tela: PCMSO - Selecione o Tipo (Matriz / Específico)
      */
@@ -235,7 +238,7 @@ class PcmsoController extends Controller
 
         if ($usuario->isCliente()) {
             return redirect()
-                ->route('cliente.dashboard')
+                ->route('cliente.agendamentos')
                 ->with('ok', "Solicitação de PCMSO {$tipoLabel} criada com sucesso e enviada para análise.");
         }
 
@@ -246,6 +249,10 @@ class PcmsoController extends Controller
 
     public function edit(Tarefa $tarefa, Request $request)
     {
+        if ($redirect = $this->ensureClientePodeEditarTarefa($request, $tarefa)) {
+            return $redirect;
+        }
+
         $usuario   = $request->user();
         $empresaId = $usuario->empresa_id;
 
@@ -292,6 +299,10 @@ class PcmsoController extends Controller
 
     public function update(Tarefa $tarefa, Request $request)
     {
+        if ($redirect = $this->ensureClientePodeEditarTarefa($request, $tarefa)) {
+            return $redirect;
+        }
+
         $usuario   = $request->user();
         $empresaId = $usuario->empresa_id;
 
@@ -405,7 +416,7 @@ class PcmsoController extends Controller
         $origem = $request->query('origem', $request->input('origem'));
         if ($origem === 'cliente' || $usuario->isCliente()) {
             return redirect()
-                ->route('cliente.dashboard')
+                ->route('cliente.agendamentos')
                 ->with('ok', 'PCMSO atualizado com sucesso!');
         }
 
@@ -452,3 +463,4 @@ class PcmsoController extends Controller
     }
 
 }
+

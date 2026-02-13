@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Operacional;
 
+use App\Http\Controllers\Operacional\Concerns\ValidatesClientePortalTaskEditing;
 use App\Http\Controllers\Controller;
 use App\Models\Cliente;
 use App\Services\AsoGheService;
@@ -23,6 +24,8 @@ use Illuminate\Validation\Rule;
 
 class TreinamentoNrController extends Controller
 {
+    use ValidatesClientePortalTaskEditing;
+
     public function create(Cliente $cliente)
     {
         $user = Auth::user();
@@ -159,7 +162,7 @@ class TreinamentoNrController extends Controller
 
         if (method_exists($usuario, 'isCliente') && $usuario->isCliente()) {
             return redirect()
-                ->route('cliente.dashboard')
+                ->route('cliente.agendamentos')
                 ->with('ok', 'Solicitação de Treinamento de NRs criada com sucesso e enviada para análise.');
         }
 
@@ -203,8 +206,12 @@ class TreinamentoNrController extends Controller
         ], 201);
     }
 
-    public function edit(Tarefa $tarefa)
+    public function edit(Tarefa $tarefa, Request $request)
     {
+        if ($redirect = $this->ensureClientePodeEditarTarefa($request, $tarefa)) {
+            return $redirect;
+        }
+
         $usuario   = Auth::user();
         $empresaId = $usuario->empresa_id;
 
@@ -256,6 +263,10 @@ class TreinamentoNrController extends Controller
      */
     public function update(Tarefa $tarefa, Request $request)
     {
+        if ($redirect = $this->ensureClientePodeEditarTarefa($request, $tarefa)) {
+            return $redirect;
+        }
+
         $usuario   = Auth::user();
         $empresaId = $usuario->empresa_id;
 
@@ -340,7 +351,7 @@ class TreinamentoNrController extends Controller
         $origem = $request->query('origem', $request->input('origem'));
         if ($origem === 'cliente' || (method_exists($usuario, 'isCliente') && $usuario->isCliente())) {
             return redirect()
-                ->route('cliente.dashboard')
+                ->route('cliente.agendamentos')
                 ->with('ok', 'Treinamento de NRs atualizado com sucesso.');
         }
 
@@ -606,3 +617,4 @@ class TreinamentoNrController extends Controller
             ->all();
     }
 }
+

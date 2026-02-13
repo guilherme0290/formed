@@ -49,6 +49,7 @@ class PainelController extends Controller
         $filtroColuna      = $request->input('coluna_id');
         $filtroDe          = $request->input('de');
         $filtroAte         = $request->input('ate');
+        $filtroBusca       = trim((string) $request->input('q', ''));
 
         $filtroCanceladas = ($filtroColuna === 'canceladas');
 
@@ -103,7 +104,10 @@ class PainelController extends Controller
         }
 
         if ($filtroResponsavel) {
-            $tarefasQuery->where('responsavel_id', $filtroResponsavel);
+            $tarefasQuery->whereHas('logs', function ($logQuery) use ($filtroResponsavel) {
+                $logQuery->where('acao', 'criado')
+                    ->where('user_id', $filtroResponsavel);
+            });
         }
 
         if ($filtroColuna && $filtroCanceladas == null) {
@@ -116,6 +120,25 @@ class PainelController extends Controller
 
         if ($filtroAte) {
             $tarefasQuery->whereDate('inicio_previsto', '<=', $filtroAte);
+        }
+
+        if ($filtroBusca !== '') {
+            $tarefasQuery->where(function ($q) use ($filtroBusca) {
+                $q->where('titulo', 'like', '%' . $filtroBusca . '%')
+                    ->orWhere('descricao', 'like', '%' . $filtroBusca . '%')
+                    ->orWhereHas('cliente', function ($clienteQuery) use ($filtroBusca) {
+                        $clienteQuery->where('razao_social', 'like', '%' . $filtroBusca . '%')
+                            ->orWhere('nome_fantasia', 'like', '%' . $filtroBusca . '%')
+                            ->orWhere('cnpj', 'like', '%' . $filtroBusca . '%');
+                    })
+                    ->orWhereHas('servico', function ($servicoQuery) use ($filtroBusca) {
+                        $servicoQuery->where('nome', 'like', '%' . $filtroBusca . '%');
+                    })
+                    ->orWhereHas('funcionario', function ($funcionarioQuery) use ($filtroBusca) {
+                        $funcionarioQuery->where('nome', 'like', '%' . $filtroBusca . '%')
+                            ->orWhere('cpf', 'like', '%' . $filtroBusca . '%');
+                    });
+            });
         }
 
         /**
@@ -164,15 +187,38 @@ class PainelController extends Controller
             ->orderBy('nome')
             ->get();
 
+        $isMaster = $usuario->hasPapel('Master');
+
         $responsaveis = User::where('empresa_id', $empresaId)
             ->whereHas('papel', function ($query) {
                 $query->where('nome', 'Operacional');
             })
-            ->whereHas('tarefas', function ($query) use ($empresaId) {
-                $query->where('empresa_id', $empresaId);
+            ->when(!$isMaster, function ($query) use ($empresaId) {
+                $query->whereExists(function ($subQuery) use ($empresaId) {
+                    $subQuery->select(DB::raw(1))
+                        ->from('tarefa_logs as tl')
+                        ->join('tarefas as t', 't.id', '=', 'tl.tarefa_id')
+                        ->whereColumn('tl.user_id', 'users.id')
+                        ->where('tl.acao', 'criado')
+                        ->where('t.empresa_id', $empresaId);
+                });
             })
             ->orderBy('name')
             ->get();
+
+        $clienteAutocomplete = Cliente::query()
+            ->where('empresa_id', $empresaId)
+            ->orderBy('razao_social')
+            ->get(['razao_social', 'nome_fantasia', 'cnpj'])
+            ->flatMap(function ($cliente) {
+                return array_filter([
+                    $cliente->razao_social,
+                    $cliente->nome_fantasia,
+                    $cliente->cnpj,
+                ]);
+            })
+            ->unique()
+            ->values();
 
         $funcoes = Funcao::where('empresa_id', $empresaId)
             ->orderBy('nome')
@@ -188,11 +234,13 @@ class PainelController extends Controller
             // filtros atuais (pra dar @selected e preencher inputs)
             'servicos'          => $servicos,
             'responsaveis'      => $responsaveis,
+            'clienteAutocomplete' => $clienteAutocomplete,
             'filtroServico'     => $filtroServico,
             'filtroResponsavel' => $filtroResponsavel,
             'filtroColuna'      => $filtroColuna,
             'filtroDe'          => $filtroDe,
             'filtroAte'         => $filtroAte,
+            'filtroBusca'       => $filtroBusca,
             'filtroCanceladas'  => $filtroCanceladas,
         ]);
     }

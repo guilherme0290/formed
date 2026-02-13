@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Operacional;
 
+use App\Http\Controllers\Operacional\Concerns\ValidatesClientePortalTaskEditing;
 use App\Http\Controllers\Controller;
 use App\Models\AprSolicitacoes;
 use App\Models\Cliente;
@@ -15,6 +16,8 @@ use Illuminate\Support\Facades\DB;
 
 class AprController extends Controller
 {
+    use ValidatesClientePortalTaskEditing;
+
     public function create(Cliente $cliente)
     {
         $user = auth()->user();
@@ -100,7 +103,7 @@ class AprController extends Controller
 
         if (request()->query('origem') === 'cliente') {
             return redirect()
-                ->route('cliente.dashboard')
+                ->route('cliente.agendamentos')
                 ->with('ok', 'Tarefa de Treinamento de NRs criada com sucesso.');
         }
 
@@ -114,6 +117,10 @@ class AprController extends Controller
      */
     public function edit(Tarefa $tarefa, Request $request)
     {
+        if ($redirect = $this->ensureClientePodeEditarTarefa($request, $tarefa)) {
+            return $redirect;
+        }
+
         $user      = $request->user();
         $empresaId = $user->empresa_id;
 
@@ -136,6 +143,10 @@ class AprController extends Controller
      */
     public function update(AprSolicitacoes $apr, Request $request)
     {
+        if ($redirect = $this->ensureClientePodeEditarTarefa($request, $apr->tarefa)) {
+            return $redirect;
+        }
+
         $user      = $request->user();
         $empresaId = $user->empresa_id;
 
@@ -168,7 +179,7 @@ class AprController extends Controller
 
         if ($request->query('origem') === 'cliente') {
             return redirect()
-                ->route('cliente.dashboard')
+                ->route('cliente.agendamentos')
                 ->with('ok', 'APR atualizada com sucesso!');
         }
 
@@ -195,3 +206,4 @@ class AprController extends Controller
         ];
     }
 }
+

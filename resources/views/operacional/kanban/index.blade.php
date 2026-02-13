@@ -36,13 +36,40 @@
         {{-- Barra de busca + Nova Tarefa --}}
         <div class="flex flex-col md:flex-row md:items-center gap-3 md:gap-4 mb-6">
             <div class="flex-1">
-                <div class="relative">
+                <form method="GET" class="relative">
+                    @php
+                        $temFiltrosAtivos = !empty($filtroBusca) || !empty($filtroServico) || !empty($filtroResponsavel) || !empty($filtroColuna) || !empty($filtroDe) || !empty($filtroAte);
+                    @endphp
                     <span class="absolute inset-y-0 left-3 flex items-center text-slate-400 text-sm">🔍</span>
-                    <input type="text" placeholder="Buscar..."
-                           class="w-full pl-9 pr-3 py-2.5 rounded-2xl border border-slate-200 bg-white/95
+                    <input type="text"
+                           name="q"
+                           value="{{ $filtroBusca ?? '' }}"
+                           list="kanban-cliente-autocomplete"
+                           placeholder="Buscar..."
+                           class="w-full pl-9 pr-24 py-2.5 rounded-2xl border border-slate-200 bg-white/95
                               text-sm text-slate-700 shadow-sm
                               focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400">
-                </div>
+                    <datalist id="kanban-cliente-autocomplete">
+                        @foreach(($clienteAutocomplete ?? collect()) as $item)
+                            <option value="{{ $item }}"></option>
+                        @endforeach
+                    </datalist>
+                    <input type="hidden" name="servico_id" value="{{ $filtroServico }}">
+                    <input type="hidden" name="responsavel_id" value="{{ $filtroResponsavel }}">
+                    <input type="hidden" name="coluna_id" value="{{ $filtroColuna }}">
+                    <input type="hidden" name="de" value="{{ $filtroDe }}">
+                    <input type="hidden" name="ate" value="{{ $filtroAte }}">
+                    <button type="submit"
+                            class="absolute right-1.5 top-1.5 inline-flex items-center px-3 py-1.5 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800">
+                        Buscar
+                    </button>
+                    @if($temFiltrosAtivos)
+                        <a href="{{ route('operacional.kanban') }}"
+                           class="absolute right-[4.9rem] top-1.5 inline-flex items-center px-3 py-1.5 rounded-xl border border-slate-300 bg-white text-slate-700 text-xs font-semibold hover:bg-slate-50">
+                            Limpar
+                        </a>
+                    @endif
+                </form>
             </div>
 
             <a href="{{ route('operacional.kanban.aso.clientes') }}"
@@ -68,6 +95,7 @@
         {{-- Filtros em card --}}
         <section class="mb-4 rounded-2xl bg-white/95 border border-slate-100 shadow-sm">
             <form method="GET" class="grid md:grid-cols-3 gap-3 md:gap-4 p-3 md:p-4 text-sm">
+                <input type="hidden" name="q" value="{{ $filtroBusca ?? '' }}">
 
                 <div>
                     <label class="block text-[11px] font-semibold text-slate-500 tracking-wide mb-1">
@@ -88,13 +116,13 @@
 
                 <div>
                     <label class="block text-[11px] font-semibold text-slate-500 tracking-wide mb-1">
-                        Responsável
+                        Serviço adicionado por
                     </label>
                     <select name="responsavel_id"
                             class="w-full rounded-xl border border-slate-200 bg-slate-50/60 py-2 px-3 text-sm
                                text-slate-700
                                focus:bg-white focus:ring-2 focus:ring-sky-400 focus:border-sky-400">
-                        <option value="">Todos os responsáveis</option>
+                        <option value="">Todos os usuários</option>
                         @foreach($responsaveis as $resp)
                             <option value="{{ $resp->id }}" @selected($filtroResponsavel == $resp->id)>
                                 {{ $resp->name }}
@@ -2920,4 +2948,5 @@
     </script>
 
 @endpush
+
 

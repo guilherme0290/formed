@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Operacional;
 
+use App\Http\Controllers\Operacional\Concerns\ValidatesClientePortalTaskEditing;
 use App\Http\Controllers\Controller;
 use App\Models\Cliente;
 use App\Services\AsoGheService;
@@ -16,6 +17,8 @@ use Illuminate\Support\Facades\DB;
 
 class LtipController extends Controller
 {
+    use ValidatesClientePortalTaskEditing;
+
     public function create(Cliente $cliente)
     {
         $user      = auth()->user();
@@ -48,6 +51,10 @@ class LtipController extends Controller
      */
     public function edit(Tarefa $tarefa, Request $request)
     {
+        if ($redirect = $this->ensureClientePodeEditarTarefa($request, $tarefa)) {
+            return $redirect;
+        }
+
         $user      = $request->user();
         $empresaId = $user->empresa_id;
 
@@ -166,7 +173,7 @@ class LtipController extends Controller
         $origem = $request->query('origem', $request->input('origem'));
         if ($origem === 'cliente' || $user->isCliente()) {
             return redirect()
-                ->route('cliente.dashboard')
+                ->route('cliente.agendamentos')
                 ->with('ok', 'Solicitação de LTIP criada com sucesso e enviada para análise.');
         }
 
@@ -177,6 +184,10 @@ class LtipController extends Controller
 
     public function update(LtipSolicitacoes $ltip, Request $request)
     {
+        if ($redirect = $this->ensureClientePodeEditarTarefa($request, $ltip->tarefa)) {
+            return $redirect;
+        }
+
         $user      = $request->user();
         $empresaId = $user->empresa_id;
 
@@ -221,7 +232,7 @@ class LtipController extends Controller
         $origem = $request->query('origem', $request->input('origem'));
         if ($origem === 'cliente' || $user->isCliente()) {
             return redirect()
-                ->route('cliente.dashboard')
+                ->route('cliente.agendamentos')
                 ->with('ok', 'LTIP atualizado com sucesso!');
         }
 
@@ -230,3 +241,4 @@ class LtipController extends Controller
             ->with('ok', 'LTIP atualizado com sucesso!');
     }
 }
+

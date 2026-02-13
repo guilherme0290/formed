@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Operacional;
 
+use App\Http\Controllers\Operacional\Concerns\ValidatesClientePortalTaskEditing;
 use App\Http\Controllers\Controller;
 use App\Models\Cliente;
 use App\Models\KanbanColuna;
@@ -15,6 +16,8 @@ use Illuminate\Support\Facades\DB;
 
 class PaeController extends Controller
 {
+    use ValidatesClientePortalTaskEditing;
+
     public function create(Cliente $cliente)
     {
         $user      = auth()->user();
@@ -97,6 +100,13 @@ class PaeController extends Controller
             ]);
         });
 
+        $origem = $request->query('origem', $request->input('origem'));
+        if ($origem === 'cliente' || $user->isCliente()) {
+            return redirect()
+                ->route('cliente.agendamentos')
+                ->with('ok', 'Solicitação de PAE criada com sucesso e enviada para análise.');
+        }
+
         return redirect()
             ->route('operacional.kanban')
             ->with('ok', 'Tarefa PAE criada com sucesso.');
@@ -107,6 +117,10 @@ class PaeController extends Controller
      */
     public function edit(Tarefa $tarefa, Request $request)
     {
+        if ($redirect = $this->ensureClientePodeEditarTarefa($request, $tarefa)) {
+            return $redirect;
+        }
+
         $user      = $request->user();
         $empresaId = $user->empresa_id;
 
@@ -127,6 +141,10 @@ class PaeController extends Controller
      */
     public function update(PaeSolicitacoes $pae, Request $request)
     {
+        if ($redirect = $this->ensureClientePodeEditarTarefa($request, $pae->tarefa)) {
+            return $redirect;
+        }
+
         $user      = $request->user();
         $empresaId = $user->empresa_id;
 
@@ -156,6 +174,13 @@ class PaeController extends Controller
                 ]);
             }
         });
+
+        $origem = $request->query('origem', $request->input('origem'));
+        if ($origem === 'cliente' || $user->isCliente()) {
+            return redirect()
+                ->route('cliente.agendamentos')
+                ->with('ok', 'PAE atualizado com sucesso.');
+        }
 
         return redirect()
             ->route('operacional.kanban')

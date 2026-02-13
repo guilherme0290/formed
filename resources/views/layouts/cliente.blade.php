@@ -104,7 +104,7 @@
                     'rota' => route('cliente.funcionarios.index'),
                     'disabled' => false,
                 ],
-
+                
                 [
                     'titulo' => 'Agendar ASO',
                     'icone' => '📅',
@@ -277,7 +277,8 @@
         {{-- 🔵 FIM FAIXA CLIENTE --}}
 
         {{-- ALERTAS --}}
-        @if (session('ok'))
+        @php($suppressInlineAlerts = trim($__env->yieldContent('suppress-inline-alerts')) === '1')
+        @if (!$suppressInlineAlerts && session('ok'))
             <div class="w-full mt-4 px-4 sm:px-6 lg:px-8">
                 <div class="rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700 shadow">
                     {{ session('ok') }}
@@ -285,7 +286,7 @@
             </div>
         @endif
 
-        @if (session('erro'))
+        @if (!$suppressInlineAlerts && session('erro'))
             <div class="w-full mt-4 px-4 sm:px-6 lg:px-8">
                 <div class="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 shadow">
                     {{ session('erro') }}
@@ -314,3 +315,4 @@
 @stack('scripts')
 </body>
 </html>
+

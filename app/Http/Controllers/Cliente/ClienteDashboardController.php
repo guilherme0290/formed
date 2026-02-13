@@ -8,6 +8,7 @@ use App\Models\Cliente;
 use App\Models\ClienteContrato;
 use App\Models\ClienteTabelaPreco;
 use App\Models\ClienteTabelaPrecoItem;
+use App\Models\ContaReceber;
 use App\Models\ContaReceberBaixa;
 
 use App\Models\ContaReceberItem;
@@ -19,6 +20,7 @@ use App\Models\TreinamentoNrDetalhes;
 use App\Models\Venda;
 use App\Models\VendaItem;
 use App\Services\AsoGheService;
+use App\Services\ContaReceberService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
@@ -241,7 +243,8 @@ class ClienteDashboardController extends Controller
         $itens->setCollection($this->anexarDetalhesServicos($itens->getCollection()));
         $itensEmAberto = $this->anexarDetalhesServicos($itensEmAberto);
 
-        return view('clientes.faturas.index', [
+        return view('clientes.portal.index', [
+            'activeTab' => 'faturas',
             'user'         => $user,
             'cliente'      => $cliente,
             'temTabela'    => $temTabela,
@@ -260,6 +263,98 @@ class ClienteDashboardController extends Controller
             'servicosContrato' => $servicosContrato,
             'servicosIds' => $servicosIds,
         ]);
+    }
+
+    /**
+     * Lista de agendamentos/tarefas do cliente no portal.
+     */
+    public function agendamentos(Request $request)
+    {
+        $contexto = $this->resolverCliente($request);
+        if ($contexto instanceof RedirectResponse) {
+            return $contexto;
+        }
+
+        [$user, $cliente] = $contexto;
+
+        [$contratoAtivo, $servicosContrato, $servicosIds] = $this->servicosLiberadosPorContrato($cliente);
+        $precos = $this->precosPorContrato($contratoAtivo, $servicosIds);
+        $tabela = $this->tabelaAtiva($cliente);
+        if (empty(array_filter($precos))) {
+            $precos = $this->precosPorServico($cliente, $tabela);
+        }
+        $temTabela = (bool) $tabela;
+
+        $agendamentos = Tarefa::query()
+            ->withTrashed()
+            ->where('empresa_id', $cliente->empresa_id)
+            ->where('cliente_id', $cliente->id)
+            ->with([
+                'servico:id,nome',
+                'coluna:id,nome,slug,finaliza',
+                'asoSolicitacao:id,tarefa_id,funcionario_id,unidade_id,tipo_aso,data_aso,email_aso,treinamentos',
+                'asoSolicitacao.funcionario:id,nome',
+                'asoSolicitacao.unidade:id,nome',
+                'pgrSolicitacao:id,tarefa_id,tipo,com_art,com_pcms0,contratante_nome,obra_nome,total_trabalhadores',
+                'pcmsoSolicitacao:id,tarefa_id,tipo,pgr_origem,obra_nome,obra_cnpj_contratante',
+                'aprSolicitacao:id,tarefa_id,endereco_atividade,funcoes_envolvidas,etapas_atividade',
+            ])
+            ->orderByRaw("CASE WHEN EXISTS (SELECT 1 FROM kanban_colunas kc WHERE kc.id = tarefas.coluna_id AND kc.slug = 'pendente') THEN 0 ELSE 1 END")
+            ->orderByDesc('inicio_previsto')
+            ->orderByDesc('id')
+            ->paginate(15)
+            ->withQueryString();
+        $agendamentos->setCollection(
+            $this->anexarDetalhesAgendamentos($agendamentos->getCollection())
+        );
+
+        return view('clientes.portal.index', [
+            'activeTab' => 'agendamentos',
+            'user' => $user,
+            'cliente' => $cliente,
+            'agendamentos' => $agendamentos,
+            'temTabela' => $temTabela,
+            'precos' => $precos,
+            'contratoAtivo' => $contratoAtivo,
+            'servicosContrato' => $servicosContrato,
+            'servicosIds' => $servicosIds,
+        ]);
+    }
+
+    /**
+     * Exclui agendamento do cliente somente se estiver na coluna pendente.
+     */
+    public function destroyAgendamento(Request $request, Tarefa $tarefa, ContaReceberService $contaReceberService)
+    {
+        $contexto = $this->resolverCliente($request);
+        if ($contexto instanceof RedirectResponse) {
+            return $contexto;
+        }
+
+        [$user, $cliente] = $contexto;
+
+        abort_unless((int) $tarefa->empresa_id === (int) $cliente->empresa_id, 403);
+        abort_unless((int) $tarefa->cliente_id === (int) $cliente->id, 403);
+
+        $tarefa->loadMissing('coluna');
+        $slugColuna = mb_strtolower((string) optional($tarefa->coluna)->slug);
+
+        if ($slugColuna !== 'pendente') {
+            return back()->with('erro', 'Somente tarefas na coluna Pendente podem ser excluídas pelo cliente.');
+        }
+
+        $resultado = $this->excluirTarefaComFinanceiro(
+            $tarefa,
+            $contaReceberService,
+            (int) $user->id,
+            'Excluída pelo cliente no portal.'
+        );
+
+        if (!($resultado['ok'] ?? false)) {
+            return back()->with('erro', $resultado['message'] ?? 'Não foi possível excluir o agendamento.');
+        }
+
+        return back()->with('ok', 'Agendamento excluído com sucesso.');
     }
 
     /**
@@ -299,6 +394,76 @@ class ClienteDashboardController extends Controller
         }
 
         return [$user, $cliente];
+    }
+
+    private function excluirTarefaComFinanceiro(
+        Tarefa $tarefa,
+        ContaReceberService $contaReceberService,
+        int $usuarioId,
+        ?string $motivo = null
+    ): array {
+        return DB::transaction(function () use ($tarefa, $contaReceberService, $usuarioId, $motivo) {
+            $vendas = Venda::query()
+                ->where('tarefa_id', $tarefa->id)
+                ->get();
+
+            foreach ($vendas as $venda) {
+                $itensConta = ContaReceberItem::query()
+                    ->where('venda_id', $venda->id);
+
+                $temItensNaoAbertos = (clone $itensConta)
+                    ->where('status', '!=', 'ABERTO')
+                    ->exists();
+
+                if ($temItensNaoAbertos) {
+                    return [
+                        'ok' => false,
+                        'message' => 'Não é possível excluir: existem contas a receber já baixadas ou faturadas.',
+                    ];
+                }
+
+                $itensAbertos = (clone $itensConta)
+                    ->where('status', 'ABERTO')
+                    ->get();
+
+                $contaIds = $itensAbertos->pluck('conta_receber_id')->filter()->unique();
+
+                if ($itensAbertos->isNotEmpty()) {
+                    ContaReceberItem::query()
+                        ->whereIn('id', $itensAbertos->pluck('id'))
+                        ->delete();
+                }
+
+                foreach ($contaIds as $contaId) {
+                    $conta = ContaReceber::find($contaId);
+                    if (!$conta) {
+                        continue;
+                    }
+
+                    $temItensRestantes = $conta->itens()
+                        ->where('status', '!=', 'CANCELADO')
+                        ->exists();
+
+                    if (!$temItensRestantes) {
+                        $conta->delete();
+                        continue;
+                    }
+
+                    $contaReceberService->recalcularConta($conta->fresh());
+                }
+
+                $venda->delete();
+            }
+
+            $tarefa->update([
+                'motivo_exclusao' => $motivo ?: $tarefa->motivo_exclusao,
+                'excluido_por' => $usuarioId,
+            ]);
+
+            $tarefa->delete();
+
+            return ['ok' => true];
+        });
     }
 
     private function tabelaAtiva(Cliente $cliente): ?ClienteTabelaPreco
@@ -654,6 +819,57 @@ class ClienteDashboardController extends Controller
                 'valor_real' => $valor,
             ];
         })->filter()->values();
+    }
+
+    private function anexarDetalhesAgendamentos(\Illuminate\Support\Collection $tarefas): \Illuminate\Support\Collection
+    {
+        if ($tarefas->isEmpty()) {
+            return $tarefas;
+        }
+
+        $itens = $tarefas->map(function ($tarefa) {
+            return (object) [
+                'tarefa_id' => (int) $tarefa->id,
+                'servico' => (string) ($tarefa->servico?->nome ?? 'Serviço'),
+            ];
+        });
+
+        $detalhesPorTarefa = $this->anexarDetalhesServicos($itens)->keyBy('tarefa_id');
+
+        return $tarefas->map(function ($tarefa) use ($detalhesPorTarefa) {
+            $detalhes = $detalhesPorTarefa->get((int) $tarefa->id);
+            if (!$detalhes) {
+                return $tarefa;
+            }
+
+            foreach ([
+                'servico_detalhe',
+                'aso_colaborador',
+                'aso_tipo',
+                'aso_data',
+                'aso_unidade',
+                'aso_email',
+                'pgr_tipo',
+                'pgr_obra',
+                'pgr_com_art',
+                'pgr_com_pcms0',
+                'pgr_total',
+                'pgr_contratante',
+                'treinamento_modo',
+                'treinamento_codigos',
+                'treinamento_pacote',
+                'treinamento_local',
+                'treinamento_unidade',
+                'treinamento_participantes',
+                'treinamento_qtd',
+            ] as $campo) {
+                if (property_exists($detalhes, $campo)) {
+                    $tarefa->setAttribute($campo, $detalhes->{$campo});
+                }
+            }
+
+            return $tarefa;
+        });
     }
 
     private function anexarDetalhesServicos(\Illuminate\Support\Collection $itens): \Illuminate\Support\Collection

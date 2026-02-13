@@ -427,6 +427,12 @@ Route::middleware('auth')->group(function () {
             Route::get('/faturas', [ClienteDashboardController::class, 'faturas'])
                 ->name('faturas');
 
+            Route::get('/agendamentos', [ClienteDashboardController::class, 'agendamentos'])
+                ->name('agendamentos');
+
+            Route::delete('/agendamentos/{tarefa}', [ClienteDashboardController::class, 'destroyAgendamento'])
+                ->name('agendamentos.destroy');
+
             Route::get('/andamento', function () {
                 return redirect()->route('cliente.faturas');
             })->name('andamento');

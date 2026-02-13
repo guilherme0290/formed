@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Operacional;
 
+use App\Http\Controllers\Operacional\Concerns\ValidatesClientePortalTaskEditing;
 use App\Http\Controllers\Controller;
 use App\Models\Anexos;
 use App\Models\Cliente;
@@ -19,6 +20,8 @@ use Illuminate\Support\Facades\DB;
 
 class PgrController extends Controller
 {
+    use ValidatesClientePortalTaskEditing;
+
     public function pgrTipo(Cliente $cliente, Request $request)
     {
         $usuario   = $request->user();
@@ -77,6 +80,10 @@ class PgrController extends Controller
 
     public function pgrEdit(Tarefa $tarefa, Request $request)
     {
+        if ($redirect = $this->ensureClientePodeEditarTarefa($request, $tarefa)) {
+            return $redirect;
+        }
+
         $usuario   = $request->user();
         $empresaId = $usuario->empresa_id;
 
@@ -117,6 +124,10 @@ class PgrController extends Controller
 
     public function pgrUpdate(Tarefa $tarefa, Request $request)
     {
+        if ($redirect = $this->ensureClientePodeEditarTarefa($request, $tarefa)) {
+            return $redirect;
+        }
+
         $usuario   = $request->user();
         $empresaId = $usuario->empresa_id;
 
@@ -266,7 +277,7 @@ class PgrController extends Controller
         $origem = $request->query('origem', $request->input('origem'));
         if ($origem === 'cliente' || $usuario->isCliente()) {
             return redirect()
-                ->route('cliente.dashboard')
+                ->route('cliente.agendamentos')
                 ->with('ok', 'PGR atualizado com sucesso.');
         }
 
@@ -546,7 +557,7 @@ class PgrController extends Controller
         $origem = $request->query('origem', $request->input('origem'));
         if ($origem === 'cliente' || $usuario->isCliente()) {
             return redirect()
-                ->route('cliente.dashboard')
+                ->route('cliente.agendamentos')
                 ->with('ok', 'Solicitação de PGR criada com sucesso e enviada para análise.');
         }
 
@@ -625,3 +636,4 @@ class PgrController extends Controller
             ->values();
     }
 }
+

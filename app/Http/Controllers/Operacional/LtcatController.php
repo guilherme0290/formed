@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Operacional;
 
+use App\Http\Controllers\Operacional\Concerns\ValidatesClientePortalTaskEditing;
 use App\Http\Controllers\Controller;
 use App\Models\Cliente;
 use App\Services\AsoGheService;
@@ -17,6 +18,8 @@ use Illuminate\Support\Facades\DB;
 
 class LtcatController extends Controller
 {
+    use ValidatesClientePortalTaskEditing;
+
     // Tela "LTCAT - Selecione o Tipo"
     public function selecionarTipo(Cliente $cliente, Request $request)
     {
@@ -69,6 +72,10 @@ class LtcatController extends Controller
 
     public function edit(Tarefa $tarefa, Request $request)
     {
+        if ($redirect = $this->ensureClientePodeEditarTarefa($request, $tarefa)) {
+            return $redirect;
+        }
+
         $user      = $request->user();
         $empresaId = $user->empresa_id;
 
@@ -104,6 +111,10 @@ class LtcatController extends Controller
 
     public function update(LtcatSolicitacoes $ltcat, Request $request)
     {
+        if ($redirect = $this->ensureClientePodeEditarTarefa($request, $ltcat->tarefa)) {
+            return $redirect;
+        }
+
         $user      = $request->user();
         $empresaId = $user->empresa_id;
 
@@ -189,11 +200,11 @@ class LtcatController extends Controller
             }
         });
 
-        $origem = $request->input('origem');
+        $origem = $request->query('origem', $request->input('origem'));
 
         if ($origem === 'cliente') {
             return redirect()
-                ->route('cliente.dashboard')
+                ->route('cliente.agendamentos')
                 ->with('ok', 'LTCAT atualizado com sucesso!');
         }
 
@@ -343,7 +354,7 @@ class LtcatController extends Controller
 
         if ($origem === 'cliente') {
             return redirect()
-                ->route('cliente.dashboard')
+                ->route('cliente.agendamentos')
                 ->with('ok', 'Solicitação de LTCAT criada com sucesso e enviada para análise.');
         }
 
@@ -354,3 +365,4 @@ class LtcatController extends Controller
 
 
 }
+

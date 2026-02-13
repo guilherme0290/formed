@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Operacional;
 
+use App\Http\Controllers\Operacional\Concerns\ValidatesClientePortalTaskEditing;
 use App\Http\Controllers\Controller;
 use App\Models\Anexos;
 use App\Models\AsoSolicitacoes;
@@ -29,6 +30,8 @@ use Illuminate\Validation\ValidationException;
 
 class AsoController extends Controller
 {
+    use ValidatesClientePortalTaskEditing;
+
     public function asoStore(Cliente $cliente, Request $request)
     {
         $usuario = $request->user();
@@ -223,7 +226,7 @@ class AsoController extends Controller
 
         if ($origem === 'cliente') {
             return redirect()
-                ->route('cliente.dashboard')
+                ->route('cliente.agendamentos')
                 ->with('ok', "Agendamento ASO criado com sucesso para {$tarefa->titulo}.");
         }
 
@@ -232,8 +235,12 @@ class AsoController extends Controller
             ->with('ok', "Tarefa ASO agendada {$tarefa->titulo}.");
     }
 
-    public function edit(Tarefa $tarefa)
+    public function edit(Tarefa $tarefa, Request $request)
     {
+        if ($redirect = $this->ensureClientePodeEditarTarefa($request, $tarefa)) {
+            return $redirect;
+        }
+
         $empresaId = Auth::user()->empresa_id;
         $cliente = $tarefa->cliente;
 
@@ -356,6 +363,10 @@ class AsoController extends Controller
 
     public function update(Request $request, Tarefa $tarefa)
     {
+        if ($redirect = $this->ensureClientePodeEditarTarefa($request, $tarefa)) {
+            return $redirect;
+        }
+
         $empresaId = auth()->user()->empresa_id;
         $cliente = $tarefa->cliente;
 
@@ -525,7 +536,7 @@ class AsoController extends Controller
 
         if ($origem === 'cliente') {
             return redirect()
-                ->route('cliente.dashboard')
+                ->route('cliente.agendamentos')
                 ->with('ok', 'ASO atualizado com sucesso.');
         }
 
@@ -1081,3 +1092,4 @@ class AsoController extends Controller
 
 
 }
+
