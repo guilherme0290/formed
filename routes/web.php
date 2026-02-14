@@ -880,6 +880,34 @@ Route::middleware('auth')->group(function () {
                 ->name('contas-receber.boleto');
             Route::post('/contas-receber/{contaReceber}/itens', [\App\Http\Controllers\Financeiro\ContasReceberController::class, 'storeItem'])
                 ->name('contas-receber.itens.store');
+
+            Route::get('/fornecedores', [\App\Http\Controllers\Financeiro\FornecedorController::class, 'index'])
+                ->name('fornecedores.index');
+            Route::get('/fornecedores/novo', [\App\Http\Controllers\Financeiro\FornecedorController::class, 'create'])
+                ->name('fornecedores.create');
+            Route::post('/fornecedores', [\App\Http\Controllers\Financeiro\FornecedorController::class, 'store'])
+                ->name('fornecedores.store');
+            Route::get('/fornecedores/{fornecedor}/editar', [\App\Http\Controllers\Financeiro\FornecedorController::class, 'edit'])
+                ->name('fornecedores.edit');
+            Route::put('/fornecedores/{fornecedor}', [\App\Http\Controllers\Financeiro\FornecedorController::class, 'update'])
+                ->name('fornecedores.update');
+            Route::delete('/fornecedores/{fornecedor}', [\App\Http\Controllers\Financeiro\FornecedorController::class, 'destroy'])
+                ->name('fornecedores.destroy');
+
+            Route::get('/contas-pagar', [\App\Http\Controllers\Financeiro\ContasPagarController::class, 'index'])
+                ->name('contas-pagar.index');
+            Route::get('/contas-pagar/nova', [\App\Http\Controllers\Financeiro\ContasPagarController::class, 'create'])
+                ->name('contas-pagar.create');
+            Route::post('/contas-pagar', [\App\Http\Controllers\Financeiro\ContasPagarController::class, 'store'])
+                ->name('contas-pagar.store');
+            Route::get('/contas-pagar/{contaPagar}', [\App\Http\Controllers\Financeiro\ContasPagarController::class, 'show'])
+                ->name('contas-pagar.show');
+            Route::post('/contas-pagar/{contaPagar}/baixar', [\App\Http\Controllers\Financeiro\ContasPagarController::class, 'baixar'])
+                ->name('contas-pagar.baixar');
+            Route::post('/contas-pagar/{contaPagar}/reabrir', [\App\Http\Controllers\Financeiro\ContasPagarController::class, 'reabrir'])
+                ->name('contas-pagar.reabrir');
+            Route::post('/contas-pagar/{contaPagar}/itens', [\App\Http\Controllers\Financeiro\ContasPagarController::class, 'storeItem'])
+                ->name('contas-pagar.itens.store');
         });
 
 
