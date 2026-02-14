@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use App\Models\Cidade;
 
 class Cliente extends Model
@@ -45,5 +46,15 @@ class Cliente extends Model
     public function vendedor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'vendedor_id');
+    }
+
+    public function unidadesPermitidas(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            UnidadeClinica::class,
+            'cliente_unidade_permitidas',
+            'cliente_id',
+            'unidade_id'
+        )->withTimestamps();
     }
 }

@@ -15,6 +15,23 @@
             'responsavel' => $agendamentos['responsavel_selecionado'] ?? 'todos',
             'filtro_prestados' => $agendamentos['filtro_prestados'] ?? 'finalizadas',
         ];
+        $mesSelecionado = (int) $dataRelatorio->month;
+        $anoSelecionado = (int) $dataRelatorio->year;
+        $anosDisponiveis = range(max(((int) now()->year - 5), 2020), 2050);
+        $mesesDisponiveis = [
+            1 => 'Janeiro',
+            2 => 'Fevereiro',
+            3 => 'Marco',
+            4 => 'Abril',
+            5 => 'Maio',
+            6 => 'Junho',
+            7 => 'Julho',
+            8 => 'Agosto',
+            9 => 'Setembro',
+            10 => 'Outubro',
+            11 => 'Novembro',
+            12 => 'Dezembro',
+        ];
         $janelaDias = [];
         for ($diaRef = $janelaInicio->copy(); $diaRef->lte($janelaFim); $diaRef->addDay()) {
             $janelaDias[] = $diaRef->copy();
@@ -34,19 +51,46 @@
         </div>
 
         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-            <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between gap-3 flex-wrap">
-                <a href="{{ route('master.agendamentos', $filtrosBase + ['data_relatorio' => $dataRelatorio->copy()->subMonthNoOverflow()->startOfMonth()->toDateString()]) }}"
-                   class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">
-                    Mês anterior
-                </a>
-                <div class="text-center">
-                    <div class="text-[11px] uppercase tracking-[0.16em] text-slate-500">Mês selecionado</div>
-                    <div class="text-xl font-semibold text-slate-900">{{ \Illuminate\Support\Str::ucfirst($dataRelatorio->locale('pt_BR')->translatedFormat('F \\d\\e Y')) }}</div>
+            <div class="px-4 py-3 border-b border-indigo-500 bg-indigo-600 text-white grid grid-cols-1 lg:grid-cols-3 items-center gap-3">
+                <div class="flex items-center gap-2 justify-start flex-wrap">
+                    <a href="{{ route('master.agendamentos', $filtrosBase + ['data_relatorio' => $dataRelatorio->copy()->subMonthNoOverflow()->startOfMonth()->toDateString()]) }}"
+                       class="inline-flex w-32 justify-center items-center gap-2 rounded-lg border border-white/40 bg-white/15 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/25">
+                        Mes anterior
+                    </a>
+                    <form method="GET" action="{{ route('master.agendamentos') }}" class="flex items-center gap-2">
+                        <input type="hidden" name="data_inicio" value="{{ $agendamentos['data_inicio'] ?? '' }}">
+                        <input type="hidden" name="data_fim" value="{{ $agendamentos['data_fim'] ?? '' }}">
+                        <input type="hidden" name="servico" value="{{ $agendamentos['servico_selecionado'] ?? 'todos' }}">
+                        <input type="hidden" name="responsavel" value="{{ $agendamentos['responsavel_selecionado'] ?? 'todos' }}">
+                        <input type="hidden" name="filtro_prestados" value="{{ $agendamentos['filtro_prestados'] ?? 'finalizadas' }}">
+                        <select name="mes_relatorio" onchange="this.form.submit()"
+                                class="rounded-lg border border-white/40 bg-white/15 px-2 py-1.5 text-xs text-white">
+                            @foreach($mesesDisponiveis as $mesNumero => $mesNome)
+                                <option value="{{ $mesNumero }}" class="text-slate-900 bg-white" @selected($mesSelecionado === $mesNumero)>
+                                    {{ $mesNome }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <select name="ano_relatorio" onchange="this.form.submit()"
+                                class="rounded-lg border border-white/40 bg-white/15 px-2 py-1.5 text-xs text-white">
+                            @foreach($anosDisponiveis as $anoItem)
+                                <option value="{{ $anoItem }}" class="text-slate-900 bg-white" @selected($anoSelecionado === (int) $anoItem)>
+                                    {{ $anoItem }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </form>
                 </div>
-                <a href="{{ route('master.agendamentos', $filtrosBase + ['data_relatorio' => $dataRelatorio->copy()->addMonthNoOverflow()->startOfMonth()->toDateString()]) }}"
-                   class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">
-                    Próximo mês
-                </a>
+                <div class="text-center justify-self-center">
+                    <div class="text-[11px] uppercase tracking-[0.16em] text-indigo-100">Mes selecionado</div>
+                    <div class="text-xl font-semibold text-white">{{ \Illuminate\Support\Str::ucfirst($dataRelatorio->locale('pt_BR')->translatedFormat('F \\d\\e Y')) }}</div>
+                </div>
+                <div class="flex justify-start lg:justify-end">
+                    <a href="{{ route('master.agendamentos', $filtrosBase + ['data_relatorio' => $dataRelatorio->copy()->addMonthNoOverflow()->startOfMonth()->toDateString()]) }}"
+                       class="inline-flex w-32 justify-center items-center gap-2 rounded-lg border border-white/40 bg-white/15 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/25">
+                        Proximo mes
+                    </a>
+                </div>
             </div>
 
             <div class="p-4 border-b border-slate-100">

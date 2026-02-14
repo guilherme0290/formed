@@ -63,6 +63,11 @@
                     </button>
                     <button type="button"
                             class="px-4 py-2 rounded-full text-sm font-semibold text-slate-600 hover:bg-slate-100"
+                            data-tab="unidades-permitidas">
+                        Unidades Permitidas
+                    </button>
+                    <button type="button"
+                            class="px-4 py-2 rounded-full text-sm font-semibold text-slate-600 hover:bg-slate-100"
                             data-tab="esocial">
                         eSocial
                     </button>
@@ -711,3 +716,4 @@
     </script>
 
 @endsection
+
