@@ -60,6 +60,23 @@
                 ->values()
                 ->toArray();
         }
+
+        $unidadesDisponiveis = collect($unidadesDisponiveis ?? []);
+        $unidadesPermitidasSalvas = collect($unidadesPermitidasIds ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->values();
+        $unidadesPermitidasOld = old('unidades_permitidas');
+        if (is_array($unidadesPermitidasOld)) {
+            $unidadesSelecionadas = collect($unidadesPermitidasOld)
+                ->map(fn ($id) => (int) $id)
+                ->values();
+        } elseif ($unidadesPermitidasSalvas->isNotEmpty()) {
+            $unidadesSelecionadas = $unidadesPermitidasSalvas;
+        } else {
+            $unidadesSelecionadas = $unidadesDisponiveis->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->values();
+        }
     @endphp
 <div class="w-full mx-auto px-4 sm:px-6 lg:px-8 py-6" data-tabs-scope="parametro">
         <form id="parametroForm" method="POST" novalidate
@@ -303,9 +320,6 @@
                                 </div>
                             </div>
                         </div>
-
-
-
                         {{-- Lista itens (compacto) --}}
                         <div class="mt-5">
                             <h3 class="text-sm font-semibold text-black mb-2">Serviços Adicionados</h3>
@@ -334,6 +348,56 @@
                     </div>
                 </div>
             </div>
+
+            <div data-tab-panel="unidades-permitidas" data-tab-panel-root="cliente" class="hidden">
+                    <div class="bg-white rounded-2xl shadow border border-slate-200 overflow-hidden">
+                        <div class="px-6 py-4 border-b bg-emerald-600 text-white">
+                            <h1 class="text-lg font-semibold">Unidades Permitidas</h1>
+                        </div>
+                        <div class="p-6 space-y-6">
+                            <div class="rounded-xl border border-slate-200 p-3 space-y-3">
+                                <p class="text-xs text-slate-500">
+                                    Defina as unidades que este cliente pode usar em ASO e Treinamentos. Se nenhuma estiver marcada, o sistema libera todas por padrão.
+                                </p>
+                                @if($unidadesDisponiveis->isEmpty())
+                                    <div class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                                        Nenhuma unidade cadastrada para esta empresa.
+                                    </div>
+                                @else
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                                        @foreach($unidadesDisponiveis as $unidade)
+                                            @php
+                                                $unidadeId = (int) ($unidade->id ?? 0);
+                                                $checked = $unidadesSelecionadas->contains($unidadeId);
+                                            @endphp
+                                            <label class="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 bg-white hover:bg-slate-50 text-sm text-slate-700">
+                                                <input type="checkbox"
+                                                       name="unidades_permitidas[]"
+                                                       value="{{ $unidadeId }}"
+                                                       class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                                                    @checked($checked)>
+                                                <span class="truncate">{{ $unidade->nome }}</span>
+                                            </label>
+                                        @endforeach
+                                    </div>
+                                @endif
+                                @error('unidades_permitidas')
+                                    <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                                @enderror
+                                @error('unidades_permitidas.*')
+                                    <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <section class="pt-4 border-t">
+                                <button type="submit"
+                                        class="w-full rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-base font-semibold py-3 shadow-md shadow-emerald-200">
+                                    Salvar Unidades Permitidas
+                                </button>
+                            </section>
+                        </div>
+                    </div>
+                </div>
 
             <div data-tab-panel="esocial" data-tab-panel-root="cliente" class="hidden">
                 <div class="bg-white rounded-2xl shadow border border-slate-200 overflow-hidden">
@@ -1466,35 +1530,10 @@
                         return;
                     }
 
-                    const asoOrder = new Map(ASO_TYPES.map((t, i) => [t.key, i]));
-                    let insertedAsoHeader = false;
-                    const sortedItems = state.itens
-                        .map((it, idx) => ({ it, idx }))
-                        .sort((a, b) => {
-                            const aTipo = a.it?.meta?.aso_tipo;
-                            const bTipo = b.it?.meta?.aso_tipo;
-                            const aIsAso = !!aTipo;
-                            const bIsAso = !!bTipo;
-                            if (aIsAso && !bIsAso) return -1;
-                            if (!aIsAso && bIsAso) return 1;
-                            if (aIsAso && bIsAso) {
-                                return (asoOrder.get(aTipo) ?? 999) - (asoOrder.get(bTipo) ?? 999);
-                            }
-                            return a.idx - b.idx;
-                        })
-                        .map((row) => row.it);
-
                     let rowIndex = 0;
-                    sortedItems.forEach(item => {
+                    state.itens.forEach(item => {
                         const hasZeroPrice = Number(item.valor_unitario || 0) <= 0;
                         const isAsoTipo = !!item?.meta?.aso_tipo;
-                        if (isAsoTipo && !insertedAsoHeader) {
-                            const header = document.createElement('div');
-                            header.className = 'px-3 py-2 bg-slate-50 text-xs font-semibold text-slate-600 uppercase tracking-wide';
-                            header.textContent = 'ASO';
-                            el.lista.appendChild(header);
-                            insertedAsoHeader = true;
-                        }
                         const stripeClass = rowIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50/60';
                         const row = document.createElement('div');
                         row.setAttribute('data-item-id', String(item.id));

@@ -8,6 +8,7 @@ use App\Models\Anexos;
 use App\Models\AsoSolicitacoes;
 use App\Models\Cliente;
 use App\Models\ClienteGhe;
+use App\Models\ClienteUnidadePermitida;
 use App\Models\ClienteTabelaPreco;
 use App\Models\ClienteTabelaPrecoItem;
 use App\Models\Funcao;
@@ -18,6 +19,7 @@ use App\Models\Tarefa;
 use App\Models\TarefaLog;
 use App\Models\TabelaPrecoItem;
 use App\Models\TabelaPrecoPadrao;
+use App\Models\UnidadeClinica;
 use App\Services\AsoGheService;
 use App\Services\ContratoClienteService;
 use App\Services\TempoTarefaService;
@@ -48,6 +50,7 @@ class AsoController extends Controller
         $treinamentosCodigos = array_values(array_unique(array_merge($treinamentosPermitidos, $codigosPacotes)));
         $temTreinamentosPermitidos = !empty($treinamentosPermitidos) || !empty($pacotesTreinamentos);
         $pacotesIds = collect($pacotesTreinamentos)->pluck('contrato_item_id')->filter()->values()->all();
+        $unidadesPermitidasIds = $this->unidadesPermitidasIds($empresaId, $cliente->id);
 
         $data = $request->validate([
             'funcionario_id' => ['nullable', 'exists:funcionarios,id'],
@@ -59,7 +62,7 @@ class AsoController extends Controller
             'funcao_id' => ['nullable', 'integer', 'exists:funcoes,id'],
             'tipo_aso' => ['required', 'in:admissional,periodico,demissional,mudanca_funcao,retorno_trabalho'],
             'data_aso' => ['required', 'date_format:Y-m-d'],
-            'unidade_id' => ['required', 'exists:unidades_clinicas,id'],
+            'unidade_id' => ['required', 'integer', Rule::in($unidadesPermitidasIds)],
             'vai_fazer_treinamento' => ['nullable', 'boolean'],
             'treinamento_modo' => ['nullable', Rule::in(['avulsos', 'pacotes'])],
             'pacote_id' => ['nullable', 'integer', Rule::in($pacotesIds)],
@@ -260,10 +263,6 @@ class AsoController extends Controller
             ->orderBy('nome')
             ->get();
 
-        $unidades = \App\Models\UnidadeClinica::where('empresa_id', $empresaId)
-            ->orderBy('nome')
-            ->get();
-
         $contratoAtivo = app(ContratoClienteService::class)
             ->getContratoAtivo($cliente->id, $empresaId, null);
         if ($contratoAtivo && !$contratoAtivo->relationLoaded('itens')) {
@@ -317,12 +316,19 @@ class AsoController extends Controller
 
         $treinamentosSelecionados = $this->normalizeTreinamentosValues($treinamentosSelecionados);
         $treinamentosPermitidos = $this->getTreinamentosPermitidosAvulsos($empresaId, $cliente->id, $treinamentosDisponiveis);
+        $pacotesTreinamentos = $this->getPacotesTreinamentos($empresaId, $cliente->id);
         if (!$aso || empty($aso->treinamento_pacote)) {
             $treinamentosPermitidos = array_values(array_unique(array_merge(
                 $treinamentosPermitidos,
                 $treinamentosSelecionados
             )));
         }
+
+        $unidades = $this->unidadesParaAgendamento(
+            $empresaId,
+            $cliente->id,
+            $unidadeSelecionada ? (int) $unidadeSelecionada : null
+        );
 
         // VAI FAZER TREINAMENTO
         $vaiFazerTreinamento = (int)old(
@@ -379,6 +385,7 @@ class AsoController extends Controller
         $treinamentosCodigos = array_values(array_unique(array_merge($treinamentosPermitidos, $codigosPacotes)));
         $temTreinamentosPermitidos = !empty($treinamentosPermitidos) || !empty($pacotesTreinamentos);
         $pacotesIds = collect($pacotesTreinamentos)->pluck('contrato_item_id')->filter()->values()->all();
+        $unidadesPermitidasIds = $this->unidadesPermitidasIds($empresaId, $cliente->id);
 
         $data = $request->validate([
             'funcionario_id' => ['nullable', 'exists:funcionarios,id'],
@@ -390,7 +397,7 @@ class AsoController extends Controller
             'funcao_id' => ['nullable', 'integer', 'exists:funcoes,id'],
             'tipo_aso' => ['required', 'in:admissional,periodico,demissional,mudanca_funcao,retorno_trabalho'],
             'data_aso' => ['required', 'date_format:Y-m-d'],
-            'unidade_id' => ['required', 'exists:unidades_clinicas,id'],
+            'unidade_id' => ['required', 'integer', Rule::in($unidadesPermitidasIds)],
             'vai_fazer_treinamento' => ['nullable', 'boolean'],
             'treinamento_modo' => ['nullable', Rule::in(['avulsos', 'pacotes'])],
             'pacote_id' => ['nullable', 'integer', Rule::in($pacotesIds)],
@@ -562,9 +569,7 @@ class AsoController extends Controller
             ->get();
 
         // Unidades da clínica
-        $unidades = \App\Models\UnidadeClinica::where('empresa_id', $empresaId)
-            ->orderBy('nome')
-            ->get();
+        $unidades = $this->unidadesParaAgendamento($empresaId, $cliente->id);
 
         // Funções
         $contratoAtivo = app(ContratoClienteService::class)
@@ -1042,6 +1047,64 @@ class AsoController extends Controller
         }
 
         return array_values($pacotes);
+    }
+
+    private function unidadesParaAgendamento(int $empresaId, int $clienteId, ?int $incluirUnidadeId = null)
+    {
+        $permitidasIds = ClienteUnidadePermitida::query()
+            ->where('empresa_id', $empresaId)
+            ->where('cliente_id', $clienteId)
+            ->pluck('unidade_id')
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        $query = UnidadeClinica::query()->where('empresa_id', $empresaId);
+        if (!empty($permitidasIds)) {
+            $query->whereIn('id', $permitidasIds);
+        }
+
+        $unidades = $query->orderBy('nome')->get();
+
+        if ($incluirUnidadeId && !$unidades->contains(fn ($u) => (int) $u->id === (int) $incluirUnidadeId)) {
+            $extra = UnidadeClinica::query()
+                ->where('empresa_id', $empresaId)
+                ->where('id', $incluirUnidadeId)
+                ->first();
+            if ($extra) {
+                $unidades->push($extra);
+                $unidades = $unidades->sortBy('nome')->values();
+            }
+        }
+
+        return $unidades;
+    }
+
+    private function unidadesPermitidasIds(int $empresaId, int $clienteId): array
+    {
+        $permitidasIds = ClienteUnidadePermitida::query()
+            ->where('empresa_id', $empresaId)
+            ->where('cliente_id', $clienteId)
+            ->pluck('unidade_id')
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        if (!empty($permitidasIds)) {
+            return $permitidasIds;
+        }
+
+        return UnidadeClinica::query()
+            ->where('empresa_id', $empresaId)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->values()
+            ->all();
     }
 
     private function tiposAsoPermitidos(int $clienteId, int $empresaId): array

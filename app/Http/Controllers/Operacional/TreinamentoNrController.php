@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Operacional;
 use App\Http\Controllers\Operacional\Concerns\ValidatesClientePortalTaskEditing;
 use App\Http\Controllers\Controller;
 use App\Models\Cliente;
+use App\Models\ClienteUnidadePermitida;
 use App\Services\AsoGheService;
 use App\Models\Funcionario;
 use App\Models\KanbanColuna;
@@ -40,7 +41,7 @@ class TreinamentoNrController extends Controller
             ->funcoesDisponiveisParaCliente($empresaId, $cliente->id);
 
         // Unidades da FORMED (ou o que fizer sentido aí)
-        $unidades = UnidadeClinica::where('empresa_id', $empresaId)->orderBy('nome')->get();
+        $unidades = $this->unidadesParaAgendamento($empresaId, $cliente->id);
 
         $treinamentosDisponiveis = $this->getTreinamentosDisponiveis($empresaId, $cliente);
         $contratoAtivo = $this->contratoAtivo($cliente);
@@ -73,6 +74,7 @@ class TreinamentoNrController extends Controller
         $pacotesTreinamentos = $this->getPacotesTreinamentos($empresaId, $cliente, $this->contratoAtivo($cliente));
         $pacotesIds = collect($pacotesTreinamentos)->pluck('contrato_item_id')->filter()->values()->all();
         $treinamentosCodigos = $treinamentosDisponiveis->pluck('codigo')->filter()->values()->all();
+        $unidadesPermitidasIds = $this->unidadesPermitidasIds($empresaId, $cliente->id);
         if (empty($treinamentosCodigos) && empty($pacotesIds)) {
             return back()
                 ->withErrors(['treinamentos' => 'Nenhum treinamento contratado para este cliente.'])
@@ -88,7 +90,7 @@ class TreinamentoNrController extends Controller
             'pacote_id' => ['required_if:treinamento_modo,pacote', 'nullable', 'integer', Rule::in($pacotesIds)],
 
             'local_tipo' => ['required', 'in:clinica,empresa'],
-            'unidade_id' => ['required_if:local_tipo,clinica', 'nullable', 'integer', 'exists:unidades_clinicas,id'],
+            'unidade_id' => ['required_if:local_tipo,clinica', 'nullable', 'integer', Rule::in($unidadesPermitidasIds)],
         ], [
             'funcionarios.required' => 'Selecione pelo menos um participante.',
             'treinamentos.required' => 'Selecione pelo menos um treinamento.',
@@ -235,7 +237,8 @@ class TreinamentoNrController extends Controller
         $funcoes = app(AsoGheService::class)
             ->funcoesDisponiveisParaCliente($empresaId, $cliente->id);
 
-        $unidades = UnidadeClinica::where('empresa_id', $empresaId)->orderBy('nome')->get();
+        $unidadeSelecionada = $detalhes?->unidade_id ? (int) $detalhes->unidade_id : null;
+        $unidades = $this->unidadesParaAgendamento($empresaId, $cliente->id, $unidadeSelecionada);
 
         $treinamentosDisponiveis = $this->getTreinamentosDisponiveis($empresaId, $cliente);
         $contratoAtivo = $this->contratoAtivo($cliente);
@@ -278,6 +281,7 @@ class TreinamentoNrController extends Controller
         $pacotesTreinamentos = $this->getPacotesTreinamentos($empresaId, $cliente, $this->contratoAtivo($cliente));
         $pacotesIds = collect($pacotesTreinamentos)->pluck('contrato_item_id')->filter()->values()->all();
         $treinamentosCodigos = $treinamentosDisponiveis->pluck('codigo')->filter()->values()->all();
+        $unidadesPermitidasIds = $this->unidadesPermitidasIds($empresaId, $cliente->id);
         if (empty($treinamentosCodigos) && empty($pacotesIds)) {
             return back()
                 ->withErrors(['treinamentos' => 'Nenhum treinamento contratado para este cliente.'])
@@ -293,7 +297,7 @@ class TreinamentoNrController extends Controller
             'pacote_id' => ['required_if:treinamento_modo,pacote', 'nullable', 'integer', Rule::in($pacotesIds)],
 
             'local_tipo' => ['required', 'in:clinica,empresa'],
-            'unidade_id' => ['required_if:local_tipo,clinica', 'nullable', 'integer', 'exists:unidades_clinicas,id'],
+            'unidade_id' => ['required_if:local_tipo,clinica', 'nullable', 'integer', Rule::in($unidadesPermitidasIds)],
         ], [
             'funcionarios.required' => 'Selecione pelo menos um participante.',
             'treinamentos.required' => 'Selecione pelo menos um treinamento.',
@@ -499,6 +503,64 @@ class TreinamentoNrController extends Controller
         }
 
         return array_values($pacotes);
+    }
+
+    private function unidadesParaAgendamento(int $empresaId, int $clienteId, ?int $incluirUnidadeId = null)
+    {
+        $permitidasIds = ClienteUnidadePermitida::query()
+            ->where('empresa_id', $empresaId)
+            ->where('cliente_id', $clienteId)
+            ->pluck('unidade_id')
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        $query = UnidadeClinica::query()->where('empresa_id', $empresaId);
+        if (!empty($permitidasIds)) {
+            $query->whereIn('id', $permitidasIds);
+        }
+
+        $unidades = $query->orderBy('nome')->get();
+
+        if ($incluirUnidadeId && !$unidades->contains(fn ($u) => (int) $u->id === (int) $incluirUnidadeId)) {
+            $extra = UnidadeClinica::query()
+                ->where('empresa_id', $empresaId)
+                ->where('id', $incluirUnidadeId)
+                ->first();
+            if ($extra) {
+                $unidades->push($extra);
+                $unidades = $unidades->sortBy('nome')->values();
+            }
+        }
+
+        return $unidades;
+    }
+
+    private function unidadesPermitidasIds(int $empresaId, int $clienteId): array
+    {
+        $permitidasIds = ClienteUnidadePermitida::query()
+            ->where('empresa_id', $empresaId)
+            ->where('cliente_id', $clienteId)
+            ->pluck('unidade_id')
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        if (!empty($permitidasIds)) {
+            return $permitidasIds;
+        }
+
+        return UnidadeClinica::query()
+            ->where('empresa_id', $empresaId)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->values()
+            ->all();
     }
 
     private function buildTreinamentosPayload(array $data, array $pacotesTreinamentos): array

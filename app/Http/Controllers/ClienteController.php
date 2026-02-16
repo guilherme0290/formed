@@ -12,6 +12,7 @@ use App\Models\Servico;
 use App\Models\TabelaPrecoItem;
 use App\Models\TabelaPrecoPadrao;
 use App\Models\Tarefa;
+use App\Models\UnidadeClinica;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -388,6 +389,16 @@ class ClienteController extends Controller
                 ->with(['grupo', 'clienteGhe'])
                 ->get()
             : collect();
+        $unidadesDisponiveis = UnidadeClinica::query()
+            ->where('empresa_id', $empresaId)
+            ->orderBy('nome')
+            ->get(['id', 'nome', 'ativo']);
+        $unidadesPermitidasIds = $cliente->unidadesPermitidas()
+            ->where('unidades_clinicas.empresa_id', $empresaId)
+            ->pluck('unidades_clinicas.id')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
 
         $vendedores = User::query()
             ->where('empresa_id', $empresaId)
@@ -452,6 +463,8 @@ class ClienteController extends Controller
             'formasPagamento' => $formasPagamento,
             'parametro'       => $parametro,
             'parametroAsoGrupos' => $parametroAsoGrupos,
+            'unidadesDisponiveis' => $unidadesDisponiveis,
+            'unidadesPermitidasIds' => $unidadesPermitidasIds,
             'vendedores'      => $vendedores,
             'arquivos'        => $arquivos,
             'servicosArquivos' => $servicosArquivos,
@@ -678,5 +691,4 @@ class ClienteController extends Controller
 
 
 }
-
 

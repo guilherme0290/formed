@@ -345,7 +345,13 @@ class DashboardController extends Controller
             ->orderBy('servico_nome')
             ->get();
 
-        $dataRelatorio = $this->parseDate($request->query('data_relatorio'), $hoje);
+        $mesRelatorio = (int) $request->query('mes_relatorio', 0);
+        $anoRelatorio = (int) $request->query('ano_relatorio', 0);
+        if ($mesRelatorio >= 1 && $mesRelatorio <= 12 && $anoRelatorio >= 2000 && $anoRelatorio <= 2100) {
+            $dataRelatorio = Carbon::createFromDate($anoRelatorio, $mesRelatorio, 1)->startOfMonth();
+        } else {
+            $dataRelatorio = $this->parseDate($request->query('data_relatorio'), $hoje);
+        }
         $janelaInicio = $dataRelatorio->copy()->startOfMonth();
         $janelaFim = $dataRelatorio->copy()->endOfMonth();
         $datasJanela = [];
@@ -442,13 +448,13 @@ class DashboardController extends Controller
         $servicosPrestadosQuery = Tarefa::query();
         $aplicarFiltrosTarefas($servicosPrestadosQuery);
         $servicosPrestadosQuery->join('kanban_colunas', 'kanban_colunas.id', '=', 'tarefas.coluna_id');
-        if ($filtroPrestados === 'finalizadas') {
-            $servicosPrestadosQuery->where('kanban_colunas.finaliza', true);
-        } else {
-            $servicosPrestadosQuery
-                ->where('kanban_colunas.finaliza', false)
-                ->whereRaw("COALESCE(LOWER(kanban_colunas.slug), '') NOT LIKE 'cancel%'");
-        }
+        $servicosPrestadosQuery->where(function ($query) {
+            $query->where('kanban_colunas.finaliza', true)
+                ->orWhere(function ($subQuery) {
+                    $subQuery->where('kanban_colunas.finaliza', false)
+                        ->whereRaw("COALESCE(LOWER(kanban_colunas.slug), '') NOT LIKE 'cancel%'");
+                });
+        });
         $aplicarJanelaTarefas($servicosPrestadosQuery);
         $servicosPrestadosBrutoPorDia = $servicosPrestadosQuery
             ->leftJoin('servicos', 'servicos.id', '=', 'tarefas.servico_id')
@@ -1768,4 +1774,3 @@ class DashboardController extends Controller
         return 'data:' . $mime . ';base64,' . base64_encode($data);
     }
 }
-

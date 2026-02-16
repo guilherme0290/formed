@@ -8,6 +8,7 @@ use App\Models\ClienteContrato;
 use App\Models\ClienteContratoItem;
 use App\Models\ClienteContratoLog;
 use App\Models\ClienteGhe;
+use App\Models\ClienteUnidadePermitida;
 use App\Models\Ghe;
 use App\Models\ParametroCliente;
 use App\Models\ParametroClienteAsoGrupo;
@@ -93,6 +94,13 @@ class ClienteParametroController extends Controller
             'cliente_aso_grupos.*.tipos' => ['nullable', 'array'],
             'cliente_aso_grupos.*.tipos.*.grupo_id' => ['nullable', 'integer', 'exists:protocolos_exames,id'],
             'cliente_aso_grupos.*.tipos.*.total_exames' => ['nullable', 'numeric', 'min:0'],
+            'unidades_permitidas' => ['nullable', 'array'],
+            'unidades_permitidas.*' => [
+                'integer',
+                Rule::exists('unidades_clinicas', 'id')->where(function ($q) use ($empresaId) {
+                    $q->where('empresa_id', $empresaId);
+                }),
+            ],
 
             'itens' => ['required', 'array', 'min:1'],
             'itens.*.servico_id' => ['nullable', 'integer'],
@@ -261,6 +269,12 @@ class ClienteParametroController extends Controller
         }
 
         $incluirEsocial = !empty($data['incluir_esocial']);
+        $unidadesPermitidasIds = collect($data['unidades_permitidas'] ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
 
         $isAsoItem = function (array $it): bool {
             if (strtoupper((string) ($it['tipo'] ?? '')) === 'ASO_TIPO') {
@@ -353,7 +367,7 @@ class ClienteParametroController extends Controller
         $valorTotal = $valorItens + $valorEsocial;
         $vencimentoServicos = $data['vencimento_servicos'];
 
-        return DB::transaction(function () use ($empresaId, $data, $valorTotal, $incluirEsocial, $valorEsocialCampo, $vencimentoServicos, $asoGrupos, $clienteAsoGrupos, $cliente) {
+        return DB::transaction(function () use ($empresaId, $data, $valorTotal, $incluirEsocial, $valorEsocialCampo, $vencimentoServicos, $asoGrupos, $clienteAsoGrupos, $cliente, $unidadesPermitidasIds) {
             $parametro = ParametroCliente::query()
                 ->where('empresa_id', $empresaId)
                 ->where('cliente_id', $cliente->id)
@@ -426,6 +440,25 @@ class ClienteParametroController extends Controller
                     'valor_total' => $it['valor_total'],
                     'meta' => $it['meta'] ?? null,
                 ]);
+            }
+
+            ClienteUnidadePermitida::query()
+                ->where('empresa_id', $empresaId)
+                ->where('cliente_id', $cliente->id)
+                ->delete();
+
+            if (!empty($unidadesPermitidasIds)) {
+                $rows = array_map(function (int $unidadeId) use ($empresaId, $cliente) {
+                    return [
+                        'empresa_id' => $empresaId,
+                        'cliente_id' => $cliente->id,
+                        'unidade_id' => $unidadeId,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                }, $unidadesPermitidasIds);
+
+                ClienteUnidadePermitida::insert($rows);
             }
 
             $contrato = ClienteContrato::query()
