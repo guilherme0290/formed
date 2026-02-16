@@ -508,6 +508,11 @@
 
                                     {{-- APR --}}
                                     @if($tarefa->aprSolicitacao)
+                                        data-apr-status="{{ $tarefa->aprSolicitacao->status }}"
+                                        data-apr-obra-nome="{{ $tarefa->aprSolicitacao->obra_nome }}"
+                                        data-apr-obra-endereco="{{ $tarefa->aprSolicitacao->obra_endereco }}"
+                                        data-apr-data-inicio="{{ optional($tarefa->aprSolicitacao->atividade_data_inicio)->format('d/m/Y') }}"
+                                        data-apr-data-fim="{{ optional($tarefa->aprSolicitacao->atividade_data_termino_prevista)->format('d/m/Y') }}"
                                         data-apr-endereco="{{ $tarefa->aprSolicitacao->endereco_atividade }}"
                                         data-apr-funcoes="{{ e($tarefa->aprSolicitacao->funcoes_envolvidas) }}"
                                         data-apr-etapas="{{ e($tarefa->aprSolicitacao->etapas_atividade) }}"
@@ -1029,6 +1034,11 @@
                              class="bg-purple-50 border border-purple-100 rounded-xl p-4 hidden">
                         <h3 class="text-xs font-semibold text-purple-700 mb-2">DETALHES DO APR</h3>
 
+                        <p><b>Status:</b> <span id="modal-apr-status"></span></p>
+                        <p><b>Obra:</b> <span id="modal-apr-obra-nome"></span></p>
+                        <p class="mt-1"><b>Endereço da obra:</b> <span id="modal-apr-obra-endereco"></span></p>
+                        <p class="mt-1"><b>Período:</b> <span id="modal-apr-periodo"></span></p>
+                        <hr class="my-2 border-purple-100">
                         <p><b>Endereço da atividade:</b> <span id="modal-apr-endereco"></span></p>
                         <p class="mt-1"><b>Funções envolvidas:</b> <span id="modal-apr-funcoes"></span></p>
                         <p class="mt-1"><b>Etapas da atividade:</b> <span id="modal-apr-etapas"></span></p>
@@ -1961,6 +1971,19 @@
 
                 // APR
                 if (card.dataset.servico === 'APR') {
+                    document.getElementById('modal-apr-status').textContent =
+                        (card.dataset.aprStatus || 'rascunho').toUpperCase();
+
+                    document.getElementById('modal-apr-obra-nome').textContent =
+                        card.dataset.aprObraNome || '—';
+
+                    document.getElementById('modal-apr-obra-endereco').textContent =
+                        card.dataset.aprObraEndereco || '—';
+
+                    const dataIni = card.dataset.aprDataInicio || '—';
+                    const dataFim = card.dataset.aprDataFim || '—';
+                    document.getElementById('modal-apr-periodo').textContent = `${dataIni} a ${dataFim}`;
+
                     document.getElementById('modal-apr-endereco').textContent =
                         card.dataset.aprEndereco || '—';
 
@@ -2948,5 +2971,3 @@
     </script>
 
 @endpush
-
-
