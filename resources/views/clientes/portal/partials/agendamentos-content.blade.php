@@ -64,7 +64,14 @@
                                     $servicoDisplay = $tarefa->servico_detalhe ?? $servicoNome;
                                     $temDetalheAso = !empty($tarefa->aso_colaborador) || !empty($tarefa->aso_tipo) || !empty($tarefa->aso_data) || !empty($tarefa->aso_unidade) || !empty($tarefa->aso_email);
                                     $temDetalhePgr = !empty($tarefa->pgr_tipo) || !empty($tarefa->pgr_obra) || !empty($tarefa->pgr_contratante) || !empty($tarefa->pgr_total);
-                                    $temDetalheApr = $apr && (!empty($apr->endereco_atividade) || !empty($apr->funcoes_envolvidas) || !empty($apr->etapas_atividade));
+                                    $temDetalheApr = $apr && (
+                                        !empty($apr->obra_nome)
+                                        || !empty($apr->obra_endereco)
+                                        || !empty($apr->status)
+                                        || !empty($apr->endereco_atividade)
+                                        || !empty($apr->funcoes_envolvidas)
+                                        || !empty($apr->etapas_atividade)
+                                    );
                                     $temDetalhe = $temDetalheAso || $temDetalhePgr || $temDetalheApr;
                                     $editUrl = null;
                                     $servicoNomeLower = mb_strtolower((string) $servicoNome);
@@ -141,6 +148,15 @@
                                                     @if($temDetalheApr)
                                                         <div class="pt-1"></div>
                                                         <div class="font-semibold text-slate-700">APR</div>
+                                                        @if(!empty($apr->status))
+                                                            <div>Status: {{ strtoupper((string) $apr->status) }}</div>
+                                                        @endif
+                                                        @if(!empty($apr->obra_nome))
+                                                            <div>Obra: {{ $apr->obra_nome }}</div>
+                                                        @endif
+                                                        @if(!empty($apr->obra_endereco))
+                                                            <div>Endereço da obra: {{ $apr->obra_endereco }}</div>
+                                                        @endif
                                                         @if(!empty($apr->endereco_atividade))
                                                             <div>Endereço da atividade: {{ $apr->endereco_atividade }}</div>
                                                         @endif
@@ -302,4 +318,3 @@
         });
     </script>
 @endpush
-

@@ -508,9 +508,28 @@
 
                                     {{-- APR --}}
                                     @if($tarefa->aprSolicitacao)
+                                        @php
+                                            $aprEpisDetalhes = collect($tarefa->aprSolicitacao->epis_json ?? [])
+                                                ->map(function ($item) {
+                                                    $tipo = (($item['tipo'] ?? 'epi') === 'maquina') ? 'maquina' : 'epi';
+                                                    return [
+                                                        'tipo' => $tipo,
+                                                        'descricao' => trim((string) ($item['descricao'] ?? '')),
+                                                    ];
+                                                })
+                                                ->filter(fn ($item) => $item['descricao'] !== '')
+                                                ->values()
+                                                ->all();
+                                        @endphp
+                                        data-apr-status="{{ $tarefa->aprSolicitacao->status }}"
+                                        data-apr-obra-nome="{{ $tarefa->aprSolicitacao->obra_nome }}"
+                                        data-apr-obra-endereco="{{ $tarefa->aprSolicitacao->obra_endereco }}"
+                                        data-apr-data-inicio="{{ optional($tarefa->aprSolicitacao->atividade_data_inicio)->format('d/m/Y') }}"
+                                        data-apr-data-fim="{{ optional($tarefa->aprSolicitacao->atividade_data_termino_prevista)->format('d/m/Y') }}"
                                         data-apr-endereco="{{ $tarefa->aprSolicitacao->endereco_atividade }}"
                                         data-apr-funcoes="{{ e($tarefa->aprSolicitacao->funcoes_envolvidas) }}"
                                         data-apr-etapas="{{ e($tarefa->aprSolicitacao->etapas_atividade) }}"
+                                        data-apr-epis-json='@json($aprEpisDetalhes)'
                                     @endif
 
                                     {{-- LTCAT --}}
@@ -1029,9 +1048,23 @@
                              class="bg-purple-50 border border-purple-100 rounded-xl p-4 hidden">
                         <h3 class="text-xs font-semibold text-purple-700 mb-2">DETALHES DO APR</h3>
 
+                        <p><b>Obra:</b> <span id="modal-apr-obra-nome"></span></p>
+                        <p class="mt-1"><b>Endereço da obra:</b> <span id="modal-apr-obra-endereco"></span></p>
+                        <p class="mt-1"><b>Período:</b> <span id="modal-apr-periodo"></span></p>
+                        <hr class="my-2 border-purple-100">
                         <p><b>Endereço da atividade:</b> <span id="modal-apr-endereco"></span></p>
-                        <p class="mt-1"><b>Funções envolvidas:</b> <span id="modal-apr-funcoes"></span></p>
-                        <p class="mt-1"><b>Etapas da atividade:</b> <span id="modal-apr-etapas"></span></p>
+                        <div class="mt-2">
+                            <p><b>Funções envolvidas:</b></p>
+                            <ul id="modal-apr-funcoes" class="mt-1 list-disc pl-5 text-sm text-slate-700"></ul>
+                        </div>
+                        <div class="mt-2">
+                            <p><b>Etapas da atividade:</b></p>
+                            <ul id="modal-apr-etapas" class="mt-1 list-disc pl-5 text-sm text-slate-700"></ul>
+                        </div>
+                        <div class="mt-2">
+                            <p><b>EPIs e Máquinas:</b></p>
+                            <ul id="modal-apr-epis" class="mt-1 list-disc pl-5 text-sm text-slate-700"></ul>
+                        </div>
                     </section>
 
                     {{-- ====================== LTCAT ====================== --}}
@@ -1961,14 +1994,82 @@
 
                 // APR
                 if (card.dataset.servico === 'APR') {
+                    document.getElementById('modal-apr-obra-nome').textContent =
+                        card.dataset.aprObraNome || '—';
+
+                    document.getElementById('modal-apr-obra-endereco').textContent =
+                        card.dataset.aprObraEndereco || '—';
+
+                    const dataIni = card.dataset.aprDataInicio || '—';
+                    const dataFim = card.dataset.aprDataFim || '—';
+                    document.getElementById('modal-apr-periodo').textContent = `${dataIni} a ${dataFim}`;
+
                     document.getElementById('modal-apr-endereco').textContent =
                         card.dataset.aprEndereco || '—';
 
-                    document.getElementById('modal-apr-funcoes').textContent =
-                        card.dataset.aprFuncoes || '—';
+                    const preencherListaApr = (elementId, valor, separadores) => {
+                        const ul = document.getElementById(elementId);
+                        if (!ul) return;
 
-                    document.getElementById('modal-apr-etapas').textContent =
-                        card.dataset.aprEtapas || '—';
+                        const regex = new RegExp(separadores, 'g');
+                        const itens = String(valor || '')
+                            .split(regex)
+                            .map((txt) => txt.trim())
+                            .filter(Boolean);
+
+                        ul.innerHTML = '';
+                        if (!itens.length) {
+                            const li = document.createElement('li');
+                            li.textContent = '—';
+                            ul.appendChild(li);
+                            return;
+                        }
+
+                        itens.forEach((item) => {
+                            const li = document.createElement('li');
+                            li.textContent = item;
+                            ul.appendChild(li);
+                        });
+                    };
+
+                    const preencherListaAprEpis = (elementId, jsonRaw) => {
+                        const ul = document.getElementById(elementId);
+                        if (!ul) return;
+
+                        let itens = [];
+                        try {
+                            const parsed = JSON.parse(String(jsonRaw || '[]'));
+                            if (Array.isArray(parsed)) {
+                                itens = parsed
+                                    .map((item) => {
+                                        const tipo = (item?.tipo === 'maquina') ? 'Máquina' : 'EPI';
+                                        const descricao = String(item?.descricao || '').trim();
+                                        return descricao ? `${tipo}: ${descricao}` : '';
+                                    })
+                                    .filter(Boolean);
+                            }
+                        } catch (e) {
+                            itens = [];
+                        }
+
+                        ul.innerHTML = '';
+                        if (!itens.length) {
+                            const li = document.createElement('li');
+                            li.textContent = '—';
+                            ul.appendChild(li);
+                            return;
+                        }
+
+                        itens.forEach((item) => {
+                            const li = document.createElement('li');
+                            li.textContent = item;
+                            ul.appendChild(li);
+                        });
+                    };
+
+                    preencherListaApr('modal-apr-funcoes', card.dataset.aprFuncoes, ';|\\n');
+                    preencherListaApr('modal-apr-etapas', card.dataset.aprEtapas, '\\n|;');
+                    preencherListaAprEpis('modal-apr-epis', card.dataset.aprEpisJson);
 
                     document.getElementById('modal-bloco-apr').classList.remove('hidden');
                 }
@@ -2948,5 +3049,3 @@
     </script>
 
 @endpush
-
-
