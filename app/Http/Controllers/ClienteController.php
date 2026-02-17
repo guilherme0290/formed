@@ -6,6 +6,7 @@ use App\Models\Cidade;
 use App\Models\Cliente;
 use App\Models\Estado;
 use App\Models\Funcao;
+use App\Models\Funcionario;
 use App\Models\ParametroCliente;
 use App\Models\ParametroClienteAsoGrupo;
 use App\Models\Servico;
@@ -14,6 +15,7 @@ use App\Models\TabelaPrecoPadrao;
 use App\Models\Tarefa;
 use App\Models\UnidadeClinica;
 use App\Models\User;
+use App\Services\FuncionarioArquivosZipService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\Rule;
@@ -45,7 +47,7 @@ class ClienteController extends Controller
                             ->orWhere('telefone', 'like', "%{$qText}%");
                     }
 
-                    // Só filtra por CNPJ se tiver número na busca
+                    // SÃƒÂ³ filtra por CNPJ se tiver nÃƒÂºmero na busca
                     if ($doc !== '') {
                         $x->orWhere('cnpj', 'like', "%{$doc}%")
                             ->orWhere('telefone', 'like', "%{$doc}%");
@@ -70,7 +72,7 @@ class ClienteController extends Controller
 
     /**
      * CONSULTA CNPJ VIA API
-     * (caso você queira usar via AJAX depois)
+     * (caso vocÃƒÂª queira usar via AJAX depois)
      */
     public function consultaCnpj($cnpj)
     {
@@ -79,13 +81,13 @@ class ClienteController extends Controller
         $resp = Http::get("https://www.receitaws.com.br/v1/cnpj/{$cnpjLimpo}");
 
         if ($resp->failed()) {
-            return response()->json(['error' => 'Não foi possível consultar'], 500);
+            return response()->json(['error' => 'NÃ£o foi possÃ­vel consultar'], 500);
         }
 
         $dados = $resp->json();
 
         if (isset($dados['status']) && $dados['status'] === 'ERROR') {
-            return response()->json(['error' => $dados['message'] ?? 'CNPJ não encontrado'], 404);
+            return response()->json(['error' => $dados['message'] ?? 'CNPJ nÃ£o encontrado'], 404);
         }
 
         return response()->json([
@@ -240,7 +242,7 @@ class ClienteController extends Controller
                         }
                         $doc = preg_replace('/\D+/', '', (string) $value);
                         if (strlen($doc) !== 14) {
-                            $fail('Informe um CNPJ (14 dígitos) válido.');
+                            $fail('Informe um CNPJ (14 dÃ­gitos) vÃ¡lido.');
                         }
                     },
                 ],
@@ -269,25 +271,25 @@ class ClienteController extends Controller
                 $email = null;
             }
 
-            // evita duplicar usuário para o mesmo cliente
+            // evita duplicar usuÃƒÂ¡rio para o mesmo cliente
             $userExistente = \App\Models\User::where('cliente_id', $cliente->id)->first();
             if ($userExistente) {
-                return back()->with('erro', 'Já existe um usuário vinculado a este cliente.');
+                return back()->with('erro', 'JÃƒÂ¡ existe um usuÃƒÂ¡rio vinculado a este cliente.');
             }
 
             // evita conflito de documento
             if ($documento && \App\Models\User::where('documento', $documento)->exists()) {
-                return back()->with('erro', 'Já existe um usuário com este CPF/CNPJ. Use outro documento.');
+                return back()->with('erro', 'JÃƒÂ¡ existe um usuÃƒÂ¡rio com este CPF/CNPJ. Use outro documento.');
             }
 
             // evita conflito de e-mail (se informado)
             if ($email && \App\Models\User::where('email', $email)->exists()) {
-                return back()->with('erro', 'Já existe um usuário com este e-mail. Use outro e-mail.');
+                return back()->with('erro', 'JÃƒÂ¡ existe um usuÃƒÂ¡rio com este e-mail. Use outro e-mail.');
             }
 
             $papelCliente = \App\Models\Papel::whereRaw('lower(nome) = ?', ['cliente'])->first();
             if (!$papelCliente) {
-                return back()->with('erro', 'Papel Cliente não encontrado. Cadastre o papel antes de criar o acesso.');
+                return back()->with('erro', 'Papel Cliente nÃ£o encontrado. Cadastre o papel antes de criar o acesso.');
             }
 
             $senhaTemporaria = $data['password'];
@@ -305,7 +307,7 @@ class ClienteController extends Controller
             ]);
 
             return redirect()->route($this->routeName('show'), $cliente)->with([
-                'ok' => 'Usuário do cliente criado com sucesso. Solicite a troca de senha no primeiro login.',
+                'ok' => 'UsuÃ¡rio do cliente criado com sucesso. Solicite a troca de senha no primeiro login.',
                 'acesso_cliente' => [
                     'email' => $user->email ?: $user->documento,
                     'senha' => $senhaTemporaria,
@@ -318,7 +320,7 @@ class ClienteController extends Controller
     }
 
     /**
-     * FORM DE EDIÇÃO
+     * FORM DE EDIÃƒâ€¡ÃƒÆ’O
      */
     public function edit(Request $request, Cliente $cliente)
     {
@@ -327,7 +329,7 @@ class ClienteController extends Controller
         $estados = Estado::orderBy('uf')->get(['uf', 'nome']);
         $empresaId = $cliente->empresa_id ?? (auth()->user()->empresa_id ?? 1);
 
-        // se não tiver cidade associada, isso aqui vira null sem quebrar
+        // se nÃƒÂ£o tiver cidade associada, isso aqui vira null sem quebrar
         $ufSelecionada = optional(optional($cliente->cidade)->estado)->uf;
 
         if ($ufSelecionada) {
@@ -368,9 +370,9 @@ class ClienteController extends Controller
         $formasPagamento = [
             'Pix',
             'Boleto',
-            'Cartão de crédito',
-            'Cartão de débito',
-            'Transferência',
+            'CartÃƒÂ£o de crÃƒÂ©dito',
+            'CartÃƒÂ£o de dÃƒÂ©bito',
+            'TransferÃƒÂªncia',
         ];
 
         $parametro = ParametroCliente::query()
@@ -435,6 +437,25 @@ class ClienteController extends Controller
             ->orderByDesc('updated_at')
             ->get();
 
+        $funcionariosComArquivosIds = Tarefa::query()
+            ->where('cliente_id', $cliente->id)
+            ->whereNotNull('funcionario_id')
+            ->where(function ($q) {
+                $q->whereNotNull('path_documento_cliente')
+                    ->orWhereHas('anexos');
+            })
+            ->distinct()
+            ->pluck('funcionario_id')
+            ->filter()
+            ->values();
+
+        $funcionariosComArquivos = $funcionariosComArquivosIds->isNotEmpty()
+            ? Funcionario::query()
+                ->whereIn('id', $funcionariosComArquivosIds->all())
+                ->orderBy('nome')
+                ->get(['id', 'nome'])
+            : collect();
+
         $servicosArquivosIds = Tarefa::query()
             ->where('cliente_id', $cliente->id)
             ->whereNotNull('path_documento_cliente')
@@ -468,7 +489,44 @@ class ClienteController extends Controller
             'vendedores'      => $vendedores,
             'arquivos'        => $arquivos,
             'servicosArquivos' => $servicosArquivos,
+            'funcionariosComArquivos' => $funcionariosComArquivos,
         ]);
+    }
+
+    public function downloadArquivosFuncionario(
+        Request $request,
+        Cliente $cliente,
+        Funcionario $funcionario,
+        FuncionarioArquivosZipService $zipService
+    ) {
+        $this->authorizeCliente($cliente);
+        abort_unless((int) $funcionario->cliente_id === (int) $cliente->id, 403);
+
+        try {
+            $zipPath = $zipService->gerarZip($cliente, $funcionario);
+        } catch (\RuntimeException $e) {
+            return back()->with('erro', $e->getMessage());
+        }
+        $zipName = 'arquivos-' . str_replace(' ', '-', mb_strtolower($funcionario->nome)) . '.zip';
+
+        return response()->download($zipPath, $zipName)->deleteFileAfterSend(true);
+    }
+
+    public function downloadArquivosSelecionados(
+        Request $request,
+        Cliente $cliente,
+        FuncionarioArquivosZipService $zipService
+    ) {
+        $this->authorizeCliente($cliente);
+        $tarefaIds = (array) $request->input('tarefa_ids', []);
+
+        try {
+            $zipPath = $zipService->gerarZipPorIds($cliente, $tarefaIds);
+        } catch (\RuntimeException $e) {
+            return back()->with('erro', $e->getMessage());
+        }
+
+        return response()->download($zipPath, 'arquivos-selecionados.zip')->deleteFileAfterSend(true);
     }
 
     /**
@@ -537,17 +595,17 @@ class ClienteController extends Controller
 
             return redirect()
                 ->route($this->routeName('index'))
-                ->with('ok', 'Cliente excluído com sucesso!');
+                ->with('ok', 'Cliente excluÃ­do com sucesso!');
         } catch (\Throwable $e) {
             report($e);
 
             return back()
-                ->with('erro', 'Não foi possível excluir o cliente.');
+                ->with('erro', 'NÃ£o foi possÃ­vel excluir o cliente.');
         }
     }
 
     /**
-     * VALIDAÇÃO DOS CAMPOS
+     * VALIDAÃƒâ€¡ÃƒÆ’O DOS CAMPOS
      */
     protected function validateData(Request $r): array
     {
@@ -555,7 +613,7 @@ class ClienteController extends Controller
         $clienteRoute = $r->route('cliente');
         $clienteId = $clienteRoute instanceof Cliente ? $clienteRoute->id : (is_numeric($clienteRoute) ? (int) $clienteRoute : null);
 
-        return $r->validate(
+        $data = $r->validate(
             [
                 'razao_social'   => ['required', 'string', 'max:255'],
                 'nome_fantasia'  => ['nullable', 'string', 'max:255'],
@@ -570,6 +628,9 @@ class ClienteController extends Controller
                 'email'          => ['nullable', 'email', 'max:255'],
                 'telefone'       => ['nullable', 'string', 'max:30'],
                 'contato'        => ['nullable', 'string', 'max:120'],
+                'telefone_2'     => ['nullable', 'string', 'max:30'],
+                'tipo_cliente'   => ['required', Rule::in(['parceiro', 'final'])],
+                'observacao'     => ['required', 'string', 'max:4000'],
                 'cep'            => ['nullable', 'string', 'max:20'],
                 'endereco'       => ['nullable', 'string', 'max:255'],
                 'numero'         => ['nullable', 'string', 'max:20'],
@@ -578,16 +639,48 @@ class ClienteController extends Controller
                 'cidade_id'      => ['required', 'exists:cidades,id'],
             ],
             [
-                // mensagens amigáveis 💬
-                'razao_social.required' => 'Informe a razão social do cliente.',
-                'razao_social.max'      => 'A razão social deve ter no máximo 255 caracteres.',
+                // mensagens amigÃƒÂ¡veis
+                'razao_social.required' => 'Informe a razÃƒÂ£o social do cliente.',
+                'razao_social.max'      => 'A razÃƒÂ£o social deve ter no mÃƒÂ¡ximo 255 caracteres.',
 
                 'cnpj.required'         => 'Informe o CNPJ do cliente.',
-                'cnpj.max'              => 'O CNPJ está muito longo. Confira o número digitado.',
+                'cnpj.max'              => 'O CNPJ estÃƒÂ¡ muito longo. Confira o nÃƒÂºmero digitado.',
 
-                'email.email'           => 'Informe um e-mail válido (ex: nome@empresa.com).',
+                'email.email'           => 'Informe um e-mail vÃƒÂ¡lido (ex: nome@empresa.com).',
+                'tipo_cliente.required' => 'Selecione se o cliente ÃƒÂ© Parceiro ou Final.',
+                'tipo_cliente.in'       => 'Tipo de cliente invÃƒÂ¡lido.',
+                'observacao.required'   => 'Informe a observaÃƒÂ§ÃƒÂ£o com os detalhes negociados.',
+                'observacao.max'        => 'A observaÃƒÂ§ÃƒÂ£o deve ter no mÃƒÂ¡ximo 4000 caracteres.',
             ]
         );
+
+        return $this->normalizeClienteUppercase($data);
+    }
+
+    private function normalizeClienteUppercase(array $data): array
+    {
+        $fieldsToUpper = [
+            'razao_social',
+            'nome_fantasia',
+            'contato',
+            'observacao',
+            'endereco',
+            'bairro',
+            'complemento',
+        ];
+
+        foreach ($fieldsToUpper as $field) {
+            if (!array_key_exists($field, $data) || $data[$field] === null) {
+                continue;
+            }
+
+            $value = trim((string) $data[$field]);
+            $data[$field] = function_exists('mb_strtoupper')
+                ? mb_strtoupper($value, 'UTF-8')
+                : strtoupper($value);
+        }
+
+        return $data;
     }
 
 
@@ -613,7 +706,7 @@ class ClienteController extends Controller
     }
 
     /**
-     * CIDADES POR UF (API IBGE)
+     * CIDADES POR UF
      * retorna JSON: [{id, nome}, ...]
      */
     public function cidadesPorUf(string $uf)
@@ -627,52 +720,16 @@ class ClienteController extends Controller
             return response()->json([]);
         }
 
-        // 2) Cidades do banco
-        $cidadesDb = Cidade::where('estado_id', $estado->id)->get(['id', 'nome']);
-
-        // chave normalizada -> cidade_id
-        $map = [];
-        foreach ($cidadesDb as $c) {
-            $nomeNormalizado = strtolower(
-                preg_replace('/[^a-z0-9]/', '', iconv('UTF-8', 'ASCII//TRANSLIT', $c->nome))
-            );
-            $map[$nomeNormalizado] = $c->id;
-        }
-
-        // 3) API IBGE
-        $resp = Http::get("https://servicodados.ibge.gov.br/api/v1/localidades/estados/{$uf}/municipios");
-
-        if (! $resp->successful()) {
-            return response()->json([]);
-        }
-
-        $resultado = [];
-
-        foreach ($resp->json() as $m) {
-
-            $nomeApi = $m['nome'] ?? null;
-            if (!$nomeApi) continue;
-
-            $nomeApiNormalizado = strtolower(
-                preg_replace('/[^a-z0-9]/', '', iconv('UTF-8', 'ASCII//TRANSLIT', $nomeApi))
-            );
-
-            $cidadeId = $map[$nomeApiNormalizado] ?? null;
-
-            if ($cidadeId) {
-                $resultado[] = [
-                    'id'   => $cidadeId,  // 👈 ID DO SEU BANCO!
-                    'nome' => $nomeApi,
-                ];
-            }
-        }
-
-        return response()->json($resultado);
+        return response()->json(
+            Cidade::where('estado_id', $estado->id)
+                ->orderBy('nome')
+                ->get(['id', 'nome'])
+        );
     }
 
     /**
      * >>> PORTAL DO CLIENTE <<<
-     * Seleciona o cliente e guarda na sessão para usar no painel /cliente
+     * Seleciona o cliente e guarda na sessÃƒÂ£o para usar no painel /cliente
      */
     public function selecionarParaPortal(Request $request, Cliente $cliente)
     {
@@ -691,4 +748,7 @@ class ClienteController extends Controller
 
 
 }
+
+
+
 

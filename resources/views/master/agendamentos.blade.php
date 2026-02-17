@@ -1,4 +1,4 @@
-@extends('layouts.master')
+﻿@extends('layouts.master')
 @section('title', 'Agendamentos e Tarefas')
 
 @section('content')
@@ -21,7 +21,7 @@
         $mesesDisponiveis = [
             1 => 'Janeiro',
             2 => 'Fevereiro',
-            3 => 'Marco',
+            3 => 'Março',
             4 => 'Abril',
             5 => 'Maio',
             6 => 'Junho',
@@ -51,11 +51,11 @@
         </div>
 
         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-            <div class="px-4 py-3 border-b border-indigo-500 bg-indigo-600 text-white grid grid-cols-1 lg:grid-cols-3 items-center gap-3">
+            <div class="px-4 py-3 border-b border-indigo-500 bg-indigo-600 text-white grid grid-cols-1 lg:grid-cols-3 items-center gap-3 relative">
                 <div class="flex items-center gap-2 justify-start flex-wrap">
                     <a href="{{ route('master.agendamentos', $filtrosBase + ['data_relatorio' => $dataRelatorio->copy()->subMonthNoOverflow()->startOfMonth()->toDateString()]) }}"
                        class="inline-flex w-32 justify-center items-center gap-2 rounded-lg border border-white/40 bg-white/15 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/25">
-                        Mes anterior
+                        M&ecirc;s Anterior
                     </a>
                     <form method="GET" action="{{ route('master.agendamentos') }}" class="flex items-center gap-2">
                         <input type="hidden" name="data_inicio" value="{{ $agendamentos['data_inicio'] ?? '' }}">
@@ -82,13 +82,13 @@
                     </form>
                 </div>
                 <div class="text-center justify-self-center">
-                    <div class="text-[11px] uppercase tracking-[0.16em] text-indigo-100">Mes selecionado</div>
+                    <div class="text-[11px] uppercase tracking-[0.16em] text-indigo-100">M&ecirc;s Selecionado</div>
                     <div class="text-xl font-semibold text-white">{{ \Illuminate\Support\Str::ucfirst($dataRelatorio->locale('pt_BR')->translatedFormat('F \\d\\e Y')) }}</div>
                 </div>
-                <div class="flex justify-start lg:justify-end">
+                <div class="flex justify-start lg:absolute lg:-right-2 lg:top-1/2 lg:-translate-y-1/2">
                     <a href="{{ route('master.agendamentos', $filtrosBase + ['data_relatorio' => $dataRelatorio->copy()->addMonthNoOverflow()->startOfMonth()->toDateString()]) }}"
-                       class="inline-flex w-32 justify-center items-center gap-2 rounded-lg border border-white/40 bg-white/15 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/25">
-                        Proximo mes
+                       class="inline-flex justify-center items-center gap-2 rounded-lg border border-white/40 bg-white/15 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/25">
+                        Pr&oacute;ximo M&ecirc;s
                     </a>
                 </div>
             </div>
@@ -316,3 +316,8 @@
         })();
     </script>
 @endsection
+
+
+
+
+

@@ -1,4 +1,4 @@
-@extends('layouts.financeiro')
+﻿@extends('layouts.financeiro')
 @section('title', 'Conta a Receber')
 @section('page-container', 'w-full p-0')
 
@@ -19,6 +19,12 @@
                 <form method="POST" action="{{ route('financeiro.contas-receber.reabrir', $conta) }}">
                     @csrf
                     <button class="px-3 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800">Reabrir</button>
+                </form>
+                <form method="POST" action="{{ route('financeiro.contas-receber.destroy', $conta) }}"
+                      onsubmit="return confirm('Deseja excluir este recebimento e devolver os itens para vendas pendentes?');">
+                    @csrf
+                    @method('DELETE')
+                    <button class="px-3 py-2 rounded-lg bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700">Excluir recebimento</button>
                 </form>
                 <form method="POST" action="{{ route('financeiro.contas-receber.boleto', $conta) }}">
                     @csrf
@@ -54,7 +60,7 @@
             <header class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
                 <div>
                     <h2 class="text-sm font-semibold text-slate-800">Resumo da conta</h2>
-                    <p class="text-xs text-slate-500">Visão geral e baixas registradas</p>
+                    <p class="text-xs text-slate-500">VisÃ£o geral e baixas registradas</p>
                 </div>
                 <div class="text-xs text-slate-500">
                     Total: <strong class="text-slate-800">R$ {{ number_format((float) $conta->total, 2, ',', '.') }}</strong>
@@ -89,7 +95,7 @@
                 <table class="min-w-full divide-y divide-slate-100 text-sm">
                     <thead class="bg-slate-50 text-slate-600">
                         <tr>
-                            <th class="px-4 py-3 text-left font-semibold">Serviço</th>
+                            <th class="px-4 py-3 text-left font-semibold">ServiÃ§o</th>
                             <th class="px-4 py-3 text-left font-semibold">Data</th>
                             <th class="px-4 py-3 text-left font-semibold">Vencimento</th>
                             <th class="px-4 py-3 text-left font-semibold">Status</th>
@@ -108,13 +114,13 @@
                                     default => 'bg-amber-50 text-amber-700 border-amber-100',
                                 };
                                 $label = $item->vencido ? 'Vencido' : ucfirst(strtolower($status));
-                                $servicoNome = $item->servico?->nome ?? $item->descricao ?? $item->vendaItem?->descricao_snapshot ?? 'Serviço';
+                                $servicoNome = $item->servico?->nome ?? $item->descricao ?? $item->vendaItem?->descricao_snapshot ?? 'ServiÃ§o';
                                 $baixado = $item->total_baixado;
                             @endphp
                             <tr class="hover:bg-slate-50/70">
                                 <td class="px-4 py-3 text-slate-800">{{ $servicoNome }}</td>
-                                <td class="px-4 py-3 text-slate-600">{{ optional($item->data_realizacao)->format('d/m/Y') ?? '—' }}</td>
-                                <td class="px-4 py-3 text-slate-600">{{ optional($item->vencimento)->format('d/m/Y') ?? '—' }}</td>
+                                <td class="px-4 py-3 text-slate-600">{{ optional($item->data_realizacao)->format('d/m/Y') ?? 'â€”' }}</td>
+                                <td class="px-4 py-3 text-slate-600">{{ optional($item->vencimento)->format('d/m/Y') ?? 'â€”' }}</td>
                                 <td class="px-4 py-3">
                                     <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold border {{ $badge }}">
                                         {{ $label }}
@@ -136,7 +142,7 @@
             <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5 space-y-4 max-h-[90vh] overflow-y-auto">
                 <div class="flex items-center justify-between">
                     <h3 class="text-sm font-semibold text-slate-900">Registrar baixa</h3>
-                    <button type="button" data-fechar-modal-baixa class="text-slate-400 hover:text-slate-600">✕</button>
+                    <button type="button" data-fechar-modal-baixa class="text-slate-400 hover:text-slate-600">âœ•</button>
                 </div>
 
                 <form method="POST" action="{{ route('financeiro.contas-receber.baixar', $conta) }}" class="space-y-3" enctype="multipart/form-data">
@@ -157,7 +163,7 @@
     <button type="button"
             class="absolute right-0 top-0 h-full w-8 flex items-center justify-center text-slate-400 hover:text-slate-600 date-picker-btn z-10"
             data-date-target="cr_show_pago_em"
-            aria-label="Abrir calend�rio">
+            aria-label="Abrir calendário">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" viewBox="0 0 24 24" fill="currentColor">
             <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v2H2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 2 0v1zm15 8H2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V10z"/>
         </svg>
@@ -182,7 +188,7 @@
                     </div>
 
                     <div>
-                        <label class="text-xs font-semibold text-slate-600">Observação</label>
+                        <label class="text-xs font-semibold text-slate-600">ObservaÃ§Ã£o</label>
                         <textarea name="observacao" rows="3" class="w-full rounded-lg border-slate-200 bg-white text-slate-900 text-sm" placeholder="Detalhes sobre a baixa"></textarea>
                     </div>
 
@@ -200,13 +206,13 @@
             <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5 space-y-4 max-h-[90vh] overflow-y-auto">
                 <div class="flex items-center justify-between">
                     <h3 class="text-sm font-semibold text-slate-900">Adicionar item avulso</h3>
-                    <button type="button" data-fechar-modal class="text-slate-400 hover:text-slate-600">✕</button>
+                    <button type="button" data-fechar-modal class="text-slate-400 hover:text-slate-600">âœ•</button>
                 </div>
 
                 <form method="POST" action="{{ route('financeiro.contas-receber.itens.store', $conta) }}" class="space-y-3">
                     @csrf
                     <div>
-                        <label class="text-xs font-semibold text-slate-600">Serviço (opcional)</label>
+                        <label class="text-xs font-semibold text-slate-600">ServiÃ§o (opcional)</label>
                         <select name="servico_id" class="w-full rounded-lg border-slate-200 bg-white text-slate-900 text-sm">
                             <option value="" class="text-slate-900">Selecione</option>
                             @foreach($servicos as $servico)
@@ -216,7 +222,7 @@
                     </div>
 
                     <div>
-                        <label class="text-xs font-semibold text-slate-600">Descrição (opcional)</label>
+                        <label class="text-xs font-semibold text-slate-600">DescriÃ§Ã£o (opcional)</label>
                         <input type="text" name="descricao" class="w-full rounded-lg border-slate-200 bg-white text-slate-900 text-sm" placeholder="Detalhe do item" />
                     </div>
 
@@ -231,7 +237,7 @@
     <button type="button"
             class="absolute right-0 top-0 h-full w-8 flex items-center justify-center text-slate-400 hover:text-slate-600 date-picker-btn z-10"
             data-date-target="cr_show_data_realizacao"
-            aria-label="Abrir calend�rio">
+            aria-label="Abrir calendário">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" viewBox="0 0 24 24" fill="currentColor">
             <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v2H2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 2 0v1zm15 8H2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V10z"/>
         </svg>
@@ -251,7 +257,7 @@
     <button type="button"
             class="absolute right-0 top-0 h-full w-8 flex items-center justify-center text-slate-400 hover:text-slate-600 date-picker-btn z-10"
             data-date-target="cr_show_vencimento"
-            aria-label="Abrir calend�rio">
+            aria-label="Abrir calendário">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" viewBox="0 0 24 24" fill="currentColor">
             <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v2H2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 2 0v1zm15 8H2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V10z"/>
         </svg>
@@ -385,5 +391,6 @@
     });
 </script>
 @endsection
+
 
 

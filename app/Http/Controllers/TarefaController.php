@@ -11,7 +11,6 @@ use App\Models\ClienteContrato;
 use App\Models\Servico;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use App\Services\PrecificacaoService;
 use App\Services\VendaService;
@@ -218,10 +217,7 @@ class TarefaController extends Controller
             ->whereNotNull('path_documento_cliente')
             ->firstOrFail();
 
-        $url = Storage::disk('s3')->temporaryUrl(
-            $tarefa->path_documento_cliente,
-            now()->addMinutes(10)
-        );
+        $url = S3Helper::temporaryUrl($tarefa->path_documento_cliente, 10);
 
         return redirect()->away($url);
     }

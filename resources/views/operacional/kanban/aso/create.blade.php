@@ -1,4 +1,4 @@
-@extends(request()->query('origem') === 'cliente' ? 'layouts.cliente' : 'layouts.operacional')
+﻿@extends(request()->query('origem') === 'cliente' ? 'layouts.cliente' : 'layouts.operacional')
 
 
 @php
@@ -76,10 +76,16 @@
         $aso->email_aso ?? ''
     );
 
+    $pcmsoElaboradoFormed = (int) old(
+        'pcmso_elaborado_formed',
+        $aso ? (int) ($aso->pcmso_elaborado_formed ?? 1) : 1
+    );
+    $pcmsoExternoAnexoId = $aso->pcmso_externo_anexo_id ?? null;
+
     // Helper para pegar dados do funcionário no modo edição
     $funcionario = $isEdit ? optional($tarefa->funcionario) : null;
 
-    // 🔹 Origem da tela (cliente ou operacional)
+    // Origem da tela (cliente ou operacional)
     $origem = request()->query('origem');
     $rotaVoltar = $origem === 'cliente'
         ? route('cliente.dashboard')
@@ -95,7 +101,7 @@
         <div class="mb-4">
             <a href="{{ $rotaVoltar }}"
                class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 bg-white text-sm text-slate-700 hover:bg-slate-50">
-                <span>←</span>
+                <span>&larr;</span>
                 <span>Voltar</span>
             </a>
         </div>
@@ -144,24 +150,34 @@
                         @method('PUT')
                     @endif
 
-                    {{-- NAV DAS ABAS --}}
-                    <div class="border-b border-slate-200 mb-4">
-                        <nav class="flex gap-6 text-sm">
+                    {{-- STEPPER --}}
+                    <div class="border-b border-slate-200 mb-4 pb-4">
+                        <div class="flex items-center gap-2 overflow-x-auto pb-1">
                             <button type="button"
-                                    class="tab-btn border-b-2 border-sky-500 text-sky-600 font-semibold pb-2"
-                                    data-tab="dados">
-                                Dados do ASO
+                                    class="step-btn inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-sky-700"
+                                    data-step="colaborador">
+                                <span class="h-6 w-6 rounded-full bg-sky-600 text-white inline-flex items-center justify-center text-[11px]">1</span>
+                                <span>Colaborador</span>
                             </button>
-
+                            <span class="text-slate-300 text-xs">•</span>
                             <button type="button"
-                                    class="tab-btn text-slate-500 hover:text-slate-700 pb-2"
-                                    data-tab="anexos">
-                                Anexos
+                                    class="step-btn inline-flex items-center gap-2 text-xs sm:text-sm font-medium text-slate-400"
+                                    data-step="agenda">
+                                <span class="h-6 w-6 rounded-full bg-slate-200 text-slate-600 inline-flex items-center justify-center text-[11px]">2</span>
+                                <span>Agenda</span>
                             </button>
-                        </nav>
+                            <span class="text-slate-300 text-xs">•</span>
+                            <button type="button"
+                                    class="step-btn inline-flex items-center gap-2 text-xs sm:text-sm font-medium text-slate-400"
+                                    data-step="anexos">
+                                <span class="h-6 w-6 rounded-full bg-slate-200 text-slate-600 inline-flex items-center justify-center text-[11px]">3</span>
+                                <span>Anexos</span>
+                            </button>
+                        </div>
                     </div>
 
                     <div id="tab-dados" class="space-y-6">
+                        <div data-step-pane="colaborador" class="space-y-6">
                         {{-- Tipo de ASO --}}
                         <div class="space-y-2">
                             <label class="block text-xs font-medium text-slate-600">
@@ -251,7 +267,7 @@
                                     <span class="text-[10px] text-slate-400">GHE + Grupo de Exames</span>
                                 </div>
                                 <p id="asoResumoStatus" class="mt-2 text-xs text-slate-500">
-                                    Selecione o tipo de ASO e a função para visualizar os exames.
+                                    Selecione o tipo de ASO e a Função para visualizar os exames.
                                 </p>
                                 <div class="mt-3 flex items-center justify-between">
                                     <button type="button"
@@ -268,7 +284,9 @@
                                     <span id="asoResumoTotalValor">R$ 0,00</span>
                                 </div>
                             </div>
+                        </div>
 
+                        
                             {{-- CPF / RG / Data Nascimento --}}
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
@@ -319,7 +337,7 @@
                                         <button type="button"
                                                 class="absolute right-0 top-0 h-full w-8 flex items-center justify-center text-slate-400 hover:text-slate-600 date-picker-btn z-10"
                                                 data-date-target="campo_data_nascimento"
-                                                aria-label="Abrir calendÃ¡rio">
+                                                aria-label="Abrir calendário">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" viewBox="0 0 24 24" fill="currentColor">
                                                 <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v2H2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 2 0v1zm15 8H2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V10z"/>
                                             </svg>
@@ -338,7 +356,6 @@
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
                         {{-- E-mail para envio do ASO --}}
                         <div class="mt-6">
@@ -349,7 +366,7 @@
                                    name="email_aso"
                                    value="{{ $emailAso }}"
                                    placeholder="email@exemplo.com"
-                                   class="w-full rounded-xl border border-slate-200 text-sm py-2.5 px-3
+                                       class="w-full rounded-xl border border-slate-200 text-sm py-2.5 px-3
                                       focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400">
                         </div>
 
@@ -365,7 +382,16 @@
                                    class="w-full rounded-xl border border-slate-200 text-sm py-2.5 px-3
                                       focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400">
                         </div>
+                        <div class="mt-4">
+                            <button type="button"
+                                    class="w-full px-6 py-3 rounded-xl bg-sky-500 hover:bg-sky-600 text-white text-sm font-medium shadow-sm"
+                                    data-step-nav="agenda">
+                                Próximo: Agenda
+                            </button>
+                        </div>
+                        </div>
 
+                        <div data-step-pane="agenda" class="space-y-6 hidden">
                         {{-- Vai fazer treinamento conosco? --}}
                         <div class="space-y-3 mt-6">
                             <p class="text-xs font-medium text-slate-600">
@@ -464,7 +490,7 @@
                                      class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
                                     @if(empty($treinamentosDisponiveis))
                                         <p class="text-[11px] text-slate-400 md:col-span-2">
-                                            Nenhum treinamento disponível para seleção.
+                                        Nenhum treinamento disponível para seleção.
                                         </p>
                                     @else
                                         @foreach($treinamentosDisponiveis as $key => $label)
@@ -485,7 +511,7 @@
                                         @endforeach
 
                                         <p class="mt-1 text-[11px] text-slate-400 md:col-span-2">
-                                            Você pode selecionar mais de um treinamento.
+                                                Você pode selecionar mais de um treinamento.
                                         </p>
 
                                         @if(empty($pacotesTreinamentos) && (!$temTreinamentosPermitidos || $temTreinamentosBloqueados))
@@ -501,7 +527,7 @@
                         {{-- Data e Local de Realização --}}
                         <div class="border-t border-slate-100 pt-4 mt-6 space-y-4">
                             <h2 class="text-sm font-semibold text-slate-800">
-                                Data e Local de Realização
+                                    Data e Local de Realização
                             </h2>
 
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -520,7 +546,7 @@
                                         <button type="button"
                                                 class="absolute right-0 top-0 h-full w-8 flex items-center justify-center text-slate-400 hover:text-slate-600 date-picker-btn z-10"
                                                 data-date-target="campo_data_aso"
-                                                aria-label="Abrir calendÃ¡rio">
+                                                aria-label="Abrir calendário">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" viewBox="0 0 24 24" fill="currentColor">
                                                 <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v2H2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 2 0v1zm15 8H2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V10z"/>
                                             </svg>
@@ -552,14 +578,19 @@
                             </div>
                         </div>
 
-                        {{-- Botão final --}}
-                        <div class="mt-4">
-                            <button type="submit"
-                                    id="btnSubmitAso"
-                                    @disabled(!$temTiposAsoPermitidos || !$tipoAsoSelecionadoPermitido)
-                                    class="w-full px-6 py-3 rounded-xl bg-sky-500 hover:bg-sky-600 text-white text-sm font-medium shadow-sm {{ (!$temTiposAsoPermitidos || !$tipoAsoSelecionadoPermitido) ? 'opacity-60 cursor-not-allowed hover:bg-sky-500' : '' }}">
-                                {{ $isEdit ? 'Atualizar Tarefa ASO' : 'Criar Tarefa ASO' }}
+                        {{-- Navegação do Step 1 --}}
+                        <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <button type="button"
+                                    class="w-full px-6 py-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium"
+                                    data-step-nav="colaborador">
+                                Voltar: Colaborador
                             </button>
+                            <button type="button"
+                                    class="w-full px-6 py-3 rounded-xl bg-sky-500 hover:bg-sky-600 text-white text-sm font-medium shadow-sm"
+                                    data-step-nav="anexos">
+                                Próximo: Anexos e Finalização
+                            </button>
+                        </div>
                         </div>
                     </div>
                     {{-- ABA 2: ANEXOS --}}
@@ -568,6 +599,55 @@
                             Anexe aqui documentos relacionados ao ASO (PDF, DOC, DOCX).
                             Você pode arrastar e soltar ou clicar na área abaixo.
                         </p>
+
+                        <div class="space-y-3 mt-4">
+                            <p class="text-xs font-medium text-slate-600">
+                                O PCMSO foi elaborado pela Formed? *
+                            </p>
+
+                            <div class="space-y-2 text-sm">
+                                <label class="text-slate-700 text-xs font-medium cursor-pointer flex items-center gap-2">
+                                    <input type="radio"
+                                           class="h-4 w-4 js-pcmso-radio"
+                                           name="pcmso_elaborado_formed"
+                                           value="1"
+                                           @checked($pcmsoElaboradoFormed === 1)>
+                                    <span>Sim</span>
+                                </label>
+                                <label class="text-slate-700 text-xs font-medium cursor-pointer flex items-center gap-2">
+                                    <input type="radio"
+                                           class="h-4 w-4 js-pcmso-radio"
+                                           name="pcmso_elaborado_formed"
+                                           value="0"
+                                           @checked($pcmsoElaboradoFormed === 0)>
+                                    <span>N&atilde;o</span>
+                                </label>
+                            </div>
+                            @error('pcmso_elaborado_formed')
+                                <p class="text-xs text-red-600">{{ $message }}</p>
+                            @enderror
+
+                            <div id="pcmsoExternoUploadWrap"
+                                 data-has-existing="{{ $pcmsoExternoAnexoId ? '1' : '0' }}"
+                                 class="{{ $pcmsoElaboradoFormed === 0 ? '' : 'hidden' }}">
+                                <p class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                                    Arquivo do PCMSO deve ser anexado abaixo.
+                                </p>
+                                @if($isEdit && $pcmsoExternoAnexoId)
+                                    <p class="mt-2 text-xs text-slate-500">
+                                        PCMSO externo já anexado.
+                                        <a href="{{ route('operacional.anexos.view', $pcmsoExternoAnexoId) }}"
+                                           target="_blank"
+                                           class="text-sky-600 hover:text-sky-700 font-medium">
+                                            Ver arquivo
+                                        </a>
+                                    </p>
+                                @endif
+                            </div>
+                            @error('anexos')
+                                <p class="text-xs text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
 
                         {{-- Dropzone --}}
                         <div id="dropzone-anexos"
@@ -590,7 +670,7 @@
                                    type="file"
                                    name="anexos[]"
                                    multiple
-                                   accept=".pdf,.doc,.docx"
+                                   accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
                                    class="hidden">
                         </div>
 
@@ -636,7 +716,7 @@
                                                         </p>
                                                         <p class="text-[11px] text-slate-400">
                                                             @if($sizeKb)
-                                                                {{ number_format($sizeKb, 1, ',', '.') }} KB ·
+                                                                {{ number_format($sizeKb, 1, ',', '.') }} KB &middot;
                                                             @endif
                                                             Enviado em {{ $anexo->created_at?->format('d/m/Y H:i') }}
                                                         </p>
@@ -684,9 +764,15 @@
                             </div>
                         @endif
 
-                        {{-- Botão de salvar reaproveita o mesmo da aba Dados --}}
-                        <div class="mt-4">
+                        {{-- Navegação do Step 2 --}}
+                        <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <button type="button"
+                                    class="w-full px-6 py-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium"
+                                    data-step-nav="agenda">
+                                Voltar: Agenda
+                            </button>
                             <button type="submit"
+                                    id="btnSubmitAso"
                                     @disabled(!$temTiposAsoPermitidos || !$tipoAsoSelecionadoPermitido)
                                     class="w-full px-6 py-3 rounded-xl bg-sky-500 hover:bg-sky-600 text-white text-sm font-medium shadow-sm {{ (!$temTiposAsoPermitidos || !$tipoAsoSelecionadoPermitido) ? 'opacity-60 cursor-not-allowed hover:bg-sky-500' : '' }}">
                                 {{ $isEdit ? 'Atualizar Tarefa ASO' : 'Criar Tarefa ASO' }}
@@ -735,7 +821,7 @@
                     }
 
                     if (!cpfValido(cpfLimpo)) {
-                        mostrarErroCPF(cpfInput, 'CPF inválido');
+                    mostrarErroCPF(cpfInput, 'CPF inválido');
                     } else {
                         limparErroCPF(cpfInput);
                     }
@@ -824,8 +910,8 @@
                     });
 
                     // Regra específica para FUNÇÃO:
-                    // - Se tem funcionário selecionado E NÃO for mudança de função => trava o select
-                    // - Se for mudança de função (mudanca_funcao) => libera o select mesmo com funcionário
+                    // - Se tem funcionário selecionado E NÃO for mudança de Função => trava o select
+                    // - Se for mudança de Função (mudanca_funcao) => libera o select mesmo com funcionário
                     if (selectFuncao) {
                         const deveDesabilitarFuncao = temFuncionario && tipoAso !== 'mudanca_funcao';
 
@@ -1017,7 +1103,7 @@
                         const funcaoId = selectFuncao ? selectFuncao.value : '';
 
                         if (!tipoAso || !funcaoId) {
-                            setStatus('Selecione o tipo de ASO e a função para visualizar os exames.');
+                        setStatus('Selecione o tipo de ASO e a Função para visualizar os exames.');
                             return;
                         }
 
@@ -1042,7 +1128,7 @@
                             .then((response) => response.json().then((json) => ({ ok: response.ok, json })))
                             .then(({ ok, json }) => {
                                 if (!ok || !json.ok) {
-                                    const msg = json && json.message ? json.message : 'Não foi possível carregar o resumo.';
+                                const msg = json && json.message ? json.message : 'não foi possível carregar o resumo.';
                                     setStatus(msg, true);
                                     return;
                                 }
@@ -1052,7 +1138,7 @@
                                 if (err && err.name === 'AbortError') {
                                     return;
                                 }
-                                setStatus('Não foi possível carregar o resumo.', true);
+                            setStatus('não foi possível carregar o resumo.', true);
                             });
                     };
 
@@ -1076,7 +1162,7 @@
             });
         </script>
 
-        {{-- Toggle de treinamentos (Sim / Não) --}}
+        {{-- Toggle de treinamentos (Sim / não) --}}
         <script>
             document.addEventListener('DOMContentLoaded', function () {
                 const campo = document.getElementById('vai_fazer_treinamento');
@@ -1243,34 +1329,54 @@
         </script>
         <script>
             document.addEventListener('DOMContentLoaded', function () {
-                // ====== TABS ======
-                const tabButtons = document.querySelectorAll('.tab-btn');
+                // ====== STEPPER ======
+                const stepButtons = document.querySelectorAll('.step-btn');
+                const stepNavButtons = document.querySelectorAll('[data-step-nav]');
                 const tabDados = document.getElementById('tab-dados');
                 const tabAnexos = document.getElementById('tab-anexos');
+                const dadosPanes = document.querySelectorAll('[data-step-pane]');
 
-                tabButtons.forEach(btn => {
-                    btn.addEventListener('click', function () {
-                        const tab = this.dataset.tab;
+                const setStep = (step) => {
+                    const isAnexos = step === 'anexos';
 
-                        // alterna conteúdo
-                        if (tab === 'dados') {
-                            tabDados.classList.remove('hidden');
-                            tabAnexos.classList.add('hidden');
-                        } else {
-                            tabAnexos.classList.remove('hidden');
-                            tabDados.classList.add('hidden');
+                    tabDados.classList.toggle('hidden', isAnexos);
+                    tabAnexos.classList.toggle('hidden', !isAnexos);
+
+                    dadosPanes.forEach((pane) => {
+                        pane.classList.toggle('hidden', pane.dataset.stepPane !== step);
+                    });
+
+                    stepButtons.forEach((btn) => {
+                        const isActive = btn.dataset.step === step;
+                        const numberBadge = btn.querySelector('span');
+
+                        btn.classList.toggle('text-sky-700', isActive);
+                        btn.classList.toggle('font-semibold', isActive);
+                        btn.classList.toggle('text-slate-400', !isActive);
+                        btn.classList.toggle('font-medium', !isActive);
+
+                        if (numberBadge) {
+                            numberBadge.classList.toggle('bg-sky-600', isActive);
+                            numberBadge.classList.toggle('text-white', isActive);
+                            numberBadge.classList.toggle('bg-slate-200', !isActive);
+                            numberBadge.classList.toggle('text-slate-600', !isActive);
                         }
+                    });
+                };
 
-                        // estilo ativo/inativo
-                        tabButtons.forEach(b => {
-                            b.classList.remove('border-b-2', 'border-sky-500', 'text-sky-600', 'font-semibold');
-                            b.classList.add('text-slate-500');
-                        });
-
-                        this.classList.remove('text-slate-500');
-                        this.classList.add('border-b-2', 'border-sky-500', 'text-sky-600', 'font-semibold');
+                stepButtons.forEach((btn) => {
+                    btn.addEventListener('click', function () {
+                        setStep(this.dataset.step || 'colaborador');
                     });
                 });
+
+                stepNavButtons.forEach((btn) => {
+                    btn.addEventListener('click', function () {
+                        setStep(this.dataset.stepNav || 'colaborador');
+                    });
+                });
+
+                setStep('colaborador');
 
                 // ====== DROPZONE ======
                 const dropzone = document.getElementById('dropzone-anexos');
@@ -1425,5 +1531,32 @@
                 });
             });
         </script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const radios = Array.from(document.querySelectorAll('.js-pcmso-radio'));
+                const wrap = document.getElementById('pcmsoExternoUploadWrap');
+
+                if (!radios.length || !wrap) {
+                    return;
+                }
+
+                const updateVisual = () => {
+                    const checked = radios.find((radio) => radio.checked);
+                    const elaboradoPelaFormed = !checked || checked.value === '1';
+                    const hasExisting = wrap.dataset.hasExisting === '1';
+
+                    wrap.classList.toggle('hidden', elaboradoPelaFormed);
+                    wrap.dataset.requireAnexo = (!elaboradoPelaFormed && !hasExisting) ? '1' : '0';
+
+                };
+
+                radios.forEach((radio) => radio.addEventListener('change', updateVisual));
+                updateVisual();
+            });
+        </script>
     @endpush
 @endsection
+
+
+
+

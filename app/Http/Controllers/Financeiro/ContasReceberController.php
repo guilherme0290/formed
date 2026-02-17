@@ -344,6 +344,34 @@ class ContasReceberController extends Controller
         ]);
     }
 
+    public function destroy(Request $request, ContaReceber $contaReceber, ContaReceberService $service): RedirectResponse
+    {
+        if ($contaReceber->empresa_id !== ($request->user()->empresa_id ?? null)) {
+            abort(403);
+        }
+
+        DB::transaction(function () use ($contaReceber, $service) {
+            $contaReceber->load('itens');
+            $vendaIds = $contaReceber->itens
+                ->pluck('venda_id')
+                ->filter()
+                ->unique()
+                ->values();
+
+            $contaReceber->baixas()->delete();
+            $contaReceber->itens()->delete();
+            $contaReceber->delete();
+
+            foreach ($vendaIds as $vendaId) {
+                $service->atualizarStatusVenda((int) $vendaId);
+            }
+        });
+
+        return redirect()
+            ->route('financeiro.contas-receber')
+            ->with('success', 'Recebimento excluído e itens retornados para vendas pendentes.');
+    }
+
     public function baixar(Request $request, ContaReceber $contaReceber, ContaReceberService $service): RedirectResponse
     {
         if ($contaReceber->empresa_id !== ($request->user()->empresa_id ?? null)) {

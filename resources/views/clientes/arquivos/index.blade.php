@@ -1,4 +1,4 @@
-@extends('layouts.cliente')
+﻿@extends('layouts.cliente')
 @section('title', 'Meus Arquivos')
 
 @section('content')
@@ -12,8 +12,22 @@
 
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
             <div class="px-5 py-4 border-b border-slate-200 bg-slate-50/60">
-                <form method="GET" action="{{ route('cliente.arquivos.index') }}"
-                      class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+                @if(($funcionariosComArquivos ?? collect())->isNotEmpty())
+                    <div class="mb-4">
+                        <p class="text-xs font-semibold text-slate-600 mb-2">Baixar todos por funcionário</p>
+                        <div class="flex flex-wrap gap-2">
+                            @foreach($funcionariosComArquivos as $func)
+                                <a href="{{ route('cliente.arquivos.funcionario.download', $func) }}"
+                                   class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-indigo-200 text-indigo-700 bg-white text-xs font-semibold hover:bg-indigo-50">
+                                    {{ $func->nome }}
+                                    <span class="text-[10px]">ZIP</span>
+                                </a>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+
+                <form method="GET" action="{{ route('cliente.arquivos.index') }}" class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
                     <div class="md:col-span-2">
                         <label class="text-xs font-semibold text-slate-600">Pesquisar por título</label>
                         <input
@@ -21,8 +35,7 @@
                             name="q"
                             value="{{ request('q') }}"
                             placeholder="Ex: ASO - João da Silva"
-                            class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm
-                                   focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400"
+                            class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400"
                         >
                     </div>
 
@@ -32,8 +45,7 @@
                             type="date"
                             name="data_inicio"
                             value="{{ request('data_inicio') }}"
-                            class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm
-                                   focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400"
+                            class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400"
                         >
                     </div>
 
@@ -43,8 +55,7 @@
                             type="date"
                             name="data_fim"
                             value="{{ request('data_fim') }}"
-                            class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm
-                                   focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400"
+                            class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400"
                         >
                     </div>
 
@@ -52,8 +63,7 @@
                         <label class="text-xs font-semibold text-slate-600">Tipo de serviço</label>
                         <select
                             name="servico"
-                            class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white
-                                   focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400"
+                            class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400"
                         >
                             <option value="">Todos</option>
                             @foreach($servicos as $servico)
@@ -67,15 +77,13 @@
                     <div class="flex gap-2 md:justify-end">
                         <button
                             type="submit"
-                            class="inline-flex items-center justify-center px-4 py-2 rounded-lg
-                                   bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition"
+                            class="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition"
                         >
                             Filtrar
                         </button>
                         <a
                             href="{{ route('cliente.arquivos.index') }}"
-                            class="inline-flex items-center justify-center px-4 py-2 rounded-lg
-                                   border border-slate-300 text-slate-700 text-sm font-semibold hover:bg-slate-100 transition"
+                            class="inline-flex items-center justify-center px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-sm font-semibold hover:bg-slate-100 transition"
                         >
                             Limpar
                         </a>
@@ -84,62 +92,94 @@
             </div>
 
             <div class="overflow-x-auto">
-                <table class="min-w-full text-sm">
-                    <thead class="bg-slate-50 text-slate-600">
-                        <tr>
-                            <th class="px-5 py-3 text-left font-semibold">Serviço</th>
-                            <th class="px-5 py-3 text-left font-semibold">Tarefa</th>
-                            <th class="px-5 py-3 text-left font-semibold">Finalizado em</th>
-                            <th class="px-5 py-3 text-left font-semibold">Status</th>
-                            <th class="px-5 py-3 text-center font-semibold">Documento</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        @forelse($arquivos as $tarefa)
-                            @php
-                                $coluna = $tarefa->coluna;
-                                $statusLabel = $coluna?->nome ?? 'Finalizado';
-                                $badge = ($coluna && $coluna->finaliza)
-                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
-                                    : 'bg-slate-100 text-slate-700 border-slate-200';
-                            @endphp
-                            <tr class="hover:bg-slate-50/70">
-                                <td class="px-5 py-3 text-slate-800">
-                                    {{ $tarefa->servico->nome ?? 'Serviço' }}
-                                </td>
-                                <td class="px-5 py-3 text-slate-700">
-                                    {{ $tarefa->titulo ?? 'Tarefa' }}
-                                </td>
-                                <td class="px-5 py-3 text-slate-700">
-                                    {{ optional($tarefa->finalizado_em)->format('d/m/Y H:i') ?? '-' }}
-                                </td>
-                                <td class="px-5 py-3">
-                                    <span class="inline-flex items-center px-3 py-1 rounded-full border text-xs font-semibold {{ $badge }}">
-                                        {{ $statusLabel }}
-                                    </span>
-                                </td>
-                                <td class="px-5 py-3 text-center">
-                                    @if($tarefa->documento_link)
-                                        <a href="{{ $tarefa->documento_link }}"
-                                           class="px-3 py-2 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700"
-                                           target="_blank" rel="noopener">
-                                            Ver / Baixar
-                                        </a>
-                                    @else
-                                        <span class="text-xs text-slate-400">Indisponível</span>
-                                    @endif
-                                </td>
-                            </tr>
-                        @empty
+                <form method="POST" action="{{ route('cliente.arquivos.download-selecionados') }}">
+                    @csrf
+                    <table class="min-w-full text-sm">
+                        <thead class="bg-slate-50 text-slate-600">
                             <tr>
-                                <td colspan="5" class="px-5 py-6 text-center text-slate-500">
-                                    Nenhum documento disponível até o momento.
-                                </td>
+                                <th class="px-5 py-3 text-left font-semibold w-10">
+                                    <input type="checkbox" class="rounded border-slate-300 js-check-all-arquivos">
+                                </th>
+                                <th class="px-5 py-3 text-left font-semibold">Serviço</th>
+                                <th class="px-5 py-3 text-left font-semibold">Tarefa</th>
+                                <th class="px-5 py-3 text-left font-semibold">Finalizado em</th>
+                                <th class="px-5 py-3 text-left font-semibold">Status</th>
+                                <th class="px-5 py-3 text-center font-semibold">Documento</th>
                             </tr>
-                        @endforelse
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            @forelse($arquivos as $tarefa)
+                                @php
+                                    $coluna = $tarefa->coluna;
+                                    $statusLabel = $coluna?->nome ?? 'Finalizado';
+                                    $badge = ($coluna && $coluna->finaliza)
+                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                                        : 'bg-slate-100 text-slate-700 border-slate-200';
+                                @endphp
+                                <tr class="hover:bg-slate-50/70">
+                                    <td class="px-5 py-3">
+                                        <input type="checkbox" name="tarefa_ids[]" value="{{ $tarefa->id }}" class="rounded border-slate-300 js-check-item-arquivo">
+                                    </td>
+                                    <td class="px-5 py-3 text-slate-800">
+                                        {{ $tarefa->servico->nome ?? 'Serviço' }}
+                                    </td>
+                                    <td class="px-5 py-3 text-slate-700">
+                                        {{ $tarefa->titulo ?? 'Tarefa' }}
+                                    </td>
+                                    <td class="px-5 py-3 text-slate-700">
+                                        {{ optional($tarefa->finalizado_em)->format('d/m/Y H:i') ?? '-' }}
+                                    </td>
+                                    <td class="px-5 py-3">
+                                        <span class="inline-flex items-center px-3 py-1 rounded-full border text-xs font-semibold {{ $badge }}">
+                                            {{ $statusLabel }}
+                                        </span>
+                                    </td>
+                                    <td class="px-5 py-3 text-center">
+                                        @if($tarefa->documento_link)
+                                            <a href="{{ $tarefa->documento_link }}"
+                                               class="px-3 py-2 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700"
+                                               target="_blank" rel="noopener">
+                                                Ver / Baixar
+                                            </a>
+                                        @else
+                                            <span class="text-xs text-slate-400">Indisponível</span>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="6" class="px-5 py-6 text-center text-slate-500">
+                                        Nenhum documento disponível até o momento.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                    <div class="px-5 py-4 border-t border-slate-200 bg-slate-50/50 flex items-center justify-between">
+                        <span class="text-xs text-slate-500">Marque os arquivos desejados para baixar em um único ZIP</span>
+                        <button type="submit"
+                                class="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition">
+                            Baixar selecionados
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const checkAll = document.querySelector('.js-check-all-arquivos');
+    if (!checkAll) return;
+
+    const items = Array.from(document.querySelectorAll('.js-check-item-arquivo'));
+    checkAll.addEventListener('change', function () {
+        items.forEach((item) => {
+            item.checked = checkAll.checked;
+        });
+    });
+});
+</script>
+@endpush

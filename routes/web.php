@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use App\Http\Controllers\Api\ClientesApiController;
 use App\Http\Controllers\Api\ServicosApiController;
@@ -49,7 +49,7 @@ use \App\Http\Controllers\Comercial\PropostaController;
 // ==================== Controllers ====================
 
 
-// Proposta pública (sem login)
+// Proposta pÃºblica (sem login)
 Route::get('/proposta/{token}', [PropostaPublicController::class, 'show'])
     ->name('propostas.public.show');
 Route::post('/proposta/{token}/responder', [PropostaPublicController::class, 'responder'])
@@ -58,7 +58,7 @@ Route::post('/proposta/{token}/responder', [PropostaPublicController::class, 're
 // ==================== Raiz -> Login ====================
 Route::redirect('/', '/login');
 
-// ==================== Área autenticada ====================
+// ==================== Ãrea autenticada ====================
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', function (Request $request) {
         $user = $request->user();
@@ -173,7 +173,7 @@ Route::middleware('auth')->group(function () {
 
 
         // ======================================================
-        //  FUNCIONÁRIOS DO CLIENTE
+        //  FUNCIONÃRIOS DO CLIENTE
         // ======================================================
         Route::get('clientes/{cliente}/funcionarios/novo', [FuncionarioController::class, 'create'])
             ->name('clientes.funcionarios.create');
@@ -209,15 +209,15 @@ Route::middleware('auth')->group(function () {
             //  PGR
             // ======================================================
 
-            // Selecionar tipo (Matriz / Específico)
+            // Selecionar tipo (Matriz / EspecÃ­fico)
             Route::get('/pgr/clientes/{cliente}/tipo', [PgrController::class, 'pgrTipo'])
                 ->name('pgr.tipo');
 
-            // Formulário (recebe ?tipo=matriz ou ?tipo=especifico)
+            // FormulÃ¡rio (recebe ?tipo=matriz ou ?tipo=especifico)
             Route::get('/pgr/clientes/{cliente}/create', [PgrController::class, 'pgrCreate'])
                 ->name('pgr.create');
 
-            // Salvar formulário (cria a tarefa e o registro em pgr_solicitacoes)
+            // Salvar formulÃ¡rio (cria a tarefa e o registro em pgr_solicitacoes)
             Route::post('/pgr/clientes/{cliente}', [PgrController::class, 'pgrStore'])
                 ->name('pgr.store');
 
@@ -248,15 +248,15 @@ Route::middleware('auth')->group(function () {
         Route::get('/tarefas/{tarefa}/editar', [AsoController::class, 'edit'])
             ->name('kanban.aso.editar');
 
-        // Selecionar tipo (Matriz / Específico)
+        // Selecionar tipo (Matriz / EspecÃ­fico)
         Route::get('clientes/{cliente}/pcmso/tipo', [PcmsoController::class, 'selecionarTipo'])
             ->name('pcmso.tipo');
 
-        // Pergunta se possui PGR (para matriz/específico)
+        // Pergunta se possui PGR (para matriz/especÃ­fico)
         Route::get('clientes/{cliente}/pcmso/{tipo}/possui-pgr', [PcmsoController::class, 'perguntaPgr'])
             ->name('pcmso.possui-pgr');
 
-        // Formulário para anexar PGR (matriz/específico)
+        // FormulÃ¡rio para anexar PGR (matriz/especÃ­fico)
         Route::get('clientes/{cliente}/pcmso/{tipo}/inserir-pgr', [PcmsoController::class, 'createComPgr'])
             ->name('pcmso.create-com-pgr');
 
@@ -268,11 +268,11 @@ Route::middleware('auth')->group(function () {
         //  LTCAT
         // ======================================================
 
-        // Selecionar tipo (Matriz | Específico)
+        // Selecionar tipo (Matriz | EspecÃ­fico)
         Route::get('clientes/{cliente}/ltcat/tipo', [LtcatController::class, 'selecionarTipo'])
             ->name('ltcat.tipo');
 
-        // Formulário (?tipo=matriz ou ?tipo=especifico)
+        // FormulÃ¡rio (?tipo=matriz ou ?tipo=especifico)
         Route::get('clientes/{cliente}/ltcat/create', [LtcatController::class, 'create'])
             ->name('ltcat.create');
 
@@ -341,11 +341,11 @@ Route::middleware('auth')->group(function () {
         //  TREINAMENTOS NRs
         // ======================================================
 
-        // Tela de seleção / criação de solicitação
+        // Tela de seleÃ§Ã£o / criaÃ§Ã£o de solicitaÃ§Ã£o
         Route::get('clientes/{cliente}/treinamentos-nr', [TreinamentoNrController::class, 'create'])
             ->name('treinamentos-nr.create');
 
-        // Salvar solicitação de treinamento NR
+        // Salvar solicitaÃ§Ã£o de treinamento NR
         Route::post('clientes/{cliente}/treinamentos-nr', [TreinamentoNrController::class, 'store'])
             ->name('treinamentos-nr.store');
 
@@ -356,7 +356,7 @@ Route::middleware('auth')->group(function () {
         Route::put('treinamentos-nr/tarefa/{tarefa}', [TreinamentoNrController::class, 'update'])
             ->name('treinamentos-nr.update');
 
-        // AJAX: cadastrar novo funcionário e devolver JSON
+        // AJAX: cadastrar novo funcionÃ¡rio e devolver JSON
         Route::post(
             'clientes/{cliente}/treinamentos-nr/funcionarios',
             [TreinamentoNrController::class, 'storeFuncionario']
@@ -459,7 +459,7 @@ Route::middleware('auth')->group(function () {
                 Route::delete('/{funcionario}', [ClienteFuncionarioController::class, 'destroy'])
                     ->name('destroy');
 
-                // 🔁 Ativar / Inativar funcionário (portal do cliente)
+                // ðŸ” Ativar / Inativar funcionÃ¡rio (portal do cliente)
                 Route::patch('/{funcionario}/toggle-status',
                     [ClienteFuncionarioController::class, 'toggleStatus']
                 )->name('toggle-status');
@@ -468,6 +468,12 @@ Route::middleware('auth')->group(function () {
             // Meus Arquivos
             Route::get('/arquivos', [ArquivoController::class, 'index'])
                 ->name('arquivos.index');
+            Route::get('/arquivos/funcionarios/{funcionario}/download-todos', [ArquivoController::class, 'downloadFuncionario'])
+                ->name('arquivos.funcionario.download');
+            Route::post('/arquivos/download-selecionados', [ArquivoController::class, 'downloadSelecionados'])
+                ->name('arquivos.download-selecionados');
+            Route::post('/arquivos/funcionarios/{funcionario}/download-selecionados', [ArquivoController::class, 'downloadSelecionadosFuncionario'])
+                ->name('arquivos.funcionario.download-selecionados');
 
             Route::prefix('servicos')
                 ->name('servicos.')
@@ -478,7 +484,7 @@ Route::middleware('auth')->group(function () {
                         if (!$portalServicoPermitido($cliente->id, 'ASO')) {
                             return redirect()
                                 ->route('cliente.dashboard')
-                                ->with('error', 'Serviço ASO não disponível no contrato ativo.');
+                                ->with('error', 'ServiÃ§o ASO nÃ£o disponÃ­vel no contrato ativo.');
                         }
 
                         return redirect()->route('operacional.kanban.aso.create', [
@@ -493,7 +499,7 @@ Route::middleware('auth')->group(function () {
                         if (!$portalServicoPermitido($cliente->id, 'PGR')) {
                             return redirect()
                                 ->route('cliente.dashboard')
-                                ->with('error', 'Serviço PGR não disponível no contrato ativo.');
+                                ->with('error', 'ServiÃ§o PGR nÃ£o disponÃ­vel no contrato ativo.');
                         }
 
                         return redirect()->route('operacional.kanban.pgr.tipo', [
@@ -508,7 +514,7 @@ Route::middleware('auth')->group(function () {
                         if (!$portalServicoPermitido($cliente->id, 'PCMSO')) {
                             return redirect()
                                 ->route('cliente.dashboard')
-                                ->with('error', 'Serviço PCMSO não disponível no contrato ativo.');
+                                ->with('error', 'ServiÃ§o PCMSO nÃ£o disponÃ­vel no contrato ativo.');
                         }
 
                         return redirect()->route('operacional.pcmso.tipo', [
@@ -523,7 +529,7 @@ Route::middleware('auth')->group(function () {
                         if (!$portalServicoPermitido($cliente->id, 'LTCAT')) {
                             return redirect()
                                 ->route('cliente.dashboard')
-                                ->with('error', 'Serviço LTCAT não disponível no contrato ativo.');
+                                ->with('error', 'ServiÃ§o LTCAT nÃ£o disponÃ­vel no contrato ativo.');
                         }
 
                         return redirect()->route('operacional.ltcat.tipo', [
@@ -538,7 +544,7 @@ Route::middleware('auth')->group(function () {
                         if (!$portalServicoPermitido($cliente->id, 'APR')) {
                             return redirect()
                                 ->route('cliente.dashboard')
-                                ->with('error', 'Serviço APR não disponível no contrato ativo.');
+                                ->with('error', 'ServiÃ§o APR nÃ£o disponÃ­vel no contrato ativo.');
                         }
 
                         return redirect()->route('operacional.apr.create', [
@@ -553,7 +559,7 @@ Route::middleware('auth')->group(function () {
                         if (!$portalServicoPermitido($cliente->id, 'Treinamentos NRs')) {
                             return redirect()
                                 ->route('cliente.dashboard')
-                                ->with('error', 'Serviço Treinamentos NRs não disponível no contrato ativo.');
+                                ->with('error', 'ServiÃ§o Treinamentos NRs nÃ£o disponÃ­vel no contrato ativo.');
                         }
 
                         return redirect()->route('operacional.treinamentos-nr.create', [
@@ -575,7 +581,7 @@ Route::middleware('auth')->group(function () {
             Route::get('/', [DashboardComercial::class, 'index'])
                 ->name('dashboard');
 
-            // Apresentação de Proposta
+            // ApresentaÃ§Ã£o de Proposta
             Route::get('/apresentacao', [\App\Http\Controllers\Comercial\ApresentacaoController::class, 'cliente'])
                 ->name('apresentacao.cliente');
             Route::post('/apresentacao', [\App\Http\Controllers\Comercial\ApresentacaoController::class, 'clienteStore'])
@@ -680,6 +686,10 @@ Route::middleware('auth')->group(function () {
                     ->name('parametros.show');
                 Route::get('/{cliente}/acesso', [ClienteController::class, 'acessoForm'])->name('acesso.form');
                 Route::post('/{cliente}/acesso', [ClienteController::class, 'criarAcesso'])->name('acesso');
+                Route::get('/{cliente}/funcionarios/{funcionario}/arquivos/download-todos', [ClienteController::class, 'downloadArquivosFuncionario'])
+                    ->name('funcionarios.arquivos.download');
+                Route::post('/{cliente}/arquivos/download-selecionados', [ClienteController::class, 'downloadArquivosSelecionados'])
+                    ->name('arquivos.download-selecionados');
 
                 // Consulta CNPJ
                 Route::get('/consulta-cnpj/{cnpj}', [ClienteController::class, 'consultaCnpj'])
@@ -688,7 +698,7 @@ Route::middleware('auth')->group(function () {
                     ->name('cnpj-exists');
             });
 
-            // Funções (CRUD Comercial)
+            // FunÃ§Ãµes (CRUD Comercial)
             Route::prefix('funcoes')->name('funcoes.')->group(function () {
                 Route::get('/', [ComercialFuncoesController::class, 'index'])
                     ->name('index');
@@ -766,7 +776,7 @@ Route::middleware('auth')->group(function () {
                     ->name('destroy');
             });
 
-            // Medições (LTCAT/LTIP)
+            // MediÃ§Ãµes (LTCAT/LTIP)
             Route::prefix('medicoes')->name('medicoes.')->group(function () {
                 Route::get('/', [\App\Http\Controllers\Comercial\MedicoesTabPrecoController::class, 'indexJson'])
                     ->name('indexJson');
@@ -820,7 +830,7 @@ Route::middleware('auth')->group(function () {
                     ->name('indexJson');
             });
 
-            // Minhas Comissões (vendedor)
+            // Minhas ComissÃµes (vendedor)
             Route::prefix('minhas-comissoes')
                 ->name('comissoes.')
                 ->group(function () {
@@ -882,6 +892,8 @@ Route::middleware('auth')->group(function () {
                 ->name('contas-receber.baixar');
             Route::post('/contas-receber/{contaReceber}/reabrir', [\App\Http\Controllers\Financeiro\ContasReceberController::class, 'reabrir'])
                 ->name('contas-receber.reabrir');
+            Route::delete('/contas-receber/{contaReceber}', [\App\Http\Controllers\Financeiro\ContasReceberController::class, 'destroy'])
+                ->name('contas-receber.destroy');
             Route::post('/contas-receber/{contaReceber}/boleto', [\App\Http\Controllers\Financeiro\ContasReceberController::class, 'emitirBoleto'])
                 ->name('contas-receber.boleto');
             Route::post('/contas-receber/{contaReceber}/itens', [\App\Http\Controllers\Financeiro\ContasReceberController::class, 'storeItem'])
@@ -906,8 +918,12 @@ Route::middleware('auth')->group(function () {
             ->name('parametros.show');
         Route::get('/{cliente}/acesso', [ClienteController::class, 'acessoForm'])->name('acesso.form');
         Route::post('/{cliente}/acesso', [ClienteController::class, 'criarAcesso'])->name('acesso');
+        Route::get('/{cliente}/funcionarios/{funcionario}/arquivos/download-todos', [ClienteController::class, 'downloadArquivosFuncionario'])
+            ->name('funcionarios.arquivos.download');
+        Route::post('/{cliente}/arquivos/download-selecionados', [ClienteController::class, 'downloadArquivosSelecionados'])
+            ->name('arquivos.download-selecionados');
 
-        // 👉 NOVA ROTA: selecionar cliente para o portal
+        // ðŸ‘‰ NOVA ROTA: selecionar cliente para o portal
         Route::get('/{cliente}/portal', [ClienteController::class, 'selecionarParaPortal'])
             ->name('portal');
 
@@ -999,7 +1015,7 @@ Route::middleware('auth')->group(function () {
         // Acessos
         Route::get('/acessos', [AcessosController::class, 'index'])->name('acessos');
 
-        // Papéis
+        // PapÃ©is
         Route::resource('papeis', PapelController::class)
             ->parameters(['papeis' => 'papel'])
             ->only(['index','store','update','destroy']);
@@ -1007,12 +1023,12 @@ Route::middleware('auth')->group(function () {
         Route::post('papeis/{papel}/permissoes', [PapelController::class, 'syncPermissoes'])
             ->name('papeis.permissoes.sync');
 
-        // Permissões
+        // PermissÃµes
         Route::resource('permissoes', PermissaoController::class)
             ->parameters(['permissoes' => 'permissao'])
             ->only(['index','store','update','destroy']);
 
-        // Usuários
+        // UsuÃ¡rios
         Route::prefix('usuarios')->name('usuarios.')->group(function () {
             Route::post('/', [AcessosController::class, 'usuariosStore'])->name('store');
             Route::patch('/{user}', [AcessosController::class, 'usuariosUpdate'])->name('update');
@@ -1022,7 +1038,7 @@ Route::middleware('auth')->group(function () {
             Route::post('/{user}/password', [AcessosController::class, 'usuariosSetPassword'])->name('password');
         });
 
-        // CRUD de Funções
+        // CRUD de FunÃ§Ãµes
         Route::prefix('funcoes')->name('funcoes.')->group(function () {
             Route::get('/', [FuncaoController::class, 'index'])->name('index');
             Route::get('/json', [FuncaoController::class, 'index'])->name('indexJson');
@@ -1031,7 +1047,7 @@ Route::middleware('auth')->group(function () {
             Route::delete('/{funcao}', [FuncaoController::class, 'destroy'])->name('destroy');
         });
 
-        // Comissões (parametrização)
+        // ComissÃµes (parametrizaÃ§Ã£o)
         Route::prefix('comissoes')->name('comissoes.')->group(function () {
             Route::get('/', [\App\Http\Controllers\Master\ComissaoController::class, 'index'])
                 ->name('index');
@@ -1047,7 +1063,7 @@ Route::middleware('auth')->group(function () {
                 ->name('vendedores');
         });
 
-        // Tabela de Preços (master reutiliza o mesmo conteúdo da área comercial)
+        // Tabela de PreÃ§os (master reutiliza o mesmo conteÃºdo da Ã¡rea comercial)
         Route::prefix('tabela-precos')->name('tabela-precos.')->group(function () {
             Route::get('/', [TabelaPrecoController::class, 'itensIndex'])->name('index');
             Route::post('/', [TabelaPrecoController::class, 'update'])->name('update');
@@ -1095,7 +1111,7 @@ Route::middleware('auth')->group(function () {
                 ->name('destroy');
         });
 
-        // Medições (LTCAT/LTIP)
+        // MediÃ§Ãµes (LTCAT/LTIP)
         Route::prefix('medicoes')->name('medicoes.')->group(function () {
             Route::get('/', [\App\Http\Controllers\Comercial\MedicoesTabPrecoController::class, 'indexJson'])
                 ->name('indexJson');
@@ -1143,7 +1159,7 @@ Route::middleware('auth')->group(function () {
     });
 
     // ======================================================
-    //                TABELA DE PREÇOS
+    //                TABELA DE PREÃ‡OS
     // ======================================================
 //    Route::prefix('master/tabela-precos')->name('tabela-precos.')->group(function () {
 //        Route::get('/', [TabelaPrecoController::class,'index'])->name('index');
@@ -1167,3 +1183,4 @@ Route::get('operacional/tarefas/documento/{token}', [TarefaController::class, 'd
     ->name('operacional.tarefas.documento');
 
 require __DIR__.'/auth.php';
+

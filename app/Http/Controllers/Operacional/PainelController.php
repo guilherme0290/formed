@@ -505,6 +505,21 @@ class PainelController extends Controller
             $query->where('razao_social', 'like', "%{$q}%")
                 ->orWhere('nome_fantasia', 'like', "%{$q}%")
             )
+            ->whereExists(function ($subQuery) use ($empresaId, $hoje) {
+                $subQuery->select(DB::raw(1))
+                    ->from('cliente_contratos')
+                    ->whereColumn('cliente_contratos.cliente_id', 'clientes.id')
+                    ->where('cliente_contratos.empresa_id', $empresaId)
+                    ->where('cliente_contratos.status', 'ATIVO')
+                    ->where(function ($q) use ($hoje) {
+                        $q->whereNull('cliente_contratos.vigencia_inicio')
+                            ->orWhereDate('cliente_contratos.vigencia_inicio', '<=', $hoje);
+                    })
+                    ->where(function ($q) use ($hoje) {
+                        $q->whereNull('cliente_contratos.vigencia_fim')
+                            ->orWhereDate('cliente_contratos.vigencia_fim', '>=', $hoje);
+                    });
+            })
             ->select('clientes.*')
             ->addSelect(['tem_contrato_ativo' => ClienteContrato::selectRaw('1')
                 ->whereColumn('cliente_contratos.cliente_id', 'clientes.id')
@@ -523,6 +538,21 @@ class PainelController extends Controller
 
         $clienteAutocomplete = Cliente::query()
             ->where('empresa_id', $empresaId)
+            ->whereExists(function ($subQuery) use ($empresaId, $hoje) {
+                $subQuery->select(DB::raw(1))
+                    ->from('cliente_contratos')
+                    ->whereColumn('cliente_contratos.cliente_id', 'clientes.id')
+                    ->where('cliente_contratos.empresa_id', $empresaId)
+                    ->where('cliente_contratos.status', 'ATIVO')
+                    ->where(function ($q) use ($hoje) {
+                        $q->whereNull('cliente_contratos.vigencia_inicio')
+                            ->orWhereDate('cliente_contratos.vigencia_inicio', '<=', $hoje);
+                    })
+                    ->where(function ($q) use ($hoje) {
+                        $q->whereNull('cliente_contratos.vigencia_fim')
+                            ->orWhereDate('cliente_contratos.vigencia_fim', '>=', $hoje);
+                    });
+            })
             ->orderBy('razao_social')
             ->get(['razao_social', 'nome_fantasia', 'cnpj'])
             ->flatMap(function ($cliente) {
