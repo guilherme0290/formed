@@ -103,15 +103,14 @@
                     </a>
                 </div>
 
-                {{-- Botao amarelo "Realizar Pagamento" (desabilitado por ora) --}}
-                <button
-                    type="button"
-                    disabled
-                    class="w-full rounded-md bg-amber-300/70 text-xs md:text-[13px] font-semibold
-                           text-slate-600 px-3 py-2 flex items-center justify-center gap-2 shadow-inner shadow-amber-200/50 cursor-not-allowed">
+                {{-- Botao amarelo "Realizar Pagamento" --}}
+                <a
+                    href="{{ route('cliente.faturas') }}"
+                    class="w-full rounded-md bg-amber-300/90 text-xs md:text-[13px] font-semibold
+                           text-slate-700 px-3 py-2 flex items-center justify-center gap-2 shadow-inner shadow-amber-200/50 hover:bg-amber-300 transition">
                     <span class="text-[10px] font-semibold">💳</span>
-                    Realizar Pagamento (em breve)
-                </button>
+                    Realizar Pagamento
+                </a>
             </div>
 
         </div>

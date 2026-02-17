@@ -27,6 +27,8 @@ class ClienteController extends Controller
      */
     public function index(Request $r)
     {
+        $this->authorizeComercialAction('view');
+
         $q      = trim((string) $r->query('q', ''));
         $status = $r->query('status', 'todos'); // todos|ativo|inativo
         $qText  = trim(preg_replace('/\d+/', ' ', $q));
@@ -38,6 +40,9 @@ class ClienteController extends Controller
         $clientes = Cliente::query()
             ->with('userCliente')
             ->where('empresa_id', $empresaId)
+            ->when($this->isComercialNaoMaster($r->user()), function ($q) use ($r) {
+                $q->where('vendedor_id', (int) $r->user()->id);
+            })
             ->when($qText !== '' || $doc !== '', function ($w) use ($qText, $doc) {
                 $w->where(function ($x) use ($qText, $doc) {
                     if ($qText !== '') {
@@ -132,6 +137,8 @@ class ClienteController extends Controller
      */
     public function create()
     {
+        $this->authorizeComercialAction('create');
+
         $cliente = new Cliente();
 
         // se sua tabela tiver "uf", pode ajustar; aqui uso "sigla"
@@ -154,6 +161,8 @@ class ClienteController extends Controller
      */
     public function store(Request $r)
     {
+        $this->authorizeComercialAction('create');
+
         $data = $this->validateData($r);
 
         $empresaId = $r->user()->empresa_id ?? 1;
@@ -204,6 +213,7 @@ class ClienteController extends Controller
      */
     public function show(Cliente $cliente)
     {
+        $this->authorizeComercialAction('view');
         $this->authorizeCliente($cliente);
 
         $routePrefix = $this->routePrefix();
@@ -324,6 +334,7 @@ class ClienteController extends Controller
      */
     public function edit(Request $request, Cliente $cliente)
     {
+        $this->authorizeComercialAction('update');
         $this->authorizeCliente($cliente);
 
         $estados = Estado::orderBy('uf')->get(['uf', 'nome']);
@@ -534,6 +545,7 @@ class ClienteController extends Controller
      */
     public function update(Request $r, Cliente $cliente)
     {
+        $this->authorizeComercialAction('update');
         $this->authorizeCliente($cliente);
 
         if ($r->boolean('update_vendedor')) {
@@ -588,6 +600,7 @@ class ClienteController extends Controller
      */
     public function destroy(Cliente $cliente)
     {
+        $this->authorizeComercialAction('delete');
         $this->authorizeCliente($cliente);
 
         try {
@@ -686,9 +699,53 @@ class ClienteController extends Controller
 
     protected function authorizeCliente(Cliente $cliente): void
     {
-        $empresaId = auth()->user()->empresa_id ?? 1;
+        $user = auth()->user();
+        $empresaId = $user->empresa_id ?? 1;
 
         if ($cliente->empresa_id != $empresaId) {
+            abort(403);
+        }
+
+        if ($this->isComercialNaoMaster($user) && (int) $cliente->vendedor_id !== (int) $user->id) {
+            abort(403);
+        }
+    }
+
+    private function isComercialRoute(): bool
+    {
+        return request()->routeIs('comercial.clientes.*');
+    }
+
+    private function isComercialNaoMaster(?User $user): bool
+    {
+        return $this->isComercialRoute() && $user && !$user->hasPapel('Master') && $user->hasPapel('Comercial');
+    }
+
+    private function authorizeComercialAction(string $action): void
+    {
+        if (!$this->isComercialRoute()) {
+            return;
+        }
+
+        $user = auth()->user();
+        if (!$user) {
+            abort(403);
+        }
+
+        if ($user->hasPapel('Master')) {
+            return;
+        }
+
+        if (!$user->hasPapel('Comercial')) {
+            abort(403);
+        }
+
+        $chave = 'comercial.clientes.' . $action;
+        $temPermissao = $user->papel()
+            ->whereHas('permissoes', fn ($q) => $q->where('chave', $chave))
+            ->exists();
+
+        if (!$temPermissao) {
             abort(403);
         }
     }

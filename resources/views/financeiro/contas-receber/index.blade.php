@@ -3,6 +3,13 @@
 @section('page-container', 'w-full p-0')
 
 @section('content')
+    @php
+        $user = auth()->user();
+        $permissionMap = $user?->papel?->permissoes?->pluck('chave')->flip()->all() ?? [];
+        $isMaster = $user?->hasPapel('Master');
+        $canCreate = $isMaster || isset($permissionMap['financeiro.contas-receber.create']);
+        $canUpdate = $isMaster || isset($permissionMap['financeiro.contas-receber.update']);
+    @endphp
     <div class="w-full px-3 md:px-5 py-4 md:py-5 space-y-8">
         <div class="flex flex-col gap-2">
             <div class="inline-flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-indigo-400">
@@ -123,7 +130,11 @@
                                 @endphp
                                 <tr class="odd:bg-white even:bg-slate-50 hover:bg-slate-100">
                                     <td class="px-4 py-3">
-                                        <input type="checkbox" name="itens[]" value="{{ $item->id }}" class="rounded border-slate-300">
+                                        <input type="checkbox"
+                                               name="itens[]"
+                                               value="{{ $item->id }}"
+                                               class="rounded border-slate-300 {{ $canCreate ? '' : 'opacity-60 cursor-not-allowed' }}"
+                                               @if(!$canCreate) disabled title="Usuario sem permissao" @endif>
                                     </td>
                                     <td class="px-4 py-3 text-slate-700">
                                         {{ $tarefaId ? '#' . $tarefaId : '—' }}
@@ -154,7 +165,8 @@
                 </div>
                 <div class="px-5 py-4 border-t border-slate-100 flex items-center justify-between">
                     <span class="text-xs text-slate-500">Selecione os itens para gerar a conta</span>
-                    <button class="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700">
+                    <button class="px-4 py-2 rounded-xl text-sm font-semibold {{ $canCreate ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}"
+                            @if(!$canCreate) disabled title="Usuario sem permissao" @endif>
                         Criar Contas a Receber
                     </button>
                 </div>
@@ -211,7 +223,8 @@
                                         </a>
                                         <form method="POST" action="{{ route('financeiro.contas-receber.boleto', $conta) }}">
                                             @csrf
-                                            <button class="px-3 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800">
+                                            <button class="px-3 py-2 rounded-lg text-xs font-semibold {{ $canUpdate ? 'bg-slate-900 text-white hover:bg-slate-800' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}"
+                                                    @if(!$canUpdate) disabled title="Usuario sem permissao" @endif>
                                                 Emitir Boleto
                                             </button>
                                         </form>

@@ -34,6 +34,11 @@ return [
 
         'comercial.pipeline.view'         => 'Ver pipeline/acompanhamento',
 
+        'comercial.clientes.view'         => 'Ver clientes',
+        'comercial.clientes.create'       => 'Criar clientes',
+        'comercial.clientes.update'       => 'Editar clientes',
+        'comercial.clientes.delete'       => 'Excluir clientes',
+
         'comercial.tabela-precos.view'    => 'Ver tabela de preços',
         'comercial.tabela-precos.create'  => 'Criar itens tabela de preços',
         'comercial.tabela-precos.update'  => 'Editar itens tabela de preços',
@@ -48,6 +53,26 @@ return [
 
         'comercial.agenda.view'           => 'Ver agenda',
         'comercial.agenda.edit'           => 'Criar/editar tarefas agenda',
+    ],
+
+    // FINANCEIRO (apenas módulo financeiro)
+    'financeiro' => [
+        'financeiro.dashboard.view'         => 'Acessar painel financeiro',
+
+        'financeiro.contas-receber.view'    => 'Ver contas a receber',
+        'financeiro.contas-receber.create'  => 'Criar contas a receber',
+        'financeiro.contas-receber.update'  => 'Editar contas a receber',
+        'financeiro.contas-receber.delete'  => 'Excluir contas a receber',
+
+        'financeiro.contratos.view'         => 'Ver contratos financeiros',
+        'financeiro.contratos.create'       => 'Criar contratos financeiros',
+        'financeiro.contratos.update'       => 'Editar contratos financeiros',
+        'financeiro.contratos.delete'       => 'Excluir contratos financeiros',
+
+        'financeiro.faturamento.view'       => 'Ver faturamento detalhado',
+        'financeiro.faturamento.create'     => 'Criar lançamentos de faturamento',
+        'financeiro.faturamento.update'     => 'Editar lançamentos de faturamento',
+        'financeiro.faturamento.delete'     => 'Excluir lançamentos de faturamento',
     ],
 
     // OPERACIONAL (apenas módulo operacional)

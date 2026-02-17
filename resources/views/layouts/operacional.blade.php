@@ -13,7 +13,14 @@
 </head>
 <body class="bg-slate-900">
 <div class="min-h-screen flex relative">
-    @php $isMaster = auth()->user()?->isMaster(); @endphp
+    @php
+        $authUser = auth()->user();
+        $isMaster = $authUser?->isMaster();
+        $permissionMap = $authUser?->papel?->permissoes?->pluck('chave')->flip()->all() ?? [];
+        $can = function (string $key) use ($isMaster, $permissionMap): bool {
+            return $isMaster || isset($permissionMap[$key]);
+        };
+    @endphp
 
     @if($isMaster)
         @include('layouts.partials.master-sidebar')
@@ -61,8 +68,10 @@
         </div>
 
         <nav class="relative z-10 flex-1 px-3 mt-4 space-y-1">
-            <a href="{{ route('operacional.kanban') }}"
-               class="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800 text-slate-50 text-sm font-medium">
+            @php $canKanban = $can('operacional.dashboard.view'); @endphp
+            <a href="{{ $canKanban ? route('operacional.kanban') : 'javascript:void(0)' }}"
+               @if(!$canKanban) title="Usuario sem permissao" aria-disabled="true" @endif
+               class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium {{ $canKanban ? 'bg-slate-800 text-slate-50' : 'bg-slate-900 text-slate-500 cursor-not-allowed' }}">
                 <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-700">
                     🗂️
                 </span>
@@ -165,6 +174,11 @@
 
             {{-- Conteúdo das telas operacionais fica por cima --}}
             <div class="relative z-10">
+                @if(session('error') || session('erro'))
+                    <div class="mx-4 mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 md:mx-6">
+                        {{ session('error') ?? session('erro') }}
+                    </div>
+                @endif
                 @yield('content')
             </div>
         </main>

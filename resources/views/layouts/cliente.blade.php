@@ -157,9 +157,11 @@
                     $classes = $link['principal'] ?? false
                         ? 'bg-slate-800 text-slate-50 font-medium'
                         : 'text-slate-100 hover:bg-slate-800/80';
-                    $opacity = $disabled ? 'opacity-60 pointer-events-none cursor-not-allowed' : '';
+                    $opacity = $disabled ? 'opacity-60' : '';
+                    $hint = $disabled ? 'Servico nao disponivel no contrato ativo' : null;
                 @endphp
                 <a href="{{ $link['rota'] }}"
+                   @if($hint) title="{{ $hint }}" @endif
                    class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition {{ $classes }} {{ $opacity }}">
                     <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800">
                         {{ $link['icone'] }}
@@ -293,6 +295,13 @@
                 </div>
             </div>
         @endif
+        @if (!$suppressInlineAlerts && session('error'))
+            <div class="w-full mt-4 px-4 sm:px-6 lg:px-8">
+                <div class="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-700 shadow">
+                    {{ session('error') }}
+                </div>
+            </div>
+        @endif
 
         {{-- CONTEÚDO COM MARCA D'ÁGUA (IGUAL ESTAVA) --}}
         <main class="flex-1 relative overflow-hidden">
@@ -315,4 +324,3 @@
 @stack('scripts')
 </body>
 </html>
-

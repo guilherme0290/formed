@@ -4,6 +4,14 @@
 @section('page-container', 'w-full p-0')
 
 @section('content')
+    @php
+        $user = auth()->user();
+        $permissionMap = $user?->papel?->permissoes?->pluck('chave')->flip()->all() ?? [];
+        $isMaster = $user?->hasPapel('Master');
+        $canSave = $modo === 'edit'
+            ? ($isMaster || isset($permissionMap['cliente.funcionarios.update']))
+            : ($isMaster || isset($permissionMap['cliente.funcionarios.create']));
+    @endphp
     <div class="w-full px-3 md:px-5 py-4 md:py-5">
 
         <div class="mb-3">
@@ -188,7 +196,8 @@
                     </a>
 
                     <button type="submit"
-                            class="px-4 py-2 text-xs rounded-lg bg-blue-600 text-white hover:bg-blue-700">
+                            @if(!$canSave) disabled title="Usuario sem permissao" @endif
+                            class="px-4 py-2 text-xs rounded-lg {{ $canSave ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}">
                         {{ $modo === 'edit' ? 'Salvar alterações' : 'Cadastrar' }}
                     </button>
                 </div>
@@ -329,4 +338,3 @@
     });
 </script>
 @endpush
-

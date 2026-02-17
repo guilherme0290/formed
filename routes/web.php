@@ -59,7 +59,7 @@ Route::post('/proposta/{token}/responder', [PropostaPublicController::class, 're
 Route::redirect('/', '/login');
 
 // ==================== Ãrea autenticada ====================
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'route.permission'])->group(function () {
     Route::get('/dashboard', function (Request $request) {
         $user = $request->user();
         $papelNome = mb_strtolower(optional($user->papel)->nome ?? '');

@@ -5,6 +5,40 @@
 @endphp
 
 @section('content')
+    @php
+        $permissionMap = $usuario?->papel?->permissoes?->pluck('chave')->flip()->all() ?? [];
+        $isMaster = $usuario?->hasPapel('Master');
+        $canCreateTask = $isMaster
+            || isset($permissionMap['operacional.tarefas.manage'])
+            || isset($permissionMap['operacional.aso.create'])
+            || isset($permissionMap['operacional.pgr.create'])
+            || isset($permissionMap['operacional.pcmso.create'])
+            || isset($permissionMap['operacional.ltcat.create'])
+            || isset($permissionMap['operacional.ltip.create'])
+            || isset($permissionMap['operacional.apr.create'])
+            || isset($permissionMap['operacional.pae.create'])
+            || isset($permissionMap['operacional.treinamentos.create']);
+        $canUpdateTask = $isMaster
+            || isset($permissionMap['operacional.tarefas.manage'])
+            || isset($permissionMap['operacional.aso.update'])
+            || isset($permissionMap['operacional.pgr.update'])
+            || isset($permissionMap['operacional.pcmso.update'])
+            || isset($permissionMap['operacional.ltcat.update'])
+            || isset($permissionMap['operacional.ltip.update'])
+            || isset($permissionMap['operacional.apr.update'])
+            || isset($permissionMap['operacional.pae.update'])
+            || isset($permissionMap['operacional.treinamentos.update']);
+        $canDeleteTask = $isMaster
+            || isset($permissionMap['operacional.tarefas.manage'])
+            || isset($permissionMap['operacional.aso.delete'])
+            || isset($permissionMap['operacional.pgr.delete'])
+            || isset($permissionMap['operacional.pcmso.delete'])
+            || isset($permissionMap['operacional.ltcat.delete'])
+            || isset($permissionMap['operacional.ltip.delete'])
+            || isset($permissionMap['operacional.apr.delete'])
+            || isset($permissionMap['operacional.pae.delete'])
+            || isset($permissionMap['operacional.treinamentos.delete']);
+    @endphp
 
     @if (session('ok'))
         <div class="mb-4 rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700">
@@ -72,11 +106,11 @@
                 </form>
             </div>
 
-            <a href="{{ route('operacional.kanban.aso.clientes') }}"
+            <a href="{{ $canCreateTask ? route('operacional.kanban.aso.clientes') : 'javascript:void(0)' }}"
+               @if(!$canCreateTask) title="Usuario sem permissao" aria-disabled="true" @endif
                class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl
-                  bg-gradient-to-r from-sky-500 to-cyan-400
-                  text-white text-sm font-semibold shadow-md shadow-sky-500/30
-                  hover:from-sky-600 hover:to-cyan-500 transition">
+                  {{ $canCreateTask ? 'bg-gradient-to-r from-sky-500 to-cyan-400 text-white shadow-md shadow-sky-500/30 hover:from-sky-600 hover:to-cyan-500' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}
+                  text-sm font-semibold transition">
                 <span>Nova Tarefa</span>
             </a>
         </div>
@@ -1281,9 +1315,12 @@
                             {{-- NOVO: botão Editar Tarefa --}}
                             <button type="button"
                                     id="btn-editar-tarefa"
+                                    data-permission-locked="{{ $canUpdateTask ? '0' : '1' }}"
+                                    @if(!$canUpdateTask) title="Usuario sem permissao" @endif
                                     class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg
-                       bg-emerald-500 text-white text-sm font-semibold shadow-sm
-                       hover:bg-emerald-600 transition">
+                       {{ $canUpdateTask ? 'bg-emerald-500 text-white hover:bg-emerald-600' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} text-sm font-semibold shadow-sm
+                       transition"
+                                    @if(!$canUpdateTask) disabled @endif>
                                 Editar Tarefa
                             </button>
 
@@ -1292,17 +1329,23 @@
 
                             <button type="button"
                                     data-coluna-id="2"
+                                    data-permission-locked="{{ $canUpdateTask ? '0' : '1' }}"
+                                    @if(!$canUpdateTask) title="Usuario sem permissao" @endif
                                     class="js-mover-coluna w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg
-                       bg-[color:var(--color-brand-azul,#2563eb)] text-white text-sm font-semibold shadow-sm
-                       hover:bg-blue-700 transition">
+                       {{ $canUpdateTask ? 'bg-[color:var(--color-brand-azul,#2563eb)] text-white hover:bg-blue-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} text-sm font-semibold shadow-sm
+                       transition"
+                                    @if(!$canUpdateTask) disabled @endif>
                                 Mover para: Em Execução
                             </button>
 
                             <button type="button"
                                     data-coluna-id="6"
+                                    data-permission-locked="{{ $canUpdateTask ? '0' : '1' }}"
+                                    @if(!$canUpdateTask) title="Usuario sem permissao" @endif
                                     class="js-mover-coluna w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg
-                       bg-rose-500 text-white text-sm font-semibold shadow-sm
-                       hover:bg-rose-600 transition">
+                       {{ $canUpdateTask ? 'bg-rose-500 text-white hover:bg-rose-600' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} text-sm font-semibold shadow-sm
+                       transition"
+                                    @if(!$canUpdateTask) disabled @endif>
                                 Mover para: Atrasado
                             </button>
                         </div>
@@ -1393,9 +1436,12 @@
                                 <button
                                     type="button"
                                     id="btn-excluir-tarefa"
+                                    data-permission-locked="{{ $canDeleteTask ? '0' : '1' }}"
+                                    @if(!$canDeleteTask) title="Usuario sem permissao" @endif
                                     class="mt-2 w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg
-                                   border border-red-200 bg-red-50 text-red-700 text-sm font-semibold shadow-sm
-                                   hover:bg-red-100 transition">
+                                   border {{ $canDeleteTask ? 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100' : 'border-slate-300 bg-slate-200 text-slate-500 cursor-not-allowed' }} text-sm font-semibold shadow-sm
+                                   transition"
+                                    @if(!$canDeleteTask) disabled @endif>
                                     Excluir Tarefa
                                 </button>
                             @endif
@@ -2179,7 +2225,9 @@
 
                 function toggleBtn(btn, disabled) {
                     if (!btn) return;
-                    if (disabled) {
+                    const permissionLocked = btn.dataset.permissionLocked === '1';
+                    const shouldDisable = disabled || permissionLocked;
+                    if (shouldDisable) {
                         btn.setAttribute('disabled', 'disabled');
                         btn.classList.add('opacity-50', 'cursor-not-allowed');
                     } else {

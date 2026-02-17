@@ -1436,7 +1436,7 @@ class DashboardController extends Controller
                 ->when($usuarioSelecionado !== 'todos', fn ($q) => $q->where('clientes.vendedor_id', (int) $usuarioSelecionado))
                 ->when($statusPropostaSelecionado !== 'todos', fn ($q) => $q->whereRaw('UPPER(vendas.status) = ?', [mb_strtoupper($statusPropostaSelecionado)]))
                 ->selectRaw("COALESCE(servicos.nome, venda_itens.descricao_snapshot, 'Sem serviço') as nome, COUNT(*) as total, SUM(venda_itens.subtotal_snapshot) as valor_total")
-                ->groupBy('nome')
+                ->groupBy('servicos.nome', 'venda_itens.descricao_snapshot')
                 ->orderByDesc('valor_total')
                 ->limit(5)
                 ->get();

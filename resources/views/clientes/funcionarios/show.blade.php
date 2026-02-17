@@ -4,6 +4,14 @@
 @section('page-container', 'w-full p-0')
 
 @section('content')
+    @php
+        $user = auth()->user();
+        $permissionMap = $user?->papel?->permissoes?->pluck('chave')->flip()->all() ?? [];
+        $isMaster = $user?->hasPapel('Master');
+        $canUpdate = $isMaster || isset($permissionMap['cliente.funcionarios.update']);
+        $canToggle = $isMaster || isset($permissionMap['cliente.funcionarios.toggle']);
+        $canDelete = $canUpdate;
+    @endphp
     <div class="w-full px-3 md:px-5 py-4 md:py-5 space-y-4">
         <div class="flex flex-wrap items-center justify-between gap-2">
             <div class="flex gap-2">
@@ -18,8 +26,9 @@
             </div>
 
             <div class="flex flex-wrap items-center gap-2">
-                <a href="{{ route('cliente.funcionarios.edit', $funcionario) }}"
-                   class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700">
+                <a href="{{ $canUpdate ? route('cliente.funcionarios.edit', $funcionario) : 'javascript:void(0)' }}"
+                   @if(!$canUpdate) title="Usuario sem permissao" aria-disabled="true" @endif
+                   class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold {{ $canUpdate ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}">
                     Editar informações
                 </a>
                 <form method="POST" action="{{ route('cliente.funcionarios.destroy', $funcionario) }}"
@@ -27,7 +36,8 @@
                     @csrf
                     @method('DELETE')
                     <button type="submit"
-                            class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-600 text-white hover:bg-red-700">
+                            @if(!$canDelete) disabled title="Usuario sem permissao" @endif
+                            class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold {{ $canDelete ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}">
                         Deletar
                     </button>
                 </form>
@@ -97,7 +107,8 @@
                             @csrf
                             @method('PATCH')
                             <button type="submit"
-                                    class="w-full inline-flex justify-center items-center px-4 py-2 rounded-lg text-xs font-semibold {{ $funcionario->ativo ? 'border border-red-300 text-red-700 bg-red-50 hover:bg-red-100' : 'border border-emerald-300 text-emerald-700 bg-emerald-50 hover:bg-emerald-100' }}">
+                                    @if(!$canToggle) disabled title="Usuario sem permissao" @endif
+                                    class="w-full inline-flex justify-center items-center px-4 py-2 rounded-lg text-xs font-semibold {{ $canToggle ? ($funcionario->ativo ? 'border border-red-300 text-red-700 bg-red-50 hover:bg-red-100' : 'border border-emerald-300 text-emerald-700 bg-emerald-50 hover:bg-emerald-100') : 'bg-slate-200 text-slate-500 cursor-not-allowed border border-slate-300' }}">
                                 {{ $funcionario->ativo ? 'Inativar funcionário' : 'Reativar funcionário' }}
                             </button>
                         </form>

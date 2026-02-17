@@ -18,6 +18,14 @@
 
 @section('content')
     @php($routePrefix = $routePrefix ?? 'clientes')
+    @php
+        $permPrefix = str_starts_with($routePrefix, 'comercial.') ? 'comercial.clientes' : 'master.clientes';
+        $permissionMap = $user?->papel?->permissoes?->pluck('chave')->flip()->all() ?? [];
+        $isMaster = $user?->hasPapel('Master');
+        $canCreate = $isMaster || isset($permissionMap[$permPrefix.'.create']);
+        $canUpdate = $isMaster || isset($permissionMap[$permPrefix.'.update']);
+        $canSave = $cliente->exists ? $canUpdate : $canCreate;
+    @endphp
 
     {{-- MENSAGENS --}}
     @if (session('ok'))
@@ -29,6 +37,11 @@
     @if (session('erro'))
         <div class="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
             {{ session('erro') }}
+        </div>
+    @endif
+    @if (session('error'))
+        <div class="mb-4 rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-700">
+            {{ session('error') }}
         </div>
     @endif
 
@@ -302,8 +315,8 @@
             </div>
 
             {{-- BOTÃ•ES --}}
-            <div class="flex flex-wrap justify-end gap-3"><button class="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-base font-semibold shadow-md shadow-blue-200">
-                    {{ $cliente->exists ? 'Salvar Altera&ccedil;&otilde;es' : 'Cadastrar' }}
+            <div class="flex flex-wrap justify-end gap-3"><button @if(!$canSave) disabled title="Usuario sem permissao" @endif class="w-full px-6 py-3 rounded-2xl text-base font-semibold shadow-md {{ $canSave ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}">
+                    {{ $cliente->exists ? 'Salvar Alterações' : 'Cadastrar' }}
                 </button>
             </div>
                         </form>
@@ -347,7 +360,7 @@
                                 </div>
 
                                 <div class="flex justify-end">
-                                    <button class="px-5 py-2 rounded-xl bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800">
+                                    <button @if(!$canUpdate) disabled title="Usuario sem permissao" @endif class="px-5 py-2 rounded-xl text-sm font-semibold {{ $canUpdate ? 'bg-slate-900 text-white hover:bg-slate-800' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}">
                                         Salvar vendedor
                                     </button>
                                 </div>

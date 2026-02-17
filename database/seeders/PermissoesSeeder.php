@@ -11,8 +11,10 @@ class PermissoesSeeder extends Seeder
     public function run(): void
     {
         $map = config('permissions', []);
+        $allChaves = [];
 
         foreach ($map as $escopo => $permissoes) {
+            $allChaves = array_merge($allChaves, array_keys($permissoes));
             foreach ($permissoes as $chave => $nome) {
                 Permissao::updateOrCreate(
                     ['chave' => $chave],
@@ -22,8 +24,9 @@ class PermissoesSeeder extends Seeder
         }
 
         // atribuição padrão para manter comportamento esperado
-        $this->atribuirPermissoes('Master', array_keys($map['master'] ?? []));
+        $this->atribuirPermissoes('Master', array_values(array_unique($allChaves)));
         $this->atribuirPermissoes('Comercial', array_keys($map['comercial'] ?? []));
+        $this->atribuirPermissoes('Financeiro', array_keys($map['financeiro'] ?? []));
         $this->atribuirPermissoes('Operacional', array_keys($map['operacional'] ?? []));
         $this->atribuirPermissoes('Cliente', array_keys($map['cliente'] ?? []));
     }
