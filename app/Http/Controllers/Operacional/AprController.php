@@ -6,6 +6,8 @@ use App\Http\Controllers\Operacional\Concerns\ValidatesClientePortalTaskEditing;
 use App\Http\Controllers\Controller;
 use App\Models\AprSolicitacoes;
 use App\Models\Cliente;
+use App\Models\Funcionario;
+use App\Models\Estado;
 use App\Models\KanbanColuna;
 use App\Models\Servico;
 use App\Models\Tarefa;
@@ -21,12 +23,15 @@ class AprController extends Controller
     public function create(Cliente $cliente)
     {
         $user = auth()->user();
-        abort_if($cliente->empresa_id !== $user->empresa_id, 403);
+        $empresaId = (int) $user->empresa_id;
+        abort_if($cliente->empresa_id !== $empresaId, 403);
 
         return view('operacional.kanban.apr.create', [
             'cliente' => $cliente,
             'apr'     => null,
             'isEdit'  => false,
+            'estados' => Estado::query()->orderBy('uf')->get(['uf', 'nome']),
+            'colaboradores' => $this->colaboradoresDoCliente($empresaId, (int) $cliente->id),
         ]);
     }
 
@@ -176,6 +181,8 @@ class AprController extends Controller
             'cliente' => $cliente,
             'apr'     => $apr,
             'isEdit'  => true,
+            'estados' => Estado::query()->orderBy('uf')->get(['uf', 'nome']),
+            'colaboradores' => $this->colaboradoresDoCliente($empresaId, (int) $cliente->id),
         ]);
     }
 
@@ -304,7 +311,7 @@ class AprController extends Controller
                 ? ['required', 'string', 'size:2']
                 : ['nullable', 'string', 'size:2'],
             'obra_cep' => ['nullable', 'string', 'max:10'],
-            'obra_area_setor' => array_merge($regraTextoObrigatorio, ['max:120']),
+            'obra_area_setor' => ['nullable', 'string', 'max:120'],
 
             'atividade_descricao' => $regraTextoObrigatorio,
             'atividade_data_inicio' => $aprovando
@@ -315,7 +322,7 @@ class AprController extends Controller
                 : ['nullable', 'date', 'after_or_equal:atividade_data_inicio'],
 
             'etapas' => $aprovando
-                ? ['required', 'array', 'min:1']
+                ? ['required', 'array', 'min:3']
                 : ['nullable', 'array'],
             'etapas.*.descricao' => $aprovando
                 ? ['required', 'string', 'max:500']
@@ -330,11 +337,10 @@ class AprController extends Controller
             'equipe.*.funcao' => $aprovando
                 ? ['required', 'string', 'max:255']
                 : ['nullable', 'string', 'max:255'],
-            'equipe.*.nao_treinado' => ['nullable', 'boolean'],
-
             'epis' => $aprovando
                 ? ['required', 'array', 'min:1']
                 : ['nullable', 'array'],
+            'epis.*.tipo' => ['nullable', 'in:epi,maquina'],
             'epis.*.descricao' => $aprovando
                 ? ['required', 'string', 'max:255']
                 : ['nullable', 'string', 'max:255'],
@@ -364,7 +370,6 @@ class AprController extends Controller
                 return [
                     'nome' => trim((string) ($item['nome'] ?? '')),
                     'funcao' => trim((string) ($item['funcao'] ?? '')),
-                    'nao_treinado' => (bool) ($item['nao_treinado'] ?? false),
                 ];
             })
             ->filter(fn ($item) => $item['nome'] !== '' || $item['funcao'] !== '')
@@ -376,7 +381,13 @@ class AprController extends Controller
     {
         return collect($epis)
             ->map(function ($item) {
+                $tipo = (string) ($item['tipo'] ?? 'epi');
+                if (!in_array($tipo, ['epi', 'maquina'], true)) {
+                    $tipo = 'epi';
+                }
+
                 return [
+                    'tipo' => $tipo,
                     'descricao' => trim((string) ($item['descricao'] ?? '')),
                     'aplicacao' => trim((string) ($item['aplicacao'] ?? '')),
                 ];
@@ -455,9 +466,32 @@ class AprController extends Controller
             'equipe.*.nome' => 'nome do trabalhador',
             'equipe.*.funcao' => 'funcao do trabalhador',
             'epis' => 'epis',
+            'epis.*.tipo' => 'tipo do item',
             'epis.*.descricao' => 'descricao do epi',
             'epis.*.aplicacao' => 'aplicacao do epi',
             'acao' => 'acao do formulario',
         ];
+    }
+
+    private function colaboradoresDoCliente(int $empresaId, int $clienteId): array
+    {
+        return Funcionario::query()
+            ->where('empresa_id', $empresaId)
+            ->where('cliente_id', $clienteId)
+            ->where(function ($q) {
+                $q->whereNull('ativo')->orWhere('ativo', true);
+            })
+            ->with(['funcao:id,nome'])
+            ->orderBy('nome')
+            ->get(['id', 'nome', 'funcao_id'])
+            ->map(function ($funcionario) {
+                return [
+                    'nome' => (string) $funcionario->nome,
+                    'funcao' => (string) optional($funcionario->funcao)->nome,
+                ];
+            })
+            ->filter(fn ($item) => trim($item['nome']) !== '')
+            ->values()
+            ->all();
     }
 }

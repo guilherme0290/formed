@@ -614,8 +614,14 @@ class ClienteController extends Controller
             return response()->json([]);
         }
 
-        // 2) Cidades do banco
-        $cidadesDb = Cidade::where('estado_id', $estado->id)->get(['id', 'nome']);
+        // 2) Cidades do banco (fallback garantido)
+        $cidadesDb = Cidade::where('estado_id', $estado->id)
+            ->orderBy('nome')
+            ->get(['id', 'nome']);
+
+        if ($cidadesDb->isEmpty()) {
+            return response()->json([]);
+        }
 
         // chave normalizada -> cidade_id
         $map = [];
@@ -627,10 +633,21 @@ class ClienteController extends Controller
         }
 
         // 3) API IBGE
-        $resp = Http::get("https://servicodados.ibge.gov.br/api/v1/localidades/estados/{$uf}/municipios");
+        try {
+            $resp = Http::timeout(8)
+                ->retry(1, 150)
+                ->get("https://servicodados.ibge.gov.br/api/v1/localidades/estados/{$uf}/municipios");
+        } catch (\Throwable $e) {
+            $resp = null;
+        }
 
-        if (! $resp->successful()) {
-            return response()->json([]);
+        if (! $resp || ! $resp->successful()) {
+            return response()->json(
+                $cidadesDb->map(fn ($cidade) => [
+                    'id' => $cidade->id,
+                    'nome' => $cidade->nome,
+                ])->values()
+            );
         }
 
         $resultado = [];
@@ -652,6 +669,15 @@ class ClienteController extends Controller
                     'nome' => $nomeApi,
                 ];
             }
+        }
+
+        if (empty($resultado)) {
+            return response()->json(
+                $cidadesDb->map(fn ($cidade) => [
+                    'id' => $cidade->id,
+                    'nome' => $cidade->nome,
+                ])->values()
+            );
         }
 
         return response()->json($resultado);
@@ -678,5 +704,4 @@ class ClienteController extends Controller
 
 
 }
-
 
