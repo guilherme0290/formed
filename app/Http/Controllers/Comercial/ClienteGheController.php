@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Comercial;
 
 use App\Http\Controllers\Controller;
 use App\Models\Cliente;
+use App\Models\ClienteContrato;
 use App\Models\ClienteGhe;
 use App\Models\ClienteGheFuncao;
 use App\Models\Funcao;
@@ -157,6 +158,7 @@ class ClienteGheController extends Controller
             ]);
 
             $this->syncFuncoes($ghe, $data['funcoes'] ?? []);
+            $this->syncContratoSnapshotsFuncoes($ghe->empresa_id, $ghe->cliente_id);
 
             return response()->json(['data' => $ghe->fresh()], 201);
         });
@@ -232,6 +234,7 @@ class ClienteGheController extends Controller
             $ghe->update($updates);
 
             $this->syncFuncoes($ghe, $data['funcoes'] ?? []);
+            $this->syncContratoSnapshotsFuncoes($ghe->empresa_id, $ghe->cliente_id);
 
             return response()->json(['data' => $ghe->fresh()]);
         });
@@ -265,6 +268,98 @@ class ClienteGheController extends Controller
                 'cliente_ghe_id' => $ghe->id,
                 'funcao_id' => $funcaoId,
             ]);
+        }
+    }
+
+    /**
+     * Mantém o snapshot do contrato em sincronia com as funções atuais dos GHEs do cliente.
+     */
+    private function syncContratoSnapshotsFuncoes(int $empresaId, int $clienteId): void
+    {
+        $clienteGhes = ClienteGhe::query()
+            ->where('empresa_id', $empresaId)
+            ->where('cliente_id', $clienteId)
+            ->with('funcoes')
+            ->get()
+            ->keyBy('id');
+
+        if ($clienteGhes->isEmpty()) {
+            return;
+        }
+
+        $contratos = ClienteContrato::query()
+            ->where('empresa_id', $empresaId)
+            ->where('cliente_id', $clienteId)
+            ->where('status', 'ATIVO')
+            ->with('itens')
+            ->get();
+
+        foreach ($contratos as $contrato) {
+            foreach ($contrato->itens as $item) {
+                $snapshot = $item->regras_snapshot;
+                if (!is_array($snapshot) || empty($snapshot['ghes']) || !is_array($snapshot['ghes'])) {
+                    continue;
+                }
+
+                $changed = false;
+                foreach ($snapshot['ghes'] as $idx => $snapGhe) {
+                    $clienteGheId = (int) ($snapGhe['id'] ?? 0);
+                    if ($clienteGheId <= 0) {
+                        continue;
+                    }
+
+                    $clienteGhe = $clienteGhes->get($clienteGheId);
+                    if (!$clienteGhe) {
+                        continue;
+                    }
+
+                    $funcoesIds = $clienteGhe->funcoes
+                        ->pluck('funcao_id')
+                        ->map(fn ($id) => (int) $id)
+                        ->filter()
+                        ->unique()
+                        ->sort()
+                        ->values()
+                        ->all();
+
+                    $currentFuncoes = collect($snapGhe['funcoes'] ?? [])
+                        ->map(fn ($id) => (int) $id)
+                        ->filter()
+                        ->unique()
+                        ->sort()
+                        ->values()
+                        ->all();
+
+                    if ($currentFuncoes !== $funcoesIds) {
+                        $snapshot['ghes'][$idx]['funcoes'] = $funcoesIds;
+                        $changed = true;
+                    }
+                }
+
+                $map = [];
+                foreach ($snapshot['ghes'] as $snapGhe) {
+                    $gheId = (int) ($snapGhe['id'] ?? 0);
+                    if ($gheId <= 0) {
+                        continue;
+                    }
+                    foreach ((array) ($snapGhe['funcoes'] ?? []) as $funcaoId) {
+                        $funcaoId = (int) $funcaoId;
+                        if ($funcaoId > 0) {
+                            $map[(string) $funcaoId] = $gheId;
+                        }
+                    }
+                }
+
+                if (($snapshot['funcao_ghe_map'] ?? []) !== $map) {
+                    $snapshot['funcao_ghe_map'] = $map;
+                    $changed = true;
+                }
+
+                if ($changed) {
+                    $item->regras_snapshot = $snapshot;
+                    $item->save();
+                }
+            }
         }
     }
 

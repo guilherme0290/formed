@@ -1,12 +1,17 @@
 @php($routePrefix = $routePrefix ?? 'comercial')
+@php($gheScope = $gheScope ?? 'global')
+@php($clienteSelector = $clienteSelector ?? '[name="cliente_id"]')
+@php($isClienteScope = $gheScope === 'cliente')
 
 <div id="modalGhe" class="fixed inset-0 z-[90] hidden bg-black/50 overflow-y-auto">
     <div class="min-h-full w-full flex items-center justify-center p-4 md:p-6">
         <div class="bg-white w-full max-w-6xl rounded-2xl shadow-xl overflow-hidden max-h-[88vh] flex flex-col text-base">
             <div class="px-6 py-4 bg-amber-700 text-white flex items-center justify-between">
                 <div>
-                    <h2 class="text-lg font-semibold">GHE Global</h2>
-                    <p class="text-xs opacity-90">Defina o nome, funções e grupo de exames do GHE.</p>
+                    <h2 class="text-lg font-semibold">{{ $isClienteScope ? 'GHE do Cliente' : 'GHE Global' }}</h2>
+                    <p class="text-xs opacity-90">
+                        {{ $isClienteScope ? 'Defina o nome, funções e grupo de exames para este cliente.' : 'Defina o nome, funções e grupo de exames do GHE.' }}
+                    </p>
                 </div>
                 <button type="button"
                         onclick="closeGheModal()"
@@ -205,13 +210,23 @@
         (function () {
             const CSRF = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
             const FUNCOES = @json($funcoes->map(fn ($f) => ['id' => $f->id, 'nome' => $f->nome, 'descricao' => $f->descricao]));
+            const IS_CLIENTE_SCOPE = @json($isClienteScope);
+            const CLIENTE_SELECTOR = @json($clienteSelector);
 
             const GHE = {
                 urls: {
-                    list:   @json(route($routePrefix.'.ghes.indexJson')),
-                    store:  @json(route($routePrefix.'.ghes.store')),
-                    update: (id) => @json(route($routePrefix.'.ghes.update', ['ghe' => '__ID__'])).replace('__ID__', id),
-                    destroy:(id) => @json(route($routePrefix.'.ghes.destroy', ['ghe' => '__ID__'])).replace('__ID__', id),
+                    global: {
+                        list:   @json(route($routePrefix.'.ghes.indexJson')),
+                        store:  @json(route($routePrefix.'.ghes.store')),
+                        update: (id) => @json(route($routePrefix.'.ghes.update', ['ghe' => '__ID__'])).replace('__ID__', id),
+                        destroy:(id) => @json(route($routePrefix.'.ghes.destroy', ['ghe' => '__ID__'])).replace('__ID__', id),
+                    },
+                    cliente: {
+                        list:   @json(route($routePrefix.'.clientes-ghes.indexJson')),
+                        store:  @json(route($routePrefix.'.clientes-ghes.store')),
+                        update: (id) => @json(route($routePrefix.'.clientes-ghes.update', ['ghe' => '__ID__'])).replace('__ID__', id),
+                        destroy:(id) => @json(route($routePrefix.'.clientes-ghes.destroy', ['ghe' => '__ID__'])).replace('__ID__', id),
+                    },
                     protocolos: @json(route($routePrefix.'.protocolos-exames.indexJson')),
                     funcoes: @json(route($routePrefix.'.funcoes.indexJson')),
                 },
@@ -274,17 +289,43 @@
                 GHE.dom.alert.classList.add('hidden');
             }
 
+            function getClienteId(){
+                const el = document.querySelector(CLIENTE_SELECTOR);
+                const id = Number(el?.value || 0);
+                return id > 0 ? id : null;
+            }
+
+            function normalizeRow(row){
+                if (!IS_CLIENTE_SCOPE) {
+                    return row;
+                }
+                return {
+                    ...row,
+                    grupo_exames_id: row?.grupo_exames_id ?? row?.protocolo?.id ?? null,
+                };
+            }
 
             async function loadGhes(){
                 try{
                     alertHide();
-                    const res = await fetch(GHE.urls.list, { headers:{'Accept':'application/json'} });
+                    const clienteId = getClienteId();
+                    if (IS_CLIENTE_SCOPE && !clienteId) {
+                        GHE.state.ghes = [];
+                        renderGhes();
+                        alertBox('err','Selecione um cliente para gerenciar os GHEs.');
+                        return;
+                    }
+                    const baseUrl = IS_CLIENTE_SCOPE ? GHE.urls.cliente.list : GHE.urls.global.list;
+                    const url = (IS_CLIENTE_SCOPE && clienteId)
+                        ? `${baseUrl}?cliente_id=${encodeURIComponent(clienteId)}`
+                        : baseUrl;
+                    const res = await fetch(url, { headers:{'Accept':'application/json'} });
                     const json = await res.json();
-                    GHE.state.ghes = json.data || [];
+                    GHE.state.ghes = (json.data || []).map(normalizeRow);
                     renderGhes();
                 } catch(e){
                     console.error(e);
-                    alertBox('err','Falha ao carregar GHEs globais.');
+                    alertBox('err', IS_CLIENTE_SCOPE ? 'Falha ao carregar GHEs do cliente.' : 'Falha ao carregar GHEs globais.');
                 }
             }
 
@@ -479,8 +520,21 @@
 
                 if (!payload.nome) return alertBox('err','Informe o nome do GHE.');
 
+                const clienteId = getClienteId();
+                if (IS_CLIENTE_SCOPE && !clienteId) {
+                    return alertBox('err', 'Selecione um cliente para salvar o GHE.');
+                }
+
                 const id = GHE.dom.id.value;
-                const url = id ? GHE.urls.update(id) : GHE.urls.store;
+                if (IS_CLIENTE_SCOPE) {
+                    payload.cliente_id = clienteId;
+                    payload.protocolo_id = payload.grupo_exames_id;
+                    delete payload.grupo_exames_id;
+                }
+
+                const url = id
+                    ? (IS_CLIENTE_SCOPE ? GHE.urls.cliente.update(id) : GHE.urls.global.update(id))
+                    : (IS_CLIENTE_SCOPE ? GHE.urls.cliente.store : GHE.urls.global.store);
                 const method = id ? 'PUT' : 'POST';
 
                 try{
@@ -497,6 +551,7 @@
                     await loadGhes();
                     closeGheForm();
                     window.dispatchEvent(new CustomEvent('ghes:updated'));
+                    window.dispatchEvent(new CustomEvent('cliente-ghes:updated'));
                 } catch(e){
                     console.error(e);
                     alertBox('err','Falha ao salvar GHE.');
@@ -507,13 +562,15 @@
                 const ok = await window.uiConfirm('Deseja remover este GHE?');
                 if (!ok) return;
                 try{
-                    const res = await fetch(GHE.urls.destroy(id), {
+                    const url = IS_CLIENTE_SCOPE ? GHE.urls.cliente.destroy(id) : GHE.urls.global.destroy(id);
+                    const res = await fetch(url, {
                         method: 'DELETE',
                         headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' }
                     });
                     if(!res.ok) throw new Error('fail');
                     await loadGhes();
                     window.dispatchEvent(new CustomEvent('ghes:updated'));
+                    window.dispatchEvent(new CustomEvent('cliente-ghes:updated'));
                 } catch(e){
                     console.error(e);
                     alertBox('err','Falha ao excluir GHE.');

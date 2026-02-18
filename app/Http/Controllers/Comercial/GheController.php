@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\Comercial;
 
 use App\Http\Controllers\Controller;
+use App\Models\ClienteContrato;
+use App\Models\ClienteGhe;
+use App\Models\ClienteGheFuncao;
 use App\Models\Ghe;
 use App\Models\GheFuncao;
 use App\Models\ProtocoloExame;
@@ -154,6 +157,13 @@ class GheController extends Controller
         }
 
         return DB::transaction(function () use ($ghe, $data) {
+            $funcoesIds = collect($data['funcoes'] ?? [])
+                ->map(fn ($id) => (int) $id)
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+
             $ghe->update([
                 'nome' => $data['nome'],
                 'grupo_exames_id' => $data['grupo_exames_id'] ?? null,
@@ -169,7 +179,9 @@ class GheController extends Controller
                 'preco_fechado_retorno_trabalho' => $data['preco_fechado']['retorno_trabalho'] ?? null,
             ]);
 
-            $this->syncFuncoes($ghe, $data['funcoes'] ?? []);
+            $this->syncFuncoes($ghe, $funcoesIds);
+            $clienteIds = $this->syncClienteGheFuncoes($ghe, $funcoesIds);
+            $this->syncContratoSnapshotsFuncoes($ghe->empresa_id, $clienteIds);
 
             return response()->json(['data' => $ghe->fresh()]);
         });
@@ -210,6 +222,147 @@ class GheController extends Controller
                 'ghe_id' => $ghe->id,
                 'funcao_id' => $funcaoId,
             ]);
+        }
+    }
+
+    /**
+     * Replica as funções do GHE global para os GHEs já vinculados a clientes.
+     * Retorna os IDs de clientes afetados para atualizar snapshots de contrato.
+     */
+    private function syncClienteGheFuncoes(Ghe $ghe, array $funcoesIds): array
+    {
+        $clienteGhes = ClienteGhe::query()
+            ->where('empresa_id', $ghe->empresa_id)
+            ->where('ghe_id', $ghe->id)
+            ->get(['id', 'cliente_id']);
+
+        if ($clienteGhes->isEmpty()) {
+            return [];
+        }
+
+        foreach ($clienteGhes as $clienteGhe) {
+            ClienteGheFuncao::where('cliente_ghe_id', $clienteGhe->id)
+                ->whereNotIn('funcao_id', $funcoesIds)
+                ->delete();
+
+            $existing = ClienteGheFuncao::query()
+                ->where('cliente_ghe_id', $clienteGhe->id)
+                ->whereIn('funcao_id', $funcoesIds)
+                ->pluck('funcao_id')
+                ->all();
+
+            $toCreate = array_diff($funcoesIds, $existing);
+            foreach ($toCreate as $funcaoId) {
+                ClienteGheFuncao::create([
+                    'cliente_ghe_id' => $clienteGhe->id,
+                    'funcao_id' => $funcaoId,
+                ]);
+            }
+        }
+
+        return $clienteGhes
+            ->pluck('cliente_id')
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Atualiza o funcao_ghe_map e lista de funções do snapshot de contratos ativos.
+     */
+    private function syncContratoSnapshotsFuncoes(int $empresaId, array $clienteIds): void
+    {
+        if (empty($clienteIds)) {
+            return;
+        }
+
+        $clienteGhes = ClienteGhe::query()
+            ->where('empresa_id', $empresaId)
+            ->whereIn('cliente_id', $clienteIds)
+            ->with('funcoes')
+            ->get()
+            ->keyBy('id');
+
+        if ($clienteGhes->isEmpty()) {
+            return;
+        }
+
+        $contratos = ClienteContrato::query()
+            ->where('empresa_id', $empresaId)
+            ->whereIn('cliente_id', $clienteIds)
+            ->where('status', 'ATIVO')
+            ->with('itens')
+            ->get();
+
+        foreach ($contratos as $contrato) {
+            foreach ($contrato->itens as $item) {
+                $snapshot = $item->regras_snapshot;
+                if (!is_array($snapshot) || empty($snapshot['ghes']) || !is_array($snapshot['ghes'])) {
+                    continue;
+                }
+
+                $changed = false;
+                foreach ($snapshot['ghes'] as $idx => $snapGhe) {
+                    $clienteGheId = (int) ($snapGhe['id'] ?? 0);
+                    if ($clienteGheId <= 0) {
+                        continue;
+                    }
+
+                    $clienteGhe = $clienteGhes->get($clienteGheId);
+                    if (!$clienteGhe) {
+                        continue;
+                    }
+
+                    $funcoesIds = $clienteGhe->funcoes
+                        ->pluck('funcao_id')
+                        ->map(fn ($id) => (int) $id)
+                        ->filter()
+                        ->unique()
+                        ->sort()
+                        ->values()
+                        ->all();
+
+                    $currentFuncoes = collect($snapGhe['funcoes'] ?? [])
+                        ->map(fn ($id) => (int) $id)
+                        ->filter()
+                        ->unique()
+                        ->sort()
+                        ->values()
+                        ->all();
+
+                    if ($currentFuncoes !== $funcoesIds) {
+                        $snapshot['ghes'][$idx]['funcoes'] = $funcoesIds;
+                        $changed = true;
+                    }
+                }
+
+                $map = [];
+                foreach ($snapshot['ghes'] as $snapGhe) {
+                    $gheId = (int) ($snapGhe['id'] ?? 0);
+                    if ($gheId <= 0) {
+                        continue;
+                    }
+                    foreach ((array) ($snapGhe['funcoes'] ?? []) as $funcaoId) {
+                        $funcaoId = (int) $funcaoId;
+                        if ($funcaoId > 0) {
+                            $map[(string) $funcaoId] = $gheId;
+                        }
+                    }
+                }
+
+                $currentMap = $snapshot['funcao_ghe_map'] ?? [];
+                if ($currentMap !== $map) {
+                    $snapshot['funcao_ghe_map'] = $map;
+                    $changed = true;
+                }
+
+                if ($changed) {
+                    $item->regras_snapshot = $snapshot;
+                    $item->save();
+                }
+            }
         }
     }
 }

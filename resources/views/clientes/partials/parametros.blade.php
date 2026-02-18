@@ -513,6 +513,8 @@
         'routePrefix' => 'comercial',
         'clientes' => $clientes ?? collect(),
         'funcoes' => $funcoes ?? collect(),
+        'gheScope' => 'cliente',
+        'clienteSelector' => '[name="cliente_id"]',
     ])
     @include('comercial.tabela-precos.itens.modal-protocolos', ['routePrefix' => 'comercial'])
     {{--
@@ -2457,10 +2459,90 @@
                     });
                 }
 
+                function openClienteTabByFieldName(fieldName) {
+                    let targetTab = 'parametros';
+                    if (fieldName === 'forma_pagamento' || fieldName === 'vencimento_servicos') {
+                        targetTab = 'forma-pagamento';
+                    } else if (fieldName === 'incluir_esocial' || String(fieldName || '').startsWith('esocial_')) {
+                        targetTab = 'esocial';
+                    }
+                    const tabButton = document.querySelector(`[data-tabs="cliente"] [data-tab="${targetTab}"]`);
+                    tabButton?.click();
+                }
+
+                function resolveFieldLabel(field) {
+                    if (!field) return 'campo';
+                    const id = field.id ? String(field.id) : '';
+                    if (id) {
+                        const byFor = document.querySelector(`label[for="${id}"]`);
+                        if (byFor?.textContent?.trim()) return byFor.textContent.trim();
+                    }
+                    const parentLabel = field.closest('label');
+                    if (parentLabel?.textContent?.trim()) return parentLabel.textContent.trim();
+                    const blockLabel = field.closest('div')?.querySelector('label');
+                    if (blockLabel?.textContent?.trim()) return blockLabel.textContent.trim();
+                    return field.getAttribute('name') || 'campo';
+                }
+
+                function findMissingRequiredField() {
+                    const requiredFields = Array.from(el.form.querySelectorAll('[required]'));
+                    for (const field of requiredFields) {
+                        if (!field || field.disabled) continue;
+                        const type = String(field.type || '').toLowerCase();
+                        const name = String(field.name || '');
+
+                        if (type === 'checkbox' || type === 'radio') {
+                            if (!name) continue;
+                            const group = Array.from(el.form.querySelectorAll(`[name="${CSS.escape(name)}"]`));
+                            const hasChecked = group.some(input => !input.disabled && input.checked);
+                            if (!hasChecked) return field;
+                            continue;
+                        }
+
+                        const value = String(field.value ?? '').trim();
+                        if (value === '') return field;
+                    }
+                    return null;
+                }
+
                 // =========================
                 // Submit: garantir meta JSON -> array (backend aceita array)
                 // =========================
                 el.form.addEventListener('submit', (e) => {
+                    const missingRequired = findMissingRequiredField();
+                    if (missingRequired) {
+                        e.preventDefault();
+                        const fieldName = String(missingRequired.getAttribute('name') || '');
+                        openClienteTabByFieldName(fieldName);
+
+                        let message = 'Preencha os campos obrigatórios para continuar.';
+                        if (fieldName === 'forma_pagamento') {
+                            message = 'Selecione a forma de pagamento para continuar.';
+                        } else if (fieldName === 'vencimento_servicos') {
+                            message = 'Informe o vencimento dos serviços para continuar.';
+                        } else {
+                            const label = resolveFieldLabel(missingRequired);
+                            message = `Preencha o campo obrigatório: ${label}.`;
+                        }
+
+                        if (typeof window.uiAlert === 'function') {
+                            window.uiAlert(message, {
+                                icon: 'error',
+                                title: 'Campo obrigatório',
+                                confirmText: 'Entendi',
+                            });
+                        } else {
+                            alert(message);
+                        }
+
+                        setTimeout(() => {
+                            if (typeof missingRequired.focus === 'function') {
+                                missingRequired.focus();
+                            }
+                        }, 50);
+                        return;
+                    }
+
                     const zeroItems = state.itens.filter(it => {
                         if (Number(it.valor_unitario || 0) > 0) return false;
                         return true;
