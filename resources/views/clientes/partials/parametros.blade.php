@@ -513,6 +513,8 @@
         'routePrefix' => 'comercial',
         'clientes' => $clientes ?? collect(),
         'funcoes' => $funcoes ?? collect(),
+        'gheScope' => 'cliente',
+        'clienteSelector' => '[name="cliente_id"]',
     ])
     @include('comercial.tabela-precos.itens.modal-protocolos', ['routePrefix' => 'comercial'])
     {{--
