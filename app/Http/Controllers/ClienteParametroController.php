@@ -132,6 +132,25 @@ class ClienteParametroController extends Controller
 
                 $fail('Meta inválida.');
             }],
+        ], [
+            'required' => 'O campo :attribute é obrigatório.',
+            'integer' => 'O campo :attribute deve ser um número inteiro.',
+            'numeric' => 'O campo :attribute deve ser um número válido.',
+            'min' => 'O campo :attribute deve ser no mínimo :min.',
+            'max' => 'O campo :attribute deve ser no máximo :max.',
+            'array' => 'O campo :attribute deve ser uma lista válida.',
+            'exists' => 'O valor informado para :attribute é inválido.',
+            'in' => 'O valor informado para :attribute é inválido.',
+        ], [
+            'cliente_id' => 'cliente',
+            'forma_pagamento' => 'forma de pagamento',
+            'vencimento_servicos' => 'vencimento dos serviços',
+            'itens' => 'itens do parâmetro',
+            'itens.*.tipo' => 'tipo do item',
+            'itens.*.nome' => 'nome do item',
+            'itens.*.valor_unitario' => 'valor unitário do item',
+            'itens.*.quantidade' => 'quantidade do item',
+            'itens.*.valor_total' => 'valor total do item',
         ]);
 
         $servicoEsocialId = (int) (config('services.esocial_id') ?? 0);
