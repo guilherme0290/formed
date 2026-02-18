@@ -305,16 +305,36 @@
         <div class="{{ $tab === 'tempos' ? 'space-y-6' : 'hidden' }}" data-tab-panel="tempos">
             <form method="POST" action="{{ route('master.tempo-tarefas.store') }}" class="space-y-4">
                 @csrf
+                @php
+                    $tempoErrors = collect($errors->getMessages())
+                        ->filter(fn ($messages, $field) => str_starts_with((string) $field, 'tempos'))
+                        ->flatten();
+                @endphp
+                @if($tempoErrors->isNotEmpty())
+                    <div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                        <div class="font-semibold mb-1">Não foi possível salvar alguns tempos</div>
+                        <ul class="list-disc list-inside space-y-1">
+                            @foreach($tempoErrors->take(4) as $mensagem)
+                                <li>{{ $mensagem }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
                 <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                     <div class="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
                         <h2 class="text-sm font-semibold text-slate-800">Tempo padrão por serviço</h2>
-                        <span class="text-xs text-slate-500">Em minutos</span>
+                        <span class="text-xs text-slate-500">Duração: minutos ou HH:MM</span>
+                    </div>
+                    <div class="px-4 py-3 bg-slate-50 border-b border-slate-200 text-xs text-slate-600">
+                        Defina a duração da tarefa. Exemplo: <span class="font-semibold">90</span> (minutos) ou <span class="font-semibold">01:30</span> (1h30).
                     </div>
                     <div class="divide-y divide-slate-100">
                         @foreach($servicos as $servico)
                             @php
                                 $isExcluido = in_array((int) $servico->id, $excluirServicoIds ?? [], true);
                                 $tempoAtual = $tempos[$servico->id]->tempo_minutos ?? 0;
+                                $tempoAtualHoras = str_pad((string) floor($tempoAtual / 60), 2, '0', STR_PAD_LEFT).':'.str_pad((string) ($tempoAtual % 60), 2, '0', STR_PAD_LEFT);
+                                $tempoValor = old('tempos.'.$servico->id, (string) $tempoAtual);
                             @endphp
                             <div class="px-4 py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                                 <div>
@@ -322,19 +342,23 @@
                                     @if($isExcluido)
                                         <div class="text-xs text-slate-500">Serviço não aplicável para SLA.</div>
                                     @else
-                                        <div class="text-xs text-slate-500">Defina o tempo máximo para esta tarefa.</div>
+                                        <div class="text-xs text-slate-500">Defina a duração máxima desta tarefa.</div>
                                     @endif
                                 </div>
                                 <div class="w-full md:w-44">
-                                    <input type="number"
-                                           min="0"
-                                           max="10080"
-                                           step="1"
+                                    <input type="text"
+                                           inputmode="numeric"
                                            name="tempos[{{ $servico->id }}]"
-                                           value="{{ old('tempos.'.$servico->id, $tempoAtual) }}"
+                                           value="{{ $tempoValor }}"
                                            {{ $isExcluido ? 'disabled' : '' }}
                                            class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm {{ $isExcluido ? 'bg-slate-100 text-slate-400' : '' }}"
-                                           placeholder="Ex: 60">
+                                           data-tempo-input
+                                           placeholder="Ex: 90 ou 01:30">
+                                    @if(!$isExcluido)
+                                        <div class="mt-1 text-[11px] text-slate-500" data-tempo-preview>
+                                            Atual: {{ $tempoAtual }} min ({{ $tempoAtualHoras }})
+                                        </div>
+                                    @endif
                                 </div>
                             </div>
                         @endforeach
@@ -525,6 +549,61 @@
     </div>
 
     @push('scripts')
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const parseTempo = (value) => {
+                    const raw = (value || '').trim();
+                    if (!raw) return 0;
+
+                    if (/^\d+$/.test(raw)) {
+                        return parseInt(raw, 10);
+                    }
+
+                    const match = raw.match(/^(\d{1,3}):([0-5]\d)$/);
+                    if (!match) return null;
+
+                    return (parseInt(match[1], 10) * 60) + parseInt(match[2], 10);
+                };
+
+                const formatHHMM = (minutes) => {
+                    const h = Math.floor(minutes / 60);
+                    const m = minutes % 60;
+                    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                };
+
+                document.querySelectorAll('[data-tempo-input]').forEach((input) => {
+                    const preview = input.parentElement?.querySelector('[data-tempo-preview]');
+                    if (!preview) return;
+
+                    const render = () => {
+                        const minutos = parseTempo(input.value);
+                        if (minutos === null) {
+                            preview.textContent = 'Formato inválido. Use 90 ou 01:30.';
+                            preview.classList.remove('text-slate-500');
+                            preview.classList.add('text-rose-600');
+                            return;
+                        }
+
+                        if (minutos > 10080) {
+                            preview.textContent = 'Máximo permitido: 10080 min (168:00).';
+                            preview.classList.remove('text-slate-500');
+                            preview.classList.add('text-rose-600');
+                            return;
+                        }
+
+                        preview.textContent = minutos === 0
+                            ? 'Tarefa sem SLA (0 min).'
+                            : `${minutos} min (${formatHHMM(minutos)}).`;
+                        preview.classList.remove('text-rose-600');
+                        preview.classList.add('text-slate-500');
+                    };
+
+                    input.addEventListener('input', render);
+                    render();
+                });
+            });
+        </script>
+
         <script>
             document.addEventListener('DOMContentLoaded', function () {
                 const saveBtn = document.querySelector('[data-dashboard-save]');
