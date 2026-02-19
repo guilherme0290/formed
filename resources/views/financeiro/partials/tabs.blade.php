@@ -11,6 +11,14 @@
        class="px-3 py-2 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100 {{ request()->routeIs('financeiro.contas-receber*') ? 'bg-indigo-600 text-white shadow hover:bg-indigo-600' : '' }}">
         Contas a Receber
     </a>
+    <a href="{{ route('financeiro.contas-pagar.index') }}"
+       class="px-3 py-2 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100 {{ request()->routeIs('financeiro.contas-pagar*') ? 'bg-indigo-600 text-white shadow hover:bg-indigo-600' : '' }}">
+        Contas a Pagar
+    </a>
+    <a href="{{ route('financeiro.fornecedores.index') }}"
+       class="px-3 py-2 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100 {{ request()->routeIs('financeiro.fornecedores*') ? 'bg-indigo-600 text-white shadow hover:bg-indigo-600' : '' }}">
+        Fornecedores
+    </a>
     <a href="{{ route('financeiro.faturamento-detalhado') }}"
        class="px-3 py-2 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100 {{ request()->routeIs('financeiro.faturamento-detalhado*') ? 'bg-indigo-600 text-white shadow hover:bg-indigo-600' : '' }}">
         Detalhamento
