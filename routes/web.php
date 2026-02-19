@@ -37,6 +37,7 @@ use App\Http\Controllers\FuncaoController;
 use App\Http\Controllers\PropostaPublicController;
 use App\Http\Controllers\TarefaController;
 use App\Http\Controllers\AnexoController;
+use App\Http\Controllers\StorageProxyController;
 use App\Models\Servico;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Cliente\ClienteDashboardController;
@@ -152,6 +153,10 @@ Route::middleware('auth')->group(function () {
             Route::post('{tarefa}/documento-cliente',
                 [TarefaController::class, 'substituirDocumentoCliente']
             )->name('documento-cliente');
+
+            Route::post('{tarefa}/certificados',
+                [TarefaController::class, 'uploadCertificadosTreinamento']
+            )->name('certificados');
 
             Route::post('{tarefa}/anexos', [AnexoController::class, 'store'])
                 ->name('anexos.store');
@@ -1165,5 +1170,9 @@ Route::middleware('auth')->group(function () {
 
 Route::get('operacional/tarefas/documento/{token}', [TarefaController::class, 'downloadDocumento'])
     ->name('operacional.tarefas.documento');
+
+Route::get('/storage-local', [StorageProxyController::class, 'show'])
+    ->middleware('signed')
+    ->name('storage.proxy');
 
 require __DIR__.'/auth.php';

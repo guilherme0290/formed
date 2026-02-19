@@ -105,6 +105,9 @@
                                     $badge = ($coluna && $coluna->finaliza)
                                         ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
                                         : 'bg-slate-100 text-slate-700 border-slate-200';
+                                    $certificadosTreinamento = ($tarefa->anexos ?? collect())->filter(function ($anexo) {
+                                        return mb_strtolower((string) ($anexo->servico ?? '')) === 'certificado_treinamento';
+                                    });
                                 @endphp
                                 <tr class="hover:bg-slate-50/70">
                                     <td class="px-5 py-3 text-slate-800">
@@ -122,14 +125,25 @@
                                         </span>
                                     </td>
                                     <td class="px-5 py-3 text-center">
-                                        @if($tarefa->documento_link)
-                                            <a href="{{ $tarefa->documento_link }}"
-                                               class="px-3 py-2 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700"
-                                               target="_blank" rel="noopener">
-                                                Ver / Baixar
-                                            </a>
-                                        @else
+                                        @if(!$tarefa->documento_link && $certificadosTreinamento->isEmpty())
                                             <span class="text-xs text-slate-400">Indisponível</span>
+                                        @else
+                                            <div class="flex flex-col items-center gap-1">
+                                                @if($tarefa->documento_link)
+                                                    <a href="{{ $tarefa->documento_link }}"
+                                                       class="px-3 py-2 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700"
+                                                       target="_blank" rel="noopener">
+                                                        ASO
+                                                    </a>
+                                                @endif
+                                                @foreach($certificadosTreinamento as $certificado)
+                                                    <a href="{{ $certificado->url }}"
+                                                       class="px-3 py-1.5 rounded-lg border border-indigo-200 text-indigo-700 text-xs font-semibold hover:bg-indigo-50"
+                                                       target="_blank" rel="noopener">
+                                                        Certificado {{ $loop->iteration }}
+                                                    </a>
+                                                @endforeach
+                                            </div>
                                         @endif
                                     </td>
                                 </tr>

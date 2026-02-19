@@ -99,6 +99,10 @@
                                             : ($isFinalizada
                                                 ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
                                                 : 'bg-sky-50 text-sky-700 border-sky-100'));
+                                    $certificadosTreinamento = ($tarefa->anexos ?? collect())->filter(function ($anexo) {
+                                        return mb_strtolower((string) ($anexo->servico ?? '')) === 'certificado_treinamento';
+                                    });
+                                    $documentoAsoUrl = $tarefa->documento_link;
                                 @endphp
                                 <tr class="hover:bg-slate-50/60">
                                     <td class="px-4 py-3 text-slate-700">
@@ -180,8 +184,22 @@
                                         </span>
                                     </td>
                                     <td class="px-4 py-3 text-right">
-                                        @if($podeExcluir)
-                                            <div class="inline-flex items-center gap-2">
+                                        <div class="inline-flex items-center gap-2 flex-wrap justify-end">
+                                            @if($documentoAsoUrl)
+                                                <a href="{{ $documentoAsoUrl }}"
+                                                   target="_blank" rel="noopener"
+                                                   class="inline-flex items-center px-3 py-1.5 rounded-lg border border-indigo-300 bg-indigo-50 text-indigo-700 text-xs font-semibold hover:bg-indigo-100">
+                                                    ASO
+                                                </a>
+                                            @endif
+                                            @foreach($certificadosTreinamento as $certificado)
+                                                <a href="{{ $certificado->url }}"
+                                                   target="_blank" rel="noopener"
+                                                   class="inline-flex items-center px-3 py-1.5 rounded-lg border border-indigo-200 bg-white text-indigo-700 text-xs font-semibold hover:bg-indigo-50">
+                                                    Certificado {{ $loop->iteration }}
+                                                </a>
+                                            @endforeach
+                                            @if($podeExcluir)
                                                 @if($editUrl)
                                                     <a href="{{ $editUrl }}"
                                                        class="inline-flex items-center px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 text-xs font-semibold hover:bg-slate-50">
@@ -202,8 +220,8 @@
                                                         Excluir
                                                     </button>
                                                 </form>
-                                            </div>
-                                        @endif
+                                            @endif
+                                        </div>
                                     </td>
                                 </tr>
                             @endforeach

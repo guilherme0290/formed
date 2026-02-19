@@ -39,8 +39,13 @@ class ArquivoController extends Controller
 
         $arquivosQuery = Tarefa::query()
             ->where('cliente_id', $cliente->id)
-            ->whereNotNull('path_documento_cliente')
-            ->with(['servico', 'coluna']);
+            ->where(function ($q) {
+                $q->whereNotNull('path_documento_cliente')
+                    ->orWhereHas('anexos', function ($aq) {
+                        $aq->whereRaw('LOWER(COALESCE(servico, "")) = ?', ['certificado_treinamento']);
+                    });
+            })
+            ->with(['servico', 'coluna', 'anexos']);
 
         if ($request->filled('q')) {
             $q = trim((string) $request->input('q'));
@@ -66,7 +71,12 @@ class ArquivoController extends Controller
 
         $servicosIds = Tarefa::query()
             ->where('cliente_id', $cliente->id)
-            ->whereNotNull('path_documento_cliente')
+            ->where(function ($q) {
+                $q->whereNotNull('path_documento_cliente')
+                    ->orWhereHas('anexos', function ($aq) {
+                        $aq->whereRaw('LOWER(COALESCE(servico, "")) = ?', ['certificado_treinamento']);
+                    });
+            })
             ->distinct()
             ->pluck('servico_id')
             ->filter()

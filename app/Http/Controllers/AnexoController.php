@@ -64,6 +64,13 @@ class AnexoController extends Controller
 
         $anexo->delete();
 
+        if ($request->expectsJson()) {
+            return response()->json([
+                'ok' => true,
+                'message' => 'Anexo removido com sucesso.',
+            ]);
+        }
+
         return back()->with('ok', 'Anexo removido com sucesso.');
     }
 

@@ -410,8 +410,13 @@ class ClienteController extends Controller
 
         $arquivosQuery = Tarefa::query()
             ->where('cliente_id', $cliente->id)
-            ->whereNotNull('path_documento_cliente')
-            ->with(['servico', 'coluna']);
+            ->where(function ($q) {
+                $q->whereNotNull('path_documento_cliente')
+                    ->orWhereHas('anexos', function ($aq) {
+                        $aq->whereRaw('LOWER(COALESCE(servico, "")) = ?', ['certificado_treinamento']);
+                    });
+            })
+            ->with(['servico', 'coluna', 'anexos']);
 
         if ($request->filled('q')) {
             $q = trim((string) $request->input('q'));
@@ -437,7 +442,12 @@ class ClienteController extends Controller
 
         $servicosArquivosIds = Tarefa::query()
             ->where('cliente_id', $cliente->id)
-            ->whereNotNull('path_documento_cliente')
+            ->where(function ($q) {
+                $q->whereNotNull('path_documento_cliente')
+                    ->orWhereHas('anexos', function ($aq) {
+                        $aq->whereRaw('LOWER(COALESCE(servico, "")) = ?', ['certificado_treinamento']);
+                    });
+            })
             ->distinct()
             ->pluck('servico_id')
             ->filter()
@@ -717,4 +727,3 @@ class ClienteController extends Controller
 
 
 }
-

@@ -298,6 +298,7 @@ class ClienteDashboardController extends Controller
                 'pgrSolicitacao:id,tarefa_id,tipo,com_art,com_pcms0,contratante_nome,obra_nome,total_trabalhadores',
                 'pcmsoSolicitacao:id,tarefa_id,tipo,pgr_origem,obra_nome,obra_cnpj_contratante',
                 'aprSolicitacao:id,tarefa_id,contratante_razao_social,contratante_cnpj,obra_nome,obra_endereco,atividade_data_inicio,atividade_data_termino_prevista,endereco_atividade,funcoes_envolvidas,etapas_atividade,status',
+                'anexos:id,tarefa_id,servico,nome_original,path,mime_type,tamanho,created_at,uploaded_by',
             ])
             ->orderByRaw("CASE WHEN EXISTS (SELECT 1 FROM kanban_colunas kc WHERE kc.id = tarefas.coluna_id AND kc.slug = 'pendente') THEN 0 ELSE 1 END")
             ->orderByDesc('inicio_previsto')

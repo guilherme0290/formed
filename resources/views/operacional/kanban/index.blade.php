@@ -422,6 +422,7 @@
                                                 'id'          => $anexo->id,
                                                 'nome'        => $anexo->nome_original,
                                                 'url'         => $anexo->url,                 // S3
+                                                'delete_url'  => route('operacional.anexos.destroy', $anexo),
                                                 'mime'        => $anexo->mime_type,
                                                 'tamanho'     => $anexo->tamanho_humano,      // opcional
                                                 'servico'     => $anexo->servico,
@@ -429,6 +430,29 @@
                                                 'data'        => optional($anexo->created_at)->format('d/m/Y H:i'),
                                             ];
                                         })->values();
+
+                                        $asoTreinamentoEsperado = 0;
+                                        if ($aso && $aso->vai_fazer_treinamento) {
+                                            $codigosTreinamentos = [];
+                                            if (is_array($aso->treinamento_pacote ?? null) && !empty($aso->treinamento_pacote['codigos'])) {
+                                                $codigosTreinamentos = (array) ($aso->treinamento_pacote['codigos'] ?? []);
+                                            } else {
+                                                $codigosTreinamentos = (array) ($aso->treinamentos ?? []);
+                                            }
+                                            $codigosTreinamentos = array_values(array_unique(array_filter(array_map(
+                                                static fn ($v) => trim((string) $v),
+                                                $codigosTreinamentos
+                                            ))));
+                                            $asoTreinamentoEsperado = count($codigosTreinamentos);
+                                            if ($asoTreinamentoEsperado === 0) {
+                                                $asoTreinamentoEsperado = 1;
+                                            }
+                                        }
+                                        $asoTreinamentoEnviado = $anexos->filter(function ($anexo) {
+                                            return mb_strtolower((string) ($anexo->servico ?? '')) === 'certificado_treinamento';
+                                        })->count();
+                                        $asoTreinamentoPendente = $asoTreinamentoEsperado > 0
+                                            && $asoTreinamentoEnviado < $asoTreinamentoEsperado;
                                     @endphp
                                     data-tem-anexos="{{ $anexos->isNotEmpty() ? '1' : '0' }}"
                                     data-anexos='@json($anexosPayload)'
@@ -465,6 +489,10 @@
                                     data-aso-pacote="{{ $asoPacoteNome }}"
                                     data-aso-email="{{ $asoEmail }}"
                                     data-is-aso="{{ $isAsoTask ? '1' : '0' }}"
+                                    data-certificados-pendentes="{{ $asoTreinamentoPendente ? '1' : '0' }}"
+                                    data-certificados-enviados="{{ $asoTreinamentoEnviado }}"
+                                    data-certificados-total="{{ $asoTreinamentoEsperado }}"
+                                    data-certificados-upload-url="{{ route('operacional.tarefas.certificados', $tarefa) }}"
 
                                     data-observacao-interna="{{ e($tarefa->observacao_interna) }}"
                                     data-observacao-url="{{ route('operacional.tarefas.observacao', $tarefa) }}"
@@ -724,6 +752,17 @@
                                                 style="border-color: {{ $coluna->cor }}; color: #0f172a; background-color: {{ $coluna->cor }}20;">
                                                 {{ $badgeLabel }}
                                             </span>
+
+                                            @if($asoTreinamentoEsperado > 0)
+                                                @php
+                                                    $certBadgeClass = $asoTreinamentoPendente
+                                                        ? 'bg-amber-50 border-amber-200 text-amber-700'
+                                                        : 'bg-emerald-50 border-emerald-200 text-emerald-700';
+                                                @endphp
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border {{ $certBadgeClass }}">
+                                                    Trein. {{ $asoTreinamentoEnviado }}/{{ $asoTreinamentoEsperado }}
+                                                </span>
+                                            @endif
 
                                             @if($isCancelada)
                                                 <span
@@ -1378,6 +1417,29 @@
                         </ul>
                     </section>
 
+                    <section id="modal-certificados-wrapper"
+                             class="bg-amber-50 border border-amber-100 rounded-xl p-4 mt-3 hidden">
+                        <h3 class="text-xs font-semibold text-amber-700 mb-2">
+                            CERTIFICADOS DE TREINAMENTO
+                        </h3>
+                        <p id="modal-certificados-status" class="text-[12px] text-amber-800 mb-2">—</p>
+                        <input
+                            type="file"
+                            id="modal-certificados-input"
+                            class="hidden"
+                            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                            multiple
+                        >
+                        <button
+                            type="button"
+                            id="modal-certificados-upload-btn"
+                            class="inline-flex items-center justify-center px-3 py-2 rounded-lg
+                                   border border-amber-200 bg-white text-amber-700 text-xs font-semibold
+                                   hover:bg-amber-50 transition">
+                            Anexar certificados
+                        </button>
+                    </section>
+
                     {{-- 6. Adicionar observação interna --}}
                     <section class="bg-slate-50 border border-slate-200 rounded-xl p-4 h-full">
                         <h3 class="text-xs font-semibold text-slate-500 mb-3">
@@ -1580,6 +1642,10 @@
 
             const docsWrapper = document.getElementById('modal-docs-wrapper');
             const docsList = document.getElementById('modal-docs-list');
+            const certificadosWrapper = document.getElementById('modal-certificados-wrapper');
+            const certificadosStatus = document.getElementById('modal-certificados-status');
+            const certificadosInput = document.getElementById('modal-certificados-input');
+            const certificadosUploadBtn = document.getElementById('modal-certificados-upload-btn');
 
 
             // PGR
@@ -1819,6 +1885,9 @@
 
                     const mapAnexoLabel = (anexo) => {
                         if (anexo && anexo.label) return anexo.label;
+                        if (anexo && String(anexo.servico || '').toLowerCase() === 'certificado_treinamento') {
+                            return 'Certificado de treinamento';
+                        }
                         if (anexo && anexo.servico === 'cancelamento_tarefa') {
                             return 'Print do cancelamento';
                         }
@@ -1831,17 +1900,48 @@
                         docsWrapper.classList.remove('hidden');
                         docsList.innerHTML = anexosDocs.map(a => `
                                 <li>
-                                    <a href="${a.url}" target="_blank" class="underline text-[13px] font-medium">
-                                        ${mapAnexoLabel(a)}
-                                    </a>
-                                    <span class="text-[11px] text-slate-500">
-                                        (${a.tamanho || '-'} · ${a.mime || '-'}${a.data ? ' · ' + a.data : ''}${a.uploaded_by ? ' · ' + a.uploaded_by : ''})
-                                    </span>
+                                    <div class="flex items-start justify-between gap-2">
+                                        <div>
+                                            <a href="${a.url}" target="_blank" class="underline text-[13px] font-medium">
+                                                ${mapAnexoLabel(a)}
+                                            </a>
+                                            <span class="text-[11px] text-slate-500">
+                                                (${a.tamanho || '-'} · ${a.mime || '-'}${a.data ? ' · ' + a.data : ''}${a.uploaded_by ? ' · ' + a.uploaded_by : ''})
+                                            </span>
+                                        </div>
+                                        ${a.delete_url ? `
+                                            <button
+                                                type="button"
+                                                class="rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] font-semibold text-rose-700 hover:bg-rose-100"
+                                                data-doc-delete-url="${a.delete_url}"
+                                                data-doc-id="${a.id || ''}">
+                                                Excluir
+                                            </button>
+                                        ` : ''}
+                                    </div>
                                 </li>
                             `).join('');
                     } else {
                         docsWrapper.classList.add('hidden');
                         docsList.innerHTML = '';
+                    }
+                }
+
+                if (certificadosWrapper && certificadosStatus) {
+                    const total = Number(card.dataset.certificadosTotal || '0');
+                    const enviados = Number(card.dataset.certificadosEnviados || '0');
+                    const pendentes = card.dataset.certificadosPendentes === '1';
+                    const isAso = card.dataset.isAso === '1';
+                    const temDocumentoAso = !!card.dataset.arquivoClienteUrl;
+
+                    if (isAso && total > 0 && temDocumentoAso) {
+                        certificadosWrapper.classList.remove('hidden');
+                        certificadosStatus.textContent = pendentes
+                            ? `Aguardando certificados: ${enviados}/${total}.`
+                            : `Certificados concluídos: ${enviados}/${total}.`;
+                    } else {
+                        certificadosWrapper.classList.add('hidden');
+                        certificadosStatus.textContent = '—';
                     }
                 }
 
@@ -2469,7 +2569,12 @@
                             // atualiza status do card
                             const statusName = data.status_label || 'Finalizada';
                             finalizarCurrentCard.dataset.status = statusName;
-                            finalizarCurrentCard.dataset.finalizado = '1';
+                            finalizarCurrentCard.dataset.finalizado = data.finalizada_total ? '1' : '0';
+                            if (data?.certificados) {
+                                finalizarCurrentCard.dataset.certificadosPendentes = data.certificados.pendente ? '1' : '0';
+                                finalizarCurrentCard.dataset.certificadosEnviados = String(data.certificados.enviados ?? 0);
+                                finalizarCurrentCard.dataset.certificadosTotal = String(data.certificados.total_esperado ?? 0);
+                            }
 
                             const statusSpan = finalizarCurrentCard.querySelector('[data-role="card-status-label"]');
                             if (statusSpan) {
@@ -2590,6 +2695,70 @@
                     });
             }
 
+            function uploadCertificadosTreinamento(files) {
+                if (!files?.length || !detalhesCurrentCard) return;
+                const url = detalhesCurrentCard.dataset.certificadosUploadUrl;
+                if (!url) {
+                    window.uiAlert('Não foi possível enviar os certificados desta tarefa.');
+                    return;
+                }
+
+                const formData = new FormData();
+                Array.from(files).forEach((file) => formData.append('arquivos[]', file));
+
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json',
+                    },
+                    body: formData,
+                })
+                    .then(async (r) => {
+                        const contentType = r.headers.get('content-type') || '';
+                        const data = contentType.includes('application/json') ? await r.json() : null;
+                        if (!r.ok) {
+                            const error =
+                                data?.error
+                                || data?.message
+                                || (data?.errors ? Object.values(data.errors).flat()[0] : null)
+                                || 'Erro ao enviar certificados.';
+                            throw new Error(error);
+                        }
+                        return data;
+                    })
+                    .then((data) => {
+                        if (!data?.ok) {
+                            window.uiAlert(data?.error || data?.message || 'Erro ao enviar certificados.');
+                            return;
+                        }
+
+                        const cert = data.certificados || {};
+                        const enviados = Number(cert.enviados || 0);
+                        const total = Number(cert.total_esperado || 0);
+                        detalhesCurrentCard.dataset.certificadosEnviados = String(enviados);
+                        detalhesCurrentCard.dataset.certificadosTotal = String(total);
+                        detalhesCurrentCard.dataset.certificadosPendentes = cert.pendente ? '1' : '0';
+
+                        if (data.movida_para_finalizada) {
+                            window.uiAlert('Certificados concluídos. Tarefa movida para Finalizada.', {
+                                icon: 'success',
+                                title: 'Sucesso',
+                            });
+                        } else {
+                            window.uiAlert(`Certificados enviados (${enviados}/${total}).`, {
+                                icon: 'success',
+                                title: 'Sucesso',
+                            });
+                        }
+
+                        window.location.reload();
+                    })
+                    .catch((error) => {
+                        window.uiAlert(error?.message || 'Erro ao enviar certificados.');
+                    });
+            }
+
             if (arquivoReplaceBtn && arquivoReplaceInput) {
                 arquivoReplaceBtn.addEventListener('click', function () {
                     if (arquivoReplaceInput) {
@@ -2602,6 +2771,72 @@
                     const file = arquivoReplaceInput.files?.[0];
                     if (!file) return;
                     uploadDocumentoClienteTemporario(file);
+                });
+            }
+
+            if (docsList) {
+                docsList.addEventListener('click', async function (event) {
+                    const btn = event.target.closest('[data-doc-delete-url]');
+                    if (!btn || !detalhesCurrentCard) return;
+
+                    const url = btn.dataset.docDeleteUrl;
+                    const docId = String(btn.dataset.docId || '');
+                    if (!url) return;
+
+                    const confirmado = await window.uiConfirm(
+                        'Deseja remover este documento da tarefa?',
+                        {
+                            title: 'Excluir documento',
+                            confirmText: 'Excluir',
+                            cancelText: 'Cancelar',
+                        }
+                    );
+                    if (!confirmado) return;
+
+                    btn.disabled = true;
+                    try {
+                        const response = await fetch(url, {
+                            method: 'DELETE',
+                            headers: {
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                'Accept': 'application/json',
+                            },
+                        });
+
+                        if (!response.ok) {
+                            throw new Error('Não foi possível excluir o documento.');
+                        }
+
+                        let anexos = [];
+                        try {
+                            anexos = detalhesCurrentCard.dataset.anexos
+                                ? JSON.parse(detalhesCurrentCard.dataset.anexos)
+                                : [];
+                        } catch (e) {
+                            anexos = [];
+                        }
+
+                        anexos = anexos.filter((a) => String(a?.id || '') !== docId);
+                        detalhesCurrentCard.dataset.anexos = JSON.stringify(anexos);
+
+                        openDetalhesModal(detalhesCurrentCard);
+                    } catch (error) {
+                        window.uiAlert(error?.message || 'Erro ao excluir o documento.');
+                    } finally {
+                        btn.disabled = false;
+                    }
+                });
+            }
+
+            if (certificadosUploadBtn && certificadosInput) {
+                certificadosUploadBtn.addEventListener('click', function () {
+                    certificadosInput.value = '';
+                    certificadosInput.click();
+                });
+
+                certificadosInput.addEventListener('change', function () {
+                    if (!certificadosInput.files?.length) return;
+                    uploadCertificadosTreinamento(certificadosInput.files);
                 });
             }
 

@@ -4,6 +4,7 @@ namespace App\Helpers;
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 
 class S3Helper
 {
@@ -20,6 +21,11 @@ class S3Helper
     {
 
         return self::useLocalDisk() ? 'public' : 's3';
+    }
+
+    public static function usingLocalDisk(): bool
+    {
+        return self::useLocalDisk();
     }
 
     /**
@@ -72,7 +78,11 @@ class S3Helper
     {
         $disk = self::diskName();
         if ($disk === 'public') {
-            return Storage::disk($disk)->url($path);
+            return URL::temporarySignedRoute(
+                'storage.proxy',
+                now()->addMinutes($minutes),
+                ['p' => base64_encode($path)]
+            );
         }
 
         return Storage::disk($disk)->temporaryUrl(
@@ -85,7 +95,11 @@ class S3Helper
     {
         $disk = self::diskName();
         if ($disk === 'public') {
-            return Storage::disk($disk)->url($path);
+            return URL::temporarySignedRoute(
+                'storage.proxy',
+                now()->addMinutes($minutes),
+                ['p' => base64_encode($path)]
+            );
         }
 
         return Storage::disk($disk)->temporaryUrl(

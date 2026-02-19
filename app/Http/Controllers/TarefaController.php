@@ -9,9 +9,10 @@ use App\Models\Tarefa;
 use App\Models\KanbanColuna;
 use App\Models\ClienteContrato;
 use App\Models\Servico;
+use App\Models\Anexos;
+use App\Models\AsoSolicitacoes;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use App\Services\PrecificacaoService;
 use App\Services\VendaService;
@@ -84,10 +85,16 @@ class TarefaController extends Controller
             'notificar'       => ['nullable', 'boolean'],
         ]);
 
-        // coluna "finalizada" (se usar slug)
+        // coluna "finalizada"
         $colunaFinalizada = KanbanColuna::where('empresa_id', $tarefa->empresa_id)
             ->where('slug', 'finalizada')
             ->firstOrFail();
+        $colunaAguardandoFornecedor = KanbanColuna::where('empresa_id', $tarefa->empresa_id)
+            ->where('slug', 'aguardando-fornecedor')
+            ->first()
+            ?? KanbanColuna::where('empresa_id', $tarefa->empresa_id)
+                ->where('slug', 'aguardando')
+                ->first();
 
         $colunaAtualId = (int) $tarefa->coluna_id;
 
@@ -168,9 +175,14 @@ class TarefaController extends Controller
                 $token = Str::uuid()->toString();
             }
 
+            $pendenciaCertificados = $this->resolverPendenciaCertificadosTreinamento($tarefa);
+            $moverParaAguardandoFornecedor = $pendenciaCertificados['pendente']
+                && $colunaAguardandoFornecedor;
+            $colunaDestino = $moverParaAguardandoFornecedor ? $colunaAguardandoFornecedor : $colunaFinalizada;
+
             $tarefa->update([
-                'coluna_id'               => $colunaFinalizada->id,
-                'finalizado_em'           => now(),
+                'coluna_id'               => $colunaDestino->id,
+                'finalizado_em'           => $moverParaAguardandoFornecedor ? null : now(),
                 'path_documento_cliente'  => $path,
                 'documento_token'         => $token,
             ]);
@@ -179,9 +191,11 @@ class TarefaController extends Controller
                 'tarefa_id'      => $tarefa->id,
                 'user_id'        => Auth::id(),
                 'de_coluna_id'   => $colunaAtualId,
-                'para_coluna_id' => $colunaFinalizada->id,
+                'para_coluna_id' => $colunaDestino->id,
                 'acao'           => 'movido',
-                'observacao'     => 'Finalizada com arquivo anexado',
+                'observacao'     => $moverParaAguardandoFornecedor
+                    ? 'ASO finalizado com documento. Aguardando certificados de treinamento.'
+                    : 'Finalizada com arquivo anexado',
             ]);
 
             $log->load(['deColuna','paraColuna','user']);
@@ -192,8 +206,11 @@ class TarefaController extends Controller
 
             return response()->json([
                 'ok'           => true,
-                'status_label' => $colunaFinalizada->nome,
+                'status_label' => $colunaDestino->nome,
                 'documento_url' => $tarefa->documento_link,
+                'coluna_destino_slug' => $colunaDestino->slug,
+                'finalizada_total' => !$moverParaAguardandoFornecedor,
+                'certificados' => $pendenciaCertificados,
                 'log'          => [
                     'de'   => optional($log->deColuna)->nome ?? 'Início',
                     'para' => optional($log->paraColuna)->nome ?? '-',
@@ -218,10 +235,7 @@ class TarefaController extends Controller
             ->whereNotNull('path_documento_cliente')
             ->firstOrFail();
 
-        $url = Storage::disk('s3')->temporaryUrl(
-            $tarefa->path_documento_cliente,
-            now()->addMinutes(10)
-        );
+        $url = S3Helper::temporaryUrl($tarefa->path_documento_cliente, 10);
 
         return redirect()->away($url);
     }
@@ -257,6 +271,133 @@ class TarefaController extends Controller
             'ok' => true,
             'documento_url' => $tarefa->documento_link,
         ]);
+    }
+
+    public function uploadCertificadosTreinamento(Request $request, Tarefa $tarefa)
+    {
+        $request->validate([
+            'arquivos' => ['required', 'array', 'min:1'],
+            'arquivos.*' => ['file', 'mimes:pdf,jpg,jpeg,png,doc,docx', 'max:10240'],
+        ]);
+
+        $empresaId = (int) (auth()->user()->empresa_id ?? 0);
+        abort_if($empresaId <= 0 || (int) $tarefa->empresa_id !== $empresaId, 403);
+
+        $pendenciaInicial = $this->resolverPendenciaCertificadosTreinamento($tarefa);
+        if (!$pendenciaInicial['requer_certificados']) {
+            return response()->json([
+                'ok' => false,
+                'error' => 'Esta tarefa não possui pendência de certificados de treinamento.',
+            ], 422);
+        }
+
+        if (empty($tarefa->path_documento_cliente)) {
+            return response()->json([
+                'ok' => false,
+                'error' => 'Anexe primeiro o documento final do ASO para liberar os certificados.',
+            ], 422);
+        }
+
+        foreach ($request->file('arquivos', []) as $file) {
+            $path = S3Helper::upload($file, 'anexos/' . $tarefa->id . '/certificados-treinamento');
+
+            Anexos::create([
+                'empresa_id' => $tarefa->empresa_id,
+                'cliente_id' => $tarefa->cliente_id,
+                'tarefa_id' => $tarefa->id,
+                'uploaded_by' => (int) auth()->id(),
+                'servico' => 'certificado_treinamento',
+                'nome_original' => $file->getClientOriginalName(),
+                'path' => $path,
+                'mime_type' => $file->getClientMimeType(),
+                'tamanho' => $file->getSize(),
+            ]);
+        }
+
+        $pendenciaAtual = $this->resolverPendenciaCertificadosTreinamento($tarefa->fresh());
+        $colunaAtualId = (int) $tarefa->coluna_id;
+        $movidaParaFinalizada = false;
+
+        if (!$pendenciaAtual['pendente']) {
+            $colunaFinalizada = KanbanColuna::query()
+                ->where('empresa_id', $tarefa->empresa_id)
+                ->where('slug', 'finalizada')
+                ->first();
+
+            if ($colunaFinalizada && (int) $tarefa->coluna_id !== (int) $colunaFinalizada->id) {
+                $tarefa->update([
+                    'coluna_id' => $colunaFinalizada->id,
+                    'finalizado_em' => now(),
+                ]);
+
+                TarefaLog::create([
+                    'tarefa_id' => $tarefa->id,
+                    'user_id' => Auth::id(),
+                    'de_coluna_id' => $colunaAtualId,
+                    'para_coluna_id' => $colunaFinalizada->id,
+                    'acao' => 'movido',
+                    'observacao' => 'Certificados de treinamento concluídos. Tarefa finalizada.',
+                ]);
+                $movidaParaFinalizada = true;
+            } else {
+                $tarefa->update([
+                    'finalizado_em' => now(),
+                ]);
+                $movidaParaFinalizada = true;
+            }
+        }
+
+        return response()->json([
+            'ok' => true,
+            'certificados' => $pendenciaAtual,
+            'movida_para_finalizada' => $movidaParaFinalizada,
+            'status_label' => $tarefa->fresh()->coluna?->nome,
+        ]);
+    }
+
+    private function resolverPendenciaCertificadosTreinamento(Tarefa $tarefa): array
+    {
+        $aso = AsoSolicitacoes::query()
+            ->where('tarefa_id', $tarefa->id)
+            ->first();
+
+        if (!$aso || !(bool) $aso->vai_fazer_treinamento) {
+            return [
+                'requer_certificados' => false,
+                'total_esperado' => 0,
+                'enviados' => 0,
+                'pendente' => false,
+            ];
+        }
+
+        $codigos = [];
+        if (is_array($aso->treinamento_pacote) && !empty($aso->treinamento_pacote['codigos'])) {
+            $codigos = (array) $aso->treinamento_pacote['codigos'];
+        } else {
+            $codigos = (array) ($aso->treinamentos ?? []);
+        }
+
+        $codigos = array_values(array_unique(array_filter(array_map(
+            static fn ($v) => trim((string) $v),
+            $codigos
+        ))));
+
+        $totalEsperado = count($codigos);
+        if ($totalEsperado === 0) {
+            $totalEsperado = 1;
+        }
+
+        $certificadosEnviados = Anexos::query()
+            ->where('tarefa_id', $tarefa->id)
+            ->whereRaw('LOWER(COALESCE(servico, "")) = ?', ['certificado_treinamento'])
+            ->count();
+
+        return [
+            'requer_certificados' => true,
+            'total_esperado' => $totalEsperado,
+            'enviados' => $certificadosEnviados,
+            'pendente' => $certificadosEnviados < $totalEsperado,
+        ];
     }
 
 }

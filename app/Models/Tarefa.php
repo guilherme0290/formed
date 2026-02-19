@@ -2,11 +2,11 @@
 
 namespace App\Models;
 
+use App\Helpers\S3Helper;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Facades\Storage;
 
 class Tarefa extends Model
 {
@@ -86,10 +86,8 @@ class Tarefa extends Model
         if (!$this->path_documento_cliente) {
             return null;
         }
-        return Storage::disk('s3')->temporaryUrl(
-            $this->path_documento_cliente,
-            now()->addMinutes(10)
-        );
+
+        return S3Helper::temporaryUrl($this->path_documento_cliente, 10);
     }
 
     public function getDocumentoLinkAttribute(): ?string

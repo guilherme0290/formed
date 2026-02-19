@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
+use App\Helpers\S3Helper;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\Storage;
 
 class PgrSolicitacoes extends Model
 {
@@ -78,6 +78,6 @@ class PgrSolicitacoes extends Model
             return null;
         }
 
-        return Storage::disk('s3')->url($this->pgr_arquivo_path);
+        return S3Helper::temporaryUrl($this->pgr_arquivo_path, 10);
     }
 }
