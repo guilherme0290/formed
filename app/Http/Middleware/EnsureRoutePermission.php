@@ -27,12 +27,25 @@ class EnsureRoutePermission
             return $next($request);
         }
 
-        if ($this->isRouteAllowedForRole($user, $routeName)) {
+        if (!$this->isRouteAllowedForRole($user, $routeName)) {
+            if ($request->expectsJson()) {
+                abort(403, 'Usuário sem permissão para acessar esta funcionalidade.');
+            }
+
+            return $this->redirectWithoutPermission($request, $user);
+        }
+
+        if ($user->hasPapel('Cliente')) {
+            return $next($request);
+        }
+
+        $permissionKey = $this->resolvePermissionKey($routeName, $request->getMethod());
+        if ($permissionKey === null || $this->userHasPermission($user, $permissionKey)) {
             return $next($request);
         }
 
         if ($request->expectsJson()) {
-            abort(403, 'Usuario sem permissao para acessar esta funcionalidade.');
+            abort(403, 'Usuário sem permissão para acessar esta funcionalidade.');
         }
 
         return $this->redirectWithoutPermission($request, $user);
@@ -45,7 +58,8 @@ class EnsureRoutePermission
         }
 
         if ($user->hasPapel('Cliente')) {
-            return str_starts_with($routeName, 'cliente.');
+            return str_starts_with($routeName, 'cliente.')
+                || $this->isClienteOperationalServiceRoute($routeName);
         }
 
         if ($user->hasPapel('Operacional')) {
@@ -67,10 +81,40 @@ class EnsureRoutePermission
         return false;
     }
 
+    private function isClienteOperationalServiceRoute(string $routeName): bool
+    {
+        $allowedPrefixes = [
+            'operacional.kanban.aso.',
+            'operacional.kanban.pgr.',
+            'operacional.kanban.pcmso.',
+            'operacional.pgr.',
+            'operacional.pcmso.',
+            'operacional.ltcat.',
+            'operacional.apr.',
+            'operacional.treinamentos-nr.',
+        ];
+
+        foreach ($allowedPrefixes as $prefix) {
+            if (str_starts_with($routeName, $prefix)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private function userHasPermission(User $user, string $permissionKey): bool
     {
-        return $user->papel()
+        $viaPapel = $user->papel()
             ->whereHas('permissoes', fn ($q) => $q->where('chave', $permissionKey))
+            ->exists();
+
+        if ($viaPapel) {
+            return true;
+        }
+
+        return $user->permissoesDiretas()
+            ->where('chave', $permissionKey)
             ->exists();
     }
 
@@ -434,7 +478,7 @@ class EnsureRoutePermission
             $target = $previous;
         }
 
-        return redirect()->to($target)->with('error', 'Usuario sem permissao para acessar esta tela.');
+        return redirect()->to($target)->with('error', 'Usuário sem permissão para acessar esta tela.');
     }
 
     private function fallbackRouteByRole(User $user): string
@@ -458,3 +502,6 @@ class EnsureRoutePermission
         return route('dashboard');
     }
 }
+
+
+

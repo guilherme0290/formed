@@ -134,7 +134,7 @@
                                                name="itens[]"
                                                value="{{ $item->id }}"
                                                class="rounded border-slate-300 {{ $canCreate ? '' : 'opacity-60 cursor-not-allowed' }}"
-                                               @if(!$canCreate) disabled title="Usuario sem permissao" @endif>
+                                               @if(!$canCreate) disabled title="Usuário sem permissão" @endif>
                                     </td>
                                     <td class="px-4 py-3 text-slate-700">
                                         {{ $tarefaId ? '#' . $tarefaId : 'â€”' }}
@@ -166,7 +166,7 @@
                 <div class="px-5 py-4 border-t border-slate-100 flex items-center justify-between">
                     <span class="text-xs text-slate-500">Selecione os itens para gerar a conta</span>
                     <button class="px-4 py-2 rounded-xl text-sm font-semibold {{ $canCreate ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}"
-                            @if(!$canCreate) disabled title="Usuario sem permissao" @endif>
+                            @if(!$canCreate) disabled title="Usuário sem permissão" @endif>
                         Criar Contas a Receber
                     </button>
                 </div>
@@ -224,7 +224,7 @@
                                         <form method="POST" action="{{ route('financeiro.contas-receber.boleto', $conta) }}">
                                             @csrf
                                             <button class="px-3 py-2 rounded-lg text-xs font-semibold {{ $canUpdate ? 'bg-slate-900 text-white hover:bg-slate-800' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}"
-                                                    @if(!$canUpdate) disabled title="Usuario sem permissao" @endif>
+                                                    @if(!$canUpdate) disabled title="Usuário sem permissão" @endif>
                                                 Emitir Boleto
                                             </button>
                                         </form>
@@ -248,3 +248,4 @@
         </section>
     </div>
 @endsection
+

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Traits\HasRoles;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -56,6 +57,11 @@ class User extends Authenticatable
     public function papel(): BelongsTo
     {
         return $this->belongsTo(Papel::class);
+    }
+
+    public function permissoesDiretas(): BelongsToMany
+    {
+        return $this->belongsToMany(Permissao::class, 'user_permissao', 'user_id', 'permissao_id');
     }
 
     /**

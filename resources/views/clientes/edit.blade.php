@@ -17,8 +17,8 @@
 @extends($layout)
 
 @section('content')
-    @php($routePrefix = $routePrefix ?? 'clientes')
     @php
+        $routePrefix = $routePrefix ?? 'clientes';
         $permPrefix = str_starts_with($routePrefix, 'comercial.') ? 'comercial.clientes' : 'master.clientes';
         $permissionMap = $user?->papel?->permissoes?->pluck('chave')->flip()->all() ?? [];
         $isMaster = $user?->hasPapel('Master');
@@ -218,8 +218,8 @@
                 </div>
 
                 <div class="md:col-span-2">
-                    <label class="text-sm">Observa&ccedil;&atilde;o <span class="text-red-600">*</span></label>
-                    <textarea name="observacao" rows="3" class="w-full border-gray-300 rounded-lg px-3 py-2 uppercase" required>{{ old('observacao', $cliente->observacao) }}</textarea>
+                    <label class="text-sm">Observa&ccedil;&atilde;o <span id="obs-required-star" class="text-red-600 hidden">*</span></label>
+                    <textarea id="observacao" name="observacao" rows="3" class="w-full border-gray-300 rounded-lg px-3 py-2 uppercase">{{ old('observacao', $cliente->observacao) }}</textarea>
                     @error('observacao')
                     <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
                     @enderror
@@ -315,7 +315,7 @@
             </div>
 
             {{-- BOTÃ•ES --}}
-            <div class="flex flex-wrap justify-end gap-3"><button @if(!$canSave) disabled title="Usuario sem permissao" @endif class="w-full px-6 py-3 rounded-2xl text-base font-semibold shadow-md {{ $canSave ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}">
+            <div class="flex flex-wrap justify-end gap-3"><button @if(!$canSave) disabled title="Usuário sem permissão" @endif class="w-full px-6 py-3 rounded-2xl text-base font-semibold shadow-md {{ $canSave ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}">
                     {{ $cliente->exists ? 'Salvar Alterações' : 'Cadastrar' }}
                 </button>
             </div>
@@ -360,7 +360,7 @@
                                 </div>
 
                                 <div class="flex justify-end">
-                                    <button @if(!$canUpdate) disabled title="Usuario sem permissao" @endif class="px-5 py-2 rounded-xl text-sm font-semibold {{ $canUpdate ? 'bg-slate-900 text-white hover:bg-slate-800' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}">
+                                    <button @if(!$canUpdate) disabled title="Usuário sem permissão" @endif class="px-5 py-2 rounded-xl text-sm font-semibold {{ $canUpdate ? 'bg-slate-900 text-white hover:bg-slate-800' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}">
                                         Salvar vendedor
                                     </button>
                                 </div>
@@ -778,7 +778,66 @@
         }
     </script>
 
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const radios = Array.from(document.querySelectorAll('input[name="tipo_cliente"]'));
+            const observacao = document.getElementById('observacao');
+            const star = document.getElementById('obs-required-star');
+
+            if (!radios.length || !observacao) {
+                return;
+            }
+
+            const syncRequired = () => {
+                const selecionado = radios.find((r) => r.checked)?.value;
+                const required = selecionado === 'parceiro';
+                observacao.required = required;
+                if (star) {
+                    star.classList.toggle('hidden', !required);
+                }
+            };
+
+            radios.forEach((radio) => radio.addEventListener('change', syncRequired));
+            syncRequired();
+        });
+    </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const tipoInput = document.querySelector('input[name="tipo_cliente"]');
+            const formDados = tipoInput ? tipoInput.closest('form') : null;
+            const observacao = document.getElementById('observacao');
+            const radios = Array.from(document.querySelectorAll('input[name="tipo_cliente"]'));
+
+            if (!formDados || !observacao || !radios.length) {
+                return;
+            }
+
+            formDados.addEventListener('submit', function (event) {
+                const tipoSelecionado = radios.find((r) => r.checked)?.value;
+                const obsVazia = !observacao.value || observacao.value.trim() === '';
+
+                if (tipoSelecionado === 'parceiro' && obsVazia) {
+                    event.preventDefault();
+                    observacao.focus();
+
+                    if (typeof window.uiAlert === 'function') {
+                        window.uiAlert('Preencha o campo Observacao para Cliente Parceiro.', {
+                            title: 'Campo obrigatorio',
+                            icon: 'warning',
+                            confirmText: 'OK',
+                        });
+                    } else {
+                        alert('Preencha o campo Observacao para Cliente Parceiro.');
+                    }
+                }
+            });
+        });
+    </script>
 @endsection
+
+
+
 
 
 

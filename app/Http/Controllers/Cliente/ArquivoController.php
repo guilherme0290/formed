@@ -91,7 +91,7 @@ class ArquivoController extends Controller
 
     public function index(Request $request)
     {
-        // valida sessão do portal cliente
+        // valida sessao do portal cliente
         $user = $request->user();
         if (!$user || !$user->id) {
             return redirect()->route('login', ['redirect' => 'cliente']);
@@ -103,7 +103,7 @@ class ArquivoController extends Controller
             $request->session()->invalidate();
             $request->session()->regenerateToken();
             return redirect()->route('login', ['redirect' => 'cliente'])
-                ->with('error', 'Nenhum cliente selecionado. Faça login novamente pelo portal do cliente.');
+                ->with('error', 'Nenhum cliente selecionado. Faca login novamente pelo portal do cliente.');
         }
 
         $cliente = Cliente::find($clienteId);
@@ -112,7 +112,7 @@ class ArquivoController extends Controller
             $request->session()->invalidate();
             $request->session()->regenerateToken();
             return redirect()->route('login', ['redirect' => 'cliente'])
-                ->with('error', 'Cliente inválido. Acesse novamente pelo portal do cliente.');
+                ->with('error', 'Cliente invalido. Acesse novamente pelo portal do cliente.');
         }
 
         $arquivosQuery = Tarefa::query()
@@ -195,7 +195,7 @@ class ArquivoController extends Controller
             $request->session()->invalidate();
             $request->session()->regenerateToken();
             return redirect()->route('login', ['redirect' => 'cliente'])
-                ->with('error', 'Nenhum cliente selecionado. FaÃ§a login novamente pelo portal do cliente.');
+                ->with('error', 'Nenhum cliente selecionado. Faca login novamente pelo portal do cliente.');
         }
 
         $cliente = Cliente::findOrFail($clienteId);
@@ -226,7 +226,7 @@ class ArquivoController extends Controller
             $request->session()->invalidate();
             $request->session()->regenerateToken();
             return redirect()->route('login', ['redirect' => 'cliente'])
-                ->with('error', 'Nenhum cliente selecionado. FaÃ§a login novamente pelo portal do cliente.');
+                ->with('error', 'Nenhum cliente selecionado. Faca login novamente pelo portal do cliente.');
         }
 
         $cliente = Cliente::findOrFail($clienteId);
@@ -243,3 +243,8 @@ class ArquivoController extends Controller
         return response()->download($zipPath, $zipName)->deleteFileAfterSend(true);
     }
 }
+
+
+
+
+

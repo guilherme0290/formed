@@ -28,7 +28,7 @@
         <div class="flex flex-col sm:flex-row gap-2 sm:items-center">
             <button type="button"
                     @if($canCreate) onclick="openNovoItemModal()" @endif
-                    @if(!$canCreate) title="Usuario sem permissao" @endif
+                    @if(!$canCreate) title="Usuário sem permissão" @endif
                     class="inline-flex items-center justify-center gap-2 rounded-2xl
                        {{ $canCreate ? 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} px-5 py-2.5 text-sm font-semibold shadow-sm
                        ring-1 ring-blue-600/20 hover:ring-blue-700/30
@@ -40,7 +40,7 @@
 
             <button type="button"
                     @if($canUpdate) onclick="openEsocialModal()" @endif
-                    @if(!$canUpdate) title="Usuario sem permissao" @endif
+                    @if(!$canUpdate) title="Usuário sem permissão" @endif
                     class="inline-flex items-center justify-center gap-2 rounded-2xl
                        {{ $canUpdate ? 'bg-white hover:bg-indigo-50 active:bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} px-5 py-2.5 text-sm font-semibold shadow-sm
                        ring-1 ring-indigo-200 hover:ring-indigo-300
@@ -55,7 +55,7 @@
             </button>
             <button type="button"
                     @if($canUpdate) onclick="openExamesModal()" @endif
-                    @if(!$canUpdate) title="Usuario sem permissao" @endif
+                    @if(!$canUpdate) title="Usuário sem permissão" @endif
                     class="inline-flex items-center justify-center gap-2 rounded-2xl
                {{ $canUpdate ? 'bg-white hover:bg-blue-50 active:bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} px-4 py-2 text-sm font-semibold shadow-sm
                ring-1 ring-blue-200 hover:ring-blue-300 transition"
@@ -64,7 +64,7 @@
             </button>
             <button type="button"
                     @if($canUpdate) onclick="openMedicoesCrudModal()" @endif
-                    @if(!$canUpdate) title="Usuario sem permissao" @endif
+                    @if(!$canUpdate) title="Usuário sem permissão" @endif
                     class="inline-flex items-center justify-center gap-2 rounded-2xl
                {{ $canUpdate ? 'bg-white hover:bg-amber-50 active:bg-amber-100 text-amber-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} px-4 py-2 text-sm font-semibold shadow-sm
                ring-1 ring-amber-200 hover:ring-amber-300 transition"
@@ -73,7 +73,7 @@
             </button>
             <button type="button"
                     @if($canUpdate) onclick="openTreinamentosCrudModal()" @endif
-                    @if(!$canUpdate) title="Usuario sem permissao" @endif
+                    @if(!$canUpdate) title="Usuário sem permissão" @endif
                     class="inline-flex items-center justify-center gap-2 rounded-2xl
                {{ $canUpdate ? 'bg-white hover:bg-emerald-50 active:bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} px-4 py-2 text-sm font-semibold shadow-sm
                ring-1 ring-emerald-200 hover:ring-emerald-300 transition"
@@ -82,7 +82,7 @@
             </button>
             <button type="button"
                     @if($canUpdate) onclick="openProtocolosModal()" @endif
-                    @if(!$canUpdate) title="Usuario sem permissao" @endif
+                    @if(!$canUpdate) title="Usuário sem permissão" @endif
                     class="inline-flex items-center justify-center gap-2 rounded-2xl
                {{ $canUpdate ? 'bg-white hover:bg-slate-50 active:bg-slate-100 text-slate-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} px-4 py-2 text-sm font-semibold shadow-sm
                ring-1 ring-slate-200 hover:ring-slate-300 transition"
@@ -179,7 +179,7 @@
                                     <button type="button"
                                             class="text-sm {{ $canUpdate ? 'text-blue-600 hover:underline' : 'text-slate-500 cursor-not-allowed' }}"
                                             @if($canUpdate) onclick="openEditarItemModal(this)" @endif
-                                            @if(!$canUpdate) title="Usuario sem permissao" @endif
+                                            @if(!$canUpdate) title="Usuário sem permissão" @endif
                                             data-id="{{ $item->id }}"
                                             data-servico-id="{{ $item->servico_id ?? '' }}"
                                             data-codigo="{{ e($item->codigo ?? '') }}"
@@ -197,7 +197,7 @@
                                         @csrf
                                         @method('DELETE')
                                         <button class="text-sm {{ $canDelete ? 'text-red-600 hover:underline' : 'text-slate-500 cursor-not-allowed' }}"
-                                                @if(!$canDelete) disabled title="Usuario sem permissao" @endif>
+                                                @if(!$canDelete) disabled title="Usuário sem permissão" @endif>
                                             Excluir
                                         </button>
                                     </form>
@@ -246,7 +246,7 @@
                                     <button type="button"
                                             class="text-sm {{ $canUpdate ? 'text-blue-600 hover:underline' : 'text-slate-500 cursor-not-allowed' }}"
                                             @if($canUpdate) onclick="openEditarItemModal(this)" @endif
-                                            @if(!$canUpdate) title="Usuario sem permissao" @endif
+                                            @if(!$canUpdate) title="Usuário sem permissão" @endif
                                             data-id="{{ $item->id }}"
                                             data-servico-id="{{ $item->servico_id ?? '' }}"
                                             data-codigo="{{ e($item->codigo ?? '') }}"
@@ -264,7 +264,7 @@
                                         @csrf
                                         @method('DELETE')
                                         <button class="text-sm {{ $canDelete ? 'text-red-600 hover:underline' : 'text-slate-500 cursor-not-allowed' }}"
-                                                @if(!$canDelete) disabled title="Usuario sem permissao" @endif>
+                                                @if(!$canDelete) disabled title="Usuário sem permissão" @endif>
                                             Excluir
                                         </button>
                                     </form>
@@ -696,3 +696,4 @@
         })();
     </script>
 @endpush
+

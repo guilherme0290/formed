@@ -78,7 +78,7 @@
             {{-- Ajuste o nome da rota aqui se precisar --}}
             @php $canDashboard = $can('comercial.dashboard.view'); @endphp
             <a href="{{ $canDashboard ? route('comercial.dashboard') : 'javascript:void(0)' }}"
-               @if(!$canDashboard) title="Usuario sem permissao" aria-disabled="true" @endif
+               @if(!$canDashboard) title="Usuário sem permissão" aria-disabled="true" @endif
                class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium {{ $canDashboard ? 'bg-slate-800 text-slate-50' : 'bg-slate-900 text-slate-500 cursor-not-allowed' }}">
                 <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-700">
                     ğŸ“Š
@@ -88,7 +88,7 @@
 
             @php $canComissoes = $can('comercial.comissoes.view'); @endphp
             <a href="{{ $canComissoes ? route('comercial.comissoes.index') : 'javascript:void(0)' }}"
-               @if(!$canComissoes) title="Usuario sem permissao" aria-disabled="true" @endif
+               @if(!$canComissoes) title="Usuário sem permissão" aria-disabled="true" @endif
                class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm {{ $menuState($canComissoes) }}">
                 <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500/20 text-orange-400">
                     $
@@ -98,7 +98,7 @@
 
             @php $canAgenda = $can('comercial.agenda.view'); @endphp
             <a href="{{ $canAgenda ? route($isMaster ? 'master.agenda-vendedores.index' : 'comercial.agenda.index') : 'javascript:void(0)' }}"
-               @if(!$canAgenda) title="Usuario sem permissao" aria-disabled="true" @endif
+               @if(!$canAgenda) title="Usuário sem permissão" aria-disabled="true" @endif
                class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm {{ $menuState($canAgenda) }}">
                 <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-200">
                     ğŸ—“ï¸
@@ -108,7 +108,7 @@
 
             @php $canPropostas = $can('comercial.propostas.view'); @endphp
             <a href="{{ $canPropostas ? route('comercial.propostas.index') : 'javascript:void(0)' }}"
-               @if(!$canPropostas) title="Usuario sem permissao" aria-disabled="true" @endif
+               @if(!$canPropostas) title="Usuário sem permissão" aria-disabled="true" @endif
                class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm {{ $menuState($canPropostas) }}">
                 <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/20 text-blue-200">
                     ğŸ“„
@@ -118,7 +118,7 @@
 
             @php $canPipeline = $can('comercial.pipeline.view'); @endphp
             <a href="{{ $canPipeline ? route('comercial.pipeline.index') : 'javascript:void(0)' }}"
-               @if(!$canPipeline) title="Usuario sem permissao" aria-disabled="true" @endif
+               @if(!$canPipeline) title="Usuário sem permissão" aria-disabled="true" @endif
                class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm {{ $menuState($canPipeline) }}">
                 <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-rose-500/20 text-rose-200">
                     ğŸ“ˆ
@@ -128,7 +128,7 @@
 
             @php $canTabela = $can('comercial.tabela-precos.view'); @endphp
             <a href="{{ $canTabela ? route('comercial.tabela-precos.index') : 'javascript:void(0)' }}"
-               @if(!$canTabela) title="Usuario sem permissao" aria-disabled="true" @endif
+               @if(!$canTabela) title="Usuário sem permissão" aria-disabled="true" @endif
                class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm {{ $menuState($canTabela) }}">
                 <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-green-500/20 text-green-200">
                     ğŸ’°
@@ -138,7 +138,7 @@
 
             @php $canContratos = $can('comercial.contratos.view'); @endphp
             <a href="{{ $canContratos ? route('comercial.contratos.index') : 'javascript:void(0)' }}"
-               @if(!$canContratos) title="Usuario sem permissao" aria-disabled="true" @endif
+               @if(!$canContratos) title="Usuário sem permissão" aria-disabled="true" @endif
                class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm {{ $menuState($canContratos) }}">
                 <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-purple-500/20 text-purple-200">
                     ğŸ“‘
@@ -148,7 +148,7 @@
 
             @php $canClientes = $can('comercial.clientes.view'); @endphp
             <a href="{{ $canClientes ? route('comercial.clientes.index') : 'javascript:void(0)' }}"
-               @if(!$canClientes) title="Usuario sem permissao" aria-disabled="true" @endif
+               @if(!$canClientes) title="Usuário sem permissão" aria-disabled="true" @endif
                class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm {{ $menuState($canClientes) }}">
                 <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/20 text-amber-200">
                     ğŸ‘¤
@@ -158,7 +158,7 @@
 
             @php $canFuncoes = $can('comercial.tabela-precos.view'); @endphp
             <a href="{{ $canFuncoes ? route('comercial.funcoes.index') : 'javascript:void(0)' }}"
-               @if(!$canFuncoes) title="Usuario sem permissao" aria-disabled="true" @endif
+               @if(!$canFuncoes) title="Usuário sem permissão" aria-disabled="true" @endif
                class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm {{ $menuState($canFuncoes) }}">
                 <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-500/20 text-slate-200">
                     ğŸ§©
@@ -413,3 +413,4 @@
 
 </body>
 </html>
+

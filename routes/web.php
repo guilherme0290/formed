@@ -486,7 +486,7 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
                         if (!$portalServicoPermitido($cliente->id, 'ASO')) {
                             return redirect()
                                 ->route('cliente.dashboard')
-                                ->with('error', 'ServiÃ§o ASO nÃ£o disponÃ­vel no contrato ativo.');
+                                ->with('error', 'Servico ASO nao disponivel no contrato ativo.');
                         }
 
                         return redirect()->route('operacional.kanban.aso.create', [
@@ -501,7 +501,7 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
                         if (!$portalServicoPermitido($cliente->id, 'PGR')) {
                             return redirect()
                                 ->route('cliente.dashboard')
-                                ->with('error', 'ServiÃ§o PGR nÃ£o disponÃ­vel no contrato ativo.');
+                                ->with('error', 'Servico PGR nao disponivel no contrato ativo.');
                         }
 
                         return redirect()->route('operacional.kanban.pgr.tipo', [
@@ -516,7 +516,7 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
                         if (!$portalServicoPermitido($cliente->id, 'PCMSO')) {
                             return redirect()
                                 ->route('cliente.dashboard')
-                                ->with('error', 'ServiÃ§o PCMSO nÃ£o disponÃ­vel no contrato ativo.');
+                                ->with('error', 'Servico PCMSO nao disponivel no contrato ativo.');
                         }
 
                         return redirect()->route('operacional.pcmso.tipo', [
@@ -531,7 +531,7 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
                         if (!$portalServicoPermitido($cliente->id, 'LTCAT')) {
                             return redirect()
                                 ->route('cliente.dashboard')
-                                ->with('error', 'ServiÃ§o LTCAT nÃ£o disponÃ­vel no contrato ativo.');
+                                ->with('error', 'Servico LTCAT nao disponivel no contrato ativo.');
                         }
 
                         return redirect()->route('operacional.ltcat.tipo', [
@@ -546,7 +546,7 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
                         if (!$portalServicoPermitido($cliente->id, 'APR')) {
                             return redirect()
                                 ->route('cliente.dashboard')
-                                ->with('error', 'ServiÃ§o APR nÃ£o disponÃ­vel no contrato ativo.');
+                                ->with('error', 'Servico APR nao disponivel no contrato ativo.');
                         }
 
                         return redirect()->route('operacional.apr.create', [
@@ -561,7 +561,7 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
                         if (!$portalServicoPermitido($cliente->id, 'Treinamentos NRs')) {
                             return redirect()
                                 ->route('cliente.dashboard')
-                                ->with('error', 'ServiÃ§o Treinamentos NRs nÃ£o disponÃ­vel no contrato ativo.');
+                                ->with('error', 'Servico Treinamentos NRs nao disponivel no contrato ativo.');
                         }
 
                         return redirect()->route('operacional.treinamentos-nr.create', [
@@ -1038,6 +1038,7 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
             Route::post('/{user}/toggle', [AcessosController::class, 'usuariosToggle'])->name('toggle');
             Route::post('/{user}/reset', [AcessosController::class, 'usuariosReset'])->name('reset');
             Route::post('/{user}/password', [AcessosController::class, 'usuariosSetPassword'])->name('password');
+            Route::post('/{user}/permissoes', [AcessosController::class, 'usuariosSyncPermissoes'])->name('permissoes.sync');
         });
 
         // CRUD de FunÃ§Ãµes
@@ -1185,3 +1186,4 @@ Route::get('operacional/tarefas/documento/{token}', [TarefaController::class, 'd
     ->name('operacional.tarefas.documento');
 
 require __DIR__.'/auth.php';
+

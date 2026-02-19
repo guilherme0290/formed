@@ -84,7 +84,7 @@
                     {{-- helper inline --}}
                     @php
                         $bloqueadoMsg = 'Bloqueado: servi√ßo n√£o consta na tabela de pre√ßo vigente do contrato.';
-                        $semPermissaoMsg = 'Usuario sem permissao para criar este servico.';
+                        $semPermissaoMsg = 'Usu·rio sem permiss„o para criar este servico.';
                     @endphp
 
                     {{-- ASO --}}
@@ -303,5 +303,6 @@
         </div>
     </div>
 @endsection
+
 
 

@@ -52,7 +52,7 @@ class ClienteController extends Controller
                             ->orWhere('telefone', 'like', "%{$qText}%");
                     }
 
-                    // SÃƒÂ³ filtra por CNPJ se tiver nÃƒÂºmero na busca
+                    // SÃƒÆ’Ã‚Â³ filtra por CNPJ se tiver nÃƒÆ’Ã‚Âºmero na busca
                     if ($doc !== '') {
                         $x->orWhere('cnpj', 'like', "%{$doc}%")
                             ->orWhere('telefone', 'like', "%{$doc}%");
@@ -77,7 +77,7 @@ class ClienteController extends Controller
 
     /**
      * CONSULTA CNPJ VIA API
-     * (caso vocÃƒÂª queira usar via AJAX depois)
+     * (caso vocÃƒÆ’Ã‚Âª queira usar via AJAX depois)
      */
     public function consultaCnpj($cnpj)
     {
@@ -86,13 +86,13 @@ class ClienteController extends Controller
         $resp = Http::get("https://www.receitaws.com.br/v1/cnpj/{$cnpjLimpo}");
 
         if ($resp->failed()) {
-            return response()->json(['error' => 'NÃ£o foi possÃ­vel consultar'], 500);
+            return response()->json(['error' => 'NÃƒÂ£o foi possÃƒÂ­vel consultar'], 500);
         }
 
         $dados = $resp->json();
 
         if (isset($dados['status']) && $dados['status'] === 'ERROR') {
-            return response()->json(['error' => $dados['message'] ?? 'CNPJ nÃ£o encontrado'], 404);
+            return response()->json(['error' => $dados['message'] ?? 'CNPJ nÃƒÂ£o encontrado'], 404);
         }
 
         return response()->json([
@@ -252,7 +252,7 @@ class ClienteController extends Controller
                         }
                         $doc = preg_replace('/\D+/', '', (string) $value);
                         if (strlen($doc) !== 14) {
-                            $fail('Informe um CNPJ (14 dÃ­gitos) vÃ¡lido.');
+                            $fail('Informe um CNPJ (14 dÃƒÂ­gitos) vÃƒÂ¡lido.');
                         }
                     },
                 ],
@@ -281,25 +281,25 @@ class ClienteController extends Controller
                 $email = null;
             }
 
-            // evita duplicar usuÃƒÂ¡rio para o mesmo cliente
+            // evita duplicar usuÃƒÆ’Ã‚Â¡rio para o mesmo cliente
             $userExistente = \App\Models\User::where('cliente_id', $cliente->id)->first();
             if ($userExistente) {
-                return back()->with('erro', 'JÃƒÂ¡ existe um usuÃƒÂ¡rio vinculado a este cliente.');
+                return back()->with('erro', 'JÃƒÆ’Ã‚Â¡ existe um usuÃƒÆ’Ã‚Â¡rio vinculado a este cliente.');
             }
 
             // evita conflito de documento
             if ($documento && \App\Models\User::where('documento', $documento)->exists()) {
-                return back()->with('erro', 'JÃƒÂ¡ existe um usuÃƒÂ¡rio com este CPF/CNPJ. Use outro documento.');
+                return back()->with('erro', 'JÃƒÆ’Ã‚Â¡ existe um usuÃƒÆ’Ã‚Â¡rio com este CPF/CNPJ. Use outro documento.');
             }
 
             // evita conflito de e-mail (se informado)
             if ($email && \App\Models\User::where('email', $email)->exists()) {
-                return back()->with('erro', 'JÃƒÂ¡ existe um usuÃƒÂ¡rio com este e-mail. Use outro e-mail.');
+                return back()->with('erro', 'JÃƒÆ’Ã‚Â¡ existe um usuÃƒÆ’Ã‚Â¡rio com este e-mail. Use outro e-mail.');
             }
 
             $papelCliente = \App\Models\Papel::whereRaw('lower(nome) = ?', ['cliente'])->first();
             if (!$papelCliente) {
-                return back()->with('erro', 'Papel Cliente nÃ£o encontrado. Cadastre o papel antes de criar o acesso.');
+                return back()->with('erro', 'Papel Cliente nÃƒÂ£o encontrado. Cadastre o papel antes de criar o acesso.');
             }
 
             $senhaTemporaria = $data['password'];
@@ -317,7 +317,7 @@ class ClienteController extends Controller
             ]);
 
             return redirect()->route($this->routeName('show'), $cliente)->with([
-                'ok' => 'UsuÃ¡rio do cliente criado com sucesso. Solicite a troca de senha no primeiro login.',
+                'ok' => 'UsuÃƒÂ¡rio do cliente criado com sucesso. Solicite a troca de senha no primeiro login.',
                 'acesso_cliente' => [
                     'email' => $user->email ?: $user->documento,
                     'senha' => $senhaTemporaria,
@@ -330,7 +330,7 @@ class ClienteController extends Controller
     }
 
     /**
-     * FORM DE EDIÃƒâ€¡ÃƒÆ’O
+     * FORM DE EDIÃƒÆ’Ã¢â‚¬Â¡ÃƒÆ’Ã†â€™O
      */
     public function edit(Request $request, Cliente $cliente)
     {
@@ -340,7 +340,7 @@ class ClienteController extends Controller
         $estados = Estado::orderBy('uf')->get(['uf', 'nome']);
         $empresaId = $cliente->empresa_id ?? (auth()->user()->empresa_id ?? 1);
 
-        // se nÃƒÂ£o tiver cidade associada, isso aqui vira null sem quebrar
+        // se nÃƒÆ’Ã‚Â£o tiver cidade associada, isso aqui vira null sem quebrar
         $ufSelecionada = optional(optional($cliente->cidade)->estado)->uf;
 
         if ($ufSelecionada) {
@@ -381,9 +381,9 @@ class ClienteController extends Controller
         $formasPagamento = [
             'Pix',
             'Boleto',
-            'CartÃƒÂ£o de crÃƒÂ©dito',
-            'CartÃƒÂ£o de dÃƒÂ©bito',
-            'TransferÃƒÂªncia',
+            'CartÃƒÆ’Ã‚Â£o de crÃƒÆ’Ã‚Â©dito',
+            'CartÃƒÆ’Ã‚Â£o de dÃƒÆ’Ã‚Â©bito',
+            'TransferÃƒÆ’Ã‚Âªncia',
         ];
 
         $parametro = ParametroCliente::query()
@@ -608,17 +608,17 @@ class ClienteController extends Controller
 
             return redirect()
                 ->route($this->routeName('index'))
-                ->with('ok', 'Cliente excluÃ­do com sucesso!');
+                ->with('ok', 'Cliente excluÃƒÂ­do com sucesso!');
         } catch (\Throwable $e) {
             report($e);
 
             return back()
-                ->with('erro', 'NÃ£o foi possÃ­vel excluir o cliente.');
+                ->with('erro', 'NÃƒÂ£o foi possÃƒÂ­vel excluir o cliente.');
         }
     }
 
     /**
-     * VALIDAÃƒâ€¡ÃƒÆ’O DOS CAMPOS
+     * VALIDAÃƒÆ’Ã¢â‚¬Â¡ÃƒÆ’Ã†â€™O DOS CAMPOS
      */
     protected function validateData(Request $r): array
     {
@@ -643,7 +643,12 @@ class ClienteController extends Controller
                 'contato'        => ['nullable', 'string', 'max:120'],
                 'telefone_2'     => ['nullable', 'string', 'max:30'],
                 'tipo_cliente'   => ['required', Rule::in(['parceiro', 'final'])],
-                'observacao'     => ['required', 'string', 'max:4000'],
+                'observacao'     => [
+                    'nullable',
+                    'string',
+                    'max:4000',
+                    Rule::requiredIf(fn () => $r->input('tipo_cliente') === 'parceiro'),
+                ],
                 'cep'            => ['nullable', 'string', 'max:20'],
                 'endereco'       => ['nullable', 'string', 'max:255'],
                 'numero'         => ['nullable', 'string', 'max:20'],
@@ -652,18 +657,18 @@ class ClienteController extends Controller
                 'cidade_id'      => ['required', 'exists:cidades,id'],
             ],
             [
-                // mensagens amigÃƒÂ¡veis
-                'razao_social.required' => 'Informe a razÃƒÂ£o social do cliente.',
-                'razao_social.max'      => 'A razÃƒÂ£o social deve ter no mÃƒÂ¡ximo 255 caracteres.',
+                // mensagens amigÃƒÆ’Ã‚Â¡veis
+                'razao_social.required' => 'Informe a razÃƒÆ’Ã‚Â£o social do cliente.',
+                'razao_social.max'      => 'A razÃƒÆ’Ã‚Â£o social deve ter no mÃƒÆ’Ã‚Â¡ximo 255 caracteres.',
 
                 'cnpj.required'         => 'Informe o CNPJ do cliente.',
-                'cnpj.max'              => 'O CNPJ estÃƒÂ¡ muito longo. Confira o nÃƒÂºmero digitado.',
+                'cnpj.max'              => 'O CNPJ estÃƒÆ’Ã‚Â¡ muito longo. Confira o nÃƒÆ’Ã‚Âºmero digitado.',
 
-                'email.email'           => 'Informe um e-mail vÃƒÂ¡lido (ex: nome@empresa.com).',
-                'tipo_cliente.required' => 'Selecione se o cliente ÃƒÂ© Parceiro ou Final.',
-                'tipo_cliente.in'       => 'Tipo de cliente invÃƒÂ¡lido.',
-                'observacao.required'   => 'Informe a observaÃƒÂ§ÃƒÂ£o com os detalhes negociados.',
-                'observacao.max'        => 'A observaÃƒÂ§ÃƒÂ£o deve ter no mÃƒÂ¡ximo 4000 caracteres.',
+                'email.email'           => 'Informe um e-mail vÃƒÆ’Ã‚Â¡lido (ex: nome@empresa.com).',
+                'tipo_cliente.required' => 'Selecione se o cliente ÃƒÆ’Ã‚Â© Parceiro ou Final.',
+                'tipo_cliente.in'       => 'Tipo de cliente invÃƒÆ’Ã‚Â¡lido.',
+                'observacao.required'   => 'Informe a observacao com os detalhes negociados para cliente parceiro.',
+                'observacao.max'        => 'A observaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o deve ter no mÃƒÆ’Ã‚Â¡ximo 4000 caracteres.',
             ]
         );
 
@@ -786,7 +791,7 @@ class ClienteController extends Controller
 
     /**
      * >>> PORTAL DO CLIENTE <<<
-     * Seleciona o cliente e guarda na sessÃƒÂ£o para usar no painel /cliente
+     * Seleciona o cliente e guarda na sessÃƒÆ’Ã‚Â£o para usar no painel /cliente
      */
     public function selecionarParaPortal(Request $request, Cliente $cliente)
     {
@@ -805,6 +810,8 @@ class ClienteController extends Controller
 
 
 }
+
+
 
 
 

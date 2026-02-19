@@ -136,3 +136,51 @@ document.addEventListener('click', function (e) {
         detail: { modalId }
     }));
 });
+
+const normalizeText = (value) => (value || '')
+    .toString()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
+const hasNoPermissionHint = (el) => {
+    if (!el) return false;
+    const title = normalizeText(el.getAttribute('title') || '');
+    const dataHint = normalizeText(el.getAttribute('data-permission-msg') || '');
+    return title.includes('sem permissao') || dataHint.includes('sem permissao');
+};
+
+const isPermissionBlocked = (el) => {
+    if (!el) return false;
+    if (el.getAttribute('data-no-permission') === '1') return true;
+    if (el.getAttribute('aria-disabled') === 'true') return true;
+    if (hasNoPermissionHint(el)) return true;
+    if (el.tagName === 'A' && (el.getAttribute('href') || '').trim().toLowerCase() === 'javascript:void(0)') return true;
+    return false;
+};
+
+const markNoPermissionElements = () => {
+    document.querySelectorAll('a,button,[role="button"]').forEach((el) => {
+        if (!isPermissionBlocked(el)) return;
+        el.setAttribute('data-no-permission', '1');
+        el.classList.add('opacity-60', 'cursor-not-allowed');
+    });
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    markNoPermissionElements();
+});
+
+document.addEventListener('click', function (e) {
+    const blocked = e.target.closest('[data-no-permission="1"]');
+    if (!blocked) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    window.uiAlert('Usuario sem permissao.', {
+        title: 'Acesso negado',
+        icon: 'warning',
+        confirmText: 'OK',
+    });
+}, true);

@@ -93,57 +93,57 @@
             $linksRapidos = [
                 [
                     'titulo' => 'Painel do Cliente',
-                    'icone' => '🏠',
+                    'icone' => '&#127968;',
                     'rota' => route('cliente.dashboard'),
                     'disabled' => false,
                     'principal' => true,
                 ],
                 [
                     'titulo' => 'Funcionários',
-                    'icone' => '👥',
+                    'icone' => '&#128101;',
                     'rota' => route('cliente.funcionarios.index'),
                     'disabled' => false,
                 ],
                 
                 [
                     'titulo' => 'Agendar ASO',
-                    'icone' => '📅',
+                    'icone' => '&#128197;',
                     'rota' => route('cliente.servicos.aso'),
                     'disabled' => !($permitidosSidebar['aso'] ?? false),
                 ],
                 [
                     'titulo' => 'Solicitar PGR',
-                    'icone' => '📋',
+                    'icone' => '&#128203;',
                     'rota' => route('cliente.servicos.pgr'),
                     'disabled' => !($permitidosSidebar['pgr'] ?? false),
                 ],
                 [
                     'titulo' => 'Solicitar PCMSO',
-                    'icone' => '📑',
+                    'icone' => '&#128209;',
                     'rota' => route('cliente.servicos.pcmso'),
                     'disabled' => !($permitidosSidebar['pcmso'] ?? false),
                 ],
                 [
                     'titulo' => 'Solicitar LTCAT',
-                    'icone' => '📄',
+                    'icone' => '&#128196;',
                     'rota' => route('cliente.servicos.ltcat'),
                     'disabled' => !($permitidosSidebar['ltcat'] ?? false),
                 ],
                 [
                     'titulo' => 'Solicitar APR',
-                    'icone' => '⚠️',
+                    'icone' => '&#9888;&#65039;',
                     'rota' => route('cliente.servicos.apr'),
                     'disabled' => !($permitidosSidebar['apr'] ?? false),
                 ],
                 [
                     'titulo' => 'Treinamentos',
-                    'icone' => '🎓',
+                    'icone' => '&#127891;',
                     'rota' => route('cliente.servicos.treinamentos'),
                     'disabled' => !($permitidosSidebar['treinamentos'] ?? false),
                 ],
                 [
                     'titulo' => 'Meus Arquivos',
-                    'icone' => '🗂️',
+                    'icone' => '&#128450;&#65039;',
                     'rota' => route('cliente.arquivos.index'),
                     'disabled' => false,
                 ],
@@ -158,13 +158,13 @@
                         ? 'bg-slate-800 text-slate-50 font-medium'
                         : 'text-slate-100 hover:bg-slate-800/80';
                     $opacity = $disabled ? 'opacity-60' : '';
-                    $hint = $disabled ? 'Servico nao disponivel no contrato ativo' : null;
+                    $hint = $disabled ? 'Servico nao disponivel no contrato ativo.' : null;
                 @endphp
                 <a href="{{ $link['rota'] }}"
                    @if($hint) title="{{ $hint }}" @endif
                    class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition {{ $classes }} {{ $opacity }}">
                     <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800">
-                        {{ $link['icone'] }}
+                        {!! $link['icone'] !!}
                     </span>
                     <span>{{ $link['titulo'] }}</span>
                 </a>
@@ -177,7 +177,8 @@
             <form method="POST" action="{{ route('logout') }}">
                 @csrf
                 <button class="flex items-center gap-2 text-rose-400 hover:text-rose-300">
-                    <span>🚪</span> Sair
+                    <span>&#128682;</span>
+                    Sair
                 </button>
             </form>
         </div>
@@ -214,7 +215,7 @@
             </div>
         </header>
 
-        {{-- 🔵 FAIXA AZUL DO CLIENTE --}}
+        {{-- FAIXA AZUL DO CLIENTE --}}
         @isset($cliente)
             @php
                 $razaoOuFantasia = $cliente->nome_fantasia ?: $cliente->razao_social;
@@ -230,7 +231,7 @@
                     {{-- Nome do cliente + CNPJ --}}
                     <div class="flex items-start gap-3">
                         <div class="h-12 w-12 rounded-2xl bg-white/10 flex items-center justify-center text-2xl">
-                            🏢
+                            <span>&#127970;</span>
                         </div>
                         <div>
                             <h1 class="text-lg md:text-xl font-semibold leading-tight">
@@ -276,7 +277,7 @@
                 </div>
             </section>
         @endisset
-        {{-- 🔵 FIM FAIXA CLIENTE --}}
+        {{-- FIM FAIXA CLIENTE --}}
 
         {{-- ALERTAS --}}
         @php($suppressInlineAlerts = trim($__env->yieldContent('suppress-inline-alerts')) === '1')
@@ -303,7 +304,7 @@
             </div>
         @endif
 
-        {{-- CONTEÚDO COM MARCA D'ÁGUA (IGUAL ESTAVA) --}}
+        {{-- CONTEUDO COM MARCA D'AGUA (IGUAL ESTAVA) --}}
         <main class="flex-1 relative overflow-hidden">
             <div class="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.06]">
                 <img src="{{ asset('storage/logo.svg') }}"

@@ -65,7 +65,7 @@
             <p><strong>Ativo:</strong> {{ $cliente->ativo ? 'Sim' : 'NÃ£o' }}</p>
             <div class="pt-4 grid sm:grid-cols-2 gap-2">
                 <a href="{{ $canUpdate ? route($routePrefix.'.edit',$cliente) : 'javascript:void(0)' }}"
-                   @if(!$canUpdate) title="Usuario sem permissao" aria-disabled="true" @endif
+                   @if(!$canUpdate) title="Usuário sem permissão" aria-disabled="true" @endif
                    class="px-4 py-2 rounded-xl text-sm font-semibold text-center w-full {{ $canUpdate ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}">
                     Editar
                 </a>
@@ -78,5 +78,6 @@
 
     </div>
 @endsection
+
 
 

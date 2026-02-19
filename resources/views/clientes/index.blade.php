@@ -1,4 +1,4 @@
-@php
+﻿@php
     $user = auth()->user();
     $layout = 'layouts.app';
 
@@ -14,8 +14,8 @@
 @extends($layout)
 
 @section('content')
-    @php($routePrefix = $routePrefix ?? 'clientes')
     @php
+        $routePrefix = $routePrefix ?? 'clientes';
         $permPrefix = str_starts_with($routePrefix, 'comercial.') ? 'comercial.clientes' : 'master.clientes';
         $permissionMap = $user?->papel?->permissoes?->pluck('chave')->flip()->all() ?? [];
         $isMaster = $user?->hasPapel('Master');
@@ -58,7 +58,7 @@
             </div>
 
             <a href="{{ $canCreate ? route($routePrefix.'.create') : 'javascript:void(0)' }}"
-               @if(!$canCreate) title="Usuario sem permissao" aria-disabled="true" @endif
+               @if(!$canCreate) title="Usuário sem permissão" aria-disabled="true" @endif
                class="px-4 py-2 rounded-lg shadow {{ $canCreate ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}">
                 Novo Cliente
             </a>
@@ -184,7 +184,7 @@
                         <td class="px-4 py-3 text-center">
                             <div class="flex items-center justify-center gap-2">
                                 <a href="{{ $canUpdate ? route($routePrefix.'.edit', $cliente) : 'javascript:void(0)' }}"
-                                   @if(!$canUpdate) title="Usuario sem permissao" aria-disabled="true" @endif
+                                   @if(!$canUpdate) title="Usuário sem permissão" aria-disabled="true" @endif
                                    class="px-3 py-2 rounded-lg text-xs {{ $canUpdate ? 'text-blue-700 bg-blue-100' : 'text-slate-500 bg-slate-200 cursor-not-allowed' }}"
                                    title="Editar"
                                    aria-label="Editar">
@@ -198,7 +198,7 @@
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit"
-                                            @if(!$canDelete) disabled title="Usuario sem permissao" @endif
+                                            @if(!$canDelete) disabled title="Usuário sem permissão" @endif
                                             class="px-3 py-2 rounded-lg text-xs {{ $canDelete ? 'text-red-700 bg-red-100' : 'text-slate-500 bg-slate-200 cursor-not-allowed opacity-70' }}"
                                             title="Excluir"
                                             aria-label="Excluir">
@@ -207,7 +207,7 @@
                                 </form>
 
                                 <a href="{{ $canUpdate ? route($routePrefix.'.acesso.form', $cliente) : 'javascript:void(0)' }}"
-                                   @if(!$canUpdate) title="Usuario sem permissao" aria-disabled="true" @endif
+                                   @if(!$canUpdate) title="Usuário sem permissão" aria-disabled="true" @endif
                                    class="px-3 py-2 rounded-lg text-xs {{ $canUpdate ? 'text-indigo-700 bg-indigo-100' : 'text-slate-500 bg-slate-200 cursor-not-allowed' }}"
                                    title="{{ $cliente->userCliente ? 'Ver acesso' : 'Criar acesso' }}"
                                    aria-label="{{ $cliente->userCliente ? 'Ver acesso' : 'Criar acesso' }}"
@@ -361,4 +361,8 @@
         })();
     </script>
 @endpush
+
+
+
+
 

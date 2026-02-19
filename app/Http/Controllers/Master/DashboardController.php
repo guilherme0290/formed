@@ -1787,3 +1787,4 @@ class DashboardController extends Controller
         return 'data:' . $mime . ';base64,' . base64_encode($data);
     }
 }
+

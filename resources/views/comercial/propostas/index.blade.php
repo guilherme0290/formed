@@ -26,7 +26,7 @@
             </div>
 
             <a href="{{ $canCreate ? route('comercial.propostas.create') : 'javascript:void(0)' }}"
-               @if(!$canCreate) title="Usuario sem permissao" aria-disabled="true" @endif
+               @if(!$canCreate) title="Usuário sem permissão" aria-disabled="true" @endif
                class="inline-flex items-center justify-center gap-2 rounded-2xl
                       {{ $canCreate ? 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white ring-1 ring-blue-600/20 hover:ring-blue-700/30' : 'bg-slate-200 text-slate-500 cursor-not-allowed ring-1 ring-slate-300' }}
                       px-5 py-2.5 text-sm font-semibold shadow-sm transition">
@@ -146,7 +146,7 @@
                                         data-id="{{ $proposta->id }}"
                                         data-cliente="{{ e($clienteTxt) }}"
                                         data-status="{{ $status ?: 'â€”' }}"
-                                        title="{{ $canUpdate ? 'Alterar status' : 'Usuario sem permissao' }}"
+                                        title="{{ $canUpdate ? 'Alterar status' : 'Usuário sem permissão' }}"
                                         @if(!$canUpdate) disabled @endif>
                                     {{ $status ?: 'â€”' }}
                                 </button>
@@ -208,7 +208,7 @@
                                             data-action="{{ route('comercial.propostas.duplicar', $proposta) }}"
                                             data-ref="{{ e($ref) }}"
                                             data-cliente="{{ e($clienteTxt) }}"
-                                            @if(!$canCreate) disabled title="Usuario sem permissao" @endif>
+                                            @if(!$canCreate) disabled title="Usuário sem permissão" @endif>
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 9h11v11H9zM5 5h11v2H7v9H5z"/>
                                         </svg>
@@ -217,7 +217,7 @@
 
                                     <a href="{{ $canUpdate ? route('comercial.propostas.edit', $proposta) : 'javascript:void(0)' }}"
                                        class="inline-flex items-center justify-center h-9 w-9 rounded-xl border {{ $canUpdate ? 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50' : 'border-slate-300 bg-slate-200 text-slate-500 cursor-not-allowed' }}"
-                                       title="{{ $canUpdate ? 'Editar' : 'Usuario sem permissao' }}"
+                                       title="{{ $canUpdate ? 'Editar' : 'Usuário sem permissão' }}"
                                        aria-label="Editar">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16.5 3.5l4 4L8 20H4v-4L16.5 3.5z"/>
@@ -232,7 +232,7 @@
                                         @method('DELETE')
                                         <button type="submit"
                                                 class="inline-flex items-center justify-center h-9 w-9 rounded-xl border {{ $canDelete ? 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100' : 'border-slate-300 bg-slate-200 text-slate-500 cursor-not-allowed' }}"
-                                                title="{{ $canDelete ? 'Excluir' : 'Usuario sem permissao' }}"
+                                                title="{{ $canDelete ? 'Excluir' : 'Usuário sem permissão' }}"
                                                 aria-label="Excluir"
                                                 @if(!$canDelete) disabled @endif>
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -705,3 +705,4 @@
         </script>
     @endpush
 @endsection
+

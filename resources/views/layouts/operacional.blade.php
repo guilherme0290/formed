@@ -70,7 +70,7 @@
         <nav class="relative z-10 flex-1 px-3 mt-4 space-y-1">
             @php $canKanban = $can('operacional.dashboard.view'); @endphp
             <a href="{{ $canKanban ? route('operacional.kanban') : 'javascript:void(0)' }}"
-               @if(!$canKanban) title="Usuario sem permissao" aria-disabled="true" @endif
+               @if(!$canKanban) title="Usuário sem permissão" aria-disabled="true" @endif
                class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium {{ $canKanban ? 'bg-slate-800 text-slate-50' : 'bg-slate-900 text-slate-500 cursor-not-allowed' }}">
                 <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-700">
                     ğŸ—‚ï¸
@@ -454,3 +454,4 @@
 
 </body>
 </html>
+
