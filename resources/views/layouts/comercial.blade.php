@@ -90,13 +90,7 @@
                 <span data-sidebar-label>Agenda</span>
             </a>
 
-            <a href="{{ route('comercial.propostas.index') }}"
-               class="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-200 hover:bg-slate-800 text-sm">
-                <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/20 text-blue-200">
-                    📄
-                </span>
-                <span data-sidebar-label>Propostas</span>
-            </a>
+
 
             <a href="{{ route('comercial.pipeline.index') }}"
                class="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-200 hover:bg-slate-800 text-sm">

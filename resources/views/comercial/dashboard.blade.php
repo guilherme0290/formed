@@ -92,19 +92,6 @@
             <div class="bg-white rounded-2xl shadow border border-slate-100 px-4 md:px-6 py-5 space-y-6">
                 {{-- Linha 1 --}}
                 <div class="grid gap-4 md:grid-cols-5">
-                    {{-- Criar Proposta --}}
-                    <div class="rounded-2xl border border-slate-200 bg-slate-50/80 shadow-sm p-4 flex flex-col justify-between opacity-60 cursor-not-allowed">
-                        <div>
-                            <div class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-slate-400 text-white mb-3">
-                                +
-                            </div>
-                            <h3 class="text-sm font-semibold text-slate-800">Criar Proposta</h3>
-                            <p class="text-xs text-slate-500 mt-1">Indisponível</p>
-                        </div>
-                        <span class="mt-3 text-[11px] font-medium text-slate-500">
-                            Somente leitura
-                        </span>
-                    </div>
 
                     {{-- Gerar Apresentação --}}
                     <a href="{{ route('comercial.apresentacao.cliente') }}"
