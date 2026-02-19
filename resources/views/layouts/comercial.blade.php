@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="utf-8">
@@ -21,7 +21,7 @@
     @php
         $authUser = auth()->user();
         $isMaster = $authUser?->isMaster();
-        $permissionMap = $authUser?->papel?->permissoes?->pluck('chave')->flip()->all() ?? [];
+        $permissionMap = $authUser?->permissionMap() ?? [];
         $can = function (string $key) use ($isMaster, $permissionMap): bool {
             return $isMaster || isset($permissionMap[$key]);
         };
@@ -51,7 +51,7 @@
         <div class="relative z-10 h-16 flex items-center justify-between px-4 text-lg font-semibold border-b border-slate-800">
 
             <div class="flex items-center gap-2">
-                {{-- Botão de colapse (DESKTOP) --}}
+                {{-- BotÃ£o de colapse (DESKTOP) --}}
                 <button type="button"
                         class="hidden md:inline-flex items-center justify-center p-1.5 rounded-lg text-slate-300 hover:bg-slate-800"
                         data-sidebar-collapse
@@ -66,11 +66,11 @@
                 <span data-sidebar-label-header>Comercial</span>
             </div>
 
-            {{-- Botão fechar (somente mobile) --}}
+            {{-- BotÃ£o fechar (somente mobile) --}}
             <button type="button"
                     class="inline-flex items-center justify-center p-2 rounded-lg text-slate-300 hover:bg-slate-800 md:hidden"
                     data-sidebar-close>
-                ✕
+                &times;
             </button>
         </div>
 
@@ -78,92 +78,92 @@
             {{-- Ajuste o nome da rota aqui se precisar --}}
             @php $canDashboard = $can('comercial.dashboard.view'); @endphp
             <a href="{{ $canDashboard ? route('comercial.dashboard') : 'javascript:void(0)' }}"
-               @if(!$canDashboard) title="Usu�rio sem permiss�o" aria-disabled="true" @endif
+               @if(!$canDashboard) title="Usu?rio sem permiss?o" aria-disabled="true" @endif
                class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium {{ $canDashboard ? 'bg-slate-800 text-slate-50' : 'bg-slate-900 text-slate-500 cursor-not-allowed' }}">
                 <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-700">
-                    📊
+                    &#x1F4CA;
                 </span>
                 <span data-sidebar-label>Painel Comercial</span>
             </a>
 
-            @php $canComissoes = $can('comercial.comissoes.view'); @endphp
-            <a href="{{ $canComissoes ? route('comercial.comissoes.index') : 'javascript:void(0)' }}"
-               @if(!$canComissoes) title="Usu�rio sem permiss�o" aria-disabled="true" @endif
-               class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm {{ $menuState($canComissoes) }}">
+            @php $canComiss?es = $can('comercial.comissoes.view'); @endphp
+            <a href="{{ $canComiss?es ? route('comercial.comissoes.index') : 'javascript:void(0)' }}"
+               @if(!$canComiss?es) title="Usu?rio sem permiss?o" aria-disabled="true" @endif
+               class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm {{ $menuState($canComiss?es) }}">
                 <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500/20 text-orange-400">
                     $
                 </span>
-                <span data-sidebar-label>Minhas Comissões</span>
+                <span data-sidebar-label>Minhas Comiss?es</span>
             </a>
 
             @php $canAgenda = $can('comercial.agenda.view'); @endphp
             <a href="{{ $canAgenda ? route($isMaster ? 'master.agenda-vendedores.index' : 'comercial.agenda.index') : 'javascript:void(0)' }}"
-               @if(!$canAgenda) title="Usu�rio sem permiss�o" aria-disabled="true" @endif
+               @if(!$canAgenda) title="Usu?rio sem permiss?o" aria-disabled="true" @endif
                class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm {{ $menuState($canAgenda) }}">
                 <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-200">
-                    🗓️
+                    &#x1F5D3;&#xFE0F;
                 </span>
                 <span data-sidebar-label>Agenda</span>
             </a>
 
             @php $canPropostas = $can('comercial.propostas.view'); @endphp
             <a href="{{ $canPropostas ? route('comercial.propostas.index') : 'javascript:void(0)' }}"
-               @if(!$canPropostas) title="Usu�rio sem permiss�o" aria-disabled="true" @endif
+               @if(!$canPropostas) title="Usu?rio sem permiss?o" aria-disabled="true" @endif
                class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm {{ $menuState($canPropostas) }}">
                 <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/20 text-blue-200">
-                    📄
+                    &#x1F4C4;
                 </span>
                 <span data-sidebar-label>Propostas</span>
             </a>
 
             @php $canPipeline = $can('comercial.pipeline.view'); @endphp
             <a href="{{ $canPipeline ? route('comercial.pipeline.index') : 'javascript:void(0)' }}"
-               @if(!$canPipeline) title="Usu�rio sem permiss�o" aria-disabled="true" @endif
+               @if(!$canPipeline) title="Usu?rio sem permiss?o" aria-disabled="true" @endif
                class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm {{ $menuState($canPipeline) }}">
                 <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-rose-500/20 text-rose-200">
-                    📈
+                    &#x1F4C8;
                 </span>
                 <span data-sidebar-label>Acompanhamento</span>
             </a>
 
             @php $canTabela = $can('comercial.tabela-precos.view'); @endphp
             <a href="{{ $canTabela ? route('comercial.tabela-precos.index') : 'javascript:void(0)' }}"
-               @if(!$canTabela) title="Usu�rio sem permiss�o" aria-disabled="true" @endif
+               @if(!$canTabela) title="Usu?rio sem permiss?o" aria-disabled="true" @endif
                class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm {{ $menuState($canTabela) }}">
                 <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-green-500/20 text-green-200">
-                    💰
+                    &#x1F4B0;
                 </span>
-                <span data-sidebar-label>Tabela de Preços</span>
+                <span data-sidebar-label>Tabela de Pre?os</span>
             </a>
 
             @php $canContratos = $can('comercial.contratos.view'); @endphp
             <a href="{{ $canContratos ? route('comercial.contratos.index') : 'javascript:void(0)' }}"
-               @if(!$canContratos) title="Usu�rio sem permiss�o" aria-disabled="true" @endif
+               @if(!$canContratos) title="Usu?rio sem permiss?o" aria-disabled="true" @endif
                class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm {{ $menuState($canContratos) }}">
                 <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-purple-500/20 text-purple-200">
-                    📑
+                    &#x1F4D1;
                 </span>
                 <span data-sidebar-label>Contratos</span>
             </a>
 
             @php $canClientes = $can('comercial.clientes.view'); @endphp
             <a href="{{ $canClientes ? route('comercial.clientes.index') : 'javascript:void(0)' }}"
-               @if(!$canClientes) title="Usu�rio sem permiss�o" aria-disabled="true" @endif
+               @if(!$canClientes) title="Usu?rio sem permiss?o" aria-disabled="true" @endif
                class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm {{ $menuState($canClientes) }}">
                 <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/20 text-amber-200">
-                    👤
+                    &#x1F464;
                 </span>
                 <span data-sidebar-label>Clientes</span>
             </a>
 
-            @php $canFuncoes = $can('comercial.tabela-precos.view'); @endphp
-            <a href="{{ $canFuncoes ? route('comercial.funcoes.index') : 'javascript:void(0)' }}"
-               @if(!$canFuncoes) title="Usu�rio sem permiss�o" aria-disabled="true" @endif
-               class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm {{ $menuState($canFuncoes) }}">
+            @php $canFun??es = $can('comercial.tabela-precos.view'); @endphp
+            <a href="{{ $canFun??es ? route('comercial.funcoes.index') : 'javascript:void(0)' }}"
+               @if(!$canFun??es) title="Usu?rio sem permiss?o" aria-disabled="true" @endif
+               class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm {{ $menuState($canFun??es) }}">
                 <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-500/20 text-slate-200">
-                    🧩
+                    &#x1F9E9;
                 </span>
-                <span data-sidebar-label>Funções</span>
+                <span data-sidebar-label>Fun??es</span>
             </a>
         </nav>
 
@@ -171,7 +171,7 @@
             <form method="POST" action="{{ route('logout') }}">
                 @csrf
                 <button class="flex items-center gap-2 text-rose-400 hover:text-rose-300">
-                    <span>🚪</span>
+                    <span>&#x1F6AA;</span>
                     <span data-sidebar-label>Sair</span>
                 </button>
             </form>
@@ -179,14 +179,14 @@
         </aside>
     @endif
 
-    {{-- Área principal --}}
+    {{-- Ãrea principal --}}
     <div class="flex-1 flex flex-col bg-slate-50">
 
         <header class="bg-emerald-700 text-white shadow-sm">
             <div class="w-full px-4 md:px-6 h-14 flex items-center justify-between gap-3">
 
                 <div class="flex items-center gap-3">
-                    {{-- Botão abrir/fechar sidebar (MOBILE) --}}
+                    {{-- BotÃ£o abrir/fechar sidebar (MOBILE) --}}
                     <button type="button"
                             class="inline-flex md:hidden items-center justify-center p-2 rounded-lg text-emerald-50 hover:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-white"
                             data-sidebar-toggle>
@@ -201,7 +201,7 @@
                     <div class="flex flex-col">
                         <span class="font-semibold text-lg tracking-tight leading-none">FORMED</span>
                         <span class="text-[11px] md:text-xs text-emerald-100">
-                            Módulo Comercial
+                            M?dulo Comercial
                         </span>
                     </div>
                 </div>
@@ -233,14 +233,14 @@
                             <a href="{{ route('master.acessos', ['tab' => 'senhas']) }}"
                                data-only-my-password
                                class="flex items-center gap-2 px-4 py-3 text-sm hover:bg-slate-50">
-                                <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">🔒</span>
+                                <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">ðŸ”’</span>
                                 <span>Alterar Senha</span>
                             </a>
                             <form method="POST" action="{{ route('logout') }}">
                                 @csrf
                                 <button type="submit"
                                         class="w-full flex items-center gap-2 px-4 py-3 text-sm hover:bg-slate-50 text-left">
-                                    <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-600">🚪</span>
+                                    <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-600">ðŸšª</span>
                                     <span>Sair</span>
                                 </button>
                             </form>
@@ -252,14 +252,14 @@
 
         <main class="flex-1 relative overflow-hidden">
 
-            {{-- Marca d’água com a logo da FORMED --}}
+            {{-- Marca dâ€™Ã¡gua com a logo da FORMED --}}
             <div class="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.06]">
                 <img src="{{ asset('storage/logo.svg') }}"
                      alt="FORMED"
                      class="max-w-[512px] w-full">
             </div>
 
-            {{-- Conteúdo das telas comerciais fica por cima --}}
+            {{-- ConteÃºdo das telas comerciais fica por cima --}}
             <div class="relative z-10">
                 <div class="@yield('page-container', 'w-full px-4 sm:px-6 lg:px-8 py-6')">
                     @if(session('error') || session('erro'))
@@ -274,7 +274,7 @@
     </div>
 </div>
 
-{{-- Sortable ou outros scripts globais que você quiser reaproveitar --}}
+{{-- Sortable ou outros scripts globais que vocÃª quiser reaproveitar --}}
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 
 <script>
@@ -321,7 +321,7 @@
             }
         }
 
-        // --- DESKTOP: colapsar/expandir (ícones x texto) ---
+        // --- DESKTOP: colapsar/expandir (Ã­cones x texto) ---
         function setDesktopCollapsed(collapsed) {
             if (!sidebar) return;
             desktopCollapsed = collapsed;
@@ -337,7 +337,7 @@
             }
         }
 
-        // Botão do header (MOBILE)
+        // BotÃ£o do header (MOBILE)
         if (btnToggleMob) {
             btnToggleMob.addEventListener('click', function () {
                 if (!isMobile()) return;
@@ -350,7 +350,7 @@
             });
         }
 
-        // Botão de colapse (DESKTOP)
+        // BotÃ£o de colapse (DESKTOP)
         if (btnCollapse) {
             btnCollapse.addEventListener('click', function () {
                 if (isMobile()) return;
@@ -358,7 +358,7 @@
             });
         }
 
-        // Botões de fechar (mobile)
+        // BotÃµes de fechar (mobile)
         btnCloses.forEach(btn => {
             btn.addEventListener('click', function () {
                 if (isMobile()) {
@@ -413,4 +413,6 @@
 
 </body>
 </html>
+
+
 

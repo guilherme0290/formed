@@ -5,7 +5,7 @@
 @section('content')
     @php
         $user = auth()->user();
-        $permissionMap = $user?->papel?->permissoes?->pluck('chave')->flip()->all() ?? [];
+        $permissionMap = $user?->permissionMap() ?? [];
         $isMaster = $user?->hasPapel('Master');
         $origem = request()->query('origem');
         $estaNoPortalCliente = session('portal_cliente_id') || $origem === 'cliente';

@@ -29,7 +29,7 @@ class EnsureRoutePermission
 
         if (!$this->isRouteAllowedForRole($user, $routeName)) {
             if ($request->expectsJson()) {
-                abort(403, 'Usuário sem permissão para acessar esta funcionalidade.');
+                abort(403, 'Usuario sem permissao para acessar esta funcionalidade.');
             }
 
             return $this->redirectWithoutPermission($request, $user);
@@ -45,7 +45,7 @@ class EnsureRoutePermission
         }
 
         if ($request->expectsJson()) {
-            abort(403, 'Usuário sem permissão para acessar esta funcionalidade.');
+            abort(403, 'Usuario sem permissao para acessar esta funcionalidade.');
         }
 
         return $this->redirectWithoutPermission($request, $user);
@@ -105,16 +105,17 @@ class EnsureRoutePermission
 
     private function userHasPermission(User $user, string $permissionKey): bool
     {
-        $viaPapel = $user->papel()
-            ->whereHas('permissoes', fn ($q) => $q->where('chave', $permissionKey))
-            ->exists();
+        $temPermissoesDiretas = $user->permissoesDiretas()->exists();
 
-        if ($viaPapel) {
-            return true;
+        // Quando houver permissoes diretas para o usuario, elas substituem as do papel.
+        if ($temPermissoesDiretas) {
+            return $user->permissoesDiretas()
+                ->where('chave', $permissionKey)
+                ->exists();
         }
 
-        return $user->permissoesDiretas()
-            ->where('chave', $permissionKey)
+        return $user->papel()
+            ->whereHas('permissoes', fn ($q) => $q->where('chave', $permissionKey))
             ->exists();
     }
 
@@ -473,12 +474,64 @@ class EnsureRoutePermission
         $previous = url()->previous();
         $current = $request->fullUrl();
 
-        $target = $fallback;
-        if (!empty($previous) && $previous !== $current) {
+        $target = null;
+        if (!empty($previous) && $previous !== $current && !$this->isLoopProneTarget($previous, $user)) {
             $target = $previous;
+        } elseif (!$this->isLoopProneTarget($fallback, $user)) {
+            $target = $fallback;
         }
 
-        return redirect()->to($target)->with('error', 'Usuário sem permissão para acessar esta tela.');
+        if ($target === null) {
+            auth()->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect()->route('login')
+                ->with('error', 'Sua sessao foi encerrada. Faca login novamente.');
+        }
+
+        return redirect()->to($target)->with('error', 'Usuario sem permissao para acessar esta tela.');
+    }
+
+    private function isLoopProneTarget(string $targetUrl, User $user): bool
+    {
+        $targetPath = (string) parse_url($targetUrl, PHP_URL_PATH);
+        if ($targetPath === '') {
+            return true;
+        }
+
+        $guestOnlyPaths = [
+            (string) parse_url(route('login'), PHP_URL_PATH),
+            (string) parse_url(route('register'), PHP_URL_PATH),
+            (string) parse_url(route('password.request'), PHP_URL_PATH),
+        ];
+        if (in_array($targetPath, $guestOnlyPaths, true)) {
+            return true;
+        }
+
+        $dashboardPaths = [
+            (string) parse_url(route('dashboard'), PHP_URL_PATH),
+            (string) parse_url(route('comercial.dashboard'), PHP_URL_PATH),
+            (string) parse_url(route('financeiro.dashboard'), PHP_URL_PATH),
+            (string) parse_url(route('operacional.kanban'), PHP_URL_PATH),
+            (string) parse_url(route('cliente.dashboard'), PHP_URL_PATH),
+        ];
+
+        // Se usuario nao for do papel correspondente, ignora rota para evitar falso positivo.
+        if (!$user->hasPapel('Comercial')) {
+            $dashboardPaths = array_diff($dashboardPaths, [(string) parse_url(route('comercial.dashboard'), PHP_URL_PATH)]);
+        }
+        if (!$user->hasPapel('Financeiro')) {
+            $dashboardPaths = array_diff($dashboardPaths, [(string) parse_url(route('financeiro.dashboard'), PHP_URL_PATH)]);
+        }
+        if (!$user->hasPapel('Operacional')) {
+            $dashboardPaths = array_diff($dashboardPaths, [(string) parse_url(route('operacional.kanban'), PHP_URL_PATH)]);
+        }
+        if (!$user->hasPapel('Cliente')) {
+            $dashboardPaths = array_diff($dashboardPaths, [(string) parse_url(route('cliente.dashboard'), PHP_URL_PATH)]);
+        }
+
+        return in_array($targetPath, array_values($dashboardPaths), true);
     }
 
     private function fallbackRouteByRole(User $user): string

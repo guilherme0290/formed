@@ -11,6 +11,30 @@ use Illuminate\View\View;
 
 class AuthenticatedSessionController extends Controller
 {
+    private function resolveComercialLandingRoute(\App\Models\User $user): string
+    {
+        $permissionMap = $user->permissionMap();
+        $candidates = [
+            'comercial.dashboard.view' => 'comercial.dashboard',
+            'comercial.propostas.view' => 'comercial.propostas.index',
+            'comercial.pipeline.view' => 'comercial.pipeline.index',
+            'comercial.clientes.view' => 'comercial.clientes.index',
+            'comercial.contratos.view' => 'comercial.contratos.index',
+            'comercial.tabela-precos.view' => 'comercial.tabela-precos.index',
+            'comercial.agenda.view' => 'comercial.agenda.index',
+            'comercial.comissoes.view' => 'comercial.comissoes.index',
+            'comercial.funcoes.view' => 'comercial.funcoes.index',
+        ];
+
+        foreach ($candidates as $permission => $routeName) {
+            if (isset($permissionMap[$permission])) {
+                return route($routeName);
+            }
+        }
+
+        return '';
+    }
+
     /**
      * Display the login view.
      */
@@ -67,7 +91,18 @@ class AuthenticatedSessionController extends Controller
 
         // COMERCIAL: sempre comercial
         if ($papelNome === 'comercial') {
-            return redirect()->route('comercial.dashboard');
+            $landing = $this->resolveComercialLandingRoute($user);
+            if ($landing !== '') {
+                return redirect()->to($landing);
+            }
+
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect()
+                ->route('login')
+                ->withErrors(['login' => 'Usuario comercial sem permissao de acesso inicial.']);
         }
 
         if ($papelNome === 'financeiro') {

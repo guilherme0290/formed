@@ -1,4 +1,4 @@
-@extends('layouts.financeiro')
+﻿@extends('layouts.financeiro')
 @section('title', 'Detalhamento de Faturamento')
 @section('page-container', 'w-full px-4 sm:px-6 lg:px-8 py-6')
 
@@ -194,3 +194,4 @@
         });
     </script>
 @endpush
+

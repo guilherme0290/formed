@@ -17,7 +17,7 @@
 @php($routePrefix = $routePrefix ?? 'clientes')
     @php
         $permPrefix = str_starts_with($routePrefix, 'comercial.') ? 'comercial.clientes' : 'master.clientes';
-        $permissionMap = $user?->papel?->permissoes?->pluck('chave')->flip()->all() ?? [];
+        $permissionMap = $user?->permissionMap() ?? [];
         $isMaster = $user?->hasPapel('Master');
         $canUpdate = $isMaster || isset($permissionMap[$permPrefix.'.update']);
     @endphp

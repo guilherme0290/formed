@@ -6,7 +6,7 @@
 @section('content')
     @php
         $user = auth()->user();
-        $permissionMap = $user?->papel?->permissoes?->pluck('chave')->flip()->all() ?? [];
+        $permissionMap = $user?->permissionMap() ?? [];
         $isMaster = $user?->hasPapel('Master');
         $canSave = $modo === 'edit'
             ? ($isMaster || isset($permissionMap['cliente.funcionarios.update']))

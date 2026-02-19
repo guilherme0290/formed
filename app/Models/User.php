@@ -64,6 +64,21 @@ class User extends Authenticatable
         return $this->belongsToMany(Permissao::class, 'user_permissao', 'user_id', 'permissao_id');
     }
 
+    public function permissionMap(): array
+    {
+        if ($this->hasPapel('Master')) {
+            return [];
+        }
+
+        $diretas = $this->permissoesDiretas()->pluck('chave')->all();
+        if (!empty($diretas)) {
+            return array_fill_keys($diretas, true);
+        }
+
+        $papelPermissoes = $this->papel?->permissoes?->pluck('chave')->all() ?? [];
+        return array_fill_keys($papelPermissoes, true);
+    }
+
     /**
      * Verifica se o usuário possui um determinado papel pelo NOME.
      *

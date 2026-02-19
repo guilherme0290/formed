@@ -1,4 +1,4 @@
-@extends('layouts.financeiro')
+﻿@extends('layouts.financeiro')
 @section('title', 'Contratos Financeiro')
 @section('page-container', 'w-full p-0')
 
@@ -71,3 +71,4 @@
         </div>
     </div>
 @endsection
+

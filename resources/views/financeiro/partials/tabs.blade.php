@@ -1,6 +1,6 @@
 @php
     $user = auth()->user();
-    $permissionMap = $user?->papel?->permissoes?->pluck('chave')->flip()->all() ?? [];
+    $permissionMap = $user?->permissionMap() ?? [];
     $isMaster = $user?->hasPapel('Master');
     $can = static fn (string $perm) => $isMaster || isset($permissionMap[$perm]);
 @endphp

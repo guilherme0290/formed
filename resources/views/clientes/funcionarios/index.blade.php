@@ -6,7 +6,7 @@
 @section('content')
     @php
         $user = auth()->user();
-        $permissionMap = $user?->papel?->permissoes?->pluck('chave')->flip()->all() ?? [];
+        $permissionMap = $user?->permissionMap() ?? [];
         $isMaster = $user?->hasPapel('Master');
         $canCreate = $isMaster || isset($permissionMap['cliente.funcionarios.create']);
         $canUpdate = $isMaster || isset($permissionMap['cliente.funcionarios.update']);

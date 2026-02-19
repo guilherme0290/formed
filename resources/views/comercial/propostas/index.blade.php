@@ -4,7 +4,7 @@
 @section('content')
     @php
         $user = auth()->user();
-        $permissionMap = $user?->papel?->permissoes?->pluck('chave')->flip()->all() ?? [];
+        $permissionMap = $user?->permissionMap() ?? [];
         $isMaster = $user?->hasPapel('Master');
         $canCreate = $isMaster || isset($permissionMap['comercial.propostas.create']);
         $canUpdate = $isMaster || isset($permissionMap['comercial.propostas.update']);

@@ -16,7 +16,7 @@
     @php
         $authUser = auth()->user();
         $isMaster = $authUser?->isMaster();
-        $permissionMap = $authUser?->papel?->permissoes?->pluck('chave')->flip()->all() ?? [];
+        $permissionMap = $authUser?->permissionMap() ?? [];
         $can = function (string $key) use ($isMaster, $permissionMap): bool {
             return $isMaster || isset($permissionMap[$key]);
         };

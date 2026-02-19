@@ -31,7 +31,58 @@
         'delete' => 'DELETAR',
     ];
 
-    $resourceLabelResolver = function (string $resourceKey): string {
+    $resourceLabelOverrides = [
+        'operacional.apr' => 'APR',
+        'operacional.aso' => 'ASO',
+        'operacional.ltcat' => 'LTCAT',
+        'operacional.ltip' => 'LTIP',
+        'operacional.pae' => 'PAE',
+        'operacional.pcmso' => 'PCMSO',
+        'operacional.pgr' => 'PGR',
+        'operacional.treinamentos' => 'Treinamentos',
+        'operacional.tarefas' => 'Tarefas',
+        'operacional.dashboard' => 'Dashboard',
+        'operacional.anexos' => 'Anexos',
+    ];
+
+    $resourcePriorityByScope = [
+        'operacional' => [
+            'operacional.dashboard' => 0,
+            'operacional.aso' => 10,
+            'operacional.pgr' => 20,
+            'operacional.pcmso' => 30,
+            'operacional.ltcat' => 40,
+            'operacional.ltip' => 50,
+            'operacional.apr' => 60,
+            'operacional.pae' => 70,
+            'operacional.treinamentos' => 80,
+            'operacional.tarefas' => 90,
+            'operacional.anexos' => 100,
+        ],
+    ];
+
+    $operacionalServiceKeys = [
+        'operacional.aso',
+        'operacional.pgr',
+        'operacional.pcmso',
+        'operacional.ltcat',
+        'operacional.ltip',
+        'operacional.apr',
+        'operacional.pae',
+        'operacional.treinamentos',
+    ];
+
+    $resourceOrderResolver = function (string $resourceKey, ?string $scope) use ($resourcePriorityByScope): string {
+        $scopeKey = $scope ?? (string) \Illuminate\Support\Str::before($resourceKey, '.');
+        $priority = $resourcePriorityByScope[$scopeKey][$resourceKey] ?? 999;
+        return sprintf('%04d_%s', $priority, $resourceKey);
+    };
+
+    $resourceLabelResolver = function (string $resourceKey) use ($resourceLabelOverrides): string {
+        if (isset($resourceLabelOverrides[$resourceKey])) {
+            return $resourceLabelOverrides[$resourceKey];
+        }
+
         $resourceName = $resourceKey;
         $scopeName = (string) \Illuminate\Support\Str::before($resourceKey, '.');
         if ($scopeName !== '' && str_starts_with($resourceKey, $scopeName . '.')) {
@@ -45,8 +96,8 @@
     <div class="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 px-5 py-4 text-white">
         <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
-                <h2 class="text-xl font-semibold">Permissoes</h2>
-                <p class="text-xs text-slate-200">Defina acessos por papel ou por usuario.</p>
+                <h2 class="text-xl font-semibold">Permissões</h2>
+                <p class="text-xs text-slate-200">Defina os acessos por papel ou por usuário.</p>
             </div>
             <div class="flex items-center gap-2 text-xs">
                 <span class="rounded-full bg-white/10 px-3 py-1">Papeis: {{ $papeisEditaveis->count() }}</span>
@@ -103,7 +154,20 @@
                         ->groupBy(function ($perm) {
                             return \Illuminate\Support\Str::beforeLast($perm->chave, '.');
                         })
-                        ->sortKeys();
+                        ->sortBy(fn ($resourcePerms, $resourceKey) => $resourceOrderResolver((string) $resourceKey, $scope));
+
+                    $operacionalServicePermIdsByAction = collect($actionOrder)->mapWithKeys(fn ($action) => [$action => []])->all();
+                    if ($scope === 'operacional') {
+                        foreach ($operacionalServiceKeys as $serviceKey) {
+                            $servicePerms = $groupedResources->get($serviceKey, collect());
+                            foreach ($servicePerms as $rp) {
+                                $action = strtolower((string) \Illuminate\Support\Str::afterLast($rp->chave, '.'));
+                                if (array_key_exists($action, $operacionalServicePermIdsByAction)) {
+                                    $operacionalServicePermIdsByAction[$action][] = (int) $rp->id;
+                                }
+                            }
+                        }
+                    }
                 @endphp
 
                 <div data-role-panel="{{ $papel->id }}" class="{{ $panelActive ? '' : 'hidden' }}">
@@ -131,7 +195,53 @@
                                 </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-100">
+                                @if($scope === 'operacional')
+                                    <tr class="hover:bg-slate-50/70 permissao-row odd:bg-white even:bg-slate-50/40" data-search="servicos operacionais operacional">
+                                        <td class="px-4 py-3 align-top">
+                                            <div class="font-medium text-slate-800">Servicos Operacionais</div>
+                                            <div class="text-xs text-slate-500">operacional.servicos</div>
+                                        </td>
+                                        @foreach($actionOrder as $actionCol)
+                                            @php
+                                                $ids = $operacionalServicePermIdsByAction[$actionCol] ?? [];
+                                                $masterChecked = !empty($ids)
+                                                    && collect($ids)->every(fn ($id) => $papel->permissoes->contains('id', $id));
+                                                $groupName = 'operacional-servicos-papel-'.$papel->id.'-'.$actionCol;
+                                            @endphp
+                                            <td class="px-3 py-3 text-center align-middle">
+                                                @if(!empty($ids))
+                                                    @foreach($ids as $permId)
+                                                        <input
+                                                            type="checkbox"
+                                                            name="permissoes[]"
+                                                            value="{{ $permId }}"
+                                                            class="hidden permissao-group-hidden"
+                                                            data-group="{{ $groupName }}"
+                                                            @checked($papel->permissoes->contains('id', $permId))
+                                                        >
+                                                    @endforeach
+                                                    <label class="inline-flex cursor-pointer items-center" title="Aplicar para todos os servicos operacionais ({{ strtoupper($actionCol) }})">
+                                                        <input
+                                                            type="checkbox"
+                                                            class="sr-only permissao-group-master"
+                                                            data-group="{{ $groupName }}"
+                                                            @checked($masterChecked)
+                                                        >
+                                                        <span class="h-5 w-10 rounded-full bg-slate-300 transition relative toggle-track">
+                                                            <span class="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition toggle-dot"></span>
+                                                        </span>
+                                                    </label>
+                                                @else
+                                                    <span class="text-slate-300">-</span>
+                                                @endif
+                                            </td>
+                                        @endforeach
+                                    </tr>
+                                @endif
                                 @forelse($groupedResources as $resourceKey => $resourcePerms)
+                                    @if($scope === 'operacional' && in_array((string) $resourceKey, $operacionalServiceKeys, true))
+                                        @continue
+                                    @endif
                                     @php
                                         $resourcePermsByAction = [];
                                         foreach ($resourcePerms as $rp) {
@@ -202,7 +312,7 @@
                         </option>
                     @endforeach
                 </select>
-                <span class="text-xs text-slate-500">Configuracao individual do usuario selecionado.</span>
+                <span class="text-xs text-slate-500">Configuração individual do usuário selecionado (substitui as permissões do papel quando houver seleção).</span>
             </div>
 
             @foreach($usuariosEditaveis as $usuario)
@@ -218,9 +328,21 @@
                         ->groupBy(function ($perm) {
                             return \Illuminate\Support\Str::beforeLast($perm->chave, '.');
                         })
-                        ->sortKeys();
+                        ->sortBy(fn ($resourcePerms, $resourceKey) => $resourceOrderResolver((string) $resourceKey, $scope));
 
                     $diretasIds = $usuario->permissoesDiretas->pluck('id')->map(fn ($id) => (int) $id)->all();
+                    $operacionalServicePermIdsByAction = collect($actionOrder)->mapWithKeys(fn ($action) => [$action => []])->all();
+                    if ($scope === 'operacional') {
+                        foreach ($operacionalServiceKeys as $serviceKey) {
+                            $servicePerms = $groupedResources->get($serviceKey, collect());
+                            foreach ($servicePerms as $rp) {
+                                $action = strtolower((string) \Illuminate\Support\Str::afterLast($rp->chave, '.'));
+                                if (array_key_exists($action, $operacionalServicePermIdsByAction)) {
+                                    $operacionalServicePermIdsByAction[$action][] = (int) $rp->id;
+                                }
+                            }
+                        }
+                    }
                 @endphp
 
                 <div data-user-panel="{{ $usuario->id }}" class="{{ $panelActive ? '' : 'hidden' }}">
@@ -248,7 +370,53 @@
                                 </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-100">
+                                @if($scope === 'operacional')
+                                    <tr class="hover:bg-slate-50/70 permissao-row odd:bg-white even:bg-slate-50/40" data-search="servicos operacionais operacional">
+                                        <td class="px-4 py-3 align-top">
+                                            <div class="font-medium text-slate-800">Servicos Operacionais</div>
+                                            <div class="text-xs text-slate-500">operacional.servicos</div>
+                                        </td>
+                                        @foreach($actionOrder as $actionCol)
+                                            @php
+                                                $ids = $operacionalServicePermIdsByAction[$actionCol] ?? [];
+                                                $masterChecked = !empty($ids)
+                                                    && collect($ids)->every(fn ($id) => in_array((int) $id, $diretasIds, true));
+                                                $groupName = 'operacional-servicos-usuario-'.$usuario->id.'-'.$actionCol;
+                                            @endphp
+                                            <td class="px-3 py-3 text-center align-middle">
+                                                @if(!empty($ids))
+                                                    @foreach($ids as $permId)
+                                                        <input
+                                                            type="checkbox"
+                                                            name="permissoes[]"
+                                                            value="{{ $permId }}"
+                                                            class="hidden permissao-group-hidden"
+                                                            data-group="{{ $groupName }}"
+                                                            @checked(in_array((int) $permId, $diretasIds, true))
+                                                        >
+                                                    @endforeach
+                                                    <label class="inline-flex cursor-pointer items-center" title="Aplicar para todos os servicos operacionais ({{ strtoupper($actionCol) }})">
+                                                        <input
+                                                            type="checkbox"
+                                                            class="sr-only permissao-group-master"
+                                                            data-group="{{ $groupName }}"
+                                                            @checked($masterChecked)
+                                                        >
+                                                        <span class="h-5 w-10 rounded-full bg-slate-300 transition relative toggle-track">
+                                                            <span class="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition toggle-dot"></span>
+                                                        </span>
+                                                    </label>
+                                                @else
+                                                    <span class="text-slate-300">-</span>
+                                                @endif
+                                            </td>
+                                        @endforeach
+                                    </tr>
+                                @endif
                                 @forelse($groupedResources as $resourceKey => $resourcePerms)
+                                    @if($scope === 'operacional' && in_array((string) $resourceKey, $operacionalServiceKeys, true))
+                                        @continue
+                                    @endif
                                     @php
                                         $resourcePermsByAction = [];
                                         foreach ($resourcePerms as $rp) {
@@ -406,6 +574,18 @@ document.addEventListener('DOMContentLoaded', function () {
         syncToggleVisual(toggle);
         toggle.addEventListener('change', function () {
             syncToggleVisual(toggle);
+        });
+    });
+
+    document.querySelectorAll('.permissao-group-master').forEach((masterToggle) => {
+        syncToggleVisual(masterToggle);
+        masterToggle.addEventListener('change', function () {
+            syncToggleVisual(masterToggle);
+            const group = masterToggle.getAttribute('data-group');
+            if (!group) return;
+            document.querySelectorAll('.permissao-group-hidden[data-group=\"' + group + '\"]').forEach((input) => {
+                input.checked = masterToggle.checked;
+            });
         });
     });
 

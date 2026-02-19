@@ -178,7 +178,7 @@ document.addEventListener('click', function (e) {
     e.preventDefault();
     e.stopPropagation();
 
-    window.uiAlert('Usuario sem permissao.', {
+    window.uiAlert('Usu\u00E1rio sem permiss\u00E3o.', {
         title: 'Acesso negado',
         icon: 'warning',
         confirmText: 'OK',

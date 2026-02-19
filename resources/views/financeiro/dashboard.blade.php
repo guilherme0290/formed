@@ -1,4 +1,4 @@
-@extends('layouts.financeiro')
+﻿@extends('layouts.financeiro')
 @section('title', 'Painel Financeiro')
 @section('page-container', 'w-full px-4 sm:px-6 lg:px-8 py-6')
 
@@ -95,7 +95,7 @@
                     <div class="rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition">
                         <div class="px-5 py-4 flex items-center justify-between gap-4">
                             <div class="flex items-center gap-3">
-                                <div class="h-11 w-11 rounded-2xl bg-indigo-50 text-indigo-600 grid place-items-center text-xl">📄</div>
+                                <div class="h-11 w-11 rounded-2xl bg-indigo-50 text-indigo-600 grid place-items-center text-xl">&#128196;</div>
                                 <div>
                                     <p class="text-sm font-semibold text-slate-900">{{ $contrato->cliente->razao_social ?? 'Cliente' }}</p>
                                     <div class="text-xs text-slate-500 flex flex-wrap gap-3">
@@ -120,3 +120,4 @@
         </section>
     </div>
 @endsection
+

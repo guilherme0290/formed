@@ -1,11 +1,11 @@
-@extends('layouts.financeiro')
+Ôªø@extends('layouts.financeiro')
 @section('title', 'Conta a Receber')
 @section('page-container', 'w-full p-0')
 
 @section('content')
     @php
         $user = auth()->user();
-        $permissionMap = $user?->papel?->permissoes?->pluck('chave')->flip()->all() ?? [];
+        $permissionMap = $user?->permissionMap() ?? [];
         $isMaster = $user?->hasPapel('Master');
         $canCreate = $isMaster || isset($permissionMap['financeiro.contas-receber.create']);
         $canUpdate = $isMaster || isset($permissionMap['financeiro.contas-receber.update']);
@@ -26,11 +26,11 @@
                 <button type="button"
                         id="abrirModalBaixa"
                         class="inline-flex h-8 shrink-0 items-center justify-center whitespace-nowrap px-2.5 rounded-lg text-xs font-semibold leading-none {{ $canUpdate ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}"
-                        @if(!$canUpdate) disabled title="Usu·rio sem permiss„o" @endif>Baixar</button>
+                        @if(!$canUpdate) disabled title="Usu√°rio sem permiss√£o" @endif>Baixar</button>
                 <form method="POST" action="{{ route('financeiro.contas-receber.reabrir', $conta) }}" class="m-0 flex shrink-0">
                     @csrf
                     <button class="inline-flex h-8 items-center justify-center whitespace-nowrap px-2.5 rounded-lg text-xs font-semibold leading-none {{ $canUpdate ? 'bg-slate-900 text-white hover:bg-slate-800' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}"
-                            @if(!$canUpdate) disabled title="Usu·rio sem permiss„o" @endif>Reabrir</button>
+                            @if(!$canUpdate) disabled title="Usu√°rio sem permiss√£o" @endif>Reabrir</button>
                 </form>
                 <form method="POST" action="{{ route('financeiro.contas-receber.destroy', $conta) }}"
                       class="m-0 flex shrink-0"
@@ -38,17 +38,17 @@
                     @csrf
                     @method('DELETE')
                     <button class="inline-flex h-8 items-center justify-center whitespace-nowrap px-2.5 rounded-lg text-xs font-semibold leading-none {{ $canDelete ? 'bg-rose-600 text-white hover:bg-rose-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}"
-                            @if(!$canDelete) disabled title="Usu·rio sem permiss„o" @endif>Excluir recebimento</button>
+                            @if(!$canDelete) disabled title="Usu√°rio sem permiss√£o" @endif>Excluir recebimento</button>
                 </form>
                 <form method="POST" action="{{ route('financeiro.contas-receber.boleto', $conta) }}" class="m-0 flex shrink-0">
                     @csrf
                     <button class="inline-flex h-8 items-center justify-center whitespace-nowrap px-2.5 rounded-lg text-xs font-semibold leading-none {{ $canUpdate ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}"
-                            @if(!$canUpdate) disabled title="Usu·rio sem permiss„o" @endif>Emitir Boleto</button>
+                            @if(!$canUpdate) disabled title="Usu√°rio sem permiss√£o" @endif>Emitir Boleto</button>
                 </form>
                 <button type="button"
                         id="abrirModalItem"
                         class="inline-flex h-8 shrink-0 items-center justify-center whitespace-nowrap px-2.5 rounded-lg text-xs font-semibold leading-none {{ $canCreate ? 'bg-slate-800 text-white hover:bg-slate-900' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}"
-                        @if(!$canCreate) disabled title="Usu·rio sem permiss„o" @endif>Novo Item</button>
+                        @if(!$canCreate) disabled title="Usu√°rio sem permiss√£o" @endif>Novo Item</button>
             </div>
         </div>
 
@@ -78,7 +78,7 @@
             <header class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
                 <div>
                     <h2 class="text-sm font-semibold text-slate-800">Resumo da conta</h2>
-                    <p class="text-xs text-slate-500">Vis„o geral e baixas registradas</p>
+                    <p class="text-xs text-slate-500">Vis√£o geral e baixas registradas</p>
                 </div>
                 <div class="text-xs text-slate-500">
                     Total: <strong class="text-slate-800">R$ {{ number_format((float) $conta->total, 2, ',', '.') }}</strong>
@@ -181,7 +181,7 @@
     <button type="button"
             class="absolute right-0 top-0 h-full w-8 flex items-center justify-center text-slate-400 hover:text-slate-600 date-picker-btn z-10"
             data-date-target="cr_show_pago_em"
-            aria-label="Abrir calend·rio">
+            aria-label="Abrir calend√°rio">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" viewBox="0 0 24 24" fill="currentColor">
             <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v2H2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 2 0v1zm15 8H2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V10z"/>
         </svg>
@@ -211,7 +211,7 @@
                     </div>
 
                     <button class="w-full px-4 py-2 rounded-xl text-sm font-semibold {{ $canUpdate ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}"
-                            @if(!$canUpdate) disabled title="Usu·rio sem permiss„o" @endif>
+                            @if(!$canUpdate) disabled title="Usu√°rio sem permiss√£o" @endif>
                         Confirmar baixa
                     </button>
                 </form>
@@ -256,7 +256,7 @@
     <button type="button"
             class="absolute right-0 top-0 h-full w-8 flex items-center justify-center text-slate-400 hover:text-slate-600 date-picker-btn z-10"
             data-date-target="cr_show_data_realizacao"
-            aria-label="Abrir calend·rio">
+            aria-label="Abrir calend√°rio">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" viewBox="0 0 24 24" fill="currentColor">
             <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v2H2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 2 0v1zm15 8H2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V10z"/>
         </svg>
@@ -276,7 +276,7 @@
     <button type="button"
             class="absolute right-0 top-0 h-full w-8 flex items-center justify-center text-slate-400 hover:text-slate-600 date-picker-btn z-10"
             data-date-target="cr_show_vencimento"
-            aria-label="Abrir calend·rio">
+            aria-label="Abrir calend√°rio">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" viewBox="0 0 24 24" fill="currentColor">
             <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v2H2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 2 0v1zm15 8H2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V10z"/>
         </svg>
@@ -291,7 +291,7 @@
                     </div>
 
                     <button class="w-full px-4 py-2 rounded-xl text-sm font-semibold {{ $canCreate ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}"
-                            @if(!$canCreate) disabled title="Usu·rio sem permiss„o" @endif>
+                            @if(!$canCreate) disabled title="Usu√°rio sem permiss√£o" @endif>
                         Incluir item
                     </button>
                 </form>
@@ -430,6 +430,7 @@
     });
 </script>
 @endsection
+
 
 
 

@@ -746,9 +746,7 @@ class ClienteController extends Controller
         }
 
         $chave = 'comercial.clientes.' . $action;
-        $temPermissao = $user->papel()
-            ->whereHas('permissoes', fn ($q) => $q->where('chave', $chave))
-            ->exists();
+        $temPermissao = $user->canAccess($chave);
 
         if (!$temPermissao) {
             abort(403);

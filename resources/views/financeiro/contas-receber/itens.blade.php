@@ -1,4 +1,4 @@
-@extends('layouts.financeiro')
+﻿@extends('layouts.financeiro')
 @section('title', 'Itens da Conta a Receber')
 @section('page-container', 'w-full p-0')
 
@@ -6,7 +6,7 @@
     <div class="w-full px-3 md:px-5 py-4 md:py-5 space-y-6">
         <div class="flex flex-col gap-2">
             <div class="inline-flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-indigo-400">
-                <span class="inline-flex h-7 w-7 items-center justify-center rounded-2xl bg-indigo-500/20 text-pink-100 text-lg">🧾</span>
+                <span class="inline-flex h-7 w-7 items-center justify-center rounded-2xl bg-indigo-500/20 text-pink-100 text-lg">&#x1F9FE;</span>
                 Itens do contas a receber
             </div>
             <div class="flex flex-wrap items-center gap-3">
@@ -91,7 +91,7 @@
     <button type="button"
             class="absolute right-0 top-0 h-full w-8 flex items-center justify-center text-slate-400 hover:text-slate-600 date-picker-btn z-10"
             data-date-target="cr_vencimento"
-            aria-label="Abrir calend�rio">
+            aria-label="Abrir calendário">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" viewBox="0 0 24 24" fill="currentColor">
             <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v2H2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 2 0v1zm15 8H2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V10z"/>
         </svg>
@@ -110,7 +110,7 @@
     <button type="button"
             class="absolute right-0 top-0 h-full w-8 flex items-center justify-center text-slate-400 hover:text-slate-600 date-picker-btn z-10"
             data-date-target="cr_pago_em"
-            aria-label="Abrir calend�rio">
+            aria-label="Abrir calendário">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" viewBox="0 0 24 24" fill="currentColor">
             <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v2H2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 2 0v1zm15 8H2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V10z"/>
         </svg>
@@ -135,7 +135,7 @@
             <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5 space-y-4 max-h-[90vh] overflow-y-auto">
                 <div class="flex items-center justify-between">
                     <h3 class="text-sm font-semibold text-slate-900">Adicionar item avulso</h3>
-                    <button type="button" data-fechar-modal class="text-slate-400 hover:text-slate-600">✕</button>
+                    <button type="button" data-fechar-modal class="text-slate-400 hover:text-slate-600">&#x2715;</button>
                 </div>
 
                 <div>
@@ -164,7 +164,7 @@
     <button type="button"
             class="absolute right-0 top-0 h-full w-8 flex items-center justify-center text-slate-400 hover:text-slate-600 date-picker-btn z-10"
             data-date-target="modalData"
-            aria-label="Abrir calend�rio">
+            aria-label="Abrir calendário">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" viewBox="0 0 24 24" fill="currentColor">
             <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v2H2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 2 0v1zm15 8H2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V10z"/>
         </svg>
@@ -184,7 +184,7 @@
     <button type="button"
             class="absolute right-0 top-0 h-full w-8 flex items-center justify-center text-slate-400 hover:text-slate-600 date-picker-btn z-10"
             data-date-target="modalVencimento"
-            aria-label="Abrir calend�rio">
+            aria-label="Abrir calendário">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" viewBox="0 0 24 24" fill="currentColor">
             <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v2H2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 2 0v1zm15 8H2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V10z"/>
         </svg>
@@ -236,12 +236,12 @@
                 const valor = valorInput.value;
 
                 if (!servicoId && !descricao) {
-                    window.uiAlert('Informe um serviço ou descrição.');
+                    window.uiAlert('Informe um servi\u00E7o ou descri\u00E7\u00E3o.');
                     return;
                 }
 
                 if (!valor || parseFloat(valor) <= 0) {
-                    window.uiAlert('Informe um valor válido.');
+                    window.uiAlert('Informe um valor v\u00E1lido.');
                     return;
                 }
 
@@ -361,5 +361,8 @@
     });
 </script>
 @endsection
+
+
+
 
 

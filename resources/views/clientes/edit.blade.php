@@ -20,7 +20,7 @@
     @php
         $routePrefix = $routePrefix ?? 'clientes';
         $permPrefix = str_starts_with($routePrefix, 'comercial.') ? 'comercial.clientes' : 'master.clientes';
-        $permissionMap = $user?->papel?->permissoes?->pluck('chave')->flip()->all() ?? [];
+        $permissionMap = $user?->permissionMap() ?? [];
         $isMaster = $user?->hasPapel('Master');
         $canCreate = $isMaster || isset($permissionMap[$permPrefix.'.create']);
         $canUpdate = $isMaster || isset($permissionMap[$permPrefix.'.update']);

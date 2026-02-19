@@ -2,7 +2,7 @@
     $routePrefix = $routePrefix ?? 'comercial';
     $dashboardRoute = $dashboardRoute ?? route($routePrefix === 'master' ? 'master.dashboard' : 'comercial.dashboard');
     $user = auth()->user();
-    $permissionMap = $user?->papel?->permissoes?->pluck('chave')->flip()->all() ?? [];
+    $permissionMap = $user?->permissionMap() ?? [];
     $isMaster = $user?->hasPapel('Master');
     $permPrefix = $routePrefix === 'master' ? 'master.tabela-precos' : 'comercial.tabela-precos';
     $canCreate = $isMaster || isset($permissionMap[$permPrefix.'.create']);

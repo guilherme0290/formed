@@ -1,4 +1,4 @@
-@extends('layouts.operacional')
+﻿@extends('layouts.operacional')
 @section('title', 'Painel Operacional')
 @php
     use Illuminate\Support\Str;
@@ -6,7 +6,7 @@
 
 @section('content')
     @php
-        $permissionMap = $usuario?->papel?->permissoes?->pluck('chave')->flip()->all() ?? [];
+        $permissionMap = $usuario?->permissionMap() ?? [];
         $isMaster = $usuario?->hasPapel('Master');
         $canCreateTask = $isMaster
             || isset($permissionMap['operacional.tarefas.manage'])
@@ -74,7 +74,7 @@
                     @php
                         $temFiltrosAtivos = !empty($filtroBusca) || !empty($filtroServico) || !empty($filtroResponsavel) || !empty($filtroColuna) || !empty($filtroDe) || !empty($filtroAte);
                     @endphp
-                    <span class="absolute inset-y-0 left-3 flex items-center text-slate-400 text-sm">🔍</span>
+                    <span class="absolute inset-y-0 left-3 flex items-center text-slate-400 text-sm">&#x1F50D;</span>
                     <input type="text"
                            name="q"
                            value="{{ $filtroBusca ?? '' }}"
@@ -107,7 +107,7 @@
             </div>
 
             <a href="{{ $canCreateTask ? route('operacional.kanban.aso.clientes') : 'javascript:void(0)' }}"
-               @if(!$canCreateTask) title="Usu�rio sem permiss�o" aria-disabled="true" @endif
+               @if(!$canCreateTask) title="Usuário sem permissão" aria-disabled="true" @endif
                class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl
                   {{ $canCreateTask ? 'bg-gradient-to-r from-sky-500 to-cyan-400 text-white shadow-md shadow-sky-500/30 hover:from-sky-600 hover:to-cyan-500' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}
                   text-sm font-semibold transition">
@@ -115,13 +115,13 @@
             </a>
         </div>
 
-        {{-- Título --}}
+        {{-- Titulo --}}
         <div class="mb-3 space-y-2">
             <h1 class="text-2xl md:text-3xl font-semibold tracking-tight text-slate-900">
                 Painel Operacional
             </h1>
             <p class="mt-0.5 text-xs md:text-sm text-slate-500">
-                Suas tarefas atribuídas ·
+                Suas tarefas atribu&iacute;das &mdash;
                 <span class="font-medium text-sky-700">{{ $usuario->name }}</span>
             </p>
         </div>
@@ -133,13 +133,13 @@
 
                 <div>
                     <label class="block text-[11px] font-semibold text-slate-500 tracking-wide mb-1">
-                        Tipo de Serviço
+                        Tipo de Servi&ccedil;o
                     </label>
                     <select name="servico_id"
                             class="w-full rounded-xl border border-slate-200 bg-slate-50/60 py-2 px-3 text-sm
                                text-slate-700
                                focus:bg-white focus:ring-2 focus:ring-sky-400 focus:border-sky-400">
-                        <option value="">Todos os serviços</option>
+                        <option value="">Todos os servi&ccedil;os</option>
                         @foreach($servicos as $servico)
                             <option value="{{ $servico->id }}" @selected($filtroServico == $servico->id)>
                                 {{ $servico->nome }}
@@ -150,13 +150,13 @@
 
                 <div>
                     <label class="block text-[11px] font-semibold text-slate-500 tracking-wide mb-1">
-                        Serviço adicionado por
+                        Servi&ccedil;o adicionado por
                     </label>
                     <select name="responsavel_id"
                             class="w-full rounded-xl border border-slate-200 bg-slate-50/60 py-2 px-3 text-sm
                                text-slate-700
                                focus:bg-white focus:ring-2 focus:ring-sky-400 focus:border-sky-400">
-                        <option value="">Todos os usuários</option>
+                        <option value="">Todos os usu&aacute;rios</option>
                         @foreach($responsaveis as $resp)
                             <option value="{{ $resp->id }}" @selected($filtroResponsavel == $resp->id)>
                                 {{ $resp->name }}
@@ -175,7 +175,7 @@
                                    focus:bg-white focus:ring-2 focus:ring-sky-400 focus:border-sky-400">
                         <option value="">Todos os status</option>
 
-                        {{-- 🔹 Novo item: Canceladas (soft delete) --}}
+                        {{-- Novo item: Canceladas (soft delete) --}}
                         <option value="canceladas" @selected($filtroColuna === 'canceladas')>
                             Canceladas
                         </option>
@@ -203,7 +203,7 @@
                         <button type="button"
                                 class="absolute right-0 top-0 h-full w-8 flex items-center justify-center text-slate-400 hover:text-slate-600 date-picker-btn z-10"
                                 data-date-target="kanban_de"
-                                aria-label="Abrir calendÃ¡rio">
+                                aria-label="Abrir calend&aacute;rio">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v2H2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 2 0v1zm15 8H2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V10z"/>
                             </svg>
@@ -227,7 +227,7 @@
                         <button type="button"
                                 class="absolute right-0 top-0 h-full w-8 flex items-center justify-center text-slate-400 hover:text-slate-600 date-picker-btn z-10"
                                 data-date-target="kanban_ate"
-                                aria-label="Abrir calendÃ¡rio">
+                                aria-label="Abrir calend&aacute;rio">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v2H2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 2 0v1zm15 8H2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V10z"/>
                             </svg>
@@ -254,25 +254,25 @@
             <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-slate-200 bg-white">
                 <span class="inline-block w-2 h-2 rounded-full" style="background:#16a34a;"></span> Treinamentos NRs
             </span>
-            <span class="text-slate-500">Demais serviços seguem a cor da coluna.</span>
+            <span class="text-slate-500">Demais servi&ccedil;os seguem a cor da coluna.</span>
         </div>
         @php
             $statusCardsConfig = [
-                'pendente'              => ['icon' => '⏳', 'bg' => 'from-amber-400 to-amber-500'],
-                'pendentes'             => ['icon' => '⏳', 'bg' => 'from-amber-400 to-amber-500'],
+                'pendente'              => ['icon' => '&#x23F3;', 'bg' => 'from-amber-400 to-amber-500'],
+                'pendentes'             => ['icon' => '&#x23F3;', 'bg' => 'from-amber-400 to-amber-500'],
 
-                'em-execucao'           => ['icon' => '▶️', 'bg' => 'from-sky-500 to-blue-500'],
+                'em-execucao'           => ['icon' => '&#x25B6;&#xFE0F;', 'bg' => 'from-sky-500 to-blue-500'],
 
-                'correcao'              => ['icon' => '🛠️', 'bg' => 'from-orange-500 to-orange-600'],
+                'correcao'              => ['icon' => '&#x1F6E0;&#xFE0F;', 'bg' => 'from-orange-500 to-orange-600'],
 
-                'aguardando'            => ['icon' => '⏱️', 'bg' => 'from-purple-500 to-fuchsia-500'],
-                'aguardando-fornecedor' => ['icon' => '⏱️', 'bg' => 'from-purple-500 to-fuchsia-500'],
+                'aguardando'            => ['icon' => '&#x23F1;&#xFE0F;', 'bg' => 'from-purple-500 to-fuchsia-500'],
+                'aguardando-fornecedor' => ['icon' => '&#x23F1;&#xFE0F;', 'bg' => 'from-purple-500 to-fuchsia-500'],
 
-                'finalizada'            => ['icon' => '✅', 'bg' => 'from-emerald-500 to-green-500'],
-                'finalizadas'           => ['icon' => '✅', 'bg' => 'from-emerald-500 to-green-500'],
+                'finalizada'            => ['icon' => '&#x2705;', 'bg' => 'from-emerald-500 to-green-500'],
+                'finalizadas'           => ['icon' => '&#x2705;', 'bg' => 'from-emerald-500 to-green-500'],
 
-                'atrasado'              => ['icon' => '⛔', 'bg' => 'from-rose-500 to-red-500'],
-                'atrasados'             => ['icon' => '⛔', 'bg' => 'from-rose-500 to-red-500'],
+                'atrasado'              => ['icon' => '&#x26D4;', 'bg' => 'from-rose-500 to-red-500'],
+                'atrasados'             => ['icon' => '&#x26D4;', 'bg' => 'from-rose-500 to-red-500'],
             ];
         @endphp
 
@@ -286,7 +286,7 @@
                     @php
                         $slug = Str::slug($coluna->nome);
                         $config = $statusCardsConfig[$slug] ?? [
-                            'icon' => '📌',
+                            'icon' => '&#x1F4CC;',
                             'bg'   => 'from-slate-400 to-slate-500',
                         ];
 
@@ -314,7 +314,7 @@
                             </div>
 
                             <div class="text-2xl md:text-3xl opacity-70">
-                                {{ $config['icon'] }}
+                                {!! $config['icon'] !!}
                             </div>
                         </article>
 
@@ -651,7 +651,7 @@
                                     >
 
                                     @php
-                                        // Label da tagzinha à direita
+                                        // Label da tagzinha a direita
                                         $badgeLabel    = $servicoNome;
                                         $tituloCard    = $servicoNome;      // default
                                         $subtituloCard = $clienteNome;      // default
@@ -775,12 +775,12 @@
                                         </div>
                                     </div>
 
-                                    {{-- ================== SUBTÍTULO (CLIENTE / ENDEREÇO / OBRA) ================== --}}
+                                    {{-- ================== SUBTITULO (CLIENTE / ENDERECO / OBRA) ================== --}}
                                     <p class="text-[13px] text-slate-500 font-medium mb-2">
                                         {{ $subtituloCard }}
                                     </p>
 
-                                    {{-- ================== DATA / HORÁRIO ================== --}}
+                                    {{-- ================== DATA / HORARIO ================== --}}
                                     <div class="flex items-center gap-1 text-[11px] text-slate-500 mb-2">
                                         <svg class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="none">
                                             <circle cx="10" cy="10" r="8" stroke="#9CA3AF" stroke-width="1.5"/>
@@ -812,7 +812,7 @@
                                                 class="inline-flex items-center gap-1 px-3 py-1 rounded-md border
                                                     border-slate-200 bg-slate-50 text-[11px] text-slate-600"
                                                 data-role="card-tempo-label">
-                                                <span>⏱</span>
+                                                <span>â±</span>
                                                 <span data-role="card-tempo-text">—</span>
                                             </div>
                                         </div>
@@ -851,7 +851,7 @@
          class="fixed inset-0 z-[90] hidden items-center justify-center bg-black/50 p-4 overflow-y-auto">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden">
             {{-- Cabeçalho --}}
-            {{-- Cabeçalho (VERSÃO DEBUG) --}}
+            {{-- Cabecalho (VERSAO DEBUG) --}}
             <div
                 class="flex items-center justify-between px-6 py-4
            rounded-t-2xl shadow-sm
@@ -891,7 +891,7 @@
                     {{-- 1. Detalhes da solicitação --}}
                     <section class="bg-slate-50 border border-slate-200 rounded-xl p-4">
                         <h3 class="text-xs font-semibold text-slate-500 mb-3">
-                            1. DETALHES DA SOLICITAÇÃO
+                            1. DETALHES DA SOLICITA&Ccedil;&Atilde;O
                         </h3>
                         <dl class="space-y-1 text-sm">
                             <div>
@@ -913,7 +913,7 @@
                                 <dd class="font-medium" id="modal-responsavel"></dd>
                             </div>
 
-                            {{-- BLOCO ESPECÍFICO: ASO --}}
+                            {{-- BLOCO ESPECIFICO: ASO --}}
 
                             <div id="modal-bloco-aso" class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
                                 <div class="md:col-span-2">
@@ -1016,7 +1016,7 @@
                     {{-- 3. Descrição da tarefa --}}
                     <section class="bg-violet-50 border border-violet-100 rounded-xl p-4">
                         <h3 class="text-xs font-semibold text-violet-700 mb-2">
-                            3. DESCRIÇÃO DA TAREFA
+                            3. DESCRI&Ccedil;&Atilde;O DA TAREFA
                         </h3>
                         <p class="font-semibold text-slate-800 mb-1" id="modal-servico"></p>
                         <p class="text-sm text-slate-700" id="modal-observacoes"></p>
@@ -1185,7 +1185,7 @@
                                href="#"
                                target="_blank"
                                class="inline-flex items-center gap-1 text-xs font-semibold text-cyan-700 hover:text-cyan-900 underline">
-                                📎 Abrir PGR anexado (PDF)
+                                &#x1F4CE; Abrir PGR anexado (PDF)
                             </a>
                         </div>
                     </section>
@@ -1202,7 +1202,7 @@
                     {{-- 7. Informações de data --}}
                     <section class="bg-amber-50 border border-amber-100 rounded-xl p-4">
                         <h3 class="text-xs font-semibold text-amber-700 mb-3">
-                            7. INFORMAÇÕES DE DATA
+                            7. INFORMA&Ccedil;&Otilde;ES DE DATA
                         </h3>
                         <dl class="space-y-1 text-sm">
                             <div>
@@ -1224,7 +1224,7 @@
                         </dl>
                     </section>
                 </div>
-                {{-- BLOCO ESPECÍFICO: PGR --}}
+                {{-- BLOCO ESPECIFICO: PGR --}}
                 <section id="modal-bloco-pgr"
                          class="bg-sky-50 border border-sky-100 rounded-xl p-4 hidden">
                     <h3 class="text-xs font-semibold text-sky-700 mb-3">
@@ -1307,7 +1307,7 @@
                     {{-- 4. Ações rápidas --}}
                     <section class="bg-slate-50 border border-slate-200 rounded-xl p-4">
                         <h3 class="text-xs font-semibold text-slate-500 mb-3">
-                            4. AÇÕES RÁPIDAS
+                            4. A&Ccedil;&Otilde;ES R&Aacute;PIDAS
                         </h3>
 
                         <div class="space-y-3">
@@ -1316,7 +1316,7 @@
                             <button type="button"
                                     id="btn-editar-tarefa"
                                     data-permission-locked="{{ $canUpdateTask ? '0' : '1' }}"
-                                    @if(!$canUpdateTask) title="Usu�rio sem permiss�o" @endif
+                                    @if(!$canUpdateTask) title="Usuário sem permissão" @endif
                                     class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg
                        {{ $canUpdateTask ? 'bg-emerald-500 text-white hover:bg-emerald-600' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} text-sm font-semibold shadow-sm
                        transition"
@@ -1330,18 +1330,18 @@
                             <button type="button"
                                     data-coluna-id="2"
                                     data-permission-locked="{{ $canUpdateTask ? '0' : '1' }}"
-                                    @if(!$canUpdateTask) title="Usu�rio sem permiss�o" @endif
+                                    @if(!$canUpdateTask) title="Usuário sem permissão" @endif
                                     class="js-mover-coluna w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg
                        {{ $canUpdateTask ? 'bg-[color:var(--color-brand-azul,#2563eb)] text-white hover:bg-blue-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} text-sm font-semibold shadow-sm
                        transition"
                                     @if(!$canUpdateTask) disabled @endif>
-                                Mover para: Em Execução
+                                Mover para: Em Execu&ccedil;&atilde;o
                             </button>
 
                             <button type="button"
                                     data-coluna-id="6"
                                     data-permission-locked="{{ $canUpdateTask ? '0' : '1' }}"
-                                    @if(!$canUpdateTask) title="Usu�rio sem permiss�o" @endif
+                                    @if(!$canUpdateTask) title="Usuário sem permissão" @endif
                                     class="js-mover-coluna w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg
                        {{ $canUpdateTask ? 'bg-rose-500 text-white hover:bg-rose-600' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} text-sm font-semibold shadow-sm
                        transition"
@@ -1358,7 +1358,7 @@
                         </h3>
 
                         <p class="text-[12px] text-emerald-800 mb-2">
-                            Este é o arquivo anexado e enviado ao cliente na finalização da tarefa.
+                            Este &eacute; o arquivo anexado e enviado ao cliente na finaliza&ccedil;&atilde;o da tarefa.
                         </p>
 
                         <a id="modal-arquivo-link"
@@ -1366,7 +1366,7 @@
                            target="_blank"
                            class="inline-flex items-center gap-2 text-xs font-semibold text-emerald-700
                                  hover:text-emerald-900 underline hidden">
-                            📎 Abrir arquivo anexado
+                            &#x1F4CE; Abrir arquivo anexado
                         </a>
                         <div class="mt-3">
                             <input
@@ -1401,7 +1401,7 @@
                         </h3>
 
                         <p class="text-[12px] text-slate-600 mb-2">
-                            Lista de documentos anexados à tarefa (ASO, PGR, PCMSO, etc).
+                            Lista de documentos anexados a tarefa (ASO, PGR, PCMSO, etc).
                         </p>
 
                         <ul id="modal-docs-list" class="space-y-1 text-sm">
@@ -1409,10 +1409,10 @@
                         </ul>
                     </section>
 
-                    {{-- 6. Adicionar observação interna --}}
+                    {{-- 6. Adicionar observacao interna --}}
                     <section class="bg-slate-50 border border-slate-200 rounded-xl p-4 h-full">
                         <h3 class="text-xs font-semibold text-slate-500 mb-3">
-                            6. ADICIONAR OBSERVAÇÃO INTERNA
+                            6. ADICIONAR OBSERVA&Ccedil;&Atilde;O INTERNA
                         </h3>
                         <textarea
                             id="modal-observacao-interna"
@@ -1420,7 +1420,7 @@
                             class="w-full rounded-lg border border-slate-300 text-sm px-3 py-2
                                focus:outline-none focus:ring-2 focus:ring-[color:var(--color-brand-azul)]/60
                                focus:border-[color:var(--color-brand-azul)] resize-none"
-                            placeholder="Digite suas observações..."
+                            placeholder="Digite suas observa&ccedil;&otilde;es..."
                         ></textarea>
 
                         <button
@@ -1429,7 +1429,7 @@
                             class="mt-3 w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg
                                bg-indigo-400 text-white text-sm font-semibold shadow-sm
                                hover:bg-indigo-500 transition">
-                            Salvar Observação
+                            Salvar Observa&ccedil;&atilde;o
                         </button>
                         @isset($usuario)
                             @if($usuario->hasPapel(['Master', 'Operacional']))
@@ -1437,7 +1437,7 @@
                                     type="button"
                                     id="btn-excluir-tarefa"
                                     data-permission-locked="{{ $canDeleteTask ? '0' : '1' }}"
-                                    @if(!$canDeleteTask) title="Usu�rio sem permiss�o" @endif
+                                    @if(!$canDeleteTask) title="Usuário sem permissão" @endif
                                     class="mt-2 w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg
                                    border {{ $canDeleteTask ? 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100' : 'border-slate-300 bg-slate-200 text-slate-500 cursor-not-allowed' }} text-sm font-semibold shadow-sm
                                    transition"
@@ -1454,7 +1454,7 @@
         </div>
     </div>
 
-    {{-- Modal de Exclusão da Tarefa --}}
+    {{-- Modal de Exclusao da Tarefa --}}
     <div id="tarefa-excluir-modal"
          class="fixed inset-0 z-[95] hidden items-center justify-center bg-black/60 p-4">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
@@ -1464,11 +1464,11 @@
             </div>
             <div class="p-5 space-y-4 text-sm text-slate-700">
                 <div class="text-xs text-slate-600 font-bold">
-                    Informe o motivo da exclusão e, se necessário, anexe o print da conversa.
+                    Informe o motivo da exclus&atilde;o e, se necess&aacute;rio, anexe o print da conversa.
                 </div>
                 <div>
                     <label class="block text-[11px] text-slate-500 mb-1 font-bold">
-                        Motivo da exclusão
+                        Motivo da exclus&atilde;o
                     </label>
                     <textarea id="tarefa-excluir-motivo"
                               rows="4"
@@ -1685,7 +1685,7 @@
 
                 links = Array.from(new Set(links));
                 const linksTexto = links.length ? `\n\nLinks:\n${links.join('\n')}` : '';
-                const mensagem = `Olá! Segue abaixo o anexo do ${servico}.\n\nEnviado pela Formed.${linksTexto}`;
+                const mensagem = `Ol\u00E1! Segue abaixo o anexo do ${servico}.\n\nEnviado pela Formed.${linksTexto}`;
 
                 return { telefone, mensagem };
             }
@@ -1848,7 +1848,7 @@
                         });
                     }
 
-                    // 👉 Aqui no futuro você pode ir plugando mais anexos:
+                    // ðŸ‘‰ Aqui no futuro você pode ir plugando mais anexos:
                     // if (card.dataset.algumaOutraCoisaUrl) { ... }
 
                     const mapAnexoLabel = (anexo) => {
@@ -1869,7 +1869,7 @@
                                         ${mapAnexoLabel(a)}
                                     </a>
                                     <span class="text-[11px] text-slate-500">
-                                        (${a.tamanho || '-'} · ${a.mime || '-'}${a.data ? ' · ' + a.data : ''}${a.uploaded_by ? ' · ' + a.uploaded_by : ''})
+                                        (${a.tamanho || '-'} - ${a.mime || '-'}${a.data ? ' - ' + a.data : ''}${a.uploaded_by ? ' - ' + a.uploaded_by : ''})
                                     </span>
                                 </li>
                             `).join('');
@@ -1889,7 +1889,7 @@
                                     ${a.nome || 'Print do cancelamento'}
                                 </a>
                                 <span class="text-[11px] text-slate-500">
-                                    (${a.tamanho || '-'} · ${a.mime || '-'}${a.data ? ' · ' + a.data : ''}${a.uploaded_by ? ' · ' + a.uploaded_by : ''})
+                                    (${a.tamanho || '-'} - ${a.mime || '-'}${a.data ? ' - ' + a.data : ''}${a.uploaded_by ? ' - ' + a.uploaded_by : ''})
                                 </span>
                             </li>
                         `).join('');
@@ -1976,7 +1976,7 @@
 
                         spanPgrComPcmso.textContent = card.dataset.pgrComPcmso === '1'
                             ? 'Sim, PGR + PCMSO'
-                            : (card.dataset.pgrComPcmso === '0' ? 'Não, apenas PGR' : '—');
+                            : (card.dataset.pgrComPcmso === '0' ? 'N\u00E3o, apenas PGR' : '-');
 
                         spanPgrContr.textContent = card.dataset.pgrContratante || '—';
                         spanPgrContrCnpj.textContent = card.dataset.pgrContratanteCnpj || '—';
@@ -2215,7 +2215,7 @@
                 modal.dataset.tarefaId = card.dataset.id || '';
                 modal.dataset.editUrl = card.dataset.editUrl || '';
 
-                // === BLOQUEIO DE AÇÕES SE CANCELADA ===
+                // === BLOQUEIO DE ACOES SE CANCELADA ===
                 const btnEditar      = document.getElementById('btn-editar-tarefa');
                 const btnSalvarObs   = document.getElementById('btn-salvar-observacao');
                 const btnExcluir     = document.getElementById('btn-excluir-tarefa');
@@ -2500,7 +2500,7 @@
                 if (!file || !detalhesCurrentCard) return;
                 const url = detalhesCurrentCard.dataset.substituirDocUrl;
                 if (!url) {
-                    window.uiAlert('Não foi possível enviar o documento desta tarefa.');
+                    window.uiAlert('N\u00E3o foi poss\u00EDvel enviar o documento desta tarefa.');
                     return;
                 }
 
@@ -2686,7 +2686,7 @@
                                 card.style.borderLeftColor = cardColor;
                             }
 
-                            // Se soltou na coluna "finalizada": NÃO chama mover(),
+                            // Se soltou na coluna "finalizada": NAO chama mover(),
                             // abre o modal de finalizar com arquivo.
 
                             if (colunaSlug === 'finalizada') {
@@ -2759,7 +2759,7 @@
                                             logContainer.innerHTML = `
                                         <div class="flex items-center justify-between gap-2">
                                             <span class="inline-flex items-center gap-1">
-                                                <span>🔁</span>
+                                                <span>&#x1F501;</span>
                                                 <span>
                                                     ${(data.log.de || 'Início')}
                                                     &rarr;
@@ -2854,7 +2854,7 @@
 
                                 console.log('Movido com sucesso:', data);
                             } else {
-                                window.uiAlert('Não foi possível mover a tarefa.');
+                                window.uiAlert('N\u00E3o foi poss\u00EDvel mover a tarefa.');
                             }
                         })
                         .catch(err => {
@@ -2875,7 +2875,7 @@
                     const url = modal.dataset.observacaoUrl;
 
                     if (!url) {
-                        window.uiAlert('Nenhuma tarefa selecionada para salvar observação.');
+                        window.uiAlert('Nenhuma tarefa selecionada para salvar observa\u00E7\u00E3o.');
                         return;
                     }
 
@@ -2896,17 +2896,17 @@
                         .then(data => {
                             if (data.ok) {
                                 // feedback simples
-                                btnSalvarObs.textContent = 'Observação salva!';
+                                btnSalvarObs.textContent = 'Observa\u00E7\u00E3o salva!';
                                 setTimeout(() => {
-                                    btnSalvarObs.textContent = 'Salvar Observação';
+                                    btnSalvarObs.textContent = 'Salvar Observa\u00E7\u00E3o';
                                 }, 1500);
                             } else {
-                                window.uiAlert('Não foi possível salvar a observação.');
+                                window.uiAlert('N\u00E3o foi poss\u00EDvel salvar a observa\u00E7\u00E3o.');
                             }
                         })
                         .catch(err => {
                             console.error(err);
-                            window.uiAlert('Erro ao salvar a observação.');
+                            window.uiAlert('Erro ao salvar a observa\u00E7\u00E3o.');
                         });
                 });
             }
@@ -2948,7 +2948,7 @@
                 if (!btn) return;
                 btn.addEventListener('click', () => {
                     closeExcluirModal();
-                    window.uiAlert('Exclusão cancelada.', { icon: 'success', title: 'Ok' });
+                    window.uiAlert('Exclus\u00E3o cancelada.', { icon: 'success', title: 'Ok' });
                 });
             });
 
@@ -2967,11 +2967,11 @@
                     const motivo = inputMotivo ? inputMotivo.value.trim() : '';
 
                     if (!tarefaId) {
-                        window.uiAlert('ID da tarefa não encontrado.');
+                        window.uiAlert('ID da tarefa n\u00E3o encontrado.');
                         return;
                     }
                     if (!motivo) {
-                        window.uiAlert('Informe o motivo da exclusão.');
+                        window.uiAlert('Informe o motivo da exclus\u00E3o.');
                         return;
                     }
 
@@ -2993,18 +2993,18 @@
                         .then(r => r.json())
                         .then(json => {
                             if (!json.ok) {
-                                window.uiAlert(json.message || 'Não foi possível excluir a tarefa.');
+                                window.uiAlert(json.message || 'N\u00E3o foi poss\u00EDvel excluir a tarefa.');
                                 return;
                             }
 
                             closeExcluirModal();
                             const modal = document.getElementById('tarefa-modal');
                             if (modal) modal.classList.add('hidden');
-                            window.uiAlert('Tarefa excluída com sucesso.', { icon: 'success', title: 'Sucesso' });
+                            window.uiAlert('Tarefa exclu\u00EDda com sucesso.', { icon: 'success', title: 'Sucesso' });
                             window.location.reload();
                         })
                         .catch(() => {
-                            window.uiAlert('Erro na comunicação com o servidor.');
+                            window.uiAlert('Erro na comunica\u00E7\u00E3o com o servidor.');
                         });
                 });
             }
@@ -3020,7 +3020,7 @@
                     const url = modal.dataset.editUrl;
 
                     if (!url) {
-                        window.uiAlert('Edição ainda não está disponível para este tipo de tarefa.');
+                        window.uiAlert('Edi\u00E7\u00E3o ainda n\u00E3o est\u00E1 dispon\u00EDvel para este tipo de tarefa.');
                         return;
                     }
 
@@ -3032,4 +3032,7 @@
     </script>
 
 @endpush
+
+
+
 
