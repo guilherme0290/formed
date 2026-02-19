@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 use App\Http\Controllers\Api\ClientesApiController;
 use App\Http\Controllers\Api\ServicosApiController;
@@ -470,6 +470,8 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
                 ->name('arquivos.index');
             Route::get('/arquivos/funcionarios/{funcionario}/download-todos', [ArquivoController::class, 'downloadFuncionario'])
                 ->name('arquivos.funcionario.download');
+            Route::post('/arquivos/download-por-funcionario', [ArquivoController::class, 'downloadPorFuncionario'])
+                ->name('arquivos.download-por-funcionario');
             Route::post('/arquivos/download-selecionados', [ArquivoController::class, 'downloadSelecionados'])
                 ->name('arquivos.download-selecionados');
             Route::post('/arquivos/funcionarios/{funcionario}/download-selecionados', [ArquivoController::class, 'downloadSelecionadosFuncionario'])
@@ -1183,4 +1185,3 @@ Route::get('operacional/tarefas/documento/{token}', [TarefaController::class, 'd
     ->name('operacional.tarefas.documento');
 
 require __DIR__.'/auth.php';
-

@@ -26,20 +26,67 @@ class ArquivoController extends Controller
             $request->session()->invalidate();
             $request->session()->regenerateToken();
             return redirect()->route('login', ['redirect' => 'cliente'])
-                ->with('error', 'Nenhum cliente selecionado. Faça login novamente pelo portal do cliente.');
+                ->with('error', 'Nenhum cliente selecionado. Faca login novamente pelo portal do cliente.');
         }
 
         $cliente = Cliente::findOrFail($clienteId);
         abort_unless((int) $funcionario->cliente_id === (int) $cliente->id, 403);
 
         try {
-            $zipPath = $zipService->gerarZip($cliente, $funcionario);
+            $zipPath = $zipService->gerarZip($cliente, $funcionario, false);
         } catch (\RuntimeException $e) {
             return back()->with('error', $e->getMessage());
         }
         $zipName = 'arquivos-' . str_replace(' ', '-', mb_strtolower($funcionario->nome)) . '.zip';
 
         return response()->download($zipPath, $zipName)->deleteFileAfterSend(true);
+    }
+
+    public function downloadPorFuncionario(Request $request, FuncionarioArquivosZipService $zipService)
+    {
+        $user = $request->user();
+        if (!$user || !$user->id) {
+            return redirect()->route('login', ['redirect' => 'cliente']);
+        }
+
+        $clienteId = (int) $request->session()->get('portal_cliente_id');
+        if ($clienteId <= 0) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+            return redirect()->route('login', ['redirect' => 'cliente'])
+                ->with('error', 'Nenhum cliente selecionado. Faca login novamente pelo portal do cliente.');
+        }
+
+        $cliente = Cliente::findOrFail($clienteId);
+        $funcionarioId = (int) $request->input('funcionario_id', 0);
+
+        try {
+            if ($funcionarioId > 0) {
+                $funcionario = Funcionario::query()
+                    ->where('id', $funcionarioId)
+                    ->where('cliente_id', $cliente->id)
+                    ->firstOrFail();
+
+                $zipPath = $zipService->gerarZip($cliente, $funcionario, false);
+                $zipName = 'arquivos-' . str_replace(' ', '-', mb_strtolower($funcionario->nome)) . '.zip';
+
+                return response()->download($zipPath, $zipName)->deleteFileAfterSend(true);
+            }
+
+            $tarefaIds = Tarefa::query()
+                ->where('cliente_id', $cliente->id)
+                ->whereNotNull('funcionario_id')
+                ->whereNotNull('path_documento_cliente')
+                ->pluck('id')
+                ->all();
+
+            $zipPath = $zipService->gerarZipPorIds($cliente, $tarefaIds, null, false);
+        } catch (\RuntimeException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return response()->download($zipPath, 'arquivos-todos-funcionarios.zip')->deleteFileAfterSend(true);
     }
 
     public function index(Request $request)
@@ -98,10 +145,7 @@ class ArquivoController extends Controller
         $funcionariosComArquivosIds = Tarefa::query()
             ->where('cliente_id', $cliente->id)
             ->whereNotNull('funcionario_id')
-            ->where(function ($q) {
-                $q->whereNotNull('path_documento_cliente')
-                    ->orWhereHas('anexos');
-            })
+            ->whereNotNull('path_documento_cliente')
             ->distinct()
             ->pluck('funcionario_id')
             ->filter()
@@ -158,7 +202,7 @@ class ArquivoController extends Controller
         $tarefaIds = (array) $request->input('tarefa_ids', []);
 
         try {
-            $zipPath = $zipService->gerarZipPorIds($cliente, $tarefaIds);
+            $zipPath = $zipService->gerarZipPorIds($cliente, $tarefaIds, null, false);
         } catch (\RuntimeException $e) {
             return back()->with('error', $e->getMessage());
         }
@@ -190,7 +234,7 @@ class ArquivoController extends Controller
         $tarefaIds = (array) $request->input('tarefa_ids', []);
 
         try {
-            $zipPath = $zipService->gerarZipPorIds($cliente, $tarefaIds, $funcionario);
+            $zipPath = $zipService->gerarZipPorIds($cliente, $tarefaIds, $funcionario, false);
         } catch (\RuntimeException $e) {
             return back()->with('error', $e->getMessage());
         }

@@ -27,12 +27,7 @@ class EnsureRoutePermission
             return $next($request);
         }
 
-        $permissionKey = $this->resolvePermissionKey($routeName, $request->method());
-        if ($permissionKey === null) {
-            return $next($request);
-        }
-
-        if ($this->userHasPermission($user, $permissionKey)) {
+        if ($this->isRouteAllowedForRole($user, $routeName)) {
             return $next($request);
         }
 
@@ -41,6 +36,35 @@ class EnsureRoutePermission
         }
 
         return $this->redirectWithoutPermission($request, $user);
+    }
+
+    private function isRouteAllowedForRole(User $user, string $routeName): bool
+    {
+        if (in_array($routeName, ['dashboard', 'profile.edit', 'profile.update', 'profile.destroy', 'estados.cidades'], true)) {
+            return true;
+        }
+
+        if ($user->hasPapel('Cliente')) {
+            return str_starts_with($routeName, 'cliente.');
+        }
+
+        if ($user->hasPapel('Operacional')) {
+            return str_starts_with($routeName, 'operacional.');
+        }
+
+        if ($user->hasPapel('Comercial')) {
+            return str_starts_with($routeName, 'comercial.');
+        }
+
+        if ($user->hasPapel('Financeiro')) {
+            return str_starts_with($routeName, 'financeiro.');
+        }
+
+        if ($user->hasPapel('Master')) {
+            return true;
+        }
+
+        return false;
     }
 
     private function userHasPermission(User $user, string $permissionKey): bool
@@ -236,10 +260,39 @@ class EnsureRoutePermission
         }
 
         if (
-            str_starts_with($routeName, 'cliente.arquivos.download-selecionados') ||
+            str_starts_with($routeName, 'cliente.arquivos.download') ||
             str_starts_with($routeName, 'cliente.arquivos.funcionario.download')
         ) {
             return 'cliente.dashboard.view';
+        }
+
+        return null;
+    }
+
+    private function resolveClienteProxyPermission(string $routeName): ?string
+    {
+        if (str_starts_with($routeName, 'operacional.kanban.aso.')) {
+            return 'cliente.servicos.aso';
+        }
+
+        if (str_starts_with($routeName, 'operacional.kanban.pgr.') || str_starts_with($routeName, 'operacional.pgr.')) {
+            return 'cliente.servicos.pgr';
+        }
+
+        if (str_starts_with($routeName, 'operacional.kanban.pcmso.') || str_starts_with($routeName, 'operacional.pcmso.')) {
+            return 'cliente.servicos.pcmso';
+        }
+
+        if (str_starts_with($routeName, 'operacional.ltcat.')) {
+            return 'cliente.servicos.ltcat';
+        }
+
+        if (str_starts_with($routeName, 'operacional.apr.')) {
+            return 'cliente.servicos.apr';
+        }
+
+        if (str_starts_with($routeName, 'operacional.treinamentos-nr.')) {
+            return 'cliente.servicos.treinamentos';
         }
 
         return null;

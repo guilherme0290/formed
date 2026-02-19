@@ -62,38 +62,77 @@
                 {{-- Grid de empresas --}}
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                     @forelse($clientes as $cliente)
-                        <a href="{{ route('operacional.kanban.servicos', $cliente) }}"
-                           class="group flex items-center justify-between px-4 py-3 rounded-xl border border-slate-200 bg-white hover:bg-sky-50 hover:border-sky-300 transition cursor-pointer">
-                            <div class="flex items-center gap-3">
-                                <div class="flex items-center justify-center w-9 h-9 rounded-xl bg-sky-50 text-sky-600 text-lg">
-                                    &#127970;
-                                </div>
-                                <div class="space-y-0.5">
-                                    <p class="text-sm font-medium text-slate-900">
-                                        {{ $cliente->razao_social ?? $cliente->nome_fantasia }}
-                                    </p>
-                                    <p class="text-[11px] text-slate-500">
-                                        @if($cliente->cnpj)
-                                            {{ $cliente->cnpj }}
-                                        @else
-                                            &nbsp;
-                                        @endif
-                                    </p>
-                                    @if($cliente->cidade)
-                                        <p class="text-[11px] text-slate-400">
-                                            {{ $cliente->cidade->nome }} - {{ $cliente->cidade->uf }}
+                        @php($isAtivoCadastro = (int) ($cliente->ativo ?? 1) === 1)
+                        @php($temContratoAtivo = (int) ($cliente->tem_contrato_ativo ?? 0) === 1)
+                        @php($canSelect = $isAtivoCadastro && $temContratoAtivo)
+                        @if($canSelect)
+                            <a href="{{ route('operacional.kanban.servicos', $cliente) }}"
+                               class="group flex items-center justify-between px-4 py-3 rounded-xl border border-slate-200 bg-white transition cursor-pointer hover:bg-sky-50 hover:border-sky-300">
+                                <div class="flex items-center gap-3">
+                                    <div class="flex items-center justify-center w-9 h-9 rounded-xl bg-sky-50 text-sky-600 text-lg">
+                                        &#127970;
+                                    </div>
+                                    <div class="space-y-0.5">
+                                        <p class="text-sm font-medium text-slate-900">
+                                            {{ $cliente->razao_social ?? $cliente->nome_fantasia }}
                                         </p>
-                                    @endif
+                                        <p class="text-[11px] text-slate-500">
+                                            @if($cliente->cnpj)
+                                                {{ $cliente->cnpj }}
+                                            @else
+                                                &nbsp;
+                                            @endif
+                                        </p>
+                                        @if($cliente->cidade)
+                                            <p class="text-[11px] text-slate-400">
+                                                {{ $cliente->cidade->nome }} - {{ $cliente->cidade->uf }}
+                                            </p>
+                                        @endif
+                                    </div>
                                 </div>
-                            </div>
 
-                            <span class="flex items-center gap-1 text-xs font-medium text-sky-600 group-hover:text-sky-700">
-                                <span>Selecionar</span>
-                                <span>></span>
-                            </span>
-                        </a>
+                                <span class="flex items-center gap-1 text-xs font-medium text-sky-600 group-hover:text-sky-700">
+                                    <span>Selecionar</span>
+                                    <span>></span>
+                                </span>
+                            </a>
+                        @else
+                            <div class="flex items-center justify-between px-4 py-3 rounded-xl border border-slate-200 bg-white opacity-50 cursor-not-allowed pointer-events-none">
+                                <div class="flex items-center gap-3">
+                                    <div class="flex items-center justify-center w-9 h-9 rounded-xl bg-sky-50 text-sky-600 text-lg">
+                                        &#127970;
+                                    </div>
+                                    <div class="space-y-0.5">
+                                        <p class="text-sm font-medium text-slate-900">
+                                            {{ $cliente->razao_social ?? $cliente->nome_fantasia }}
+                                        </p>
+                                        @if(!$isAtivoCadastro)
+                                            <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Cliente inativo</p>
+                                        @elseif(!$temContratoAtivo)
+                                            <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Sem contrato ativo</p>
+                                        @endif
+                                        <p class="text-[11px] text-slate-500">
+                                            @if($cliente->cnpj)
+                                                {{ $cliente->cnpj }}
+                                            @else
+                                                &nbsp;
+                                            @endif
+                                        </p>
+                                        @if($cliente->cidade)
+                                            <p class="text-[11px] text-slate-400">
+                                                {{ $cliente->cidade->nome }} - {{ $cliente->cidade->uf }}
+                                            </p>
+                                        @endif
+                                    </div>
+                                </div>
+
+                                <span class="flex items-center gap-1 text-xs font-medium text-slate-500">
+                                    <span>Indisponível</span>
+                                </span>
+                            </div>
+                        @endif
                     @empty
-                        <p class="text-sm text-slate-500">Nenhum cliente com contrato ativo encontrado.</p>
+                        <p class="text-sm text-slate-500">Nenhum cliente encontrado.</p>
                     @endforelse
                 </div>
 

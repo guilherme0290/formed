@@ -12,20 +12,21 @@ use ZipArchive;
 
 class FuncionarioArquivosZipService
 {
-    public function gerarZip(Cliente $cliente, Funcionario $funcionario): string
+    public function gerarZip(Cliente $cliente, Funcionario $funcionario, bool $includeAnexos = true): string
     {
-        $tarefas = Tarefa::query()
+        $query = Tarefa::query()
             ->where('cliente_id', $cliente->id)
             ->where('funcionario_id', $funcionario->id)
-            ->with(['servico', 'anexos'])
             ->orderByDesc('finalizado_em')
-            ->orderByDesc('updated_at')
-            ->get();
+            ->orderByDesc('updated_at');
 
-        return $this->gerarZipComTarefas($tarefas, 'funcionario-arquivos-' . $funcionario->id);
+        $query->with($includeAnexos ? ['servico', 'anexos'] : ['servico']);
+        $tarefas = $query->get();
+
+        return $this->gerarZipComTarefas($tarefas, 'funcionario-arquivos-' . $funcionario->id, $includeAnexos);
     }
 
-    public function gerarZipPorIds(Cliente $cliente, array $tarefaIds, ?Funcionario $funcionario = null): string
+    public function gerarZipPorIds(Cliente $cliente, array $tarefaIds, ?Funcionario $funcionario = null, bool $includeAnexos = true): string
     {
         $ids = collect($tarefaIds)
             ->map(fn ($id) => (int) $id)
@@ -40,9 +41,10 @@ class FuncionarioArquivosZipService
         $query = Tarefa::query()
             ->where('cliente_id', $cliente->id)
             ->whereIn('id', $ids->all())
-            ->with(['servico', 'anexos'])
             ->orderByDesc('finalizado_em')
             ->orderByDesc('updated_at');
+
+        $query->with($includeAnexos ? ['servico', 'anexos'] : ['servico']);
 
         if ($funcionario) {
             $query->where('funcionario_id', $funcionario->id);
@@ -53,10 +55,10 @@ class FuncionarioArquivosZipService
             throw new RuntimeException('Nenhum arquivo valido encontrado para os itens selecionados.');
         }
 
-        return $this->gerarZipComTarefas($tarefas, 'arquivos-selecionados');
+        return $this->gerarZipComTarefas($tarefas, 'arquivos-selecionados', $includeAnexos);
     }
 
-    private function gerarZipComTarefas($tarefas, string $zipPrefix): string
+    private function gerarZipComTarefas($tarefas, string $zipPrefix, bool $includeAnexos): string
     {
         $arquivos = [];
 
@@ -68,15 +70,17 @@ class FuncionarioArquivosZipService
                 ];
             }
 
-            foreach ($tarefa->anexos as $anexo) {
-                if (empty($anexo->path)) {
-                    continue;
-                }
+            if ($includeAnexos) {
+                foreach ($tarefa->anexos as $anexo) {
+                    if (empty($anexo->path)) {
+                        continue;
+                    }
 
-                $arquivos[] = [
-                    'path' => $anexo->path,
-                    'name' => $this->nomeArquivoAnexo($tarefa->id, (string) ($anexo->nome_original ?? 'anexo')),
-                ];
+                    $arquivos[] = [
+                        'path' => $anexo->path,
+                        'name' => $this->nomeArquivoAnexo($tarefa->id, (string) ($anexo->nome_original ?? 'anexo')),
+                    ];
+                }
             }
         }
 
