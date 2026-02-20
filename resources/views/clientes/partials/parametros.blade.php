@@ -591,7 +591,7 @@
                     examesJson: @json(route('comercial.exames.indexJson')),
                     medicoesJson: @json(route('comercial.medicoes.indexJson')),
                     gruposExames: @json(route('comercial.protocolos-exames.indexJson')),
-                    ghes: @json(route('comercial.ghes.indexJson')),
+                    clientesGhes: @json(route('comercial.clientes-ghes.indexJson')),
                     clientesAsoGrupos: @json(route('comercial.clientes-aso-grupos.indexJson')),
                     esocialPreco: (qtd) => @json(route('comercial.propostas.esocial-preco', ['qtd' => '__QTD__']))
                         .replace('__QTD__', encodeURIComponent(qtd)),
@@ -773,9 +773,24 @@
 
                 async function loadGheCatalog() {
                     try {
-                        const res = await fetch(URLS.ghes, { headers: { 'Accept': 'application/json' } });
+                        const clienteId = Number(el.clienteSelect?.value || 0);
+                        if (!clienteId) {
+                            state.gheCatalog = [];
+                            renderGheSelectOptions();
+                            return;
+                        }
+
+                        const res = await fetch(`${URLS.clientesGhes}?cliente_id=${clienteId}`, { headers: { 'Accept': 'application/json' } });
                         const json = await res.json();
-                        state.gheCatalog = json.data || [];
+                        state.gheCatalog = (json.data || []).map((ghe) => ({
+                            id: Number(ghe.id || 0),
+                            cliente_ghe_id: Number(ghe.id || 0),
+                            ghe_id: ghe.ghe_id ? Number(ghe.ghe_id) : null,
+                            nome: ghe.nome || '',
+                            grupo_exames_id: ghe.grupo_exames_id ? Number(ghe.grupo_exames_id) : null,
+                            protocolos: ghe.protocolos || {},
+                            total_exames_por_tipo: ghe.total_exames_por_tipo || {},
+                        }));
                         renderGheSelectOptions();
                     } catch (e) {
                         console.error(e);
@@ -784,15 +799,15 @@
 
                 function renderGheSelectOptions() {
                     if (!el.gheSelect) return;
-                    const current = String(state.currentGhe.ghe_id || '');
+                    const current = String(state.currentGhe.cliente_ghe_id || state.currentGhe.ghe_id || '');
                     el.gheSelect.innerHTML = '<option value="">Selecione o GHE...</option>';
                     state.gheCatalog.forEach(g => {
                         const opt = document.createElement('option');
-                        opt.value = g.id;
+                        opt.value = String(g.cliente_ghe_id || g.id || '');
                         opt.textContent = g.nome;
                         el.gheSelect.appendChild(opt);
                     });
-                    if (current && !state.gheCatalog.some(g => String(g.id) === current) && state.currentGhe.ghe_nome) {
+                    if (current && !state.gheCatalog.some(g => String(g.cliente_ghe_id || g.id || '') === current) && state.currentGhe.ghe_nome) {
                         const opt = document.createElement('option');
                         opt.value = current;
                         opt.textContent = state.currentGhe.ghe_nome;
@@ -813,12 +828,17 @@
 
                 function setCurrentGheFromSelect() {
                     const id = Number(el.gheSelect?.value || 0);
-                    const ghe = state.gheCatalog.find(g => Number(g.id) === id);
+                    const ghe = state.gheCatalog.find(g => Number(g.cliente_ghe_id || g.id || 0) === id);
                     if (!ghe) {
                         resetCurrentGheConfig();
                         return;
                     }
-                    state.currentGhe = { cliente_ghe_id: null, ghe_id: ghe.id, ghe_nome: ghe.nome, tipos: {} };
+                    state.currentGhe = {
+                        cliente_ghe_id: ghe.cliente_ghe_id || ghe.id || null,
+                        ghe_id: ghe.ghe_id || null,
+                        ghe_nome: ghe.nome,
+                        tipos: {},
+                    };
                     if (el.asoGheTitle) el.asoGheTitle.textContent = ghe.nome || '—';
                     if (el.btnAddGheConfig) el.btnAddGheConfig.textContent = '+ Adicionar este GHE à lista';
                     if (ghe.grupo_exames_id) {
@@ -828,6 +848,17 @@
                                 grupo_id: ghe.grupo_exames_id,
                                 grupo_titulo: grupo?.titulo || '',
                                 total_exames: Number(grupo?.total || 0),
+                            };
+                        });
+                    } else {
+                        ASO_TYPES.forEach(({ key }) => {
+                            const protocolo = ghe.protocolos?.[key];
+                            const grupoId = Number(protocolo?.id || 0);
+                            if (!grupoId) return;
+                            state.currentGhe.tipos[key] = {
+                                grupo_id: grupoId,
+                                grupo_titulo: protocolo?.titulo || '',
+                                total_exames: Number(ghe.total_exames_por_tipo?.[key] || 0),
                             };
                         });
                     }
@@ -1078,7 +1109,7 @@
                         card.querySelector('[data-action="edit"]').addEventListener('click', () => {
                             state.currentGhe = JSON.parse(JSON.stringify(cfg));
                             if (el.gheSelect) {
-                                const opt = cfg.ghe_id ? String(cfg.ghe_id) : '';
+                                const opt = cfg.cliente_ghe_id ? String(cfg.cliente_ghe_id) : (cfg.ghe_id ? String(cfg.ghe_id) : '');
                                 el.gheSelect.value = opt;
                             }
                             if (el.asoGheTitle) el.asoGheTitle.textContent = cfg.ghe_nome || '—';
@@ -1235,13 +1266,16 @@
                         loadGheCatalog();
                     });
 
-                    if (el.clienteSelect && !INITIAL?.isEdit) {
+                    if (el.clienteSelect) {
                         el.clienteSelect.addEventListener('change', () => {
                             const clienteId = el.clienteSelect.value;
                             if (!clienteId) return;
-                            loadClienteAsoGrupos(clienteId);
+                            loadGheCatalog();
+                            if (!INITIAL?.isEdit) {
+                                loadClienteAsoGrupos(clienteId);
+                            }
                         });
-                        if (el.clienteSelect.value) {
+                        if (el.clienteSelect.value && !INITIAL?.isEdit) {
                             loadClienteAsoGrupos(el.clienteSelect.value);
                         }
                     }
