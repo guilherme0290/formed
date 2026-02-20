@@ -40,7 +40,10 @@ return new class extends Migration
                 $table->timestamp('baixado_em')->nullable();
                 $table->timestamps();
 
-                $table->index(['empresa_id', 'fornecedor_id', 'status', 'vencimento']);
+                $table->index(
+                    ['empresa_id', 'fornecedor_id', 'status', 'vencimento'],
+                    'cpi_emp_forn_status_venc_idx'
+                );
             });
         }
     }
