@@ -15,6 +15,7 @@ use App\Models\ContaReceberItem;
 use App\Models\Proposta;
 use App\Models\Tarefa;
 use App\Models\Venda;
+use App\Models\Permissao;
 
 use Illuminate\Support\Facades\Password;
 
@@ -53,13 +54,16 @@ class AcessosController extends Controller
 
         $papeis = Papel::with('permissoes')->orderBy('nome')->get();
         $permissoes = \App\Models\Permissao::orderBy('escopo')->orderBy('nome')->get()->groupBy('escopo');
+        $usuariosPermissoes = User::with(['papel', 'permissoesDiretas'])
+            ->orderBy('name')
+            ->get();
 
         // pode ser fixo:
         $tipos = ['master','operacional','comercial.blade.php','financeiro','cliente'];
 
 
         return view('master.acessos.index', compact(
-            'tab','papeis','usuarios','q','papelId','status','tipos','tipo','permissoes','usuariosAutocomplete'
+            'tab','papeis','usuarios','q','papelId','status','tipos','tipo','permissoes','usuariosAutocomplete','usuariosPermissoes'
         ));
     }
 
@@ -224,5 +228,41 @@ class AcessosController extends Controller
         return back()->with('ok', 'Senha atualizada para '.$user->email);
     }
 
-}
+    public function usuariosSyncPermissoes(Request $request, User $user)
+    {
+        $papelNome = mb_strtolower((string) optional($user->papel)->nome);
+        if ($papelNome === 'cliente') {
+            return back()->with('error', 'Permissoes do Cliente sao fixas por regra do sistema.');
+        }
 
+        $data = $request->validate([
+            'permissoes' => ['array'],
+            'permissoes.*' => ['integer', 'exists:permissoes,id'],
+        ]);
+
+        $scopeMap = [
+            'comercial' => 'comercial',
+            'operacional' => 'operacional',
+            'financeiro' => 'financeiro',
+            'master' => null,
+        ];
+
+        $scope = $scopeMap[$papelNome] ?? null;
+
+        $permitidas = Permissao::query()
+            ->when($scope, fn ($q) => $q->where('escopo', $scope))
+            ->pluck('id')
+            ->all();
+
+        $selecionadas = collect($data['permissoes'] ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => in_array($id, $permitidas, true))
+            ->values()
+            ->all();
+
+        $user->permissoesDiretas()->sync($selecionadas);
+
+        return back()->with('ok', 'Permissoes atualizadas para o usuario '.$user->name.'.');
+    }
+
+}

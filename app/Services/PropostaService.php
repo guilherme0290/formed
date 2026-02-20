@@ -220,3 +220,4 @@ class PropostaService
         return $asoSnapshot;
     }
 }
+

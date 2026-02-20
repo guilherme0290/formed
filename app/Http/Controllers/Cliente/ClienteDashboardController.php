@@ -379,7 +379,7 @@ class ClienteDashboardController extends Controller
 
             return redirect()
                 ->route('login', ['redirect' => 'cliente'])
-                ->with('error', 'Nenhum cliente selecionado. Faça login novamente pelo portal do cliente.');
+                ->with('error', 'Nenhum cliente selecionado. Faca login novamente pelo portal do cliente.');
         }
 
         $cliente = Cliente::with('vendedor')->find($clienteId);
@@ -1225,3 +1225,4 @@ class ClienteDashboardController extends Controller
         return $bloqueados;
     }
 }
+

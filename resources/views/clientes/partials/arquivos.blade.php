@@ -1,13 +1,27 @@
-<div data-tab-panel="arquivos" data-tab-panel-root="cliente" class="hidden">
-    <div class="w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+﻿<div data-tab-panel="arquivos" data-tab-panel-root="cliente" class="hidden">
+    <div class="w-full mx-auto px-4 sm:px-6 lg:px-8 py-0">
         <div class="bg-white rounded-2xl shadow border border-slate-200 overflow-hidden">
             <div class="px-6 py-4 border-b bg-indigo-700 text-white">
                 <h1 class="text-lg font-semibold">Arquivos do Cliente</h1>
             </div>
 
             <div class="px-6 py-4 border-b border-slate-200 bg-slate-50/60">
-                <form method="GET" action="{{ route($routePrefix.'.edit', $cliente) }}"
-                      class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+                @if(($funcionariosComArquivos ?? collect())->isNotEmpty())
+                    <div class="mb-4">
+                        <p class="text-xs font-semibold text-slate-600 mb-2">Baixar todos por funcionário</p>
+                        <div class="flex flex-wrap gap-2">
+                            @foreach($funcionariosComArquivos as $func)
+                                <a href="{{ route($routePrefix.'.funcionarios.arquivos.download', ['cliente' => $cliente, 'funcionario' => $func]) }}"
+                                   class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-indigo-200 text-indigo-700 bg-white text-xs font-semibold hover:bg-indigo-50">
+                                    {{ $func->nome }}
+                                    <span class="text-[10px]">ZIP</span>
+                                </a>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+
+                <form method="GET" action="{{ route($routePrefix.'.edit', $cliente) }}" class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
                     <input type="hidden" name="tab" value="arquivos">
 
                     <div class="md:col-span-2">
@@ -17,8 +31,7 @@
                             name="q"
                             value="{{ request('q') }}"
                             placeholder="Ex: ASO - João da Silva"
-                            class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm
-                                   focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400"
+                            class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400"
                         >
                     </div>
 
@@ -28,8 +41,7 @@
                             type="date"
                             name="data_inicio"
                             value="{{ request('data_inicio') }}"
-                            class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm
-                                   focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400"
+                            class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400"
                         >
                     </div>
 
@@ -39,8 +51,7 @@
                             type="date"
                             name="data_fim"
                             value="{{ request('data_fim') }}"
-                            class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm
-                                   focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400"
+                            class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400"
                         >
                     </div>
 
@@ -48,8 +59,7 @@
                         <label class="text-xs font-semibold text-slate-600">Tipo de serviço</label>
                         <select
                             name="servico"
-                            class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white
-                                   focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400"
+                            class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400"
                         >
                             <option value="">Todos</option>
                             @foreach($servicosArquivos as $servico)
@@ -63,15 +73,13 @@
                     <div class="flex gap-2 md:justify-end">
                         <button
                             type="submit"
-                            class="inline-flex items-center justify-center px-4 py-2 rounded-lg
-                                   bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition"
+                            class="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition"
                         >
                             Filtrar
                         </button>
                         <a
                             href="{{ route($routePrefix.'.edit', ['cliente' => $cliente, 'tab' => 'arquivos']) }}"
-                            class="inline-flex items-center justify-center px-4 py-2 rounded-lg
-                                   border border-slate-300 text-slate-700 text-sm font-semibold hover:bg-slate-100 transition"
+                            class="inline-flex items-center justify-center px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-sm font-semibold hover:bg-slate-100 transition"
                         >
                             Limpar
                         </a>
@@ -80,20 +88,25 @@
             </div>
 
             <div class="overflow-x-auto">
-                <table class="min-w-full text-sm">
-                    <thead class="bg-slate-50 text-slate-600">
-                        <tr>
-                            <th class="px-5 py-3 text-left font-semibold">Serviço</th>
-                            <th class="px-5 py-3 text-left font-semibold">Tarefa</th>
-                            <th class="px-5 py-3 text-left font-semibold">Finalizado em</th>
-                            <th class="px-5 py-3 text-left font-semibold">Status</th>
-                            <th class="px-5 py-3 text-center font-semibold">Documento</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        @if($arquivos->isEmpty())
+                <form method="POST" action="{{ route($routePrefix.'.arquivos.download-selecionados', ['cliente' => $cliente]) }}">
+                    @csrf
+                    <table class="min-w-full text-sm">
+                        <thead class="bg-slate-50 text-slate-600">
                             <tr>
-                                <td colspan="5" class="px-5 py-6 text-center text-slate-500">
+                                <th class="px-5 py-3 text-left font-semibold w-10">
+                                    <input type="checkbox" class="rounded border-slate-300 js-check-all-arquivos-edicao">
+                                </th>
+                                <th class="px-5 py-3 text-left font-semibold">Serviço</th>
+                                <th class="px-5 py-3 text-left font-semibold">Tarefa</th>
+                                <th class="px-5 py-3 text-left font-semibold">Finalizado em</th>
+                                <th class="px-5 py-3 text-left font-semibold">Status</th>
+                                <th class="px-5 py-3 text-center font-semibold">Documento</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            @if($arquivos->isEmpty())
+                                <tr>
+                                    <td colspan="6" class="px-5 py-6 text-center text-slate-500">
                                     Nenhum documento disponível até o momento.
                                 </td>
                             </tr>
@@ -110,7 +123,10 @@
                                     });
                                 @endphp
                                 <tr class="hover:bg-slate-50/70">
-                                    <td class="px-5 py-3 text-slate-800">
+                                    <td class="px-5 py-3">
+                                            <input type="checkbox" name="tarefa_ids[]" value="{{ $tarefa->id }}" class="rounded border-slate-300 js-check-item-arquivo-edicao">
+                                        </td>
+                                        <td class="px-5 py-3 text-slate-800">
                                         {{ $tarefa->servico->nome ?? 'Serviço' }}
                                     </td>
                                     <td class="px-5 py-3 text-slate-700">
@@ -144,14 +160,36 @@
                                                     </a>
                                                 @endforeach
                                             </div>
-                                        @endif
-                                    </td>
-                                </tr>
-                            @endforeach
-                        @endif
-                    </tbody>
-                </table>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            @endif
+                        </tbody>
+                    </table>
+                    <div class="px-5 py-4 border-t border-slate-200 bg-slate-50/50 flex items-center justify-between">
+                        <span class="text-xs text-slate-500">Marque os arquivos desejados para baixar em um único ZIP</span>
+                        <button type="submit"
+                                class="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition">
+                            Baixar selecionados
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const checkAll = document.querySelector('.js-check-all-arquivos-edicao');
+    if (!checkAll) return;
+
+    const items = Array.from(document.querySelectorAll('.js-check-item-arquivo-edicao'));
+    checkAll.addEventListener('change', function () {
+        items.forEach((item) => {
+            item.checked = checkAll.checked;
+        });
+    });
+});
+</script>

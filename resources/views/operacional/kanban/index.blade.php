@@ -5,6 +5,40 @@
 @endphp
 
 @section('content')
+    @php
+        $permissionMap = $usuario?->papel?->permissoes?->pluck('chave')->flip()->all() ?? [];
+        $isMaster = $usuario?->hasPapel('Master');
+        $canCreateTask = $isMaster
+            || isset($permissionMap['operacional.tarefas.manage'])
+            || isset($permissionMap['operacional.aso.create'])
+            || isset($permissionMap['operacional.pgr.create'])
+            || isset($permissionMap['operacional.pcmso.create'])
+            || isset($permissionMap['operacional.ltcat.create'])
+            || isset($permissionMap['operacional.ltip.create'])
+            || isset($permissionMap['operacional.apr.create'])
+            || isset($permissionMap['operacional.pae.create'])
+            || isset($permissionMap['operacional.treinamentos.create']);
+        $canUpdateTask = $isMaster
+            || isset($permissionMap['operacional.tarefas.manage'])
+            || isset($permissionMap['operacional.aso.update'])
+            || isset($permissionMap['operacional.pgr.update'])
+            || isset($permissionMap['operacional.pcmso.update'])
+            || isset($permissionMap['operacional.ltcat.update'])
+            || isset($permissionMap['operacional.ltip.update'])
+            || isset($permissionMap['operacional.apr.update'])
+            || isset($permissionMap['operacional.pae.update'])
+            || isset($permissionMap['operacional.treinamentos.update']);
+        $canDeleteTask = $isMaster
+            || isset($permissionMap['operacional.tarefas.manage'])
+            || isset($permissionMap['operacional.aso.delete'])
+            || isset($permissionMap['operacional.pgr.delete'])
+            || isset($permissionMap['operacional.pcmso.delete'])
+            || isset($permissionMap['operacional.ltcat.delete'])
+            || isset($permissionMap['operacional.ltip.delete'])
+            || isset($permissionMap['operacional.apr.delete'])
+            || isset($permissionMap['operacional.pae.delete'])
+            || isset($permissionMap['operacional.treinamentos.delete']);
+    @endphp
 
     @if (session('ok'))
         <div class="mb-4 rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700">
@@ -72,11 +106,11 @@
                 </form>
             </div>
 
-            <a href="{{ route('operacional.kanban.aso.clientes') }}"
+            <a href="{{ $canCreateTask ? route('operacional.kanban.aso.clientes') : 'javascript:void(0)' }}"
+               @if(!$canCreateTask) title="Usu�rio sem permiss�o" aria-disabled="true" @endif
                class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl
-                  bg-gradient-to-r from-sky-500 to-cyan-400
-                  text-white text-sm font-semibold shadow-md shadow-sky-500/30
-                  hover:from-sky-600 hover:to-cyan-500 transition">
+                  {{ $canCreateTask ? 'bg-gradient-to-r from-sky-500 to-cyan-400 text-white shadow-md shadow-sky-500/30 hover:from-sky-600 hover:to-cyan-500' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}
+                  text-sm font-semibold transition">
                 <span>Nova Tarefa</span>
             </a>
         </div>
@@ -212,6 +246,16 @@
                 </div>
             </form>
         </section>
+        <div class="mb-4 flex flex-wrap items-center gap-2 text-[11px] text-slate-600">
+            <span class="font-semibold text-slate-700">Legenda (Pendente):</span>
+            <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-slate-200 bg-white">
+                <span class="inline-block w-2 h-2 rounded-full" style="background:#2563eb;"></span> ASO
+            </span>
+            <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-slate-200 bg-white">
+                <span class="inline-block w-2 h-2 rounded-full" style="background:#16a34a;"></span> Treinamentos NRs
+            </span>
+            <span class="text-slate-500">Demais serviços seguem a cor da coluna.</span>
+        </div>
         @php
             $statusCardsConfig = [
                 'pendente'              => ['icon' => '⏳', 'bg' => 'from-amber-400 to-amber-500'],
@@ -399,6 +443,17 @@
                                             $editUrl = route('operacional.treinamentos-nr.edit', $tarefa);
                                         }
 
+                                        $slugColunaAtual = Str::slug((string) ($coluna->slug ?? $coluna->nome ?? ''));
+                                        $isColunaPendente = in_array($slugColunaAtual, ['pendente', 'pendentes'], true);
+                                        $cardBorderColor = $coluna->cor;
+                                        if ($isColunaPendente) {
+                                            if ($isAsoTask) {
+                                                $cardBorderColor = '#2563eb'; // azul
+                                            } elseif ($servicoNome === 'Treinamentos NRs') {
+                                                $cardBorderColor = '#16a34a'; // verde
+                                            }
+                                        }
+
                                     @endphp
 
 
@@ -408,7 +463,7 @@
                                         class="kanban-card bg-white rounded-2xl shadow-md border border-slate-200 border-l-4
                                         px-3 py-3 text-xs cursor-pointer hover:shadow-lg transition hover:-translate-y-0.5"
                                         @if($isCancelada) opacity-60 ring-1 ring-red-200 @endif"
-                                    style="border-left-color: {{ $coluna->cor  }};"
+                                    style="border-left-color: {{ $cardBorderColor }};"
 
                                     data-move-url="{{ route('operacional.tarefas.mover', $tarefa) }}"
 
@@ -422,7 +477,6 @@
                                                 'id'          => $anexo->id,
                                                 'nome'        => $anexo->nome_original,
                                                 'url'         => $anexo->url,                 // S3
-                                                'delete_url'  => route('operacional.anexos.destroy', $anexo),
                                                 'mime'        => $anexo->mime_type,
                                                 'tamanho'     => $anexo->tamanho_humano,      // opcional
                                                 'servico'     => $anexo->servico,
@@ -1332,9 +1386,12 @@
                             {{-- NOVO: botão Editar Tarefa --}}
                             <button type="button"
                                     id="btn-editar-tarefa"
+                                    data-permission-locked="{{ $canUpdateTask ? '0' : '1' }}"
+                                    @if(!$canUpdateTask) title="Usu�rio sem permiss�o" @endif
                                     class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg
-                       bg-emerald-500 text-white text-sm font-semibold shadow-sm
-                       hover:bg-emerald-600 transition">
+                       {{ $canUpdateTask ? 'bg-emerald-500 text-white hover:bg-emerald-600' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} text-sm font-semibold shadow-sm
+                       transition"
+                                    @if(!$canUpdateTask) disabled @endif>
                                 Editar Tarefa
                             </button>
 
@@ -1343,17 +1400,23 @@
 
                             <button type="button"
                                     data-coluna-id="2"
+                                    data-permission-locked="{{ $canUpdateTask ? '0' : '1' }}"
+                                    @if(!$canUpdateTask) title="Usu�rio sem permiss�o" @endif
                                     class="js-mover-coluna w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg
-                       bg-[color:var(--color-brand-azul,#2563eb)] text-white text-sm font-semibold shadow-sm
-                       hover:bg-blue-700 transition">
+                       {{ $canUpdateTask ? 'bg-[color:var(--color-brand-azul,#2563eb)] text-white hover:bg-blue-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} text-sm font-semibold shadow-sm
+                       transition"
+                                    @if(!$canUpdateTask) disabled @endif>
                                 Mover para: Em Execução
                             </button>
 
                             <button type="button"
                                     data-coluna-id="6"
+                                    data-permission-locked="{{ $canUpdateTask ? '0' : '1' }}"
+                                    @if(!$canUpdateTask) title="Usu�rio sem permiss�o" @endif
                                     class="js-mover-coluna w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg
-                       bg-rose-500 text-white text-sm font-semibold shadow-sm
-                       hover:bg-rose-600 transition">
+                       {{ $canUpdateTask ? 'bg-rose-500 text-white hover:bg-rose-600' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} text-sm font-semibold shadow-sm
+                       transition"
+                                    @if(!$canUpdateTask) disabled @endif>
                                 Mover para: Atrasado
                             </button>
                         </div>
@@ -1467,9 +1530,12 @@
                                 <button
                                     type="button"
                                     id="btn-excluir-tarefa"
+                                    data-permission-locked="{{ $canDeleteTask ? '0' : '1' }}"
+                                    @if(!$canDeleteTask) title="Usu�rio sem permiss�o" @endif
                                     class="mt-2 w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg
-                                   border border-red-200 bg-red-50 text-red-700 text-sm font-semibold shadow-sm
-                                   hover:bg-red-100 transition">
+                                   border {{ $canDeleteTask ? 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100' : 'border-slate-300 bg-slate-200 text-slate-500 cursor-not-allowed' }} text-sm font-semibold shadow-sm
+                                   transition"
+                                    @if(!$canDeleteTask) disabled @endif>
                                     Excluir Tarefa
                                 </button>
                             @endif
@@ -2359,7 +2425,9 @@
 
                 function toggleBtn(btn, disabled) {
                     if (!btn) return;
-                    if (disabled) {
+                    const permissionLocked = btn.dataset.permissionLocked === '1';
+                    const shouldDisable = disabled || permissionLocked;
+                    if (shouldDisable) {
                         btn.setAttribute('disabled', 'disabled');
                         btn.classList.add('opacity-50', 'cursor-not-allowed');
                     } else {
@@ -2774,6 +2842,20 @@
                 });
             }
 
+            function resolveCardBorderColor(card, colunaEl) {
+                const colunaCor = colunaEl?.dataset?.colunaCor || '#38bdf8';
+                const colunaSlug = String(colunaEl?.dataset?.colunaSlug || '').toLowerCase();
+                const isAso = String(card?.dataset?.isAso || '') === '1';
+                const servico = String(card?.dataset?.servico || '');
+
+                if (colunaSlug === 'pendente' || colunaSlug === 'pendentes') {
+                    if (isAso) return '#2563eb';
+                    if (servico === 'Treinamentos NRs') return '#16a34a';
+                }
+
+                return colunaCor;
+            }
+
             if (docsList) {
                 docsList.addEventListener('click', async function (event) {
                     const btn = event.target.closest('[data-doc-delete-url]');
@@ -2845,9 +2927,9 @@
                 if (!destino) return;
                 destino.appendChild(card);
 
-                const colunaCor = destino.dataset.colunaCor || '';
-                if (colunaCor) {
-                    card.style.borderLeftColor = colunaCor;
+                const cardColor = resolveCardBorderColor(card, destino);
+                if (cardColor) {
+                    card.style.borderLeftColor = cardColor;
                 }
 
                 if (colunaNome) {
@@ -2934,8 +3016,9 @@
                             }
 
                             // ajusta cor da borda com a cor da coluna
-                            if (colunaCor) {
-                                card.style.borderLeftColor = colunaCor;
+                            const cardColor = resolveCardBorderColor(card, colunaEl);
+                            if (cardColor) {
+                                card.style.borderLeftColor = cardColor;
                             }
 
                             // Se soltou na coluna "finalizada": NÃO chama mover(),
@@ -2999,10 +3082,10 @@
                                     card.dataset.finalizado = (colunaSlug === 'finalizada') ? '1' : '0';
 
                                     const respBadge = card.querySelector('[data-role="card-responsavel-badge"]');
-                                    if (respBadge && colunaCor) {
-                                        respBadge.style.borderColor = colunaCor;
+                                    if (respBadge && cardColor) {
+                                        respBadge.style.borderColor = cardColor;
                                         respBadge.style.color = '#0f172a';
-                                        respBadge.style.backgroundColor = colunaCor + '20';
+                                        respBadge.style.backgroundColor = cardColor + '20';
                                     }
 
                                     if (data.log) {
@@ -3284,3 +3367,4 @@
     </script>
 
 @endpush
+

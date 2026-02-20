@@ -103,14 +103,15 @@
                     </a>
                 </div>
 
-                {{-- Botao amarelo "Realizar Pagamento" (desabilitado por ora) --}}
+                {{-- Botao amarelo "Realizar Pagamento" --}}
                 <button
                     type="button"
                     disabled
+                    aria-disabled="true"
                     class="w-full rounded-md bg-amber-300/70 text-xs md:text-[13px] font-semibold
-                           text-slate-600 px-3 py-2 flex items-center justify-center gap-2 shadow-inner shadow-amber-200/50 cursor-not-allowed">
-                    <span class="text-[10px] font-semibold">💳</span>
-                    Realizar Pagamento (em breve)
+                           text-slate-700/70 px-3 py-2 flex items-center justify-center shadow-inner shadow-amber-200/40
+                           opacity-60 cursor-not-allowed pointer-events-none">
+                    Realizar Pagamento
                 </button>
             </div>
 

@@ -1,4 +1,4 @@
-@php
+﻿@php
     $user = auth()->user();
     $vendedores = $vendedores ?? collect();
 
@@ -17,7 +17,15 @@
 @extends($layout)
 
 @section('content')
-    @php($routePrefix = $routePrefix ?? 'clientes')
+    @php
+        $routePrefix = $routePrefix ?? 'clientes';
+        $permPrefix = str_starts_with($routePrefix, 'comercial.') ? 'comercial.clientes' : 'master.clientes';
+        $permissionMap = $user?->papel?->permissoes?->pluck('chave')->flip()->all() ?? [];
+        $isMaster = $user?->hasPapel('Master');
+        $canCreate = $isMaster || isset($permissionMap[$permPrefix.'.create']);
+        $canUpdate = $isMaster || isset($permissionMap[$permPrefix.'.update']);
+        $canSave = $cliente->exists ? $canUpdate : $canCreate;
+    @endphp
 
     {{-- MENSAGENS --}}
     @if (session('ok'))
@@ -31,15 +39,20 @@
             {{ session('erro') }}
         </div>
     @endif
+    @if (session('error'))
+        <div class="mb-4 rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-700">
+            {{ session('error') }}
+        </div>
+    @endif
 
     <div class="w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div class="mb-6">
+        <div class="mb-2">
             <a href="{{ route($routePrefix.'.index') }}"
                class="inline-flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900">
-                <span class="text-base">←</span>
+                <span class="text-base">&larr;</span>
                 Voltar
             </a>
-            <div class="mt-4">
+            <div class="mt-1">
 
 {{--                <h1 class="mt-3 text-3xl font-semibold text-slate-900">--}}
 {{--                    {{ $cliente->exists ? 'Editar Cliente' : 'Cadastrar Cliente' }}--}}
@@ -49,7 +62,7 @@
         </div>
 
         @if($cliente->exists)
-            <div class="mb-6 w-full mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="mb-1 w-full mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex flex-wrap gap-2" data-tabs="cliente">
                     <button type="button"
                             class="px-4 py-2 rounded-full text-sm font-semibold text-slate-600 hover:bg-slate-100"
@@ -59,7 +72,7 @@
                     <button type="button"
                             class="px-4 py-2 rounded-full text-sm font-semibold text-slate-600 hover:bg-slate-100"
                             data-tab="parametros">
-                        Parâmetros
+                        Par&acirc;metros
                     </button>
                     <button type="button"
                             class="px-4 py-2 rounded-full text-sm font-semibold text-slate-600 hover:bg-slate-100"
@@ -129,9 +142,9 @@
                 </div>
 
                 <div>
-                    <label class="text-sm">Razão Social</label>
+                    <label class="text-sm">Raz&atilde;o Social</label>
                     <input name="razao_social" value="{{ old('razao_social', $cliente->razao_social) }}"
-                           class="w-full border-gray-300 rounded-lg px-3 py-2">
+                           class="w-full border-gray-300 rounded-lg px-3 py-2 uppercase">
                     @error('razao_social')
                     <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
                     @enderror
@@ -140,7 +153,7 @@
                 <div>
                     <label class="text-sm">Nome Fantasia</label>
                     <input name="nome_fantasia" value="{{ old('nome_fantasia', $cliente->nome_fantasia) }}"
-                           class="w-full border-gray-300 rounded-lg px-3 py-2">
+                           class="w-full border-gray-300 rounded-lg px-3 py-2 uppercase">
                     @error('nome_fantasia')
                     <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
                     @enderror
@@ -148,12 +161,21 @@
             </div>
 
             {{-- LINHA 2 --}}
-            <div class="grid md:grid-cols-3 gap-4 items-center">
+            <div class="grid md:grid-cols-4 gap-4 items-center">
                 <div>
                     <label class="text-sm">E-mail</label>
                     <input name="email" value="{{ old('email', $cliente->email) }}"
                            class="w-full border-gray-300 rounded-lg px-3 py-2">
                     @error('email')
+                    <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <div>
+                    <label class="text-sm">Contato</label>
+                    <input name="contato" value="{{ old('contato', $cliente->contato) }}"
+                           class="w-full border-gray-300 rounded-lg px-3 py-2 uppercase">
+                    @error('contato')
                     <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
                     @enderror
                 </div>
@@ -168,25 +190,52 @@
                 </div>
 
                 <div>
-                    <label class="text-sm">Contato</label>
-                    <input name="contato" value="{{ old('contato', $cliente->contato) }}"
+                    <label class="text-sm">Telefone 2</label>
+                    <input name="telefone_2" value="{{ old('telefone_2', $cliente->telefone_2) }}"
                            class="w-full border-gray-300 rounded-lg px-3 py-2">
-                    @error('contato')
+                    @error('telefone_2')
                     <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
                     @enderror
                 </div>
             </div>
 
-            {{-- BLOCO ENDEREÇO --}}
+            <div class="grid md:grid-cols-3 gap-4 items-start">
+                <div>
+                    <label id="tipo-cliente-label" class="text-base font-medium">Tipo de Cliente <span class="text-red-600">*</span></label>
+                    <div class="mt-2 space-y-2" role="radiogroup" aria-labelledby="tipo-cliente-label">
+                        <label class="flex items-center gap-3 text-base text-slate-700">
+                            <input type="radio" name="tipo_cliente" value="parceiro" class="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500" @checked(old('tipo_cliente', $cliente->tipo_cliente ?? 'final') === 'parceiro') required>
+                            <span>Cliente Parceiro</span>
+                        </label>
+                        <label class="flex items-center gap-3 text-base text-slate-700">
+                            <input type="radio" name="tipo_cliente" value="final" class="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500" @checked(old('tipo_cliente', $cliente->tipo_cliente ?? 'final') === 'final') required>
+                            <span>Cliente Final</span>
+                        </label>
+                    </div>
+                    @error('tipo_cliente')
+                    <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <div class="md:col-span-2">
+                    <label class="text-sm">Observa&ccedil;&atilde;o <span id="obs-required-star" class="text-red-600 hidden">*</span></label>
+                    <textarea id="observacao" name="observacao" rows="3" class="w-full border-gray-300 rounded-lg px-3 py-2 uppercase">{{ old('observacao', $cliente->observacao) }}</textarea>
+                    @error('observacao')
+                    <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+            </div>
+
+            {{-- BLOCO ENDEREÃ‡O --}}
             <div class="border rounded-xl p-4 bg-gray-50">
-                <h2 class="font-medium mb-4 text-gray-800">Endereço</h2>
+                <h2 class="font-medium mb-4 text-gray-800">Endere&ccedil;o</h2>
 
                 <div class="grid md:grid-cols-4 gap-4">
                     <div>
                         <label class="text-sm">CEP</label>
                         <input id="cep" name="cep" value="{{ old('cep', $cliente->cep) }}"
                                class="w-full border-gray-300 rounded-lg px-3 py-2"
-                               placeholder="Somente números">
+                               placeholder="Somente n&uacute;meros">
                         @error('cep')
                         <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
                         @enderror
@@ -210,6 +259,7 @@
                     <div class="md:col-span-2">
                         <label class="text-sm">Cidade</label>
                         <select name="cidade_id" id="cidade_id"
+                                data-selected-id="{{ old('cidade_id', $cliente->cidade_id) }}"
                                 class="w-full border-gray-300 rounded-lg px-3 py-2">
                             <option value="">Selecione...</option>
                             @foreach($cidadesDoEstado as $cid)
@@ -227,16 +277,16 @@
 
                 <div class="grid md:grid-cols-3 gap-4 mt-4">
                     <div>
-                        <label class="text-sm">Endereço</label>
+                        <label class="text-sm">Endere&ccedil;o</label>
                         <input id="endereco" name="endereco" value="{{ old('endereco', $cliente->endereco) }}"
-                               class="w-full border-gray-300 rounded-lg px-3 py-2">
+                               class="w-full border-gray-300 rounded-lg px-3 py-2 uppercase">
                         @error('endereco')
                         <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
                         @enderror
                     </div>
 
                     <div>
-                        <label class="text-sm">Número</label>
+                        <label class="text-sm">N&uacute;mero</label>
                         <input name="numero" value="{{ old('numero', $cliente->numero) }}"
                                class="w-full border-gray-300 rounded-lg px-3 py-2">
                         @error('numero')
@@ -247,7 +297,7 @@
                     <div>
                         <label class="text-sm">Bairro</label>
                         <input id="bairro" name="bairro" value="{{ old('bairro', $cliente->bairro) }}"
-                               class="w-full border-gray-300 rounded-lg px-3 py-2">
+                               class="w-full border-gray-300 rounded-lg px-3 py-2 uppercase">
                         @error('bairro')
                         <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
                         @enderror
@@ -257,15 +307,15 @@
                 <div class="mt-4">
                     <label class="text-sm">Complemento</label>
                     <input name="complemento" value="{{ old('complemento', $cliente->complemento) }}"
-                           class="w-full border-gray-300 rounded-lg px-3 py-2">
+                           class="w-full border-gray-300 rounded-lg px-3 py-2 uppercase">
                     @error('complemento')
                     <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
                     @enderror
                 </div>
             </div>
 
-            {{-- BOTÕES --}}
-            <div class="flex flex-wrap justify-end gap-3"><button class="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-base font-semibold shadow-md shadow-blue-200">
+            {{-- BOTÃ•ES --}}
+            <div class="flex flex-wrap justify-end gap-3"><button @if(!$canSave) disabled title="Usuário sem permissão" @endif class="w-full px-6 py-3 rounded-2xl text-base font-semibold shadow-md {{ $canSave ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}">
                     {{ $cliente->exists ? 'Salvar Alterações' : 'Cadastrar' }}
                 </button>
             </div>
@@ -280,7 +330,7 @@
 
             @if($cliente->exists)
                 <div data-tab-panel="vendedor" data-tab-panel-root="cliente" class="hidden">
-                    <div class="w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+                    <div class="w-full mx-auto px-4 sm:px-6 lg:px-8 py-0">
                         <div class="bg-white rounded-2xl shadow border border-slate-200 overflow-hidden">
                             <div class="px-6 py-4 border-b bg-slate-900 text-white">
                                 <h1 class="text-lg font-semibold">Vendedor</h1>
@@ -293,7 +343,7 @@
                                 <input type="hidden" name="update_vendedor" value="1">
 
                                 <div>
-                                    <label class="text-sm font-medium text-slate-700">Vendedor responsável</label>
+                                    <label class="text-sm font-medium text-slate-700">Vendedor respons&aacute;vel</label>
                                     <select name="vendedor_id"
                                             class="w-full mt-2 border-slate-300 rounded-lg px-3 py-2">
                                         <option value="">Selecione...</option>
@@ -310,7 +360,7 @@
                                 </div>
 
                                 <div class="flex justify-end">
-                                    <button class="px-5 py-2 rounded-xl bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800">
+                                    <button @if(!$canUpdate) disabled title="Usuário sem permissão" @endif class="px-5 py-2 rounded-xl text-sm font-semibold {{ $canUpdate ? 'bg-slate-900 text-white hover:bg-slate-800' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}">
                                         Salvar vendedor
                                     </button>
                                 </div>
@@ -326,7 +376,7 @@
         </div>
     </div>
 
-    {{-- jQuery + MÁSCARAS (CNPJ, CEP, Telefone) --}}
+    {{-- jQuery + MÃƒÆ’Ã†â€™Ãƒâ€šÃ‚ÂSCARAS (CNPJ, CEP, Telefone) --}}
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
     <script>
@@ -381,7 +431,7 @@
             // CEP
             $('#cep').mask('00000-000');
 
-            // Telefone (celular/padrão BR)
+            // Telefone (celular/padrÃƒÆ’Ã‚Â£o BR)
             $('input[name="telefone"]').mask('(00) 00000-0000');
         });
     </script>
@@ -394,12 +444,12 @@
                 .toString()
                 .normalize('NFD')                     // quebra acentos
                 .replace(/[\u0300-\u036f]/g, '')     // remove marcas de acento
-                .replace(/\s+/g, ' ')                // colapsa espaços
+                .replace(/\s+/g, ' ')                // colapsa espaÃƒÆ’Ã‚Â§os
                 .trim()
                 .toUpperCase();
         }
 
-        async function carregarCidadesPorUf(uf, cidadeNomeSelecionar = null) {
+        async function carregarCidadesPorUf(uf, cidadeNomeSelecionar = null, cidadeIdSelecionar = null) {
             const cidadeSelect = document.querySelector('#cidade_id');
 
             if (!cidadeSelect) return;
@@ -420,12 +470,13 @@
             const alvoNorm = cidadeNomeSelecionar
                 ? normalizarTexto(cidadeNomeSelecionar)
                 : null;
+            const alvoId = cidadeIdSelecionar ? String(cidadeIdSelecionar) : null;
 
             json.forEach(c => {
                 const nomeOriginal = (c.nome || '').toString().trim();
                 const nomeNorm     = normalizarTexto(nomeOriginal);
 
-                const isSelected = alvoNorm && nomeNorm === alvoNorm;
+                const isSelected = (alvoId && String(c.id) === alvoId) || (alvoNorm && nomeNorm === alvoNorm);
 
                 const opt = document.createElement('option');
                 opt.value = c.id;
@@ -440,6 +491,18 @@
             const uf = e.target.value;
             await carregarCidadesPorUf(uf);
         });
+        (async function inicializarCidadePorUf() {
+            const estadoSelect = document.querySelector('#estado');
+            const cidadeSelect = document.querySelector('#cidade_id');
+            if (!estadoSelect || !cidadeSelect) return;
+
+            const ufInicial = estadoSelect.value;
+            const cidadeInicialId = cidadeSelect.dataset.selectedId;
+
+            if (ufInicial && cidadeSelect.options.length <= 1) {
+                await carregarCidadesPorUf(ufInicial, null, cidadeInicialId);
+            }
+        })();
         document.querySelector('#cep').addEventListener('blur', async function () {
             let cep = this.value.replace(/\D/g, '');
 
@@ -483,7 +546,7 @@
         document.querySelector('input[name="cnpj"]').addEventListener('blur', async function () {
             let cnpjLimpo = this.value.replace(/\D/g, '');
 
-            // CNPJ vazio ou incompleto: não faz nada
+            // CNPJ vazio ou incompleto: nÃƒÆ’Ã‚Â£o faz nada
             if (cnpjLimpo.length !== 14) {
                 return;
             }
@@ -511,7 +574,7 @@
                     return;
                 }
 
-                // Preenche campos básicos
+                // Preenche campos bÃƒÆ’Ã‚Â¡sicos
                 if (razaoInput && json.razao_social) {
                     razaoInput.value = json.razao_social;
                 }
@@ -561,8 +624,8 @@
                     }
                 }
 
-                // OBS: se você quiser, aqui ainda pode disparar manualmente o blur do CEP
-                // para “refinar” o endereço via ViaCEP:
+                // OBS: se vocÃƒÆ’Ã‚Âª quiser, aqui ainda pode disparar manualmente o blur do CEP
+                // para "refinar" o endereÃƒÆ’Ã‚Â§o via ViaCEP:
                 // if (cepInput && cepInput.value) {
                 //     cepInput.dispatchEvent(new Event('blur'));
                 // }
@@ -578,16 +641,16 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            // pega o primeiro input com name="cnpj" da página
+            // pega o primeiro input com name="cnpj" da pÃƒÆ’Ã‚Â¡gina
             var cnpjInput = document.querySelector('input[name="cnpj"]');
             var formCliente = cnpjInput?.closest('form');
             var cnpjDuplicado = false;
             if (!cnpjInput) return;
 
-            // máscara enquanto digita
+            // mÃƒÆ’Ã‚Â¡scara enquanto digita
             cnpjInput.addEventListener('input', function () {
-                var v = cnpjInput.value.replace(/\D/g, '');   // só números
-                v = v.slice(0, 14);                           // máximo 14 dígitos
+                var v = cnpjInput.value.replace(/\D/g, '');   // sÃƒÆ’Ã‚Â³ nÃƒÆ’Ã‚Âºmeros
+                v = v.slice(0, 14);                           // mÃƒÆ’Ã‚Â¡ximo 14 dÃƒÆ’Ã‚Â­gitos
 
                 if (v.length > 12) {
                     // 00.000.000/0000-00
@@ -606,7 +669,7 @@
                 }
             });
 
-            // validação ao sair do campo
+            // validaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o ao sair do campo
             cnpjInput.addEventListener('blur', async function () {
                 var cnpjLimpo = cnpjInput.value.replace(/\D/g, '');
 
@@ -616,7 +679,7 @@
                 }
 
                 if (!cnpjValido(cnpjLimpo)) {
-                    mostrarErroCNPJ(cnpjInput, 'CNPJ inválido');
+                    mostrarErroCNPJ(cnpjInput, 'CNPJ invÃƒÆ’Ã‚Â¡lido');
                     cnpjDuplicado = false;
                 } else {
                     limparErroCNPJ(cnpjInput);
@@ -630,7 +693,7 @@
                         const json = await resp.json();
                         if (json?.exists) {
                             cnpjDuplicado = true;
-                            mostrarErroCNPJ(cnpjInput, 'Já existe um cliente cadastrado com este CNPJ.');
+                            mostrarErroCNPJ(cnpjInput, 'JÃƒÆ’Ã‚Â¡ existe um cliente cadastrado com este CNPJ.');
                         } else {
                             cnpjDuplicado = false;
                             limparErroCNPJ(cnpjInput);
@@ -644,16 +707,16 @@
             formCliente?.addEventListener('submit', (e) => {
                 if (cnpjDuplicado) {
                     e.preventDefault();
-                    mostrarErroCNPJ(cnpjInput, 'Já existe um cliente cadastrado com este CNPJ.');
+                    mostrarErroCNPJ(cnpjInput, 'JÃƒÆ’Ã‚Â¡ existe um cliente cadastrado com este CNPJ.');
                 }
             });
         });
 
-        // valida CNPJ (algoritmo padrão)
+        // valida CNPJ (algoritmo padrÃƒÆ’Ã‚Â£o)
         function cnpjValido(cnpj) {
             if (!cnpj || cnpj.length !== 14) return false;
 
-            // elimina sequências como 00.000.000/0000-00, 11..., etc.
+            // elimina sequÃƒÆ’Ã‚Âªncias como 00.000.000/0000-00, 11..., etc.
             if (/^(\d)\1{13}$/.test(cnpj)) return false;
 
             var tamanho = 12;
@@ -715,5 +778,71 @@
         }
     </script>
 
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const radios = Array.from(document.querySelectorAll('input[name="tipo_cliente"]'));
+            const observacao = document.getElementById('observacao');
+            const star = document.getElementById('obs-required-star');
+
+            if (!radios.length || !observacao) {
+                return;
+            }
+
+            const syncRequired = () => {
+                const selecionado = radios.find((r) => r.checked)?.value;
+                const required = selecionado === 'parceiro';
+                observacao.required = required;
+                if (star) {
+                    star.classList.toggle('hidden', !required);
+                }
+            };
+
+            radios.forEach((radio) => radio.addEventListener('change', syncRequired));
+            syncRequired();
+        });
+    </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const tipoInput = document.querySelector('input[name="tipo_cliente"]');
+            const formDados = tipoInput ? tipoInput.closest('form') : null;
+            const observacao = document.getElementById('observacao');
+            const radios = Array.from(document.querySelectorAll('input[name="tipo_cliente"]'));
+
+            if (!formDados || !observacao || !radios.length) {
+                return;
+            }
+
+            formDados.addEventListener('submit', function (event) {
+                const tipoSelecionado = radios.find((r) => r.checked)?.value;
+                const obsVazia = !observacao.value || observacao.value.trim() === '';
+
+                if (tipoSelecionado === 'parceiro' && obsVazia) {
+                    event.preventDefault();
+                    observacao.focus();
+
+                    if (typeof window.uiAlert === 'function') {
+                        window.uiAlert('Preencha o campo Observacao para Cliente Parceiro.', {
+                            title: 'Campo obrigatorio',
+                            icon: 'warning',
+                            confirmText: 'OK',
+                        });
+                    } else {
+                        alert('Preencha o campo Observacao para Cliente Parceiro.');
+                    }
+                }
+            });
+        });
+    </script>
 @endsection
+
+
+
+
+
+
+
+
+
+
 

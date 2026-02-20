@@ -4,6 +4,13 @@
 @section('title', 'Meus Funcionários')
 
 @section('content')
+    @php
+        $user = auth()->user();
+        $permissionMap = $user?->papel?->permissoes?->pluck('chave')->flip()->all() ?? [];
+        $isMaster = $user?->hasPapel('Master');
+        $canCreate = $isMaster || isset($permissionMap['cliente.funcionarios.create']);
+        $canUpdate = $isMaster || isset($permissionMap['cliente.funcionarios.update']);
+    @endphp
     {{-- Cabeçalho / breadcrumb simples --}}
     <div class="flex items-center justify-between mb-5">
         <div>
@@ -112,9 +119,10 @@
             </div>
 
             <div class="flex-shrink-0">
-                <a href="{{ route('cliente.funcionarios.create') }}"
-                   class="inline-flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold
-                          bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm">
+                <a href="{{ $canCreate ? route('cliente.funcionarios.create') : 'javascript:void(0)' }}"
+                   @if(!$canCreate) title="Usuario sem permissao." aria-disabled="true" @endif
+                   class="inline-flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold shadow-sm
+                          {{ $canCreate ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}">
                     + Novo funcionário
                 </a>
             </div>
@@ -187,13 +195,14 @@
                                     {{ \Carbon\Carbon::parse($f->data_admissao)->format('d/m/Y') }}
                                 </span>
                             @else
-                                <span class="text-slate-500">—</span>
+                                <span class="text-slate-500">-</span>
                             @endif
                         </span>
 
                         <span class="inline-flex items-center gap-2 text-sky-500">
-                            <a href="{{ route('cliente.funcionarios.edit', $f) }}"
-                               class="hover:text-sky-600 font-medium"
+                            <a href="{{ $canUpdate ? route('cliente.funcionarios.edit', $f) : 'javascript:void(0)' }}"
+                               @if(!$canUpdate) title="Usuario sem permissao." aria-disabled="true" @endif
+                               class="font-medium {{ $canUpdate ? 'hover:text-sky-600' : 'text-slate-400 cursor-not-allowed' }}"
                                data-card-edit
                                onclick="event.stopPropagation()">
                                 Editar

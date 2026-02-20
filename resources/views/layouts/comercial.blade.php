@@ -18,7 +18,17 @@
 </head>
 <body class="bg-slate-900">
 <div class="min-h-screen flex relative">
-    @php $isMaster = auth()->user()?->isMaster(); @endphp
+    @php
+        $authUser = auth()->user();
+        $isMaster = $authUser?->isMaster();
+        $permissionMap = $authUser?->papel?->permissoes?->pluck('chave')->flip()->all() ?? [];
+        $can = function (string $key) use ($isMaster, $permissionMap): bool {
+            return $isMaster || isset($permissionMap[$key]);
+        };
+        $menuState = function (bool $enabled): string {
+            return $enabled ? 'text-slate-200 hover:bg-slate-800' : 'text-slate-500 bg-slate-900 cursor-not-allowed';
+        };
+    @endphp
 
     @if($isMaster)
         @include('layouts.partials.master-sidebar')
@@ -66,66 +76,90 @@
 
         <nav class="relative z-10 flex-1 px-3 mt-4 space-y-1">
             {{-- Ajuste o nome da rota aqui se precisar --}}
-            <a href="{{ route('comercial.dashboard') }}"
-               class="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800 text-slate-50 text-sm font-medium">
+            @php $canDashboard = $can('comercial.dashboard.view'); @endphp
+            <a href="{{ $canDashboard ? route('comercial.dashboard') : 'javascript:void(0)' }}"
+               @if(!$canDashboard) title="Usu�rio sem permiss�o" aria-disabled="true" @endif
+               class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium {{ $canDashboard ? 'bg-slate-800 text-slate-50' : 'bg-slate-900 text-slate-500 cursor-not-allowed' }}">
                 <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-700">
                     📊
                 </span>
                 <span data-sidebar-label>Painel Comercial</span>
             </a>
 
-            <a href="{{ route('comercial.comissoes.index') }}"
-               class="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-200 hover:bg-slate-800 text-sm">
+            @php $canComissoes = $can('comercial.comissoes.view'); @endphp
+            <a href="{{ $canComissoes ? route('comercial.comissoes.index') : 'javascript:void(0)' }}"
+               @if(!$canComissoes) title="Usu�rio sem permiss�o" aria-disabled="true" @endif
+               class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm {{ $menuState($canComissoes) }}">
                 <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500/20 text-orange-400">
                     $
                 </span>
                 <span data-sidebar-label>Minhas Comissões</span>
             </a>
 
-            <a href="{{ route($isMaster ? 'master.agenda-vendedores.index' : 'comercial.agenda.index') }}"
-               class="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-200 hover:bg-slate-800 text-sm">
+            @php $canAgenda = $can('comercial.agenda.view'); @endphp
+            <a href="{{ $canAgenda ? route($isMaster ? 'master.agenda-vendedores.index' : 'comercial.agenda.index') : 'javascript:void(0)' }}"
+               @if(!$canAgenda) title="Usu�rio sem permiss�o" aria-disabled="true" @endif
+               class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm {{ $menuState($canAgenda) }}">
                 <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-200">
                     🗓️
                 </span>
                 <span data-sidebar-label>Agenda</span>
             </a>
 
+            @php $canPropostas = $can('comercial.propostas.view'); @endphp
+            <a href="{{ $canPropostas ? route('comercial.propostas.index') : 'javascript:void(0)' }}"
+               @if(!$canPropostas) title="Usu�rio sem permiss�o" aria-disabled="true" @endif
+               class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm {{ $menuState($canPropostas) }}">
+                <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/20 text-blue-200">
+                    📄
+                </span>
+                <span data-sidebar-label>Propostas</span>
+            </a>
 
-
-            <a href="{{ route('comercial.pipeline.index') }}"
-               class="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-200 hover:bg-slate-800 text-sm">
+            @php $canPipeline = $can('comercial.pipeline.view'); @endphp
+            <a href="{{ $canPipeline ? route('comercial.pipeline.index') : 'javascript:void(0)' }}"
+               @if(!$canPipeline) title="Usu�rio sem permiss�o" aria-disabled="true" @endif
+               class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm {{ $menuState($canPipeline) }}">
                 <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-rose-500/20 text-rose-200">
                     📈
                 </span>
                 <span data-sidebar-label>Acompanhamento</span>
             </a>
 
-            <a href="{{ route('comercial.tabela-precos.index') }}"
-               class="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-200 hover:bg-slate-800 text-sm">
+            @php $canTabela = $can('comercial.tabela-precos.view'); @endphp
+            <a href="{{ $canTabela ? route('comercial.tabela-precos.index') : 'javascript:void(0)' }}"
+               @if(!$canTabela) title="Usu�rio sem permiss�o" aria-disabled="true" @endif
+               class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm {{ $menuState($canTabela) }}">
                 <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-green-500/20 text-green-200">
                     💰
                 </span>
                 <span data-sidebar-label>Tabela de Preços</span>
             </a>
 
-            <a href="{{ route('comercial.contratos.index') }}"
-               class="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-200 hover:bg-slate-800 text-sm">
+            @php $canContratos = $can('comercial.contratos.view'); @endphp
+            <a href="{{ $canContratos ? route('comercial.contratos.index') : 'javascript:void(0)' }}"
+               @if(!$canContratos) title="Usu�rio sem permiss�o" aria-disabled="true" @endif
+               class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm {{ $menuState($canContratos) }}">
                 <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-purple-500/20 text-purple-200">
                     📑
                 </span>
                 <span data-sidebar-label>Contratos</span>
             </a>
 
-            <a href="{{ route('comercial.clientes.index') }}"
-               class="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-200 hover:bg-slate-800 text-sm">
+            @php $canClientes = $can('comercial.clientes.view'); @endphp
+            <a href="{{ $canClientes ? route('comercial.clientes.index') : 'javascript:void(0)' }}"
+               @if(!$canClientes) title="Usu�rio sem permiss�o" aria-disabled="true" @endif
+               class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm {{ $menuState($canClientes) }}">
                 <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/20 text-amber-200">
                     👤
                 </span>
                 <span data-sidebar-label>Clientes</span>
             </a>
 
-            <a href="{{ route('comercial.funcoes.index') }}"
-               class="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-200 hover:bg-slate-800 text-sm">
+            @php $canFuncoes = $can('comercial.tabela-precos.view'); @endphp
+            <a href="{{ $canFuncoes ? route('comercial.funcoes.index') : 'javascript:void(0)' }}"
+               @if(!$canFuncoes) title="Usu�rio sem permiss�o" aria-disabled="true" @endif
+               class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm {{ $menuState($canFuncoes) }}">
                 <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-500/20 text-slate-200">
                     🧩
                 </span>
@@ -228,6 +262,11 @@
             {{-- Conteúdo das telas comerciais fica por cima --}}
             <div class="relative z-10">
                 <div class="@yield('page-container', 'w-full px-4 sm:px-6 lg:px-8 py-6')">
+                    @if(session('error') || session('erro'))
+                        <div class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                            {{ session('error') ?? session('erro') }}
+                        </div>
+                    @endif
                     @yield('content')
                 </div>
             </div>
@@ -374,3 +413,4 @@
 
 </body>
 </html>
+

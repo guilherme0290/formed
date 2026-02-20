@@ -3,28 +3,52 @@
 @section('page-container', 'w-full p-0')
 
 @section('content')
+    @php
+        $user = auth()->user();
+        $permissionMap = $user?->papel?->permissoes?->pluck('chave')->flip()->all() ?? [];
+        $isMaster = $user?->hasPapel('Master');
+        $canCreate = $isMaster || isset($permissionMap['financeiro.contas-receber.create']);
+        $canUpdate = $isMaster || isset($permissionMap['financeiro.contas-receber.update']);
+        $canDelete = $isMaster || isset($permissionMap['financeiro.contas-receber.delete']);
+    @endphp
     <div class="w-full px-3 md:px-5 py-4 md:py-5 space-y-6">
-        <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
                 <div class="text-xs uppercase tracking-[0.2em] text-indigo-400">Conta a receber</div>
                 <h1 class="text-3xl font-semibold text-slate-900">Conta #{{ $conta->id }}</h1>
                 <p class="text-sm text-slate-500">Cliente: {{ $conta->cliente->razao_social ?? 'Cliente' }}</p>
             </div>
-            <div class="flex items-center gap-2">
+            <div class="w-full md:w-auto flex flex-nowrap items-center justify-end gap-1.5 whitespace-nowrap overflow-x-auto md:overflow-visible pb-1 md:pb-0">
                 <a href="{{ route('financeiro.contas-receber') }}"
-                   class="px-3 py-2 rounded-lg bg-slate-200 text-slate-800 text-xs font-semibold hover:bg-slate-300">
+                   class="inline-flex h-8 shrink-0 items-center justify-center whitespace-nowrap px-2.5 rounded-lg bg-slate-200 text-slate-800 text-xs font-semibold leading-none hover:bg-slate-300">
                     Voltar
                 </a>
-                <button type="button" id="abrirModalBaixa" class="px-3 py-2 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700">Baixar</button>
-                <form method="POST" action="{{ route('financeiro.contas-receber.reabrir', $conta) }}">
+                <button type="button"
+                        id="abrirModalBaixa"
+                        class="inline-flex h-8 shrink-0 items-center justify-center whitespace-nowrap px-2.5 rounded-lg text-xs font-semibold leading-none {{ $canUpdate ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}"
+                        @if(!$canUpdate) disabled title="Usu·rio sem permiss„o" @endif>Baixar</button>
+                <form method="POST" action="{{ route('financeiro.contas-receber.reabrir', $conta) }}" class="m-0 flex shrink-0">
                     @csrf
-                    <button class="px-3 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800">Reabrir</button>
+                    <button class="inline-flex h-8 items-center justify-center whitespace-nowrap px-2.5 rounded-lg text-xs font-semibold leading-none {{ $canUpdate ? 'bg-slate-900 text-white hover:bg-slate-800' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}"
+                            @if(!$canUpdate) disabled title="Usu·rio sem permiss„o" @endif>Reabrir</button>
                 </form>
-                <form method="POST" action="{{ route('financeiro.contas-receber.boleto', $conta) }}">
+                <form method="POST" action="{{ route('financeiro.contas-receber.destroy', $conta) }}"
+                      class="m-0 flex shrink-0"
+                      id="formExcluirRecebimento">
                     @csrf
-                    <button class="px-3 py-2 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700">Emitir Boleto</button>
+                    @method('DELETE')
+                    <button class="inline-flex h-8 items-center justify-center whitespace-nowrap px-2.5 rounded-lg text-xs font-semibold leading-none {{ $canDelete ? 'bg-rose-600 text-white hover:bg-rose-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}"
+                            @if(!$canDelete) disabled title="Usu·rio sem permiss„o" @endif>Excluir recebimento</button>
                 </form>
-                <button type="button" id="abrirModalItem" class="px-3 py-2 rounded-lg bg-slate-800 text-white text-xs font-semibold hover:bg-slate-900">Novo Item</button>
+                <form method="POST" action="{{ route('financeiro.contas-receber.boleto', $conta) }}" class="m-0 flex shrink-0">
+                    @csrf
+                    <button class="inline-flex h-8 items-center justify-center whitespace-nowrap px-2.5 rounded-lg text-xs font-semibold leading-none {{ $canUpdate ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}"
+                            @if(!$canUpdate) disabled title="Usu·rio sem permiss„o" @endif>Emitir Boleto</button>
+                </form>
+                <button type="button"
+                        id="abrirModalItem"
+                        class="inline-flex h-8 shrink-0 items-center justify-center whitespace-nowrap px-2.5 rounded-lg text-xs font-semibold leading-none {{ $canCreate ? 'bg-slate-800 text-white hover:bg-slate-900' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}"
+                        @if(!$canCreate) disabled title="Usu·rio sem permiss„o" @endif>Novo Item</button>
             </div>
         </div>
 
@@ -54,7 +78,7 @@
             <header class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
                 <div>
                     <h2 class="text-sm font-semibold text-slate-800">Resumo da conta</h2>
-                    <p class="text-xs text-slate-500">Vis√£o geral e baixas registradas</p>
+                    <p class="text-xs text-slate-500">Vis„o geral e baixas registradas</p>
                 </div>
                 <div class="text-xs text-slate-500">
                     Total: <strong class="text-slate-800">R$ {{ number_format((float) $conta->total, 2, ',', '.') }}</strong>
@@ -186,7 +210,8 @@
                         <textarea name="observacao" rows="3" class="w-full rounded-lg border-slate-200 bg-white text-slate-900 text-sm" placeholder="Detalhes sobre a baixa"></textarea>
                     </div>
 
-                    <button class="w-full px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700">
+                    <button class="w-full px-4 py-2 rounded-xl text-sm font-semibold {{ $canUpdate ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}"
+                            @if(!$canUpdate) disabled title="Usu·rio sem permiss„o" @endif>
                         Confirmar baixa
                     </button>
                 </form>
@@ -265,7 +290,8 @@
                         <input type="number" step="0.01" name="valor" class="w-full rounded-lg border-slate-200 bg-white text-slate-900 text-sm" required />
                     </div>
 
-                    <button class="w-full px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700">
+                    <button class="w-full px-4 py-2 rounded-xl text-sm font-semibold {{ $canCreate ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}"
+                            @if(!$canCreate) disabled title="Usu·rio sem permiss„o" @endif>
                         Incluir item
                     </button>
                 </form>
@@ -281,6 +307,7 @@
             const modalBaixa = document.getElementById('modalBaixa');
             const abrirModalBaixa = document.getElementById('abrirModalBaixa');
             const fecharModalBaixaBtns = document.querySelectorAll('[data-fechar-modal-baixa]');
+            const formExcluirRecebimento = document.getElementById('formExcluirRecebimento');
             const tabButtons = document.querySelectorAll('[data-tab-target]');
             const tabSections = document.querySelectorAll('[data-tab]');
 
@@ -293,6 +320,24 @@
             fecharModalBtns.forEach(btn => btn.addEventListener('click', fechar));
             abrirModalBaixa.addEventListener('click', abrirBaixa);
             fecharModalBaixaBtns.forEach(btn => btn.addEventListener('click', fecharBaixa));
+
+            if (formExcluirRecebimento) {
+                formExcluirRecebimento.addEventListener('submit', async (event) => {
+                    event.preventDefault();
+                    const mensagem = 'Deseja excluir este recebimento e devolver os itens para vendas pendentes?';
+                    let confirmado = false;
+
+                    if (typeof window.uiConfirm === 'function') {
+                        confirmado = await window.uiConfirm(mensagem);
+                    } else {
+                        confirmado = window.confirm(mensagem);
+                    }
+
+                    if (confirmado) {
+                        formExcluirRecebimento.submit();
+                    }
+                });
+            }
 
             tabButtons.forEach(button => {
                 button.addEventListener('click', () => {
@@ -385,5 +430,7 @@
     });
 </script>
 @endsection
+
+
 
 

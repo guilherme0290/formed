@@ -496,15 +496,27 @@ class PainelController extends Controller
     {
         $usuario   = $request->user();
         $empresaId = $usuario->empresa_id;
-        $q         = $request->query('q');
+        $q         = trim((string) $request->query('q', ''));
+        $qDigits   = preg_replace('/\D+/', '', $q);
 
         $hoje = now()->toDateString();
 
         $clientes = Cliente::where('empresa_id', $empresaId)
-            ->when($q, fn($query) =>
-            $query->where('razao_social', 'like', "%{$q}%")
-                ->orWhere('nome_fantasia', 'like', "%{$q}%")
-            )
+            ->when($q !== '', function ($query) use ($q, $qDigits) {
+                $query->where(function ($subQuery) use ($q, $qDigits) {
+                    $subQuery->where('razao_social', 'like', "%{$q}%")
+                        ->orWhere('nome_fantasia', 'like', "%{$q}%")
+                        ->orWhere('cnpj', 'like', "%{$q}%");
+
+                    if ($qDigits !== '') {
+                        $subQuery->orWhereRaw(
+                            "REPLACE(REPLACE(REPLACE(cnpj, '.', ''), '/', ''), '-', '') LIKE ?",
+                            ["%{$qDigits}%"]
+                        );
+                    }
+                });
+            })
+            ->with('cidade')
             ->select('clientes.*')
             ->addSelect(['tem_contrato_ativo' => ClienteContrato::selectRaw('1')
                 ->whereColumn('cliente_contratos.cliente_id', 'clientes.id')
@@ -518,6 +530,16 @@ class PainelController extends Controller
                 })
                 ->limit(1)
             ])
+            ->orderByRaw(
+                'CASE
+                    WHEN clientes.ativo = 1 AND tem_contrato_ativo = 1 THEN 3
+                    WHEN clientes.ativo = 1 THEN 2
+                    WHEN tem_contrato_ativo = 1 THEN 1
+                    ELSE 0
+                 END DESC'
+            )
+            ->orderByDesc('clientes.ativo')
+            ->orderByDesc('tem_contrato_ativo')
             ->orderBy('razao_social')
             ->paginate(12);
 

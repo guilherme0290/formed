@@ -3,7 +3,7 @@
 @section('header')
     <div class="flex items-center justify-between" data-acessos-header>
         <h1 class="text-2xl font-semibold">Acessos & Usuários</h1>
-        <div class="text-sm text-gray-500">Gerencie perfis, permissões e usuários</div>
+        <div class="text-sm text-gray-500">Gerencie perfis e usuários</div>
     </div>
 @endsection
 
@@ -15,8 +15,13 @@
                 Voltar ao Painel
             </a>
         </div>
-        {{-- Abas simples por query ?tab= --}}
-        @php $tab = request('tab','usuarios'); @endphp
+
+        @php
+            $tab = request('tab', 'usuarios');
+            if (!in_array($tab, ['usuarios', 'papeis', 'permissoes', 'senhas'], true)) {
+                $tab = 'usuarios';
+            }
+        @endphp
 
         <div class="mb-4 flex flex-wrap gap-2 justify-center" data-acessos-tabs>
             <a href="{{ route('master.acessos',['tab'=>'usuarios']) }}"
@@ -45,10 +50,6 @@
             @includeIf('master.acessos.permissoes')
         @elseif($tab==='senhas')
             @includeIf('master.acessos.senhas', [])
-        @else
-            <div class="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg text-center">
-                Aba inválida.
-            </div>
         @endif
     </div>
 @endsection

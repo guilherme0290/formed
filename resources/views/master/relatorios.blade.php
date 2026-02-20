@@ -92,12 +92,12 @@
                     <input type="hidden" name="status_servicos" value="{{ $status_servicos_selecionado ?? 'concluido' }}">
                 @else
                     <div class="md:col-span-2">
-                        <label class="text-xs font-bold text-slate-900 whitespace-nowrap">Status proposta</label>
+                        <label class="text-xs font-bold text-slate-900 whitespace-nowrap">Status da venda</label>
                         <select name="status_proposta"
                                 class="mt-1 w-full rounded-xl border border-slate-200 text-sm px-3 py-2 h-[44px]">
                             @foreach(($status_proposta_opcoes ?? []) as $status)
                                 <option value="{{ $status }}"
-                                    @selected(($status_proposta_selecionado ?? 'FECHADA') === $status)>
+                                    @selected(($status_proposta_selecionado ?? 'todos') === $status)>
                                     {{ $status }}
                                 </option>
                             @endforeach
@@ -338,7 +338,7 @@
                     <div class="rounded-2xl border border-indigo-200 bg-indigo-50/60 px-4 py-4">
                         <div class="flex items-center gap-2 text-xs font-bold text-slate-900 uppercase">
                             <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-indigo-200 text-indigo-800 text-[11px] font-bold">P</span>
-                            Propostas fechadas
+                            Vendas
                         </div>
                         <div class="text-2xl font-semibold text-slate-900 mt-2">{{ $totalPropostas }}</div>
                         <div class="text-[11px] text-slate-600 mt-1">0% em relação ao período anterior</div>
@@ -361,7 +361,7 @@
                         <div class="text-2xl font-semibold text-slate-900 mt-2">
                             R$ {{ number_format($ticketMedio, 2, ',', '.') }}
                         </div>
-                        <div class="text-[11px] text-slate-500 mt-1">Valor m&eacute;dio por proposta</div>
+                        <div class="text-[11px] text-slate-500 mt-1">Valor m&eacute;dio por venda</div>
                     </div>
                     <div class="rounded-2xl border border-sky-200 bg-sky-50/60 px-4 py-4">
                         <div class="flex items-center gap-2 text-xs font-bold text-slate-900 uppercase">
@@ -375,7 +375,7 @@
 
                 <div class="grid gap-4 lg:grid-cols-2">
                     <div class="rounded-2xl border border-slate-200 bg-white p-4">
-                        <div class="text-sm font-semibold text-slate-900 mb-1">Propostas fechadas por vendedor</div>
+                        <div class="text-sm font-semibold text-slate-900 mb-1">Vendas por vendedor</div>
                         <div class="text-xs text-slate-500 mb-3">Per&iacute;odo: {{ $dataInicioFmt }} a {{ $dataFimFmt }}</div>
                         @if($hasProdUsuario)
                             <div class="overflow-x-auto">
@@ -389,7 +389,7 @@
                     </div>
                     <div class="rounded-2xl border border-slate-200 bg-white p-4 space-y-4">
                         <div>
-                            <div class="text-sm font-semibold text-slate-900 mb-3">Propostas fechadas por vendedor</div>
+                            <div class="text-sm font-semibold text-slate-900 mb-3">Ranking comercial (vendas)</div>
                             <ul class="text-sm text-slate-600 space-y-2">
                                 @foreach(($labelsComercial ?? []) as $idx => $nome)
                                     @php
@@ -403,12 +403,12 @@
                                     @endphp
                                     @if($qtd > 0)
                                         <li>
-                                            ✓ {{ $nome }} fechou {{ $qtd }} proposta{{ $qtd > 1 ? 's' : '' }}
+                                            ✓ {{ $nome }} realizou {{ $qtd }} venda{{ $qtd > 1 ? 's' : '' }}
                                             (R$ {{ number_format($valor, 2, ',', '.') }}), participa&ccedil;&atilde;o de {{ $share }}%.
                                             Ticket m&eacute;dio {{ $ticketVar >= 0 ? 'acima' : 'abaixo' }} da m&eacute;dia em {{ abs($ticketVar) }}%.
                                         </li>
                                     @else
-                                        <li>✓ {{ $nome }} n&atilde;o fechou propostas no per&iacute;odo.</li>
+                                        <li>✓ {{ $nome }} n&atilde;o teve vendas no per&iacute;odo.</li>
                                     @endif
                                 @endforeach
                                 @if(empty($labelsComercial))
@@ -417,13 +417,13 @@
                             </ul>
                         </div>
                         <div>
-                            <div class="text-sm font-semibold text-slate-900 mb-2">Valores por usu&aacute;rio</div>
+                            <div class="text-sm font-semibold text-slate-900 mb-2">Faturamento por usu&aacute;rio</div>
                             <div class="overflow-x-auto">
                                 <table class="min-w-full text-sm">
                                     <thead class="bg-slate-50 text-slate-600">
                                         <tr>
                                             <th class="px-3 py-2 text-left font-semibold">Usu&aacute;rio</th>
-                                            <th class="px-3 py-2 text-left font-semibold">Propostas</th>
+                                            <th class="px-3 py-2 text-left font-semibold">Vendas</th>
                                             <th class="px-3 py-2 text-left font-semibold">Valor</th>
                                         </tr>
                                     </thead>
@@ -444,6 +444,33 @@
                                                 <td colspan="3" class="px-3 py-4 text-center text-slate-500">Sem dados no per&iacute;odo.</td>
                                             </tr>
                                         @endif
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="text-sm font-semibold text-slate-900 mb-2">Faturamento por servi&ccedil;o</div>
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full text-sm">
+                                    <thead class="bg-slate-50 text-slate-600">
+                                        <tr>
+                                            <th class="px-3 py-2 text-left font-semibold">Servi&ccedil;o</th>
+                                            <th class="px-3 py-2 text-left font-semibold">Qtd</th>
+                                            <th class="px-3 py-2 text-left font-semibold">Valor</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-100">
+                                        @forelse(($top_faturamento_servicos ?? []) as $row)
+                                            <tr class="hover:bg-slate-50">
+                                                <td class="px-3 py-2 text-slate-700">{{ $row->nome }}</td>
+                                                <td class="px-3 py-2 text-slate-700">{{ (int) ($row->total ?? 0) }}</td>
+                                                <td class="px-3 py-2 text-slate-700">R$ {{ number_format((float) ($row->valor_total ?? 0), 2, ',', '.') }}</td>
+                                            </tr>
+                                        @empty
+                                            <tr>
+                                                <td colspan="3" class="px-3 py-4 text-center text-slate-500">Sem dados no per&iacute;odo.</td>
+                                            </tr>
+                                        @endforelse
                                     </tbody>
                                 </table>
                             </div>
@@ -540,7 +567,7 @@
                 data: {
                     labels: vendedoresLabels,
                     datasets: [{
-                        label: 'Valor das propostas',
+                        label: 'Valor das vendas',
                         data: vendedoresPropostas,
                         backgroundColor: '#6366f1',
                         barThickness: 28,

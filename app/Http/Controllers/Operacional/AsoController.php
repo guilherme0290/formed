@@ -69,7 +69,12 @@ class AsoController extends Controller
             'treinamentos' => ['array'],
             'treinamentos.*' => ['string', Rule::in($treinamentosCodigos)],
             'email_aso' => ['nullable', 'email'],
+            'pcmso_elaborado_formed' => ['required', 'boolean'],
+            'anexos' => ['nullable', 'array'],
+            'anexos.*' => ['file', 'mimes:pdf,doc,docx,png,jpg,jpeg', 'max:10240'],
         ], $this->mensagensValidacao(), $this->atributosValidacao());
+
+        $this->validarUploadPcmsoExterno($request, $data);
 
         $tiposAsoPermitidos = $this->tiposAsoPermitidos($cliente->id, $empresaId);
         if (empty($tiposAsoPermitidos)) {
@@ -187,6 +192,19 @@ class AsoController extends Controller
                 'fim_previsto' => $fimPrevisto,
             ]);
 
+            $anexosNovos = Anexos::salvarDoRequest($request, 'anexos', [
+                'empresa_id'     => $empresaId,
+                'cliente_id'     => $cliente->id,
+                'tarefa_id'      => $tarefa->id,
+                'funcionario_id' => $funcionario->id ?? null,
+                'uploaded_by'    => $usuario->id,
+                'servico'        => 'ASO',
+                'subpath'        => 'anexos-custom/' . $empresaId,
+            ]);
+
+            $pcmsoElaboradoFormed = $this->isPcmsoElaboradoPelaFormed($data);
+            $pcmsoExternoAnexoId = $pcmsoElaboradoFormed ? null : optional($anexosNovos->first())->id;
+
             // 5) Cria o registro específico de ASO
             AsoSolicitacoes::create([
                 'empresa_id' => $empresaId,
@@ -197,6 +215,8 @@ class AsoController extends Controller
                 'tipo_aso' => $data['tipo_aso'],
                 'data_aso' => $data['data_aso'],
                 'email_aso' => $data['email_aso'] ?? null,
+                'pcmso_elaborado_formed' => $pcmsoElaboradoFormed,
+                'pcmso_externo_anexo_id' => $pcmsoElaboradoFormed ? null : $pcmsoExternoAnexoId,
                 'vai_fazer_treinamento' => !empty($data['vai_fazer_treinamento']),
                 'treinamentos' => $data['treinamentos'] ?? [],
                 'treinamento_pacote' => !empty($data['vai_fazer_treinamento']) ? $pacoteSelecionado : null,
@@ -210,16 +230,6 @@ class AsoController extends Controller
                 'para_coluna_id' => optional($colunaInicial)->id,
                 'acao' => 'criado',
                 'observacao' => $descricao,
-            ]);
-
-            Anexos::salvarDoRequest($request, 'anexos', [
-                'empresa_id'     => $empresaId,
-                'cliente_id'     => $cliente->id,
-                'tarefa_id'      => $tarefa->id,
-                'funcionario_id' => $funcionario->id ?? null,
-                'uploaded_by'    => $usuario->id,
-                'servico'        => 'ASO',
-                 'subpath'     => 'anexos-custom/' . $empresaId, // opcional, se quiser sobrescrever
             ]);
 
             return $tarefa;
@@ -404,7 +414,12 @@ class AsoController extends Controller
             'treinamentos' => ['array'],
             'treinamentos.*' => ['string', Rule::in($treinamentosCodigos)],
             'email_aso' => ['nullable', 'email'],
+            'pcmso_elaborado_formed' => ['required', 'boolean'],
+            'anexos' => ['nullable', 'array'],
+            'anexos.*' => ['file', 'mimes:pdf,doc,docx,png,jpg,jpeg', 'max:10240'],
         ], $this->mensagensValidacao(), $this->atributosValidacao());
+
+        $this->validarUploadPcmsoExterno($request, $data, $tarefa->asoSolicitacao);
 
         $tiposAsoPermitidos = $this->tiposAsoPermitidos($cliente->id, $empresaId);
         if (empty($tiposAsoPermitidos)) {
@@ -515,25 +530,35 @@ class AsoController extends Controller
                 'tarefa_id' => $tarefa->id,
             ]);
 
+            $anexosNovos = Anexos::salvarDoRequest($request, 'anexos', [
+                'empresa_id'     => $empresaId,
+                'cliente_id'     => $cliente->id,
+                'tarefa_id'      => $tarefa->id,
+                'funcionario_id' => $funcionario->id ?? null,
+                'uploaded_by'    => auth()->id(),
+                'servico'        => 'ASO',
+                'subpath'        => 'anexos-custom/' . $empresaId,
+            ]);
+
+            $pcmsoElaboradoFormed = $this->isPcmsoElaboradoPelaFormed($data);
+            $pcmsoExternoAnexoId = $aso->pcmso_externo_anexo_id;
+            if ($pcmsoElaboradoFormed) {
+                $pcmsoExternoAnexoId = null;
+            } elseif ($anexosNovos->isNotEmpty()) {
+                $pcmsoExternoAnexoId = optional($anexosNovos->first())->id;
+            }
+
             $aso->fill([
                 'funcionario_id' => $funcionario->id,
                 'unidade_id' => $data['unidade_id'],
                 'tipo_aso' => $data['tipo_aso'],
                 'data_aso' => $data['data_aso'],
                 'email_aso' => $data['email_aso'] ?? null,
+                'pcmso_elaborado_formed' => $pcmsoElaboradoFormed,
+                'pcmso_externo_anexo_id' => $pcmsoExternoAnexoId,
                 'vai_fazer_treinamento' => !empty($data['vai_fazer_treinamento']),
                 'treinamentos' => $treinamentos,
                 'treinamento_pacote' => !empty($data['vai_fazer_treinamento']) ? $pacoteSelecionado : null,
-            ]);
-
-            Anexos::salvarDoRequest($request, 'anexos', [
-                'empresa_id'     => $empresaId,
-                'cliente_id'     => $cliente->id,
-                'tarefa_id'      => $tarefa->id,
-                'funcionario_id' => $funcionario->id ?? null,
-                'uploaded_by'    => auth()->user()->id,
-                'servico'        => 'ASO',
-                'subpath'     => 'anexos-custom/' . $empresaId, // opcional, se quiser sobrescrever
             ]);
 
             $aso->save();
@@ -835,6 +860,35 @@ class AsoController extends Controller
         return array_values(array_unique($normalized));
     }
 
+    private function isPcmsoElaboradoPelaFormed(array $data): bool
+    {
+        $value = $data['pcmso_elaborado_formed'] ?? true;
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        return in_array((string) $value, ['1', 'true', 'on', 'yes'], true);
+    }
+
+    private function validarUploadPcmsoExterno(
+        Request $request,
+        array $data,
+        ?AsoSolicitacoes $asoExistente = null
+    ): void {
+        if ($this->isPcmsoElaboradoPelaFormed($data)) {
+            return;
+        }
+
+        $temArquivoNovo = $request->hasFile('anexos');
+        $temArquivoExistente = $asoExistente && !empty($asoExistente->pcmso_externo_anexo_id);
+
+        if (!$temArquivoNovo && !$temArquivoExistente) {
+            throw ValidationException::withMessages([
+                'anexos' => 'Envie o PCMSO externo quando ele não for elaborado pela Formed.',
+            ]);
+        }
+    }
+
     private function resolvePacoteTreinamento(array $data, array $pacotesTreinamentos): ?array
     {
         $modo = $data['treinamento_modo'] ?? null;
@@ -1130,6 +1184,8 @@ class AsoController extends Controller
             'in' => 'O valor selecionado para :attribute é inválido.',
             'array' => 'O campo :attribute deve ser uma lista válida.',
             'boolean' => 'O campo :attribute deve ser sim ou não.',
+            'file' => 'Envie um arquivo válido para :attribute.',
+            'mimes' => 'O arquivo de :attribute deve ser PDF, DOC, DOCX, PNG, JPG ou JPEG.',
         ];
     }
 
@@ -1149,10 +1205,12 @@ class AsoController extends Controller
             'treinamentos' => 'treinamentos',
             'treinamentos.*' => 'treinamento',
             'email_aso' => 'e-mail para envio do ASO',
+            'pcmso_elaborado_formed' => 'PCMSO elaborado pela Formed',
+            'anexos' => 'anexos',
+            'anexos.*' => 'arquivo anexo',
         ];
     }
 
 
 
 }
-

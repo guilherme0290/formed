@@ -15,6 +15,12 @@
 
 @section('content')
 @php($routePrefix = $routePrefix ?? 'clientes')
+    @php
+        $permPrefix = str_starts_with($routePrefix, 'comercial.') ? 'comercial.clientes' : 'master.clientes';
+        $permissionMap = $user?->papel?->permissoes?->pluck('chave')->flip()->all() ?? [];
+        $isMaster = $user?->hasPapel('Master');
+        $canUpdate = $isMaster || isset($permissionMap[$permPrefix.'.update']);
+    @endphp
     <div class="max-w-3xl mx-auto px-4 py-6">
 
         @if (session('ok'))
@@ -26,6 +32,11 @@
         @if (session('erro'))
             <div class="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
                 {{ session('erro') }}
+            </div>
+        @endif
+        @if (session('error'))
+            <div class="mb-4 rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-700">
+                {{ session('error') }}
             </div>
         @endif
 
@@ -53,8 +64,9 @@
             <p><strong>Endere√ßo:</strong> {{ $cliente->endereco ?? '-' }}</p>
             <p><strong>Ativo:</strong> {{ $cliente->ativo ? 'Sim' : 'N√£o' }}</p>
             <div class="pt-4 grid sm:grid-cols-2 gap-2">
-                <a href="{{ route($routePrefix.'.edit',$cliente) }}"
-                   class="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold text-center hover:bg-indigo-700 w-full">
+                <a href="{{ $canUpdate ? route($routePrefix.'.edit',$cliente) : 'javascript:void(0)' }}"
+                   @if(!$canUpdate) title="Usu·rio sem permiss„o" aria-disabled="true" @endif
+                   class="px-4 py-2 rounded-xl text-sm font-semibold text-center w-full {{ $canUpdate ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}">
                     Editar
                 </a>
                 <a href="{{ route($routePrefix.'.index') }}"

@@ -20,6 +20,9 @@ class Cliente extends Model
         'email',
         'telefone',
         'contato',
+        'telefone_2',
+        'observacao',
+        'tipo_cliente',
         'cep',
         'endereco',
         'numero',
@@ -58,3 +61,6 @@ class Cliente extends Model
         )->withTimestamps();
     }
 }
+
+
+

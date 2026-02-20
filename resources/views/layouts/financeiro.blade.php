@@ -13,7 +13,14 @@
 </head>
 <body class="bg-slate-950 text-slate-50">
 <div class="min-h-screen flex relative">
-    @php $isMaster = auth()->user()?->isMaster(); @endphp
+    @php
+        $authUser = auth()->user();
+        $isMaster = $authUser?->isMaster();
+        $permissionMap = $authUser?->papel?->permissoes?->pluck('chave')->flip()->all() ?? [];
+        $can = function (string $key) use ($isMaster, $permissionMap): bool {
+            return $isMaster || isset($permissionMap[$key]);
+        };
+    @endphp
 
     @if($isMaster)
         @include('layouts.partials.master-sidebar')
@@ -37,8 +44,17 @@
                     ];
                 @endphp
                 @foreach($links as $link)
-                    <a href="{{ $link['route'] }}"
-                       class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm {{ $link['active'] ? 'bg-indigo-600 text-white font-semibold' : 'text-slate-200 hover:bg-slate-800' }}">
+                    @php
+                        $perm = match ($link['label']) {
+                            'Dashboard' => 'financeiro.dashboard.view',
+                            'Contratos' => 'financeiro.contratos.view',
+                            default => 'financeiro.contas-receber.view',
+                        };
+                        $enabled = $can($perm);
+                    @endphp
+                    <a href="{{ $enabled ? $link['route'] : 'javascript:void(0)' }}"
+                       @if(!$enabled) title="Usuário sem permissão" aria-disabled="true" @endif
+                       class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm {{ $link['active'] && $enabled ? 'bg-indigo-600 text-white font-semibold' : ($enabled ? 'text-slate-200 hover:bg-slate-800' : 'text-slate-500 bg-slate-900 cursor-not-allowed') }}">
                         <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800">{{ $link['icon'] }}</span>
                         <span>{{ $link['label'] }}</span>
                     </a>
@@ -128,6 +144,11 @@
         <main class="flex-1 relative overflow-hidden">
             <div class="relative z-10">
                 <div class="@yield('page-container', 'w-full px-4 sm:px-6 lg:px-8 py-6')">
+                    @if(session('error') || session('erro'))
+                        <div class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                            {{ session('error') ?? session('erro') }}
+                        </div>
+                    @endif
                     @yield('content')
                 </div>
             </div>
@@ -252,3 +273,4 @@
 @stack('scripts')
 </body>
 </html>
+

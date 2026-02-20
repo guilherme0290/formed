@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Cliente;
 use App\Http\Controllers\Controller;
 use App\Models\Cliente;
 use App\Models\Funcionario;
+use App\Models\Tarefa;
 use App\Services\AsoGheService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -276,7 +277,17 @@ class ClienteFuncionarioController extends Controller
         // <<< ADICIONADO: garantir que a função esteja carregada na tela de detalhes
         $funcionario->load('funcao');
 
-        return view('clientes.funcionarios.show', compact('cliente', 'funcionario'));
+        $arquivosAso = Tarefa::query()
+            ->where('cliente_id', $cliente->id)
+            ->where('funcionario_id', $funcionario->id)
+            ->whereHas('asoSolicitacao')
+            ->whereNotNull('path_documento_cliente')
+            ->with(['coluna', 'servico'])
+            ->orderByDesc('finalizado_em')
+            ->orderByDesc('updated_at')
+            ->get();
+
+        return view('clientes.funcionarios.show', compact('cliente', 'funcionario', 'arquivosAso'));
     }
 
     public function toggleStatus(Request $request, Funcionario $funcionario)

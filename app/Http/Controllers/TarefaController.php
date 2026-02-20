@@ -80,10 +80,18 @@ class TarefaController extends Controller
 
     public function finalizarComArquivo(Request $request, Tarefa $tarefa, PrecificacaoService $precificacaoService, VendaService $vendaService, ComissaoService $comissaoService)
     {
-        $data = $request->validate([
-            'arquivo_cliente' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'],
-            'notificar'       => ['nullable', 'boolean'],
-        ]);
+        $data = $request->validate(
+            [
+                'arquivo_cliente' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'],
+                'notificar'       => ['nullable', 'boolean'],
+            ],
+            [
+                'arquivo_cliente.required' => 'Selecione um arquivo do cliente.',
+                'arquivo_cliente.file' => 'O arquivo do cliente deve ser um arquivo válido.',
+                'arquivo_cliente.mimes' => 'O arquivo do cliente deve ser do tipo: pdf, jpg, jpeg ou png.',
+                'arquivo_cliente.max' => 'O arquivo do cliente deve ter no máximo 10 MB.',
+            ]
+        );
 
         // coluna "finalizada"
         $colunaFinalizada = KanbanColuna::where('empresa_id', $tarefa->empresa_id)
@@ -242,9 +250,17 @@ class TarefaController extends Controller
 
     public function substituirDocumentoCliente(Request $request, Tarefa $tarefa)
     {
-        $request->validate([
-            'arquivo_cliente' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'],
-        ]);
+        $request->validate(
+            [
+                'arquivo_cliente' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'],
+            ],
+            [
+                'arquivo_cliente.required' => 'Selecione um arquivo do cliente.',
+                'arquivo_cliente.file' => 'O arquivo do cliente deve ser um arquivo válido.',
+                'arquivo_cliente.mimes' => 'O arquivo do cliente deve ser do tipo: pdf, jpg, jpeg ou png.',
+                'arquivo_cliente.max' => 'O arquivo do cliente deve ter no máximo 10 MB.',
+            ]
+        );
 
         $path = S3Helper::upload($request->file('arquivo_cliente'), 'tarefas');
 

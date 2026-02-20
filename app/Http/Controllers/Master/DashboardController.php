@@ -1067,21 +1067,20 @@ class DashboardController extends Controller
             $statusUsuarioSelecionado = 'todos';
         }
 
-        $statusPropostaSelecionado = (string) $request->query('status_proposta', 'FECHADA');
-        $statusPropostaOpcoes = Proposta::query()
+        $statusPropostaSelecionado = (string) $request->query('status_proposta', 'todos');
+        $statusPropostaOpcoes = Venda::query()
             ->when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId))
             ->whereNotNull('status')
-            ->select('status')
+            ->selectRaw('UPPER(status) as status')
             ->distinct()
             ->orderBy('status')
             ->pluck('status')
             ->values()
             ->all();
-        if (empty($statusPropostaOpcoes)) {
-            $statusPropostaOpcoes = ['FECHADA'];
-        }
+        array_unshift($statusPropostaOpcoes, 'todos');
+        $statusPropostaOpcoes = collect($statusPropostaOpcoes)->unique()->values()->all();
         if (!in_array($statusPropostaSelecionado, $statusPropostaOpcoes, true)) {
-            $statusPropostaSelecionado = 'FECHADA';
+            $statusPropostaSelecionado = 'todos';
         }
 
         $servicoSelecionadoRaw = $request->query('servico', 'todos');
@@ -1318,37 +1317,34 @@ class DashboardController extends Controller
             }
         }
 
-        $propostasBase = Proposta::query()
-            ->when($empresaId, fn ($q) => $q->where('propostas.empresa_id', $empresaId))
-            ->whereDate('propostas.updated_at', '>=', $dataInicio->toDateString())
-            ->whereDate('propostas.updated_at', '<=', $dataFim->toDateString());
+        $vendasBase = Venda::query()
+            ->leftJoin('clientes', 'clientes.id', '=', 'vendas.cliente_id')
+            ->when($empresaId, fn ($q) => $q->where('vendas.empresa_id', $empresaId))
+            ->whereDate('vendas.created_at', '>=', $dataInicio->toDateString())
+            ->whereDate('vendas.created_at', '<=', $dataFim->toDateString());
 
         if ($usuarioSelecionado !== 'todos') {
-            $propostasBase->where('propostas.vendedor_id', $usuarioSelecionado);
+            $vendasBase->where('clientes.vendedor_id', (int) $usuarioSelecionado);
         }
 
         $propostasAtivas = $abaSelecionada === 'comercial';
-        if ($servicoSelecionado !== 'todos' && $servicoSelecionado !== 'proposta') {
-            $propostasAtivas = false;
-        }
-
         if ($propostasAtivas && $statusPropostaSelecionado !== 'todos') {
-            $propostasBase->where('propostas.status', $statusPropostaSelecionado);
+            $vendasBase->whereRaw('UPPER(vendas.status) = ?', [mb_strtoupper($statusPropostaSelecionado)]);
         }
 
-        $prodPropostasTotal = $propostasAtivas ? (clone $propostasBase)->count() : 0;
-        $prodPropostasValorTotal = $propostasAtivas ? (float) (clone $propostasBase)->sum('valor_total') : 0;
+        $prodPropostasTotal = $propostasAtivas ? (clone $vendasBase)->count() : 0;
+        $prodPropostasValorTotal = $propostasAtivas ? (float) (clone $vendasBase)->sum('vendas.total') : 0;
         $prodPropostasPorUsuario = $propostasAtivas
-            ? (clone $propostasBase)
-                ->selectRaw('propostas.vendedor_id as usuario_id, COUNT(*) as total')
-                ->groupBy('propostas.vendedor_id')
+            ? (clone $vendasBase)
+                ->selectRaw('clientes.vendedor_id as usuario_id, COUNT(*) as total')
+                ->groupBy('clientes.vendedor_id')
                 ->pluck('total', 'usuario_id')
                 ->all()
             : [];
         $prodPropostasValorPorUsuario = $propostasAtivas
-            ? (clone $propostasBase)
-                ->selectRaw('propostas.vendedor_id as usuario_id, SUM(propostas.valor_total) as total')
-                ->groupBy('propostas.vendedor_id')
+            ? (clone $vendasBase)
+                ->selectRaw('clientes.vendedor_id as usuario_id, SUM(vendas.total) as total')
+                ->groupBy('clientes.vendedor_id')
                 ->pluck('total', 'usuario_id')
                 ->all()
             : [];
@@ -1373,13 +1369,14 @@ class DashboardController extends Controller
                 'total' => (int) $row->total,
             ]);
 
-        $propostasBaseAll = Proposta::query()
-            ->when($empresaId, fn ($q) => $q->where('propostas.empresa_id', $empresaId))
-            ->whereDate('propostas.updated_at', '>=', $dataInicio->toDateString())
-            ->whereDate('propostas.updated_at', '<=', $dataFim->toDateString());
+        $vendasBaseAll = Venda::query()
+            ->leftJoin('clientes', 'clientes.id', '=', 'vendas.cliente_id')
+            ->when($empresaId, fn ($q) => $q->where('vendas.empresa_id', $empresaId))
+            ->whereDate('vendas.created_at', '>=', $dataInicio->toDateString())
+            ->whereDate('vendas.created_at', '<=', $dataFim->toDateString());
 
         if ($usuarioSelecionado !== 'todos') {
-            $propostasBaseAll->where('propostas.vendedor_id', $usuarioSelecionado);
+            $vendasBaseAll->where('clientes.vendedor_id', (int) $usuarioSelecionado);
         }
 
         $comercialStatusResumo = [
@@ -1389,12 +1386,12 @@ class DashboardController extends Controller
         ];
 
         if ($propostasAtivas) {
-            $comercialStatus = (clone $propostasBaseAll)
-                ->selectRaw('status, COUNT(*) as total')
+            $comercialStatus = (clone $vendasBaseAll)
+                ->selectRaw('UPPER(vendas.status) as status, COUNT(*) as total')
                 ->groupBy('status')
                 ->pluck('total', 'status')
                 ->all();
-            $fechadas = (int) ($comercialStatus['FECHADA'] ?? 0);
+            $fechadas = (int) ($comercialStatus['FECHADA'] ?? 0) + (int) ($comercialStatus['FATURADA'] ?? 0);
             $canceladas = (int) ($comercialStatus['CANCELADA'] ?? 0);
             $totalAll = array_sum($comercialStatus);
             $abertas = max(0, $totalAll - $fechadas - $canceladas);
@@ -1408,24 +1405,39 @@ class DashboardController extends Controller
         $topComercialVendedores = collect();
         $topComercialClientes = collect();
         $ticketMedio = 0;
+        $topFaturamentoServicos = collect();
         if ($propostasAtivas) {
-            $propostasTotalBase = (clone $propostasBase)->count();
-            $propostasValorBase = (float) (clone $propostasBase)->sum('valor_total');
+            $propostasTotalBase = (clone $vendasBase)->count();
+            $propostasValorBase = (float) (clone $vendasBase)->sum('vendas.total');
             $ticketMedio = $propostasTotalBase > 0 ? ($propostasValorBase / $propostasTotalBase) : 0;
 
-            $topComercialVendedores = (clone $propostasBase)
-                ->leftJoin('users as vendedor', 'vendedor.id', '=', 'propostas.vendedor_id')
-                ->selectRaw("COALESCE(vendedor.name, 'Sem vendedor') as nome, COUNT(*) as total, SUM(propostas.valor_total) as valor_total")
+            $topComercialVendedores = (clone $vendasBase)
+                ->leftJoin('users as vendedor', 'vendedor.id', '=', 'clientes.vendedor_id')
+                ->selectRaw("COALESCE(vendedor.name, 'Sem vendedor') as nome, COUNT(*) as total, SUM(vendas.total) as valor_total")
                 ->groupBy('nome')
                 ->orderByDesc('total')
                 ->limit(5)
                 ->get();
 
-            $topComercialClientes = (clone $propostasBase)
-                ->leftJoin('clientes', 'clientes.id', '=', 'propostas.cliente_id')
-                ->selectRaw("COALESCE(clientes.razao_social, 'Sem cliente') as nome, COUNT(*) as total, SUM(propostas.valor_total) as valor_total")
+            $topComercialClientes = (clone $vendasBase)
+                ->selectRaw("COALESCE(clientes.razao_social, 'Sem cliente') as nome, COUNT(*) as total, SUM(vendas.total) as valor_total")
                 ->groupBy('nome')
                 ->orderByDesc('total')
+                ->limit(5)
+                ->get();
+
+            $topFaturamentoServicos = VendaItem::query()
+                ->join('vendas', 'vendas.id', '=', 'venda_itens.venda_id')
+                ->leftJoin('clientes', 'clientes.id', '=', 'vendas.cliente_id')
+                ->leftJoin('servicos', 'servicos.id', '=', 'venda_itens.servico_id')
+                ->when($empresaId, fn ($q) => $q->where('vendas.empresa_id', $empresaId))
+                ->whereDate('vendas.created_at', '>=', $dataInicio->toDateString())
+                ->whereDate('vendas.created_at', '<=', $dataFim->toDateString())
+                ->when($usuarioSelecionado !== 'todos', fn ($q) => $q->where('clientes.vendedor_id', (int) $usuarioSelecionado))
+                ->when($statusPropostaSelecionado !== 'todos', fn ($q) => $q->whereRaw('UPPER(vendas.status) = ?', [mb_strtoupper($statusPropostaSelecionado)]))
+                ->selectRaw("COALESCE(servicos.nome, venda_itens.descricao_snapshot, 'Sem serviço') as nome, COUNT(*) as total, SUM(venda_itens.subtotal_snapshot) as valor_total")
+                ->groupBy('servicos.nome', 'venda_itens.descricao_snapshot')
+                ->orderByDesc('valor_total')
                 ->limit(5)
                 ->get();
         }
@@ -1635,6 +1647,7 @@ class DashboardController extends Controller
             'comercial_status_resumo' => $comercialStatusResumo,
             'top_comercial_vendedores' => $topComercialVendedores,
             'top_comercial_clientes' => $topComercialClientes,
+            'top_faturamento_servicos' => $topFaturamentoServicos,
             'top_operacional_usuarios' => $topOperacionalUsuarios,
             'top_operacional_servicos' => $topOperacionalServicos,
             'produtividade_usuarios' => [
@@ -1774,3 +1787,4 @@ class DashboardController extends Controller
         return 'data:' . $mime . ';base64,' . base64_encode($data);
     }
 }
+

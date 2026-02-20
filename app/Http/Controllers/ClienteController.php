@@ -6,6 +6,7 @@ use App\Models\Cidade;
 use App\Models\Cliente;
 use App\Models\Estado;
 use App\Models\Funcao;
+use App\Models\Funcionario;
 use App\Models\ParametroCliente;
 use App\Models\ParametroClienteAsoGrupo;
 use App\Models\Servico;
@@ -14,6 +15,7 @@ use App\Models\TabelaPrecoPadrao;
 use App\Models\Tarefa;
 use App\Models\UnidadeClinica;
 use App\Models\User;
+use App\Services\FuncionarioArquivosZipService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\Rule;
@@ -25,6 +27,8 @@ class ClienteController extends Controller
      */
     public function index(Request $r)
     {
+        $this->authorizeComercialAction('view');
+
         $q      = trim((string) $r->query('q', ''));
         $status = $r->query('status', 'todos'); // todos|ativo|inativo
         $qText  = trim(preg_replace('/\d+/', ' ', $q));
@@ -36,6 +40,9 @@ class ClienteController extends Controller
         $clientes = Cliente::query()
             ->with('userCliente')
             ->where('empresa_id', $empresaId)
+            ->when($this->isComercialNaoMaster($r->user()), function ($q) use ($r) {
+                $q->where('vendedor_id', (int) $r->user()->id);
+            })
             ->when($qText !== '' || $doc !== '', function ($w) use ($qText, $doc) {
                 $w->where(function ($x) use ($qText, $doc) {
                     if ($qText !== '') {
@@ -130,6 +137,8 @@ class ClienteController extends Controller
      */
     public function create()
     {
+        $this->authorizeComercialAction('create');
+
         $cliente = new Cliente();
 
         // se sua tabela tiver "uf", pode ajustar; aqui uso "sigla"
@@ -152,6 +161,8 @@ class ClienteController extends Controller
      */
     public function store(Request $r)
     {
+        $this->authorizeComercialAction('create');
+
         $data = $this->validateData($r);
 
         $empresaId = $r->user()->empresa_id ?? 1;
@@ -202,6 +213,7 @@ class ClienteController extends Controller
      */
     public function show(Cliente $cliente)
     {
+        $this->authorizeComercialAction('view');
         $this->authorizeCliente($cliente);
 
         $routePrefix = $this->routePrefix();
@@ -322,6 +334,7 @@ class ClienteController extends Controller
      */
     public function edit(Request $request, Cliente $cliente)
     {
+        $this->authorizeComercialAction('update');
         $this->authorizeCliente($cliente);
 
         $estados = Estado::orderBy('uf')->get(['uf', 'nome']);
@@ -440,6 +453,25 @@ class ClienteController extends Controller
             ->orderByDesc('updated_at')
             ->get();
 
+        $funcionariosComArquivosIds = Tarefa::query()
+            ->where('cliente_id', $cliente->id)
+            ->whereNotNull('funcionario_id')
+            ->where(function ($q) {
+                $q->whereNotNull('path_documento_cliente')
+                    ->orWhereHas('anexos');
+            })
+            ->distinct()
+            ->pluck('funcionario_id')
+            ->filter()
+            ->values();
+
+        $funcionariosComArquivos = $funcionariosComArquivosIds->isNotEmpty()
+            ? Funcionario::query()
+                ->whereIn('id', $funcionariosComArquivosIds->all())
+                ->orderBy('nome')
+                ->get(['id', 'nome'])
+            : collect();
+
         $servicosArquivosIds = Tarefa::query()
             ->where('cliente_id', $cliente->id)
             ->where(function ($q) {
@@ -478,7 +510,44 @@ class ClienteController extends Controller
             'vendedores'      => $vendedores,
             'arquivos'        => $arquivos,
             'servicosArquivos' => $servicosArquivos,
+            'funcionariosComArquivos' => $funcionariosComArquivos,
         ]);
+    }
+
+    public function downloadArquivosFuncionario(
+        Request $request,
+        Cliente $cliente,
+        Funcionario $funcionario,
+        FuncionarioArquivosZipService $zipService
+    ) {
+        $this->authorizeCliente($cliente);
+        abort_unless((int) $funcionario->cliente_id === (int) $cliente->id, 403);
+
+        try {
+            $zipPath = $zipService->gerarZip($cliente, $funcionario);
+        } catch (\RuntimeException $e) {
+            return back()->with('erro', $e->getMessage());
+        }
+        $zipName = 'arquivos-' . str_replace(' ', '-', mb_strtolower($funcionario->nome)) . '.zip';
+
+        return response()->download($zipPath, $zipName)->deleteFileAfterSend(true);
+    }
+
+    public function downloadArquivosSelecionados(
+        Request $request,
+        Cliente $cliente,
+        FuncionarioArquivosZipService $zipService
+    ) {
+        $this->authorizeCliente($cliente);
+        $tarefaIds = (array) $request->input('tarefa_ids', []);
+
+        try {
+            $zipPath = $zipService->gerarZipPorIds($cliente, $tarefaIds);
+        } catch (\RuntimeException $e) {
+            return back()->with('erro', $e->getMessage());
+        }
+
+        return response()->download($zipPath, 'arquivos-selecionados.zip')->deleteFileAfterSend(true);
     }
 
     /**
@@ -486,6 +555,7 @@ class ClienteController extends Controller
      */
     public function update(Request $r, Cliente $cliente)
     {
+        $this->authorizeComercialAction('update');
         $this->authorizeCliente($cliente);
 
         if ($r->boolean('update_vendedor')) {
@@ -540,6 +610,7 @@ class ClienteController extends Controller
      */
     public function destroy(Cliente $cliente)
     {
+        $this->authorizeComercialAction('delete');
         $this->authorizeCliente($cliente);
 
         try {
@@ -580,6 +651,14 @@ class ClienteController extends Controller
                 'email'          => ['nullable', 'email', 'max:255'],
                 'telefone'       => ['nullable', 'string', 'max:30'],
                 'contato'        => ['nullable', 'string', 'max:120'],
+                'telefone_2'     => ['nullable', 'string', 'max:30'],
+                'tipo_cliente'   => ['required', Rule::in(['parceiro', 'final'])],
+                'observacao'     => [
+                    'nullable',
+                    'string',
+                    'max:4000',
+                    Rule::requiredIf(fn () => $r->input('tipo_cliente') === 'parceiro'),
+                ],
                 'cep'            => ['nullable', 'string', 'max:20'],
                 'endereco'       => ['nullable', 'string', 'max:255'],
                 'numero'         => ['nullable', 'string', 'max:20'],
@@ -596,16 +675,92 @@ class ClienteController extends Controller
                 'cnpj.max'              => 'O CNPJ está muito longo. Confira o número digitado.',
 
                 'email.email'           => 'Informe um e-mail válido (ex: nome@empresa.com).',
+                'tipo_cliente.required' => 'Selecione se o cliente Parceiro ou Final.',
+                'tipo_cliente.in'       => 'Tipo de cliente inválido.',
+                'observacao.required'   => 'Informe a observacao com os detalhes negociados para cliente parceiro.',
+                'observacao.max'        => 'A observação deve ter no máximo 4000 caracteres.',
             ]
         );
+
+        return $this->normalizeClienteUppercase($data);
+    }
+
+    private function normalizeClienteUppercase(array $data): array
+    {
+        $fieldsToUpper = [
+            'razao_social',
+            'nome_fantasia',
+            'contato',
+            'observacao',
+            'endereco',
+            'bairro',
+            'complemento',
+        ];
+
+        foreach ($fieldsToUpper as $field) {
+            if (!array_key_exists($field, $data) || $data[$field] === null) {
+                continue;
+            }
+
+            $value = trim((string) $data[$field]);
+            $data[$field] = function_exists('mb_strtoupper')
+                ? mb_strtoupper($value, 'UTF-8')
+                : strtoupper($value);
+        }
+
+        return $data;
     }
 
 
     protected function authorizeCliente(Cliente $cliente): void
     {
-        $empresaId = auth()->user()->empresa_id ?? 1;
+        $user = auth()->user();
+        $empresaId = $user->empresa_id ?? 1;
 
         if ($cliente->empresa_id != $empresaId) {
+            abort(403);
+        }
+
+        if ($this->isComercialNaoMaster($user) && (int) $cliente->vendedor_id !== (int) $user->id) {
+            abort(403);
+        }
+    }
+
+    private function isComercialRoute(): bool
+    {
+        return request()->routeIs('comercial.clientes.*');
+    }
+
+    private function isComercialNaoMaster(?User $user): bool
+    {
+        return $this->isComercialRoute() && $user && !$user->hasPapel('Master') && $user->hasPapel('Comercial');
+    }
+
+    private function authorizeComercialAction(string $action): void
+    {
+        if (!$this->isComercialRoute()) {
+            return;
+        }
+
+        $user = auth()->user();
+        if (!$user) {
+            abort(403);
+        }
+
+        if ($user->hasPapel('Master')) {
+            return;
+        }
+
+        if (!$user->hasPapel('Comercial')) {
+            abort(403);
+        }
+
+        $chave = 'comercial.clientes.' . $action;
+        $temPermissao = $user->papel()
+            ->whereHas('permissoes', fn ($q) => $q->where('chave', $chave))
+            ->exists();
+
+        if (!$temPermissao) {
             abort(403);
         }
     }
@@ -727,3 +882,4 @@ class ClienteController extends Controller
 
 
 }
+

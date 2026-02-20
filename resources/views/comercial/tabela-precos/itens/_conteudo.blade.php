@@ -1,6 +1,13 @@
 @php
     $routePrefix = $routePrefix ?? 'comercial';
     $dashboardRoute = $dashboardRoute ?? route($routePrefix === 'master' ? 'master.dashboard' : 'comercial.dashboard');
+    $user = auth()->user();
+    $permissionMap = $user?->papel?->permissoes?->pluck('chave')->flip()->all() ?? [];
+    $isMaster = $user?->hasPapel('Master');
+    $permPrefix = $routePrefix === 'master' ? 'master.tabela-precos' : 'comercial.tabela-precos';
+    $canCreate = $isMaster || isset($permissionMap[$permPrefix.'.create']);
+    $canUpdate = $isMaster || isset($permissionMap[$permPrefix.'.update']);
+    $canDelete = $isMaster || isset($permissionMap[$permPrefix.'.delete']);
 @endphp
 
 <div class="w-full px-2 sm:px-3 md:px-4 py-2 md:py-3 space-y-6">
@@ -20,23 +27,25 @@
         </div>
         <div class="flex flex-col sm:flex-row gap-2 sm:items-center">
             <button type="button"
-                    onclick="openNovoItemModal()"
+                    @if($canCreate) onclick="openNovoItemModal()" @endif
+                    @if(!$canCreate) title="Usu·rio sem permiss„o" @endif
                     class="inline-flex items-center justify-center gap-2 rounded-2xl
-                       bg-blue-600 hover:bg-blue-700 active:bg-blue-800
-                       text-white px-5 py-2.5 text-sm font-semibold shadow-sm
+                       {{ $canCreate ? 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} px-5 py-2.5 text-sm font-semibold shadow-sm
                        ring-1 ring-blue-600/20 hover:ring-blue-700/30
-                       transition">
+                       transition"
+                    @if(!$canCreate) disabled @endif>
                 <span class="text-base leading-none">Ôºã</span>
                 <span>ASO, Documentos e Laudos</span>
             </button>
 
             <button type="button"
-                    onclick="openEsocialModal()"
+                    @if($canUpdate) onclick="openEsocialModal()" @endif
+                    @if(!$canUpdate) title="Usu·rio sem permiss„o" @endif
                     class="inline-flex items-center justify-center gap-2 rounded-2xl
-                       bg-white hover:bg-indigo-50 active:bg-indigo-100
-                       text-indigo-700 px-5 py-2.5 text-sm font-semibold shadow-sm
+                       {{ $canUpdate ? 'bg-white hover:bg-indigo-50 active:bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} px-5 py-2.5 text-sm font-semibold shadow-sm
                        ring-1 ring-indigo-200 hover:ring-indigo-300
-                       transition">
+                       transition"
+                    @if(!$canUpdate) disabled @endif>
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
                      stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -45,35 +54,39 @@
                 <span>eSocial</span>
             </button>
             <button type="button"
-                    onclick="openExamesModal()"
+                    @if($canUpdate) onclick="openExamesModal()" @endif
+                    @if(!$canUpdate) title="Usu·rio sem permiss„o" @endif
                     class="inline-flex items-center justify-center gap-2 rounded-2xl
-               bg-white hover:bg-blue-50 active:bg-blue-100
-               text-blue-700 px-4 py-2 text-sm font-semibold shadow-sm
-               ring-1 ring-blue-200 hover:ring-blue-300 transition">
+               {{ $canUpdate ? 'bg-white hover:bg-blue-50 active:bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} px-4 py-2 text-sm font-semibold shadow-sm
+               ring-1 ring-blue-200 hover:ring-blue-300 transition"
+                    @if(!$canUpdate) disabled @endif>
                 <span>Exames</span>
             </button>
             <button type="button"
-                    onclick="openMedicoesCrudModal()"
+                    @if($canUpdate) onclick="openMedicoesCrudModal()" @endif
+                    @if(!$canUpdate) title="Usu·rio sem permiss„o" @endif
                     class="inline-flex items-center justify-center gap-2 rounded-2xl
-               bg-white hover:bg-amber-50 active:bg-amber-100
-               text-amber-700 px-4 py-2 text-sm font-semibold shadow-sm
-               ring-1 ring-amber-200 hover:ring-amber-300 transition">
+               {{ $canUpdate ? 'bg-white hover:bg-amber-50 active:bg-amber-100 text-amber-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} px-4 py-2 text-sm font-semibold shadow-sm
+               ring-1 ring-amber-200 hover:ring-amber-300 transition"
+                    @if(!$canUpdate) disabled @endif>
                 <span>Medi√ß√µes LTCAT/LTIP</span>
             </button>
             <button type="button"
-                    onclick="openTreinamentosCrudModal()"
+                    @if($canUpdate) onclick="openTreinamentosCrudModal()" @endif
+                    @if(!$canUpdate) title="Usu·rio sem permiss„o" @endif
                     class="inline-flex items-center justify-center gap-2 rounded-2xl
-               bg-white hover:bg-emerald-50 active:bg-emerald-100
-               text-emerald-700 px-4 py-2 text-sm font-semibold shadow-sm
-               ring-1 ring-emerald-200 hover:ring-emerald-300 transition">
+               {{ $canUpdate ? 'bg-white hover:bg-emerald-50 active:bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} px-4 py-2 text-sm font-semibold shadow-sm
+               ring-1 ring-emerald-200 hover:ring-emerald-300 transition"
+                    @if(!$canUpdate) disabled @endif>
                 <span>Treinamentos</span>
             </button>
             <button type="button"
-                    onclick="openProtocolosModal()"
+                    @if($canUpdate) onclick="openProtocolosModal()" @endif
+                    @if(!$canUpdate) title="Usu·rio sem permiss„o" @endif
                     class="inline-flex items-center justify-center gap-2 rounded-2xl
-               bg-white hover:bg-slate-50 active:bg-slate-100
-               text-slate-700 px-4 py-2 text-sm font-semibold shadow-sm
-               ring-1 ring-slate-200 hover:ring-slate-300 transition">
+               {{ $canUpdate ? 'bg-white hover:bg-slate-50 active:bg-slate-100 text-slate-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} px-4 py-2 text-sm font-semibold shadow-sm
+               ring-1 ring-slate-200 hover:ring-slate-300 transition"
+                    @if(!$canUpdate) disabled @endif>
                 <span>Grupo de Exames</span>
             </button>
 {{--            <button type="button"--}}
@@ -164,15 +177,17 @@
 
                                 <td class="px-5 py-3 flex gap-2">
                                     <button type="button"
-                                            class="text-blue-600 hover:underline text-sm"
-                                            onclick="openEditarItemModal(this)"
+                                            class="text-sm {{ $canUpdate ? 'text-blue-600 hover:underline' : 'text-slate-500 cursor-not-allowed' }}"
+                                            @if($canUpdate) onclick="openEditarItemModal(this)" @endif
+                                            @if(!$canUpdate) title="Usu·rio sem permiss„o" @endif
                                             data-id="{{ $item->id }}"
                                             data-servico-id="{{ $item->servico_id ?? '' }}"
                                             data-codigo="{{ e($item->codigo ?? '') }}"
                                             data-descricao="{{ e($item->descricao ?? '') }}"
                                             data-preco="{{ $item->preco }}"
                                             data-ativo="{{ $item->ativo ? 1 : 0 }}"
-                                            data-update-url="{{ route($routePrefix.'.tabela-precos.itens.update', $item) }}">
+                                            data-update-url="{{ route($routePrefix.'.tabela-precos.itens.update', $item) }}"
+                                            @if(!$canUpdate) disabled @endif>
                                         Editar
                                     </button>
 
@@ -181,7 +196,8 @@
                                           data-confirm="Deseja remover este item?">
                                         @csrf
                                         @method('DELETE')
-                                        <button class="text-red-600 hover:underline text-sm">
+                                        <button class="text-sm {{ $canDelete ? 'text-red-600 hover:underline' : 'text-slate-500 cursor-not-allowed' }}"
+                                                @if(!$canDelete) disabled title="Usu·rio sem permiss„o" @endif>
                                             Excluir
                                         </button>
                                     </form>
@@ -228,15 +244,17 @@
 
                                 <td class="px-5 py-3 flex gap-2">
                                     <button type="button"
-                                            class="text-blue-600 hover:underline text-sm"
-                                            onclick="openEditarItemModal(this)"
+                                            class="text-sm {{ $canUpdate ? 'text-blue-600 hover:underline' : 'text-slate-500 cursor-not-allowed' }}"
+                                            @if($canUpdate) onclick="openEditarItemModal(this)" @endif
+                                            @if(!$canUpdate) title="Usu·rio sem permiss„o" @endif
                                             data-id="{{ $item->id }}"
                                             data-servico-id="{{ $item->servico_id ?? '' }}"
                                             data-codigo="{{ e($item->codigo ?? '') }}"
                                             data-descricao="{{ e($item->descricao ?? '') }}"
                                             data-preco="{{ $item->preco }}"
                                             data-ativo="{{ $item->ativo ? 1 : 0 }}"
-                                            data-update-url="{{ route($routePrefix.'.tabela-precos.itens.update', $item) }}">
+                                            data-update-url="{{ route($routePrefix.'.tabela-precos.itens.update', $item) }}"
+                                            @if(!$canUpdate) disabled @endif>
                                         Editar
                                     </button>
 
@@ -245,7 +263,8 @@
                                           data-confirm="Deseja remover este item?">
                                         @csrf
                                         @method('DELETE')
-                                        <button class="text-red-600 hover:underline text-sm">
+                                        <button class="text-sm {{ $canDelete ? 'text-red-600 hover:underline' : 'text-slate-500 cursor-not-allowed' }}"
+                                                @if(!$canDelete) disabled title="Usu·rio sem permiss„o" @endif>
                                             Excluir
                                         </button>
                                     </form>
@@ -677,3 +696,4 @@
         })();
     </script>
 @endpush
+

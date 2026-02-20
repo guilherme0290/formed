@@ -4,6 +4,14 @@
 @section('page-container', 'w-full p-0')
 
 @section('content')
+    @php
+        $user = auth()->user();
+        $permissionMap = $user?->papel?->permissoes?->pluck('chave')->flip()->all() ?? [];
+        $isMaster = $user?->hasPapel('Master');
+        $canSave = $modo === 'edit'
+            ? ($isMaster || isset($permissionMap['cliente.funcionarios.update']))
+            : ($isMaster || isset($permissionMap['cliente.funcionarios.create']));
+    @endphp
     <div class="w-full px-3 md:px-5 py-4 md:py-5">
 
         <div class="mb-3">
@@ -117,7 +125,7 @@
                             <button type="button"
                                     class="absolute right-0 top-0 h-full w-8 flex items-center justify-center text-slate-400 hover:text-slate-600 date-picker-btn z-10"
                                     data-date-target="campo_data_admissao"
-                                    aria-label="Abrir calendÃ¡rio">
+                                    aria-label="Abrir calendário">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" viewBox="0 0 24 24" fill="currentColor">
                                     <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v2H2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 2 0v1zm15 8H2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V10z"/>
                                 </svg>
@@ -180,7 +188,7 @@
                     </div>
                 </div>--}}
 
-                {{-- BOTÕES --}}
+                {{-- BOTOES --}}
                 <div class="flex justify-end gap-2 pt-4">
                     <a href="{{ route('cliente.funcionarios.index') }}"
                        class="px-4 py-2 text-xs rounded-lg border border-slate-300 text-slate-700">
@@ -188,7 +196,8 @@
                     </a>
 
                     <button type="submit"
-                            class="px-4 py-2 text-xs rounded-lg bg-blue-600 text-white hover:bg-blue-700">
+                            @if(!$canSave) disabled title="Usuario sem permissao." @endif
+                            class="px-4 py-2 text-xs rounded-lg {{ $canSave ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}">
                         {{ $modo === 'edit' ? 'Salvar alterações' : 'Cadastrar' }}
                     </button>
                 </div>
@@ -329,4 +338,3 @@
     });
 </script>
 @endpush
-
