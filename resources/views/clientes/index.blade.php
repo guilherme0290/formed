@@ -126,7 +126,9 @@
                             @if($cliente->nome_fantasia)
                                 <div class="text-xs text-gray-500 uppercase">{{ $cliente->nome_fantasia }}</div>
                             @endif
-                            @php($tipoCliente = ($cliente->tipo_cliente ?? 'final') === 'parceiro' ? 'parceiro' : 'final')
+                            @php
+                                $tipoCliente = ($cliente->tipo_cliente ?? 'final') === 'parceiro' ? 'parceiro' : 'final';
+                            @endphp
                             <div class="mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold {{ $tipoCliente === 'parceiro' ? 'bg-amber-100 text-amber-800' : 'bg-sky-100 text-sky-800' }}" title="{{ $tipoCliente === 'parceiro' ? 'Cliente Parceiro' : 'Cliente Final' }}">
                                 @if($tipoCliente === 'parceiro')
                                     <span aria-hidden="true">&#129309;</span>
@@ -253,19 +255,17 @@
                 <div class="p-6 space-y-4">
                     <div class="space-y-2 text-sm text-slate-700">
                         <div><span class="text-slate-500">Cliente:</span> <span id="acessoClienteNome">-</span></div>
-                        <div><span class="text-slate-500">Usu&aacute;rio:</span> <span id="acessoUserNome">-</span></div>
+                        <div><span class="text-slate-500">Usuário:</span> <span id="acessoUserNome">-</span></div>
                         <div><span class="text-slate-500">Login:</span> <span id="acessoUserLogin">-</span></div>
                         <div><span class="text-slate-500">Status:</span> <span id="acessoUserStatus">-</span></div>
                         <div><span class="text-slate-500">Criado em:</span> <span id="acessoUserCreated">-</span></div>
                     </div>
 
-                    <form id="acessoResetForm" method="POST" action="" data-confirm="Enviar link de redefini&ccedil;&atilde;o de senha para este usu&aacute;rio?">
-                        @csrf
-                        <button type="submit"
-                                class="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 text-sm font-semibold">
-                            Redefinir senha
-                        </button>
-                    </form>
+                    <a id="acessoSenhaLink"
+                       href="{{ route('master.acessos', ['tab' => 'senhas']) }}"
+                       class="inline-flex rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 text-sm font-semibold">
+                        Redefinir senha
+                    </a>
                 </div>
             </div>
         </div>
@@ -274,8 +274,8 @@
     <script>
         (function () {
             const modal = document.getElementById('modalAcessoCliente');
-            const resetForm = document.getElementById('acessoResetForm');
-            const resetRouteTemplate = @json(route('master.usuarios.reset', ['user' => '__id__']));
+            const senhaLink = document.getElementById('acessoSenhaLink');
+            const senhasTabBaseUrl = @json(route('master.acessos', ['tab' => 'senhas']));
 
             function openAcessoModal(button) {
                 const data = button.dataset;
@@ -286,7 +286,14 @@
                 document.getElementById('acessoUserStatus').textContent = data.userStatus || '-';
                 document.getElementById('acessoUserCreated').textContent = data.userCreated || '-';
 
-                resetForm.action = resetRouteTemplate.replace('__id__', data.userId || '');
+                if (senhaLink) {
+                    const url = new URL(senhasTabBaseUrl, window.location.origin);
+                    if (data.userId) {
+                        url.searchParams.set('user_id', data.userId);
+                    }
+                    url.searchParams.set('from', 'cliente');
+                    senhaLink.href = url.pathname + url.search;
+                }
                 modal.classList.remove('hidden');
             }
 
@@ -361,8 +368,6 @@
         })();
     </script>
 @endpush
-
-
 
 
 

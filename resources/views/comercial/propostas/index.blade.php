@@ -15,7 +15,7 @@
         <div>
             <a href="{{ route('comercial.dashboard') }}"
                class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900">
-                ← Voltar ao Painel
+                â† Voltar ao Painel
             </a>
         </div>
 
@@ -26,11 +26,11 @@
             </div>
 
             <a href="{{ $canCreate ? route('comercial.propostas.create') : 'javascript:void(0)' }}"
-               @if(!$canCreate) title="Usu�rio sem permiss�o" aria-disabled="true" @endif
+               @if(!$canCreate) title="Usuário sem permissão" aria-disabled="true" @endif
                class="inline-flex items-center justify-center gap-2 rounded-2xl
                       {{ $canCreate ? 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white ring-1 ring-blue-600/20 hover:ring-blue-700/30' : 'bg-slate-200 text-slate-500 cursor-not-allowed ring-1 ring-slate-300' }}
                       px-5 py-2.5 text-sm font-semibold shadow-sm transition">
-                <span class="text-base leading-none">＋</span>
+                <span class="text-base leading-none">ï¼‹</span>
                 <span>Nova Proposta</span>
             </a>
         </header>
@@ -93,25 +93,25 @@
                     <tr class="text-left text-slate-600">
                         <th class="px-5 py-3 font-semibold">ID</th>
                         <th class="px-5 py-3 font-semibold">Empresa / Cliente</th>
-                        <th class="px-5 py-3 font-semibold">Título / Referência</th>
+                        <th class="px-5 py-3 font-semibold">TÃ­tulo / ReferÃªncia</th>
                         <th class="px-5 py-3 font-semibold">Status</th>
                         <th class="px-5 py-3 font-semibold">Valor Total</th>
                         <th class="px-5 py-3 font-semibold">Criada em</th>
-                        <th class="px-5 py-3 font-semibold w-[300px]">Ações</th>
+                        <th class="px-5 py-3 font-semibold w-[300px]">AÃ§Ãµes</th>
                     </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
                     @forelse($propostas as $proposta)
                         @php
                             $cliente = $proposta->cliente;
-                            $empresaTxt = $proposta->empresa?->nome ?? '—';
-                            $clienteTxt = $cliente?->razao_social ?? '—';
+                            $empresaTxt = $proposta->empresa?->nome ?? 'â€”';
+                            $clienteTxt = $cliente?->razao_social ?? 'â€”';
                             $cnpjRaw = $cliente?->cnpj ?? '';
                             $cnpjDigits = preg_replace('/\D+/', '', (string) $cnpjRaw);
                             if (strlen($cnpjDigits) === 14) {
                                 $cnpjClienteTxt = substr($cnpjDigits, 0, 2) . '.' . substr($cnpjDigits, 2, 3) . '.' . substr($cnpjDigits, 5, 3) . '/' . substr($cnpjDigits, 8, 4) . '-' . substr($cnpjDigits, 12, 2);
                             } else {
-                                $cnpjClienteTxt = $cnpjRaw !== '' ? $cnpjRaw : '—';
+                                $cnpjClienteTxt = $cnpjRaw !== '' ? $cnpjRaw : 'â€”';
                             }
                             $ref = str_pad((int) $proposta->id, 2, '0', STR_PAD_LEFT);
                             $status = strtoupper((string) ($proposta->status ?? ''));
@@ -135,7 +135,7 @@
 
                             <td class="px-5 py-3">
                                 <div class="font-medium text-slate-800">{{ $ref }}</div>
-                                <div class="text-xs text-slate-500">—</div>
+                                <div class="text-xs text-slate-500">â€”</div>
                             </td>
 
                             <td class="px-5 py-3">
@@ -145,10 +145,10 @@
                                         data-action="{{ route('comercial.propostas.status', $proposta) }}"
                                         data-id="{{ $proposta->id }}"
                                         data-cliente="{{ e($clienteTxt) }}"
-                                        data-status="{{ $status ?: '—' }}"
-                                        title="{{ $canUpdate ? 'Alterar status' : 'Usu�rio sem permiss�o' }}"
+                                        data-status="{{ $status ?: 'â€”' }}"
+                                        title="{{ $canUpdate ? 'Alterar status' : 'Usuário sem permissão' }}"
                                         @if(!$canUpdate) disabled @endif>
-                                    {{ $status ?: '—' }}
+                                    {{ $status ?: 'â€”' }}
                                 </button>
                             </td>
 
@@ -157,7 +157,7 @@
                             </td>
 
                             <td class="px-5 py-3 text-slate-700">
-                                {{ optional($proposta->created_at)->format('d/m/Y H:i') ?? '—' }}
+                                {{ optional($proposta->created_at)->format('d/m/Y H:i') ?? 'â€”' }}
                             </td>
 
                             <td class="px-5 py-3 whitespace-nowrap">
@@ -208,7 +208,7 @@
                                             data-action="{{ route('comercial.propostas.duplicar', $proposta) }}"
                                             data-ref="{{ e($ref) }}"
                                             data-cliente="{{ e($clienteTxt) }}"
-                                            @if(!$canCreate) disabled title="Usu�rio sem permiss�o" @endif>
+                                            @if(!$canCreate) disabled title="Usuário sem permissão" @endif>
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 9h11v11H9zM5 5h11v2H7v9H5z"/>
                                         </svg>
@@ -217,7 +217,7 @@
 
                                     <a href="{{ $canUpdate ? route('comercial.propostas.edit', $proposta) : 'javascript:void(0)' }}"
                                        class="inline-flex items-center justify-center h-9 w-9 rounded-xl border {{ $canUpdate ? 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50' : 'border-slate-300 bg-slate-200 text-slate-500 cursor-not-allowed' }}"
-                                       title="{{ $canUpdate ? 'Editar' : 'Usu�rio sem permiss�o' }}"
+                                       title="{{ $canUpdate ? 'Editar' : 'Usuário sem permissão' }}"
                                        aria-label="Editar">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16.5 3.5l4 4L8 20H4v-4L16.5 3.5z"/>
@@ -232,7 +232,7 @@
                                         @method('DELETE')
                                         <button type="submit"
                                                 class="inline-flex items-center justify-center h-9 w-9 rounded-xl border {{ $canDelete ? 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100' : 'border-slate-300 bg-slate-200 text-slate-500 cursor-not-allowed' }}"
-                                                title="{{ $canDelete ? 'Excluir' : 'Usu�rio sem permiss�o' }}"
+                                                title="{{ $canDelete ? 'Excluir' : 'Usuário sem permissão' }}"
                                                 aria-label="Excluir"
                                                 @if(!$canDelete) disabled @endif>
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -267,7 +267,7 @@
                     <div class="px-6 py-4 border-b flex items-center justify-between">
                         <h3 class="text-lg font-semibold text-slate-800">Enviar por WhatsApp</h3>
                         <button type="button" class="h-9 w-9 rounded-xl hover:bg-slate-100 text-slate-500"
-                                onclick="closeWhatsappModal()">✕</button>
+                                onclick="closeWhatsappModal()">âœ•</button>
                     </div>
 
                     <form id="formWhatsapp" method="POST" class="p-6 space-y-4">
@@ -309,7 +309,7 @@
                     <div class="px-6 py-4 border-b flex items-center justify-between">
                         <h3 class="text-lg font-semibold text-slate-800">Enviar por E-mail</h3>
                         <button type="button" class="h-9 w-9 rounded-xl hover:bg-slate-100 text-slate-500"
-                                onclick="closeEmailModal()">✕</button>
+                                onclick="closeEmailModal()">âœ•</button>
                     </div>
 
                     <form id="formEmail" method="POST" class="p-6 space-y-4">
@@ -358,15 +358,15 @@
                     <div class="px-6 py-4 border-b flex items-center justify-between">
                         <h3 class="text-lg font-semibold text-slate-800">Duplicar proposta</h3>
                         <button type="button" class="h-9 w-9 rounded-xl hover:bg-slate-100 text-slate-500"
-                                onclick="closeDuplicarModal()">✕</button>
+                                onclick="closeDuplicarModal()">âœ•</button>
                     </div>
 
                     <form id="formDuplicar" method="POST" class="p-6 space-y-4">
                         @csrf
 
                         <div class="text-sm text-slate-600">
-                            Duplicando a proposta <span class="font-semibold text-slate-800">#<span id="duplicarPropostaRef">—</span></span>
-                            <span class="text-slate-500">(<span id="duplicarPropostaCliente">—</span>)</span>
+                            Duplicando a proposta <span class="font-semibold text-slate-800">#<span id="duplicarPropostaRef">â€”</span></span>
+                            <span class="text-slate-500">(<span id="duplicarPropostaCliente">â€”</span>)</span>
                         </div>
 
                         <div id="duplicarClienteWrap">
@@ -401,16 +401,16 @@
                     <div class="px-6 py-4 border-b flex items-center justify-between">
                         <h3 class="text-lg font-semibold text-slate-800">Alterar status da proposta</h3>
                         <button type="button" class="h-9 w-9 rounded-xl hover:bg-slate-100 text-slate-500"
-                                onclick="closeStatusModal()">✕</button>
+                                onclick="closeStatusModal()">âœ•</button>
                     </div>
 
                     <form id="statusForm" method="POST" class="p-6 space-y-4">
                         @csrf
 
                         <div class="text-sm text-slate-700 space-y-1">
-                            <div><span class="text-slate-500">Proposta:</span> <span class="font-semibold text-slate-800">#<span id="statusPropostaId">—</span></span></div>
-                            <div><span class="text-slate-500">Cliente:</span> <span id="statusCliente" class="font-medium text-slate-800">—</span></div>
-                            <div><span class="text-slate-500">Status atual:</span> <span id="statusAtual" class="font-medium text-slate-800">—</span></div>
+                            <div><span class="text-slate-500">Proposta:</span> <span class="font-semibold text-slate-800">#<span id="statusPropostaId">â€”</span></span></div>
+                            <div><span class="text-slate-500">Cliente:</span> <span id="statusCliente" class="font-medium text-slate-800">â€”</span></div>
+                            <div><span class="text-slate-500">Status atual:</span> <span id="statusAtual" class="font-medium text-slate-800">â€”</span></div>
                         </div>
 
                         <div>
@@ -465,7 +465,7 @@
                     if (!modalWhatsapp || !formWhatsapp) return;
                     formWhatsapp.action = action;
                     whatsappTelefone.value = telefone || '';
-                    whatsappMensagem.value = `Olá! Segue a proposta ${ref}.`;
+                    whatsappMensagem.value = `OlÃ¡! Segue a proposta ${ref}.`;
                     modalWhatsapp.classList.remove('hidden');
                     setTimeout(() => whatsappTelefone?.focus(), 0);
                 }
@@ -479,7 +479,7 @@
                     formEmail.action = action;
                     emailTo.value = email || '';
                     emailAssunto.value = `Proposta ${ref}`;
-                    emailMensagem.value = `Olá! Segue a proposta ${ref}.`;
+                    emailMensagem.value = `OlÃ¡! Segue a proposta ${ref}.`;
                     modalEmail.classList.remove('hidden');
                     setTimeout(() => emailTo?.focus(), 0);
                 }
@@ -505,8 +505,8 @@
                 function openDuplicarModal(action, ref, cliente) {
                     if (!modalDuplicar || !formDuplicar) return;
                     formDuplicar.action = action;
-                    if (duplicarPropostaRef) duplicarPropostaRef.textContent = ref || '—';
-                    if (duplicarPropostaCliente) duplicarPropostaCliente.textContent = cliente || '—';
+                    if (duplicarPropostaRef) duplicarPropostaRef.textContent = ref || 'â€”';
+                    if (duplicarPropostaCliente) duplicarPropostaCliente.textContent = cliente || 'â€”';
                     resetDuplicarCliente();
                     modalDuplicar.classList.remove('hidden');
                     const textInput = duplicarClienteWrap?.querySelector('input[type="text"]');
@@ -547,7 +547,7 @@
                         'FECHADA': 'Fechada',
                         'CANCELADA': 'Cancelada',
                     };
-                    return map[status] || status || '—';
+                    return map[status] || status || 'â€”';
                 }
 
                 function buildStatusOptions(atual) {
@@ -566,14 +566,14 @@
                     statusSubmit.disabled = !hasOptions;
                     statusHelp.textContent = hasOptions
                         ? 'Selecione o novo status permitido.'
-                        : 'Transição não permitida para este status.';
+                        : 'TransiÃ§Ã£o nÃ£o permitida para este status.';
                 }
 
                 function openStatusModal(btn) {
                     if (!modalStatus || !statusForm) return;
                     statusTrigger = btn;
-                    const id = btn?.dataset?.id || '—';
-                    const cliente = btn?.dataset?.cliente || '—';
+                    const id = btn?.dataset?.id || 'â€”';
+                    const cliente = btn?.dataset?.cliente || 'â€”';
                     const atual = (btn?.dataset?.status || '').toUpperCase();
 
                     statusForm.action = btn?.dataset?.action || '#';
@@ -632,7 +632,7 @@
                         const novoStatus = (data?.status || statusSelect.value || '').toUpperCase();
                         if (statusTrigger) {
                             statusTrigger.dataset.status = novoStatus;
-                            statusTrigger.textContent = novoStatus || '—';
+                            statusTrigger.textContent = novoStatus || 'â€”';
                             const cls = badgeClassByStatus[novoStatus] || badgeClassByStatus['PENDENTE'];
                             statusTrigger.className = `${badgeBaseClass} ${cls}`;
                         }

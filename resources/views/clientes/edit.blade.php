@@ -99,6 +99,11 @@
                             data-tab="arquivos">
                         Arquivos
                     </button>
+                    <button type="button"
+                            class="px-4 py-2 rounded-full text-sm font-semibold text-slate-600 hover:bg-slate-100"
+                            data-tab="acesso">
+                        Acesso
+                    </button>
                 </div>
             </div>
         @endif
@@ -373,6 +378,10 @@
             @if($cliente->exists)
                 @include('clientes.partials.arquivos')
             @endif
+
+            @if($cliente->exists)
+                @include('clientes.partials.acesso-tab')
+            @endif
         </div>
     </div>
 
@@ -396,12 +405,13 @@
                     'forma-pagamento': ['bg-indigo-600', 'text-white'],
                     'vendedor': ['bg-slate-900', 'text-white'],
                     'arquivos': ['bg-indigo-700', 'text-white'],
+                    'acesso': ['bg-violet-600', 'text-white'],
                 };
 
                 tabs.forEach(btn => {
                     const active = btn.dataset.tab === tabName;
                     const classes = activeClasses[btn.dataset.tab] || ['bg-blue-600', 'text-white'];
-                    btn.classList.remove('bg-blue-600', 'bg-emerald-600', 'bg-amber-600', 'bg-indigo-600', 'bg-indigo-700', 'bg-slate-900', 'text-white');
+                    btn.classList.remove('bg-blue-600', 'bg-emerald-600', 'bg-amber-600', 'bg-indigo-600', 'bg-indigo-700', 'bg-slate-900', 'bg-violet-600', 'text-white');
                     if (active) {
                         btn.classList.add(...classes);
                     }
@@ -835,7 +845,6 @@
         });
     </script>
 @endsection
-
 
 
 

@@ -24,6 +24,7 @@ class AcessosController extends Controller
     public function index(Request $r)
     {
         $tab = $r->get('tab','papeis');
+        $senhaUserId = max(0, (int) $r->integer('user_id'));
 
         $q       = $r->string('q')->toString();
         $papelId = $r->integer('papel_id');
@@ -53,6 +54,10 @@ class AcessosController extends Controller
             ->values();
 
         $papeis = Papel::with('permissoes')->orderBy('nome')->get();
+        $senhaUsuarioSelecionado = null;
+        if ($senhaUserId > 0) {
+            $senhaUsuarioSelecionado = User::query()->find($senhaUserId);
+        }
         $permissoes = \App\Models\Permissao::orderBy('escopo')->orderBy('nome')->get()->groupBy('escopo');
         $usuariosPermissoes = User::with(['papel', 'permissoesDiretas'])
             ->orderBy('name')
@@ -63,7 +68,8 @@ class AcessosController extends Controller
 
 
         return view('master.acessos.index', compact(
-            'tab','papeis','usuarios','q','papelId','status','tipos','tipo','permissoes','usuariosAutocomplete','usuariosPermissoes'
+            'tab','papeis','usuarios','q','papelId','status','tipos','tipo','permissoes','usuariosAutocomplete','usuariosPermissoes',
+            'senhaUserId','senhaUsuarioSelecionado'
         ));
     }
 

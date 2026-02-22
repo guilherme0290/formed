@@ -44,7 +44,7 @@
         <div class="relative z-10 h-16 flex items-center justify-between px-4 text-lg font-semibold border-b border-slate-800">
 
             <div class="flex items-center gap-2">
-                {{-- Botão de colapse (DESKTOP) --}}
+                {{-- BotÃ£o de colapse (DESKTOP) --}}
                 <button type="button"
                         class="hidden md:inline-flex items-center justify-center p-1.5 rounded-lg text-slate-300 hover:bg-slate-800"
                         data-sidebar-collapse
@@ -60,21 +60,21 @@
                 <span data-sidebar-label-header>Operacional</span>
             </div>
 
-            {{-- Botão fechar (somente mobile) --}}
+            {{-- BotÃ£o fechar (somente mobile) --}}
             <button type="button"
                     class="inline-flex items-center justify-center p-2 rounded-lg text-slate-300 hover:bg-slate-800 md:hidden"
                     data-sidebar-close>
-                ✕
+                âœ•
             </button>
         </div>
 
         <nav class="relative z-10 flex-1 px-3 mt-4 space-y-1">
             @php $canKanban = $can('operacional.dashboard.view'); @endphp
             <a href="{{ $canKanban ? route('operacional.kanban') : 'javascript:void(0)' }}"
-               @if(!$canKanban) title="Usu�rio sem permiss�o" aria-disabled="true" @endif
+               @if(!$canKanban) title="Usuário sem permissão" aria-disabled="true" @endif
                class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium {{ $canKanban ? 'bg-slate-800 text-slate-50' : 'bg-slate-900 text-slate-500 cursor-not-allowed' }}">
                 <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-700">
-                    🗂️
+                    ðŸ—‚ï¸
                 </span>
                 <span data-sidebar-label>Painel Operacional</span>
             </a>
@@ -84,7 +84,7 @@
             <form method="POST" action="{{ route('logout') }}">
                 @csrf
                 <button class="flex items-center gap-2 text-rose-400 hover:text-rose-300">
-                    <span>🚪</span>
+                    <span>ðŸšª</span>
                     <span data-sidebar-label>Sair</span>
                 </button>
             </form>
@@ -92,7 +92,7 @@
         </aside>
     @endif
 
-    {{-- Área principal --}}
+    {{-- Ãrea principal --}}
     <div class="flex-1 flex flex-col bg-slate-50">
 
         <header class="bg-blue-900 text-white shadow-sm">
@@ -100,7 +100,7 @@
 
 
             <div class="flex items-center gap-3">
-                    {{-- Botão abrir/fechar sidebar (MOBILE) --}}
+                    {{-- BotÃ£o abrir/fechar sidebar (MOBILE) --}}
                     <button type="button"
                             class="inline-flex md:hidden items-center justify-center p-2 rounded-lg text-blue-50 hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-white"
                             data-sidebar-toggle>
@@ -115,7 +115,7 @@
                     <div class="flex flex-col">
                         <span class="font-semibold text-lg tracking-tight leading-none">FORMED</span>
                         <span class="text-[11px] md:text-xs text-blue-100">
-                            Medicina e Segurança do Trabalho
+                            Medicina e SeguranÃ§a do Trabalho
                         </span>
                     </div>
                 </div>
@@ -147,14 +147,14 @@
                             <a href="{{ route('master.acessos', ['tab' => 'senhas']) }}"
                                data-only-my-password
                                class="flex items-center gap-2 px-4 py-3 text-sm hover:bg-slate-50">
-                                <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600">🔒</span>
+                                <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600">ðŸ”’</span>
                                 <span>Alterar Senha</span>
                             </a>
                             <form method="POST" action="{{ route('logout') }}">
                                 @csrf
                                 <button type="submit"
                                         class="w-full flex items-center gap-2 px-4 py-3 text-sm hover:bg-slate-50 text-left">
-                                    <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-600">🚪</span>
+                                    <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-600">ðŸšª</span>
                                     <span>Sair</span>
                                 </button>
                             </form>
@@ -166,14 +166,14 @@
 
         <main class="flex-1 relative overflow-hidden">
 
-            {{-- Marca d’água com a logo da FORMED --}}
+            {{-- Marca dâ€™Ã¡gua com a logo da FORMED --}}
             <div class="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.06]">
                 <img src="{{ asset('storage/logo.svg') }}"
                      alt="FORMED"
                      class="max-w-[512px] w-full">
             </div>
 
-            {{-- Conteúdo das telas operacionais fica por cima --}}
+            {{-- ConteÃºdo das telas operacionais fica por cima --}}
             <div class="relative z-10">
                 @if(session('error') || session('erro'))
                     <div class="mx-4 mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 md:mx-6">
@@ -234,7 +234,7 @@
                 }
             }
 
-            // --- DESKTOP: colapsar/expandir (ícones x texto) ---
+            // --- DESKTOP: colapsar/expandir (Ã­cones x texto) ---
 
             function setDesktopCollapsed(collapsed) {
                 if (!sidebar) return;
@@ -253,7 +253,7 @@
                 }
             }
 
-            // --- Clique no botão do header (MOBILE) ---
+            // --- Clique no botÃ£o do header (MOBILE) ---
             if (btnToggleMob) {
                 btnToggleMob.addEventListener('click', function () {
                     if (!isMobile()) return;
@@ -266,7 +266,7 @@
                 });
             }
 
-            // --- Clique no botão de colapse (DESKTOP) ---
+            // --- Clique no botÃ£o de colapse (DESKTOP) ---
             if (btnCollapse) {
                 btnCollapse.addEventListener('click', function () {
                     if (isMobile()) return;
@@ -274,7 +274,7 @@
                 });
             }
 
-            // Botões de fechar (só mobile, já estão md:hidden)
+            // BotÃµes de fechar (sÃ³ mobile, jÃ¡ estÃ£o md:hidden)
             btnCloses.forEach(btn => {
                 btn.addEventListener('click', function () {
                     if (isMobile()) {
@@ -303,7 +303,7 @@
             if (isMobile()) {
                 fecharSidebarMobile();
             } else {
-                setDesktopCollapsed(false); // começa expandido no desktop
+                setDesktopCollapsed(false); // comeÃ§a expandido no desktop
             }
 
             // Se a tela for redimensionada, ajusta comportamento
@@ -313,7 +313,7 @@
                     setDesktopCollapsed(false);
                     fecharSidebarMobile();
                 } else {
-                    // Voltou para desktop: garante que não fique com translate-x-full
+                    // Voltou para desktop: garante que nÃ£o fique com translate-x-full
                     sidebar.classList.remove('-translate-x-full', 'translate-x-0');
                     if (backdrop) {
                         backdrop.classList.add('opacity-0', 'pointer-events-none');
@@ -322,7 +322,7 @@
                 }
             });
 
-            // ------------------ MODAL DE FUNÇÃO (código original) ------------------ //
+            // ------------------ MODAL DE FUNÃ‡ÃƒO (cÃ³digo original) ------------------ //
 
             function abrirModal(modalId, targetSelectId) {
                 const modal = document.getElementById(modalId);
@@ -351,7 +351,7 @@
                 modal.dataset.funcaoTarget = '';
             }
 
-            // Clique no botão "+"
+            // Clique no botÃ£o "+"
             document.addEventListener('click', function (e) {
                 const btn = e.target.closest('[data-funcao-open-modal]');
                 if (btn) {
@@ -380,7 +380,7 @@
 
                     if (!nome) {
                         if (erroEl) {
-                            erroEl.textContent = 'Informe o nome da função.';
+                            erroEl.textContent = 'Informe o nome da funÃ§Ã£o.';
                             erroEl.classList.remove('hidden');
                         }
                         if (input) input.focus();
@@ -409,7 +409,7 @@
                         .then(json => {
                             if (!json.ok) {
                                 if (erroEl) {
-                                    erroEl.textContent = json.message || 'Não foi possível salvar a função.';
+                                    erroEl.textContent = json.message || 'NÃ£o foi possÃ­vel salvar a funÃ§Ã£o.';
                                     erroEl.classList.remove('hidden');
                                 }
                                 return;
@@ -428,7 +428,7 @@
                         })
                         .catch(() => {
                             if (erroEl) {
-                                erroEl.textContent = 'Erro na comunicação com o servidor.';
+                                erroEl.textContent = 'Erro na comunicaÃ§Ã£o com o servidor.';
                                 erroEl.classList.remove('hidden');
                             }
                         })

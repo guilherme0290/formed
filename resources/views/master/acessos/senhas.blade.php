@@ -36,6 +36,14 @@
 @endif
 
 {{-- SENHAS (visual moderno) --}}
+@php
+    $senhaUserId = (int) ($senhaUserId ?? request('user_id', 0));
+    $senhaUsuarioSelecionado = $senhaUsuarioSelecionado ?? null;
+    $usuarioSelecionadoJaNaLista = $senhaUserId > 0
+        ? $usuarios->getCollection()->contains(fn ($u) => (int) $u->id === $senhaUserId)
+        : false;
+@endphp
+
 <div id="senhaCardsGrid" class="grid md:grid-cols-2 gap-6">
     <div id="senhaMinhaCard" class="bg-white rounded-2xl shadow-sm border p-6">
         <h3 class="text-lg font-semibold mb-4">Alterar Minha Senha</h3>
@@ -115,8 +123,15 @@
             @csrf
             <select id="userSelect" class="w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:border-indigo-400 focus:ring-indigo-400 px-3 py-2" required>
                 <option value="">Escolha um usuário</option>
+                @if($senhaUsuarioSelecionado && !$usuarioSelecionadoJaNaLista)
+                    <option value="{{ $senhaUsuarioSelecionado->id }}" selected>
+                        {{ $senhaUsuarioSelecionado->name }} — {{ $senhaUsuarioSelecionado->email ?: ($senhaUsuarioSelecionado->documento ?? 'Sem login') }}
+                    </option>
+                @endif
                 @foreach($usuarios as $u)
-                    <option value="{{ $u->id }}">{{ $u->name }} — {{ $u->email }}</option>
+                    <option value="{{ $u->id }}" @selected($senhaUserId === (int) $u->id)>
+                        {{ $u->name }} — {{ $u->email ?: ($u->documento ?? 'Sem login') }}
+                    </option>
                 @endforeach
             </select>
 
@@ -194,6 +209,15 @@
         }
         if (tabs) tabs.classList.add('hidden');
         if (header) header.classList.add('hidden');
+    })();
+</script>
+
+<script>
+    (function () {
+        const userSelect = document.getElementById('userSelect');
+        if (!userSelect) return;
+        if (!userSelect.value) return;
+        setTimeout(() => userSelect.focus(), 0);
     })();
 </script>
 

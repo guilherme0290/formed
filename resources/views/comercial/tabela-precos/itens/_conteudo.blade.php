@@ -15,12 +15,12 @@
     <div class="mb-4">
         <a href="{{ $dashboardRoute }}"
            class="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900">
-            ← Voltar ao Painel
+            â† Voltar ao Painel
         </a>
     </div>
     <header class="flex items-center justify-between">
         <div>
-            <h1 class="text-2xl font-semibold text-slate-900">Itens da Tabela de Preços</h1>
+            <h1 class="text-2xl font-semibold text-slate-900">Itens da Tabela de PreÃ§os</h1>
             <p class="text-slate-500 text-sm mt-1">
                 Itens utilizados nas propostas comerciais.
             </p>
@@ -28,19 +28,19 @@
         <div class="flex flex-col sm:flex-row gap-2 sm:items-center">
             <button type="button"
                     @if($canCreate) onclick="openNovoItemModal()" @endif
-                    @if(!$canCreate) title="Usu�rio sem permiss�o" @endif
+                    @if(!$canCreate) title="Usuário sem permissão" @endif
                     class="inline-flex items-center justify-center gap-2 rounded-2xl
                        {{ $canCreate ? 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} px-5 py-2.5 text-sm font-semibold shadow-sm
                        ring-1 ring-blue-600/20 hover:ring-blue-700/30
                        transition"
                     @if(!$canCreate) disabled @endif>
-                <span class="text-base leading-none">＋</span>
+                <span class="text-base leading-none">ï¼‹</span>
                 <span>ASO, Documentos e Laudos</span>
             </button>
 
             <button type="button"
                     @if($canUpdate) onclick="openEsocialModal()" @endif
-                    @if(!$canUpdate) title="Usu�rio sem permiss�o" @endif
+                    @if(!$canUpdate) title="Usuário sem permissão" @endif
                     class="inline-flex items-center justify-center gap-2 rounded-2xl
                        {{ $canUpdate ? 'bg-white hover:bg-indigo-50 active:bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} px-5 py-2.5 text-sm font-semibold shadow-sm
                        ring-1 ring-indigo-200 hover:ring-indigo-300
@@ -55,7 +55,7 @@
             </button>
             <button type="button"
                     @if($canUpdate) onclick="openExamesModal()" @endif
-                    @if(!$canUpdate) title="Usu�rio sem permiss�o" @endif
+                    @if(!$canUpdate) title="Usuário sem permissão" @endif
                     class="inline-flex items-center justify-center gap-2 rounded-2xl
                {{ $canUpdate ? 'bg-white hover:bg-blue-50 active:bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} px-4 py-2 text-sm font-semibold shadow-sm
                ring-1 ring-blue-200 hover:ring-blue-300 transition"
@@ -64,16 +64,16 @@
             </button>
             <button type="button"
                     @if($canUpdate) onclick="openMedicoesCrudModal()" @endif
-                    @if(!$canUpdate) title="Usu�rio sem permiss�o" @endif
+                    @if(!$canUpdate) title="Usuário sem permissão" @endif
                     class="inline-flex items-center justify-center gap-2 rounded-2xl
                {{ $canUpdate ? 'bg-white hover:bg-amber-50 active:bg-amber-100 text-amber-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} px-4 py-2 text-sm font-semibold shadow-sm
                ring-1 ring-amber-200 hover:ring-amber-300 transition"
                     @if(!$canUpdate) disabled @endif>
-                <span>Medições LTCAT/LTIP</span>
+                <span>MediÃ§Ãµes LTCAT/LTIP</span>
             </button>
             <button type="button"
                     @if($canUpdate) onclick="openTreinamentosCrudModal()" @endif
-                    @if(!$canUpdate) title="Usu�rio sem permiss�o" @endif
+                    @if(!$canUpdate) title="Usuário sem permissão" @endif
                     class="inline-flex items-center justify-center gap-2 rounded-2xl
                {{ $canUpdate ? 'bg-white hover:bg-emerald-50 active:bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} px-4 py-2 text-sm font-semibold shadow-sm
                ring-1 ring-emerald-200 hover:ring-emerald-300 transition"
@@ -82,7 +82,7 @@
             </button>
             <button type="button"
                     @if($canUpdate) onclick="openProtocolosModal()" @endif
-                    @if(!$canUpdate) title="Usu�rio sem permiss�o" @endif
+                    @if(!$canUpdate) title="Usuário sem permissão" @endif
                     class="inline-flex items-center justify-center gap-2 rounded-2xl
                {{ $canUpdate ? 'bg-white hover:bg-slate-50 active:bg-slate-100 text-slate-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} px-4 py-2 text-sm font-semibold shadow-sm
                ring-1 ring-slate-200 hover:ring-slate-300 transition"
@@ -118,11 +118,11 @@
             <table class="min-w-full text-sm">
                 <thead class="bg-slate-50">
                 <tr class="text-left text-slate-600">
-                    <th class="px-5 py-3 font-semibold">Serviço</th>
+                    <th class="px-5 py-3 font-semibold">ServiÃ§o</th>
                     <th class="px-5 py-3 font-semibold">Item</th>
-                    <th class="px-5 py-3 font-semibold">Preço</th>
+                    <th class="px-5 py-3 font-semibold">PreÃ§o</th>
                     <th class="px-5 py-3 font-semibold">Status</th>
-                    <th class="px-5 py-3 font-semibold w-32">Ações</th>
+                    <th class="px-5 py-3 font-semibold w-32">AÃ§Ãµes</th>
                 </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
@@ -142,7 +142,7 @@
                     @if($itensOutros->isNotEmpty())
                         <tr class="bg-slate-50">
                             <td colspan="5" class="px-5 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                                Serviços (ASO, documentos, laudos, etc.)
+                                ServiÃ§os (ASO, documentos, laudos, etc.)
                             </td>
                         </tr>
 
@@ -179,7 +179,7 @@
                                     <button type="button"
                                             class="text-sm {{ $canUpdate ? 'text-blue-600 hover:underline' : 'text-slate-500 cursor-not-allowed' }}"
                                             @if($canUpdate) onclick="openEditarItemModal(this)" @endif
-                                            @if(!$canUpdate) title="Usu�rio sem permiss�o" @endif
+                                            @if(!$canUpdate) title="Usuário sem permissão" @endif
                                             data-id="{{ $item->id }}"
                                             data-servico-id="{{ $item->servico_id ?? '' }}"
                                             data-codigo="{{ e($item->codigo ?? '') }}"
@@ -197,7 +197,7 @@
                                         @csrf
                                         @method('DELETE')
                                         <button class="text-sm {{ $canDelete ? 'text-red-600 hover:underline' : 'text-slate-500 cursor-not-allowed' }}"
-                                                @if(!$canDelete) disabled title="Usu�rio sem permiss�o" @endif>
+                                                @if(!$canDelete) disabled title="Usuário sem permissão" @endif>
                                             Excluir
                                         </button>
                                     </form>
@@ -246,7 +246,7 @@
                                     <button type="button"
                                             class="text-sm {{ $canUpdate ? 'text-blue-600 hover:underline' : 'text-slate-500 cursor-not-allowed' }}"
                                             @if($canUpdate) onclick="openEditarItemModal(this)" @endif
-                                            @if(!$canUpdate) title="Usu�rio sem permiss�o" @endif
+                                            @if(!$canUpdate) title="Usuário sem permissão" @endif
                                             data-id="{{ $item->id }}"
                                             data-servico-id="{{ $item->servico_id ?? '' }}"
                                             data-codigo="{{ e($item->codigo ?? '') }}"
@@ -264,7 +264,7 @@
                                         @csrf
                                         @method('DELETE')
                                         <button class="text-sm {{ $canDelete ? 'text-red-600 hover:underline' : 'text-slate-500 cursor-not-allowed' }}"
-                                                @if(!$canDelete) disabled title="Usu�rio sem permiss�o" @endif>
+                                                @if(!$canDelete) disabled title="Usuário sem permissão" @endif>
                                             Excluir
                                         </button>
                                     </form>
@@ -304,7 +304,7 @@
                 <button type="button"
                         onclick="closeNovoItemModal()"
                         class="h-9 w-9 rounded-xl hover:bg-slate-100 text-slate-500 flex items-center justify-center">
-                    ✕
+                    âœ•
                 </button>
             </div>
 
@@ -345,10 +345,10 @@
 
 
                     <div>
-                        <label class="text-xs font-semibold text-slate-600">Serviço (opcional)</label>
+                        <label class="text-xs font-semibold text-slate-600">ServiÃ§o (opcional)</label>
                         <select id="item_servico_id" name="servico_id"
                                 class="w-full mt-1 rounded-xl border-slate-200 text-sm px-3 py-2">
-                            <option value="">— Item livre (sem serviço) —</option>
+                            <option value="">â€” Item livre (sem serviÃ§o) â€”</option>
                             @foreach($servicos as $s)
                                 <option value="{{ $s->id }}" @selected(old('servico_id') == $s->id)>
                                     {{ $s->nome }}
@@ -377,11 +377,11 @@
                         </div>
 
                         <p class="text-xs text-slate-500 mt-2">
-                            Selecione apenas um treinamento. O código será preenchido automaticamente.
+                            Selecione apenas um treinamento. O cÃ³digo serÃ¡ preenchido automaticamente.
                         </p>
                     </div>
 
-                    {{-- Código --}}
+                    {{-- CÃ³digo --}}
 
                     <div>
                         <label class="text-xs font-semibold text-slate-600">Codigo(opcional)</label>
@@ -395,7 +395,7 @@
                                class="w-full mt-1 rounded-xl border-slate-200 text-sm px-3 py-2">
                     </div>
                     <div>
-                        <label class="text-xs font-semibold text-slate-600">Preço</label>
+                        <label class="text-xs font-semibold text-slate-600">PreÃ§o</label>
                         {{-- Visual (R$) --}}
                         <input id="item_preco_view"
                                type="text"
@@ -479,7 +479,7 @@
                 nrContainer: document.getElementById('nrChipsContainer'),
             };
 
-            // Se algo essencial não existir, não quebra a página
+            // Se algo essencial nÃ£o existir, nÃ£o quebra a pÃ¡gina
             if (!el.form || !el.modalItem) return;
 
             const state = {
@@ -546,7 +546,7 @@
             }
 
             // ============================
-            // PREÇO (MÁSCARA POR CENTAVOS)
+            // PREÃ‡O (MÃSCARA POR CENTAVOS)
             // ============================
             let precoMaskReady = false;
 
@@ -641,7 +641,7 @@
                 el.form.action = data.updateUrl;
                 el.spoof.innerHTML = '<input type="hidden" name="_method" value="PUT">';
                 el.title.textContent = 'Editar Item';
-                el.submit.textContent = 'Salvar alterações';
+                el.submit.textContent = 'Salvar alteraÃ§Ãµes';
 
                 if (el.servico) el.servico.value = data.servicoId || '';
                 if (el.codigo) el.codigo.value = data.codigo || '';

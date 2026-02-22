@@ -493,6 +493,11 @@ class ClienteController extends Controller
                 ->get()
             : collect();
 
+        $userExistente = \App\Models\User::query()
+            ->where('cliente_id', $cliente->id)
+            ->first();
+        $senhaSugerida = \Illuminate\Support\Str::password(10);
+
         return view('clientes.edit', [
             'cliente'         => $cliente,
             'estados'         => $estados,
@@ -512,6 +517,8 @@ class ClienteController extends Controller
             'arquivos'        => $arquivos,
             'servicosArquivos' => $servicosArquivos,
             'funcionariosComArquivos' => $funcionariosComArquivos,
+            'userExistente'    => $userExistente,
+            'senhaSugerida'    => $senhaSugerida,
         ]);
     }
 

@@ -33,8 +33,9 @@
 @endphp
 
 @section('content')
-    @php($routePrefix = $routePrefix ?? 'clientes')
     @php
+        $routePrefix = $routePrefix ?? 'clientes';
+        $canManageAcesso = false;
         $permPrefix = str_starts_with($routePrefix, 'comercial.') ? 'comercial.clientes' : 'master.clientes';
         $permissionMap = $user?->papel?->permissoes?->pluck('chave')->flip()->all() ?? [];
         $isMaster = $user?->hasPapel('Master');
@@ -117,7 +118,7 @@
                 </div>
 
                 <div class="grid sm:grid-cols-2 gap-2">
-                    <button type="submit" @if(!$canManageAcesso) disabled title="Usuário sem permissão" @endif class="px-4 py-2 rounded-xl text-sm font-semibold w-full {{ $canManageAcesso ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}">
+                    <button type="submit" @if(!$canManageAcesso) disabled title="UsuÃ¡rio sem permissÃ£o" @endif class="px-4 py-2 rounded-xl text-sm font-semibold w-full {{ $canManageAcesso ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}">
                         Criar acesso
                     </button>
                     <a href="{{ route($routePrefix.'.index') }}" class="px-4 py-2 rounded-xl bg-white text-slate-700 border border-slate-200 text-sm font-semibold text-center hover:bg-slate-50 w-full">
@@ -344,5 +345,3 @@
         })();
     </script>
 @endsection
-BLADE
-

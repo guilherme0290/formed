@@ -6,7 +6,7 @@
     <div class="w-full px-3 md:px-5 py-4 md:py-5 space-y-6">
         <div class="flex flex-col gap-2">
             <div class="inline-flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-indigo-400">
-                <span class="inline-flex h-7 w-7 items-center justify-center rounded-2xl bg-indigo-500/20 text-pink-100 text-lg">🧾</span>
+                <span class="inline-flex h-7 w-7 items-center justify-center rounded-2xl bg-indigo-500/20 text-pink-100 text-lg">ðŸ§¾</span>
                 Itens do contas a receber
             </div>
             <div class="flex flex-wrap items-center gap-3">
@@ -34,7 +34,7 @@
                 <header class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
                     <div>
                         <h2 class="text-sm font-semibold text-slate-800">Itens selecionados</h2>
-                        <p class="text-xs text-slate-500">Base para geração da conta a receber</p>
+                        <p class="text-xs text-slate-500">Base para geraÃ§Ã£o da conta a receber</p>
                     </div>
                     <button type="button" id="abrirModalItem" class="px-3 py-2 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800">
                         Novo Item
@@ -45,8 +45,8 @@
                     <table class="min-w-full divide-y divide-slate-100 text-sm" id="itensTable">
                         <thead class="bg-slate-50 text-slate-600">
                             <tr>
-                                <th class="px-4 py-3 text-left font-semibold">Serviço</th>
-                                <th class="px-4 py-3 text-left font-semibold">Data realização</th>
+                                <th class="px-4 py-3 text-left font-semibold">ServiÃ§o</th>
+                                <th class="px-4 py-3 text-left font-semibold">Data realizaÃ§Ã£o</th>
                                 <th class="px-4 py-3 text-left font-semibold">Vencimento</th>
                                 <th class="px-4 py-3 text-left font-semibold">Status</th>
                                 <th class="px-4 py-3 text-right font-semibold">Valor</th>
@@ -57,12 +57,12 @@
                                 @php
                                     $venda = $item->venda;
                                     $dataRealizacao = $venda?->tarefa?->finalizado_em ?? $venda?->created_at;
-                                    $servicoNome = $item->servico?->nome ?? $item->descricao_snapshot ?? 'Serviço';
+                                    $servicoNome = $item->servico?->nome ?? $item->descricao_snapshot ?? 'ServiÃ§o';
                                 @endphp
                                 <tr>
                                     <td class="px-4 py-3 text-slate-800">{{ $servicoNome }}</td>
-                                    <td class="px-4 py-3 text-slate-600">{{ $dataRealizacao?->format('d/m/Y') ?? '—' }}</td>
-                                    <td class="px-4 py-3 text-slate-600">—</td>
+                                    <td class="px-4 py-3 text-slate-600">{{ $dataRealizacao?->format('d/m/Y') ?? 'â€”' }}</td>
+                                    <td class="px-4 py-3 text-slate-600">â€”</td>
                                     <td class="px-4 py-3">
                                         <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-100">
                                             Em aberto
@@ -81,7 +81,7 @@
                 <div class="px-5 py-4 border-t border-slate-100 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <div class="grid gap-3 md:grid-cols-2">
                         <div>
-                            <label class="text-xs font-semibold text-slate-600">Vencimento padrão</label>
+                            <label class="text-xs font-semibold text-slate-600">Vencimento padrÃ£o</label>
                             <div class="relative">
     <input type="text"
            inputmode="numeric"
@@ -91,7 +91,7 @@
     <button type="button"
             class="absolute right-0 top-0 h-full w-8 flex items-center justify-center text-slate-400 hover:text-slate-600 date-picker-btn z-10"
             data-date-target="cr_vencimento"
-            aria-label="Abrir calend�rio">
+            aria-label="Abrir calendário">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" viewBox="0 0 24 24" fill="currentColor">
             <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v2H2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 2 0v1zm15 8H2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V10z"/>
         </svg>
@@ -110,7 +110,7 @@
     <button type="button"
             class="absolute right-0 top-0 h-full w-8 flex items-center justify-center text-slate-400 hover:text-slate-600 date-picker-btn z-10"
             data-date-target="cr_pago_em"
-            aria-label="Abrir calend�rio">
+            aria-label="Abrir calendário">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" viewBox="0 0 24 24" fill="currentColor">
             <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v2H2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 2 0v1zm15 8H2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V10z"/>
         </svg>
@@ -135,11 +135,11 @@
             <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5 space-y-4 max-h-[90vh] overflow-y-auto">
                 <div class="flex items-center justify-between">
                     <h3 class="text-sm font-semibold text-slate-900">Adicionar item avulso</h3>
-                    <button type="button" data-fechar-modal class="text-slate-400 hover:text-slate-600">✕</button>
+                    <button type="button" data-fechar-modal class="text-slate-400 hover:text-slate-600">âœ•</button>
                 </div>
 
                 <div>
-                    <label class="text-xs font-semibold text-slate-600">Serviço (opcional)</label>
+                    <label class="text-xs font-semibold text-slate-600">ServiÃ§o (opcional)</label>
                     <select id="modalServico" class="w-full rounded-lg border-slate-200 bg-white text-slate-900 text-sm">
                         <option value="" class="text-slate-900">Selecione</option>
                         @foreach($servicos as $servico)
@@ -149,7 +149,7 @@
                 </div>
 
                 <div>
-                    <label class="text-xs font-semibold text-slate-600">Descrição (opcional)</label>
+                    <label class="text-xs font-semibold text-slate-600">DescriÃ§Ã£o (opcional)</label>
                     <input type="text" id="modalDescricao" class="w-full rounded-lg border-slate-200 bg-white text-slate-900 text-sm" placeholder="Detalhe do item" />
                 </div>
 
@@ -164,7 +164,7 @@
     <button type="button"
             class="absolute right-0 top-0 h-full w-8 flex items-center justify-center text-slate-400 hover:text-slate-600 date-picker-btn z-10"
             data-date-target="modalData"
-            aria-label="Abrir calend�rio">
+            aria-label="Abrir calendário">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" viewBox="0 0 24 24" fill="currentColor">
             <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v2H2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 2 0v1zm15 8H2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V10z"/>
         </svg>
@@ -184,7 +184,7 @@
     <button type="button"
             class="absolute right-0 top-0 h-full w-8 flex items-center justify-center text-slate-400 hover:text-slate-600 date-picker-btn z-10"
             data-date-target="modalVencimento"
-            aria-label="Abrir calend�rio">
+            aria-label="Abrir calendário">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" viewBox="0 0 24 24" fill="currentColor">
             <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v2H2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 2 0v1zm15 8H2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V10z"/>
         </svg>
@@ -236,20 +236,20 @@
                 const valor = valorInput.value;
 
                 if (!servicoId && !descricao) {
-                    window.uiAlert('Informe um serviço ou descrição.');
+                    window.uiAlert('Informe um serviÃ§o ou descriÃ§Ã£o.');
                     return;
                 }
 
                 if (!valor || parseFloat(valor) <= 0) {
-                    window.uiAlert('Informe um valor válido.');
+                    window.uiAlert('Informe um valor vÃ¡lido.');
                     return;
                 }
 
                 const linha = document.createElement('tr');
                 linha.innerHTML = `
                     <td class="px-4 py-3 text-slate-800">${servicoNome || descricao}</td>
-                    <td class="px-4 py-3 text-slate-600">${data ? data.split('-').reverse().join('/') : '—'}</td>
-                    <td class="px-4 py-3 text-slate-600">${vencimento ? vencimento.split('-').reverse().join('/') : '—'}</td>
+                    <td class="px-4 py-3 text-slate-600">${data ? data.split('-').reverse().join('/') : 'â€”'}</td>
+                    <td class="px-4 py-3 text-slate-600">${vencimento ? vencimento.split('-').reverse().join('/') : 'â€”'}</td>
                     <td class="px-4 py-3">
                         <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-100">
                             Em aberto
