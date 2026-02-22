@@ -15,6 +15,7 @@ class ParametroCliente extends Model
         'cliente_id',
         'vendedor_id',
         'forma_pagamento',
+        'email_envio_fatura',
         'incluir_esocial',
         'esocial_qtd_funcionarios',
         'esocial_valor_mensal',

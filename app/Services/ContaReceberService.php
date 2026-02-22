@@ -131,4 +131,31 @@ class ContaReceberService
 
         return $valor - $restante;
     }
+
+    public function excluirBaixas(ContaReceber $conta): void
+    {
+        $conta->loadMissing('itens');
+
+        $conta->baixas()->delete();
+
+        $itens = $conta->itens()
+            ->where('status', '!=', 'CANCELADO')
+            ->get();
+
+        foreach ($itens as $item) {
+            $baixado = (float) $item->baixas()->sum('valor');
+            $item->update([
+                'status' => $baixado >= (float) $item->valor ? 'BAIXADO' : 'ABERTO',
+                'baixado_em' => $baixado >= (float) $item->valor ? now() : null,
+            ]);
+        }
+
+        $conta->update(['pago_em' => null]);
+        $this->recalcularConta($conta->fresh());
+
+        $vendaIds = $itens->pluck('venda_id')->filter()->unique();
+        foreach ($vendaIds as $vendaId) {
+            $this->atualizarStatusVenda($vendaId);
+        }
+    }
 }

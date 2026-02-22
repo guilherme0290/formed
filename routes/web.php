@@ -889,14 +889,26 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
                 ->name('contratos.show');
             Route::get('/contas-receber', [\App\Http\Controllers\Financeiro\ContasReceberController::class, 'index'])
                 ->name('contas-receber');
+            Route::view('/contas-receber/wireframe-novo-fluxo', 'financeiro.contas-receber.wireframe-novo-fluxo')
+                ->name('contas-receber.wireframe');
             Route::post('/contas-receber/itens', [\App\Http\Controllers\Financeiro\ContasReceberController::class, 'itens'])
                 ->name('contas-receber.itens');
             Route::post('/contas-receber', [\App\Http\Controllers\Financeiro\ContasReceberController::class, 'store'])
                 ->name('contas-receber.store');
             Route::get('/contas-receber/{contaReceber}', [\App\Http\Controllers\Financeiro\ContasReceberController::class, 'show'])
                 ->name('contas-receber.show');
+            Route::get('/contas-receber/{contaReceber}/impressao', [\App\Http\Controllers\Financeiro\ContasReceberController::class, 'impressao'])
+                ->name('contas-receber.impressao');
+            Route::get('/contas-receber/{contaReceber}/whatsapp', [\App\Http\Controllers\Financeiro\ContasReceberController::class, 'whatsapp'])
+                ->name('contas-receber.whatsapp');
+            Route::put('/contas-receber/{contaReceber}/datas', [\App\Http\Controllers\Financeiro\ContasReceberController::class, 'updateDatas'])
+                ->name('contas-receber.update-datas');
+            Route::post('/contas-receber/{contaReceber}/enviar-email', [\App\Http\Controllers\Financeiro\ContasReceberController::class, 'enviarFaturaEmail'])
+                ->name('contas-receber.enviar-email');
             Route::post('/contas-receber/{contaReceber}/baixar', [\App\Http\Controllers\Financeiro\ContasReceberController::class, 'baixar'])
                 ->name('contas-receber.baixar');
+            Route::post('/contas-receber/{contaReceber}/excluir-baixa', [\App\Http\Controllers\Financeiro\ContasReceberController::class, 'excluirBaixa'])
+                ->name('contas-receber.excluir-baixa');
             Route::post('/contas-receber/{contaReceber}/reabrir', [\App\Http\Controllers\Financeiro\ContasReceberController::class, 'reabrir'])
                 ->name('contas-receber.reabrir');
             Route::delete('/contas-receber/{contaReceber}', [\App\Http\Controllers\Financeiro\ContasReceberController::class, 'destroy'])
@@ -1222,5 +1234,8 @@ Route::get('/storage-local', [StorageProxyController::class, 'show'])
     ->middleware('signed')
     ->name('storage.proxy');
 
-require __DIR__.'/auth.php';
+Route::get('/publico/faturas/impressao', [\App\Http\Controllers\Financeiro\ContasReceberController::class, 'impressaoPublica'])
+    ->middleware('signed')
+    ->name('financeiro.contas-receber.impressao-publica');
 
+require __DIR__.'/auth.php';

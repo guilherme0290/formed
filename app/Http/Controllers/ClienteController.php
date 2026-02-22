@@ -18,6 +18,7 @@ use App\Models\User;
 use App\Services\FuncionarioArquivosZipService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class ClienteController extends Controller
@@ -539,7 +540,26 @@ class ClienteController extends Controller
         FuncionarioArquivosZipService $zipService
     ) {
         $this->authorizeCliente($cliente);
-        $tarefaIds = (array) $request->input('tarefa_ids', []);
+        $tarefaIds = collect((array) $request->input('tarefa_ids', []))
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        if (count($tarefaIds) === 1) {
+            try {
+                $arquivos = $zipService->listarArquivosPorIds($cliente, $tarefaIds);
+            } catch (\RuntimeException $e) {
+                return back()->with('erro', $e->getMessage());
+            }
+
+            if (count($arquivos) === 1) {
+                $arquivo = $arquivos[0];
+
+                return Storage::disk($arquivo['disk'])->download($arquivo['path'], $arquivo['name']);
+            }
+        }
 
         try {
             $zipPath = $zipService->gerarZipPorIds($cliente, $tarefaIds);
@@ -882,4 +902,3 @@ class ClienteController extends Controller
 
 
 }
-

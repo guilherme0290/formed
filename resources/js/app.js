@@ -17,6 +17,35 @@ if (!window.Swal) {
     document.head.appendChild(script);
 }
 
+window.renderLucideIcons = (root = document) => {
+    if (!window.lucide || typeof window.lucide.createIcons !== 'function') return false;
+    const hasIcons = (root || document).querySelector?.('[data-lucide]');
+    if (!hasIcons) return false;
+
+    window.lucide.createIcons({
+        attrs: {
+            'stroke-width': 1.8,
+        },
+    });
+
+    return true;
+};
+
+const ensureLucideLoaded = () => {
+    if (document.querySelector('[data-lucide]') === null) return;
+
+    if (window.renderLucideIcons()) return;
+
+    if (document.getElementById('lucide-cdn-script')) return;
+
+    const script = document.createElement('script');
+    script.id = 'lucide-cdn-script';
+    script.src = 'https://unpkg.com/lucide@latest/dist/umd/lucide.min.js';
+    script.defer = true;
+    script.onload = () => window.renderLucideIcons?.();
+    document.head.appendChild(script);
+};
+
 window.uiAlert = (message, options = {}) => {
     if (window.Swal) {
         return window.Swal.fire({
@@ -169,6 +198,8 @@ const markNoPermissionElements = () => {
 
 document.addEventListener('DOMContentLoaded', () => {
     markNoPermissionElements();
+    ensureLucideLoaded();
+    setTimeout(() => window.renderLucideIcons?.(), 150);
 });
 
 document.addEventListener('click', function (e) {

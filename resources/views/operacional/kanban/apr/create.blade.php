@@ -67,6 +67,34 @@
         .apr-theme .apr-btn-success:hover {
             background: var(--apr-success-hover);
         }
+
+        .apr-theme .apr-required-label {
+            position: relative;
+        }
+
+        .apr-theme .apr-required-label::after {
+            content: '';
+            display: inline-block;
+            width: 0.3rem;
+            height: 0.3rem;
+            margin-left: 0.35rem;
+            border-radius: 9999px;
+            background: #475569;
+            vertical-align: middle;
+            opacity: 0.9;
+        }
+
+        .apr-theme .apr-required-legend {
+            color: #64748b;
+            font-size: 11px;
+        }
+
+        .apr-theme .apr-inline-error {
+            margin-top: 0.25rem;
+            color: #dc2626;
+            font-size: 12px;
+            line-height: 1.2;
+        }
     </style>
 @endpush
 
@@ -241,19 +269,22 @@
                     </div>
                 @endif
 
+                <p class="apr-required-legend">Campos com • são obrigatórios para aprovação da APR.</p>
+
                 <section class="apr-step" data-step="0">
                     <h2 class="text-base font-semibold text-slate-800">Dados da Contratante</h2>
                     <p class="text-xs text-slate-500 mt-1">Informações da empresa responsável pela obra.</p>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                         <div class="md:col-span-2">
-                            <label class="block text-xs font-medium text-slate-600 mb-1">Razão Social / Empresa</label>
+                            <label class="apr-required-label block text-xs font-medium text-slate-600 mb-1">Razão Social / Empresa</label>
                             <input type="text" name="contratante_razao_social" value="{{ $valor('contratante_razao_social', $apr?->contratante_razao_social ?? '') }}" class="w-full rounded-lg border-slate-200 text-sm px-3 py-2">
                         </div>
 
                         <div>
-                            <label class="block text-xs font-medium text-slate-600 mb-1">CNPJ</label>
+                            <label class="apr-required-label block text-xs font-medium text-slate-600 mb-1">CNPJ</label>
                             <input type="text" id="contratante_cnpj" name="contratante_cnpj" value="{{ $valor('contratante_cnpj', $apr?->contratante_cnpj ?? '') }}" class="w-full rounded-lg border-slate-200 text-sm px-3 py-2" inputmode="numeric" maxlength="18">
+                            <p id="contratante_cnpj_error" class="apr-inline-error hidden"></p>
                         </div>
 
                         <div>
@@ -279,17 +310,22 @@
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                         <div class="md:col-span-2">
-                            <label class="block text-xs font-medium text-slate-600 mb-1">Nome da Obra</label>
+                            <label class="apr-required-label block text-xs font-medium text-slate-600 mb-1">Nome da Obra</label>
                             <input type="text" name="obra_nome" value="{{ $valor('obra_nome', $apr?->obra_nome ?? '') }}" class="w-full rounded-lg border-slate-200 text-sm px-3 py-2">
                         </div>
 
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1">CEP</label>
+                            <input type="text" id="obra_cep" name="obra_cep" value="{{ $valor('obra_cep', $apr?->obra_cep ?? '') }}" class="w-full rounded-lg border-slate-200 text-sm px-3 py-2" inputmode="numeric" maxlength="9">
+                        </div>
+
                         <div class="md:col-span-2">
-                            <label class="block text-xs font-medium text-slate-600 mb-1">Endereço Completo</label>
-                            <input type="text" name="obra_endereco" value="{{ $valor('obra_endereco', $obraEnderecoFallback) }}" class="w-full rounded-lg border-slate-200 text-sm px-3 py-2">
+                            <label class="apr-required-label block text-xs font-medium text-slate-600 mb-1">Endereço Completo</label>
+                            <input type="text" id="obra_endereco" name="obra_endereco" value="{{ $valor('obra_endereco', $obraEnderecoFallback) }}" class="w-full rounded-lg border-slate-200 text-sm px-3 py-2">
                         </div>
 
                         <div>
-                            <label class="block text-xs font-medium text-slate-600 mb-1">UF</label>
+                            <label class="apr-required-label block text-xs font-medium text-slate-600 mb-1">UF</label>
                             <select name="obra_uf" id="obra_uf"
                                     class="w-full rounded-lg border-slate-200 text-sm px-3 py-2">
                                 <option value="">Selecione...</option>
@@ -303,16 +339,11 @@
                         </div>
 
                         <div>
-                            <label class="block text-xs font-medium text-slate-600 mb-1">Cidade</label>
+                            <label class="apr-required-label block text-xs font-medium text-slate-600 mb-1">Cidade</label>
                             <select name="obra_cidade" id="obra_cidade"
                                     class="w-full rounded-lg border-slate-200 text-sm px-3 py-2">
                                 <option value="">Selecione...</option>
                             </select>
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-medium text-slate-600 mb-1">CEP</label>
-                            <input type="text" id="obra_cep" name="obra_cep" value="{{ $valor('obra_cep', $apr?->obra_cep ?? '') }}" class="w-full rounded-lg border-slate-200 text-sm px-3 py-2" inputmode="numeric" maxlength="9">
                         </div>
 
                         <div>
@@ -328,13 +359,13 @@
 
                     <div class="mt-4 space-y-4">
                         <div>
-                            <label class="block text-xs font-medium text-slate-600 mb-1">Descrição detalhada</label>
+                            <label class="apr-required-label block text-xs font-medium text-slate-600 mb-1">Descrição detalhada</label>
                             <textarea name="atividade_descricao" rows="4" class="w-full rounded-lg border-slate-200 text-sm px-3 py-2">{{ $valor('atividade_descricao', $apr?->atividade_descricao ?? '') }}</textarea>
                         </div>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-xs font-medium text-slate-600 mb-1">Data início</label>
+                                <label class="apr-required-label block text-xs font-medium text-slate-600 mb-1">Data início</label>
                                 <div class="relative">
                                     <input type="text"
                                            inputmode="numeric"
@@ -358,7 +389,7 @@
                             </div>
 
                             <div>
-                                <label class="block text-xs font-medium text-slate-600 mb-1">Previsão término</label>
+                                <label class="apr-required-label block text-xs font-medium text-slate-600 mb-1">Previsão término</label>
                                 <div class="relative">
                                     <input type="text"
                                            inputmode="numeric"
@@ -416,6 +447,7 @@
                                     <span class="text-xs font-semibold text-slate-600">Etapa <span class="etapa-num">{{ $idx + 1 }}</span></span>
                                     <button type="button" class="remove-etapa text-xs text-red-600 hover:text-red-700">Remover</button>
                                 </div>
+                                <label class="apr-required-label block text-xs font-medium text-slate-600 mb-1">Descrição</label>
                                 <input type="text" name="etapas[{{ $idx }}][descricao]" value="{{ $etapa['descricao'] ?? '' }}" class="w-full rounded-lg border-slate-200 text-sm px-3 py-2" placeholder="Descreva a etapa">
                             </div>
                         @endforeach
@@ -459,7 +491,7 @@
 
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                                     <div>
-                                        <label class="block text-xs font-medium text-slate-600 mb-1">Nome</label>
+                                        <label class="apr-required-label block text-xs font-medium text-slate-600 mb-1">Nome</label>
                                         <input type="text"
                                                name="equipe[{{ $idx }}][nome]"
                                                value="{{ $trabalhador['nome'] ?? '' }}"
@@ -469,7 +501,7 @@
                                     </div>
 
                                     <div>
-                                        <label class="block text-xs font-medium text-slate-600 mb-1">Função</label>
+                                        <label class="apr-required-label block text-xs font-medium text-slate-600 mb-1">Função</label>
                                         <input type="text"
                                                name="equipe[{{ $idx }}][funcao]"
                                                value="{{ $trabalhador['funcao'] ?? '' }}"
@@ -529,7 +561,7 @@
                                         </select>
                                     </div>
                                     <div class="md:col-span-2">
-                                        <label class="block text-xs font-medium text-slate-600 mb-1">Descrição</label>
+                                        <label class="apr-required-label block text-xs font-medium text-slate-600 mb-1">Descrição</label>
                                         <input type="text" name="epis[{{ $idx }}][descricao]" value="{{ $epi['descricao'] ?? '' }}" class="w-full rounded-lg border-slate-200 text-sm px-3 py-2" placeholder="Ex: Capacete classe B">
                                     </div>
                                 </div>
@@ -621,9 +653,11 @@
             const obraCidadeSelect = document.getElementById('obra_cidade');
             const cidadeInicial = @json($valor('obra_cidade', $obraCidadeFallback));
             const inputCnpj = document.getElementById('contratante_cnpj');
+            const inputCnpjError = document.getElementById('contratante_cnpj_error');
             const inputTelefone = document.getElementById('contratante_telefone');
             const inputCep = document.getElementById('obra_cep');
             const inputEmail = document.getElementById('contratante_email');
+            const inputObraEndereco = document.getElementById('obra_endereco');
             const btnClearEpis = document.getElementById('clear-epis');
             const etapasTemplateSelect = document.getElementById('apr-etapas-template');
             const btnApplyEtapasTemplate = document.getElementById('apr-apply-etapas-template');
@@ -767,6 +801,84 @@
                 if (v.length <= 8) return `${v.slice(0, 2)}.${v.slice(2, 5)}.${v.slice(5)}`;
                 if (v.length <= 12) return `${v.slice(0, 2)}.${v.slice(2, 5)}.${v.slice(5, 8)}/${v.slice(8)}`;
                 return `${v.slice(0, 2)}.${v.slice(2, 5)}.${v.slice(5, 8)}/${v.slice(8, 12)}-${v.slice(12)}`;
+            }
+
+            function cnpjValido(cnpj) {
+                const valor = somenteDigitos(cnpj);
+                if (valor.length !== 14) return false;
+                if (/^(\d)\1{13}$/.test(valor)) return false;
+
+                let tamanho = 12;
+                let numeros = valor.substring(0, tamanho);
+                const digitos = valor.substring(tamanho);
+                let soma = 0;
+                let pos = tamanho - 7;
+
+                for (let i = tamanho; i >= 1; i--) {
+                    soma += Number(numeros.charAt(tamanho - i)) * pos--;
+                    if (pos < 2) pos = 9;
+                }
+
+                let resultado = (soma % 11) < 2 ? 0 : 11 - (soma % 11);
+                if (resultado !== Number(digitos.charAt(0))) return false;
+
+                tamanho = 13;
+                numeros = valor.substring(0, tamanho);
+                soma = 0;
+                pos = tamanho - 7;
+
+                for (let i = tamanho; i >= 1; i--) {
+                    soma += Number(numeros.charAt(tamanho - i)) * pos--;
+                    if (pos < 2) pos = 9;
+                }
+
+                resultado = (soma % 11) < 2 ? 0 : 11 - (soma % 11);
+                return resultado === Number(digitos.charAt(1));
+            }
+
+            function limparErroCnpj() {
+                if (inputCnpj) {
+                    inputCnpj.classList.remove('border-red-400', 'focus:border-red-500');
+                    inputCnpj.setCustomValidity('');
+                }
+                if (inputCnpjError) {
+                    inputCnpjError.textContent = '';
+                    inputCnpjError.classList.add('hidden');
+                }
+            }
+
+            function mostrarErroCnpj(mensagem) {
+                if (inputCnpj) {
+                    inputCnpj.classList.add('border-red-400');
+                    inputCnpj.setCustomValidity(mensagem || 'CNPJ inválido');
+                }
+                if (inputCnpjError) {
+                    inputCnpjError.textContent = mensagem || 'CNPJ inválido';
+                    inputCnpjError.classList.remove('hidden');
+                }
+            }
+
+            function validarCampoCnpj({ exigirPreenchimento = false } = {}) {
+                if (!inputCnpj) return true;
+
+                const cnpjLimpo = somenteDigitos(inputCnpj.value);
+
+                if (cnpjLimpo === '') {
+                    limparErroCnpj();
+                    if (exigirPreenchimento) {
+                        mostrarErroCnpj('Informe o CNPJ.');
+                        return false;
+                    }
+                    return true;
+                }
+
+                if (cnpjLimpo.length !== 14 || !cnpjValido(cnpjLimpo)) {
+                    mostrarErroCnpj('CNPJ inválido');
+                    return false;
+                }
+
+                limparErroCnpj();
+                return true;
             }
 
             function mascararTelefone(valor) {
@@ -966,6 +1078,43 @@
                 }
             }
 
+            let ultimoCepConsultado = '';
+
+            async function consultarCepViaCep() {
+                if (!inputCep) return;
+
+                const cep = somenteDigitos(inputCep.value);
+                if (cep.length !== 8) return;
+                if (cep === ultimoCepConsultado) return;
+
+                try {
+                    const resp = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+                    const json = await resp.json();
+
+                    if (json?.erro) return;
+
+                    ultimoCepConsultado = cep;
+
+                    const logradouro = String(json.logradouro || '').trim();
+                    const bairro = String(json.bairro || '').trim();
+                    const enderecoAuto = [logradouro, bairro].filter(Boolean).join(' - ');
+
+                    if (inputObraEndereco && enderecoAuto) {
+                        inputObraEndereco.value = enderecoAuto;
+                    }
+
+                    const ufApi = String(json.uf || '').trim().toUpperCase();
+                    const cidadeApi = String(json.localidade || '').trim();
+
+                    if (ufApi && obraUfSelect) {
+                        obraUfSelect.value = ufApi;
+                        await carregarCidadesPorUf(ufApi, cidadeApi || null);
+                    }
+                } catch (e) {
+                    console.error('Erro ao buscar CEP no ViaCEP', e);
+                }
+            }
+
             function validarStepAtual(stepIdx) {
                 const stepEl = steps[stepIdx];
                 if (!stepEl) return true;
@@ -975,8 +1124,6 @@
                     const obrigatorios = [
                         'contratante_razao_social',
                         'contratante_cnpj',
-                        'contratante_responsavel_nome',
-                        'contratante_telefone',
                         'obra_nome',
                         'obra_endereco',
                         'obra_cidade',
@@ -989,6 +1136,12 @@
                             campo?.focus();
                             return false;
                         }
+                    }
+
+                    if (!validarCampoCnpj({ exigirPreenchimento: true })) {
+                        addErroCampo(stepEl, inputCnpj, 'Informe um CNPJ válido.');
+                        inputCnpj?.focus();
+                        return false;
                     }
 
                     const emailCampo = form.querySelector('[name="contratante_email"]');
@@ -1087,6 +1240,7 @@
                         <span class="text-xs font-semibold text-slate-600">Etapa <span class="etapa-num">1</span></span>
                         <button type="button" class="remove-etapa text-xs text-red-600 hover:text-red-700">Remover</button>
                     </div>
+                    <label class="apr-required-label block text-xs font-medium text-slate-600 mb-1">Descrição</label>
                     <input type="text" data-field="descricao" class="w-full rounded-lg border-slate-200 text-sm px-3 py-2" placeholder="Descreva a etapa">
                 `;
                 return el;
@@ -1102,7 +1256,7 @@
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div>
-                            <label class="block text-xs font-medium text-slate-600 mb-1">Nome</label>
+                            <label class="apr-required-label block text-xs font-medium text-slate-600 mb-1">Nome</label>
                             <input type="text"
                                    data-field="nome"
                                    class="js-equipe-nome w-full rounded-lg border-slate-200 text-sm px-3 py-2"
@@ -1110,7 +1264,7 @@
                                    autocomplete="off">
                         </div>
                         <div>
-                            <label class="block text-xs font-medium text-slate-600 mb-1">Função</label>
+                            <label class="apr-required-label block text-xs font-medium text-slate-600 mb-1">Função</label>
                             <input type="text" data-field="funcao" class="js-equipe-funcao w-full rounded-lg border-slate-200 text-sm px-3 py-2">
                         </div>
                     </div>
@@ -1224,7 +1378,7 @@
                             </select>
                         </div>
                         <div class="md:col-span-2">
-                            <label class="block text-xs font-medium text-slate-600 mb-1">Descrição</label>
+                            <label class="apr-required-label block text-xs font-medium text-slate-600 mb-1">Descrição</label>
                             <input type="text" data-field="descricao" class="w-full rounded-lg border-slate-200 text-sm px-3 py-2">
                         </div>
                     </div>
@@ -1656,8 +1810,17 @@
             if (inputCnpj) {
                 inputCnpj.addEventListener('input', (e) => {
                     e.target.value = mascararCnpj(e.target.value);
+                    if (!somenteDigitos(e.target.value)) {
+                        limparErroCnpj();
+                        return;
+                    }
+                    if (somenteDigitos(e.target.value).length < 14) {
+                        limparErroCnpj();
+                    }
                 });
+                inputCnpj.addEventListener('blur', () => validarCampoCnpj());
                 inputCnpj.value = mascararCnpj(inputCnpj.value);
+                validarCampoCnpj();
             }
 
             if (inputTelefone) {
@@ -1670,7 +1833,9 @@
             if (inputCep) {
                 inputCep.addEventListener('input', (e) => {
                     e.target.value = mascararCep(e.target.value);
+                    ultimoCepConsultado = '';
                 });
+                inputCep.addEventListener('blur', consultarCepViaCep);
                 inputCep.value = mascararCep(inputCep.value);
             }
 

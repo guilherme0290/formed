@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\ClienteContrato;
 use App\Models\ClienteContratoItem;
+use App\Models\Servico;
 use App\Models\Tarefa;
 use App\Models\Venda;
 use App\Models\VendaItem;
@@ -24,6 +25,10 @@ class VendaService
 
         return DB::transaction(function () use ($tarefa, $contrato, $item) {
             $total = (float) $item->preco_unitario_snapshot;
+            $descricaoSnapshot = $this->montarDescricaoVenda(
+                $item->servico?->nome ?? $tarefa->servico?->nome,
+                $item->descricao_snapshot
+            );
 
             $venda = Venda::create([
                 'empresa_id' => $tarefa->empresa_id,
@@ -37,7 +42,7 @@ class VendaService
             VendaItem::create([
                 'venda_id' => $venda->id,
                 'servico_id' => $item->servico_id,
-                'descricao_snapshot' => $item->descricao_snapshot,
+                'descricao_snapshot' => $descricaoSnapshot,
                 'preco_unitario_snapshot' => $item->preco_unitario_snapshot,
                 'quantidade' => 1,
                 'subtotal_snapshot' => $total,
@@ -65,6 +70,16 @@ class VendaService
                 $total += (float) ($item['preco_unitario_snapshot'] ?? 0) * (int) ($item['quantidade'] ?? 1);
             }
 
+            $servicoIds = collect($itens)
+                ->pluck('servico_id')
+                ->filter(fn ($id) => !empty($id))
+                ->map(fn ($id) => (int) $id)
+                ->unique()
+                ->values();
+            $nomesServico = $servicoIds->isEmpty()
+                ? collect()
+                : Servico::query()->whereIn('id', $servicoIds)->pluck('nome', 'id');
+
             $venda = Venda::create([
                 'empresa_id' => $tarefa->empresa_id,
                 'cliente_id' => $tarefa->cliente_id,
@@ -78,11 +93,22 @@ class VendaService
                 $preco = (float) ($item['preco_unitario_snapshot'] ?? 0);
                 $quantidade = (int) ($item['quantidade'] ?? 1);
                 $subtotal = $preco * $quantidade;
+                $servicoId = (int) ($item['servico_id'] ?? 0);
+                $servicoNome = $servicoId > 0
+                    ? ($nomesServico[$servicoId] ?? null)
+                    : null;
+                if (!$servicoNome && $servicoId > 0 && (int) $tarefa->servico_id === $servicoId) {
+                    $servicoNome = $tarefa->servico?->nome;
+                }
+                $descricaoSnapshot = $this->montarDescricaoVenda(
+                    is_string($servicoNome) ? $servicoNome : null,
+                    $item['descricao_snapshot'] ?? null
+                );
 
                 VendaItem::create([
                     'venda_id' => $venda->id,
-                    'servico_id' => $item['servico_id'] ?? null,
-                    'descricao_snapshot' => $item['descricao_snapshot'] ?? null,
+                    'servico_id' => $servicoId > 0 ? $servicoId : null,
+                    'descricao_snapshot' => $descricaoSnapshot,
                     'preco_unitario_snapshot' => $preco,
                     'quantidade' => $quantidade,
                     'subtotal_snapshot' => $subtotal,
@@ -91,5 +117,27 @@ class VendaService
 
             return $venda;
         });
+    }
+
+    private function montarDescricaoVenda(?string $servicoNome, ?string $detalhe): string
+    {
+        $servico = trim((string) $servicoNome);
+        $desc = trim((string) $detalhe);
+
+        if ($servico === '') {
+            return $desc !== '' ? $desc : 'Serviço';
+        }
+
+        if ($desc === '') {
+            return $servico;
+        }
+
+        $servicoNorm = mb_strtolower($servico);
+        $descNorm = mb_strtolower($desc);
+        if ($descNorm === $servicoNorm || str_starts_with($descNorm, $servicoNorm . ' -')) {
+            return $desc;
+        }
+
+        return $servico . ' - ' . $desc;
     }
 }

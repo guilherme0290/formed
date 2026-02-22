@@ -8,6 +8,7 @@
     <title>@yield('title', 'Painel Operacional') - Formed</title>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @stack('styles')
     <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
     <link rel="shortcut icon" type="image/png" href="{{ asset('favicon.png') }}">
 </head>

@@ -7,19 +7,30 @@ use App\Http\Controllers\Controller;
 use App\Models\Cliente;
 use App\Models\ContaReceber;
 use App\Models\ContaReceberItem;
+use App\Models\ParametroCliente;
 use App\Models\Servico;
 use App\Models\VendaItem;
 use App\Services\ContaReceberService;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\URL;
 
 class ContasReceberController extends Controller
 {
     public function __construct()
     {
         $this->middleware(function (Request $request, $next) {
+            $action = $request->route()?->getActionMethod();
+            if (in_array($action, ['impressaoPublica'], true)) {
+                return $next($request);
+            }
+
             $user = $request->user();
             if (!$user || (!$user->hasPapel('Master') && !$user->hasPapel('Financeiro'))) {
                 abort(403);
@@ -31,6 +42,7 @@ class ContasReceberController extends Controller
     public function index(Request $request): View
     {
         $empresaId = $request->user()->empresa_id;
+        $abaAtiva = $request->input('aba', 'vendas');
 
         $clientes = Cliente::query()
             ->where('empresa_id', $empresaId)
@@ -41,6 +53,14 @@ class ContasReceberController extends Controller
         $dataInicio = $request->input('data_inicio');
         $dataFim = $request->input('data_fim');
         $clienteId = $request->input('cliente_id');
+        $clienteBusca = trim((string) $request->input('cliente', ''));
+
+        if (!$clienteId && $clienteBusca !== '') {
+            $clienteId = Cliente::query()
+                ->where('empresa_id', $empresaId)
+                ->where('razao_social', $clienteBusca)
+                ->value('id');
+        }
 
         $vendaItensQuery = VendaItem::query()
             ->with(['venda.cliente', 'servico', 'venda.tarefa.funcionario'])
@@ -90,27 +110,205 @@ class ContasReceberController extends Controller
             ->where('empresa_id', $empresaId)
             ->orderByDesc('id');
 
-        if ($clienteId) {
-            $contasQuery->where('cliente_id', $clienteId);
+        $faturasClienteId = $request->input('faturas_cliente_id');
+        $faturasClienteBusca = trim((string) $request->input('faturas_cliente', ''));
+        if (!$faturasClienteId && $faturasClienteBusca !== '') {
+            $faturasClienteId = Cliente::query()
+                ->where('empresa_id', $empresaId)
+                ->where('razao_social', $faturasClienteBusca)
+                ->value('id');
         }
 
-        $statusConta = $request->input('status_conta');
-        if ($statusConta) {
-            $contasQuery->where('status', $statusConta);
+        if ($faturasClienteId) {
+            $contasQuery->where('cliente_id', $faturasClienteId);
+        }
+
+        $faturasNumero = trim((string) $request->input('faturas_numero', ''));
+        if ($faturasNumero !== '') {
+            preg_match('/(\d+)\s*$/', $faturasNumero, $numeroTailMatch);
+            $numeroTailDigits = $numeroTailMatch[1] ?? '';
+            $numeroDigits = preg_replace('/\D+/', '', $faturasNumero);
+            $numeroBuscaId = $numeroTailDigits !== '' ? (int) ltrim($numeroTailDigits, '0') : null;
+            if ($numeroBuscaId === 0 && $numeroTailDigits !== '') {
+                $numeroBuscaId = 0;
+            }
+            if ($numeroDigits !== '') {
+                $contasQuery->where(function ($q) use ($numeroDigits, $numeroBuscaId) {
+                    if ($numeroBuscaId !== null) {
+                        $q->whereKey($numeroBuscaId);
+                    }
+                    $q->orWhere('id', 'like', '%'.$numeroDigits.'%');
+                });
+            } else {
+                $contasQuery->whereRaw('1 = 0');
+            }
+        }
+
+        $statusConta = trim((string) $request->input('faturas_status', ''));
+        if ($statusConta !== '') {
+            $statusConta = strtolower($statusConta);
+            if ($statusConta === 'cancelada') {
+                $contasQuery->where('status', 'CANCELADO');
+            } elseif ($statusConta === 'baixada') {
+                $contasQuery
+                    ->where('status', '!=', 'CANCELADO')
+                    ->whereRaw('COALESCE(total, 0) > 0')
+                    ->whereRaw('COALESCE(total_baixado, 0) >= COALESCE(total, 0)');
+            } elseif ($statusConta === 'parcial') {
+                $contasQuery
+                    ->where('status', '!=', 'CANCELADO')
+                    ->whereRaw('COALESCE(total_baixado, 0) > 0')
+                    ->whereRaw('COALESCE(total_baixado, 0) < COALESCE(total, 0)');
+            } elseif ($statusConta === 'aberta') {
+                $contasQuery
+                    ->where('status', '!=', 'CANCELADO')
+                    ->whereRaw('COALESCE(total_baixado, 0) <= 0');
+            } else {
+                $contasQuery->where('status', strtoupper($statusConta));
+            }
+        }
+
+        $faturasTipoPeriodo = $request->input('faturas_tipo_periodo', 'vencimento');
+        if (!in_array($faturasTipoPeriodo, ['emissao', 'vencimento', 'ambas'], true)) {
+            $faturasTipoPeriodo = 'vencimento';
+        }
+        $faturasDataInicio = $request->input('faturas_data_inicio');
+        $faturasDataFim = $request->input('faturas_data_fim');
+        if ($faturasDataInicio || $faturasDataFim) {
+            if ($faturasTipoPeriodo === 'emissao') {
+                if ($faturasDataInicio) {
+                    $contasQuery->whereDate('created_at', '>=', $faturasDataInicio);
+                }
+                if ($faturasDataFim) {
+                    $contasQuery->whereDate('created_at', '<=', $faturasDataFim);
+                }
+            } elseif ($faturasTipoPeriodo === 'vencimento') {
+                if ($faturasDataInicio) {
+                    $contasQuery->whereDate('vencimento', '>=', $faturasDataInicio);
+                }
+                if ($faturasDataFim) {
+                    $contasQuery->whereDate('vencimento', '<=', $faturasDataFim);
+                }
+            } else {
+                $contasQuery->where(function ($q) use ($faturasDataInicio, $faturasDataFim) {
+                    $q->where(function ($q2) use ($faturasDataInicio, $faturasDataFim) {
+                        if ($faturasDataInicio) {
+                            $q2->whereDate('created_at', '>=', $faturasDataInicio);
+                        }
+                        if ($faturasDataFim) {
+                            $q2->whereDate('created_at', '<=', $faturasDataFim);
+                        }
+                    })->orWhere(function ($q2) use ($faturasDataInicio, $faturasDataFim) {
+                        if ($faturasDataInicio) {
+                            $q2->whereDate('vencimento', '>=', $faturasDataInicio);
+                        }
+                        if ($faturasDataFim) {
+                            $q2->whereDate('vencimento', '<=', $faturasDataFim);
+                        }
+                    });
+                });
+            }
         }
 
         $contas = $contasQuery->paginate(10)->withQueryString();
+
+        $clienteAutocomplete = $clientes
+            ->pluck('razao_social')
+            ->filter()
+            ->unique()
+            ->values();
+
+        $clienteSelecionadoLabel = '';
+        if ($clienteId) {
+            $clienteSelecionadoLabel = (string) optional($clientes->firstWhere('id', (int) $clienteId))->razao_social;
+        } elseif ($clienteBusca !== '') {
+            $clienteSelecionadoLabel = $clienteBusca;
+        }
+
+        $faturasClienteSelecionadoLabel = '';
+        if ($faturasClienteId) {
+            $faturasClienteSelecionadoLabel = (string) optional($clientes->firstWhere('id', (int) $faturasClienteId))->razao_social;
+        } elseif ($faturasClienteBusca !== '') {
+            $faturasClienteSelecionadoLabel = $faturasClienteBusca;
+        }
+
+        $contaDetalhe = null;
+        $contaDetalheVencimentoSugerido = null;
+        $contaDetalheVencimentoDiaParametro = null;
+        $faturaId = $request->input('fatura_id');
+        if ($faturaId && is_numeric($faturaId)) {
+            $contaDetalhe = ContaReceber::query()
+                ->where('empresa_id', $empresaId)
+                ->whereKey((int) $faturaId)
+                ->with(['cliente', 'empresa', 'itens.venda', 'itens.vendaItem', 'itens.servico', 'baixas'])
+                ->first();
+            if ($contaDetalhe && $abaAtiva !== 'detalhe') {
+                $abaAtiva = 'detalhe';
+            }
+            if ($contaDetalhe) {
+                $vencimentoMeta = $this->resolverVencimentoPropostoCliente($contaDetalhe->cliente_id, $empresaId, $contaDetalhe->created_at);
+                $contaDetalheVencimentoSugerido = $vencimentoMeta['data'];
+                $contaDetalheVencimentoDiaParametro = $vencimentoMeta['dia'];
+            }
+        }
+
+        $contaDetalheEmailOpcoes = [];
+        if ($contaDetalhe) {
+            $parametroCliente = ParametroCliente::query()
+                ->where('empresa_id', $empresaId)
+                ->where('cliente_id', $contaDetalhe->cliente_id)
+                ->latest('id')
+                ->first();
+
+            $emailFinanceiro = trim((string) ($contaDetalhe->empresa?->email ?? ''));
+            $emailClienteFatura = trim((string) ($parametroCliente?->email_envio_fatura ?? ''));
+
+            if ($emailFinanceiro !== '') {
+                $contaDetalheEmailOpcoes[] = [
+                    'value' => mb_strtolower($emailFinanceiro),
+                    'label' => 'Financeiro (' . mb_strtolower($emailFinanceiro) . ')',
+                    'tipo' => 'financeiro',
+                ];
+            }
+            if ($emailClienteFatura !== '') {
+                $normalized = mb_strtolower($emailClienteFatura);
+                $jaExiste = collect($contaDetalheEmailOpcoes)->contains(fn ($opt) => ($opt['value'] ?? '') === $normalized);
+                if (!$jaExiste) {
+                    $contaDetalheEmailOpcoes[] = [
+                        'value' => $normalized,
+                        'label' => 'Cliente (fatura) (' . $normalized . ')',
+                        'tipo' => 'cliente_fatura',
+                    ];
+                }
+            }
+        }
 
         return view('financeiro.contas-receber.index', [
             'clientes' => $clientes,
             'vendaItens' => $vendaItens,
             'contas' => $contas,
+            'cliente_autocomplete' => $clienteAutocomplete,
+            'abaAtiva' => in_array($abaAtiva, ['vendas', 'faturas', 'detalhe'], true) ? $abaAtiva : 'vendas',
+            'contaDetalhe' => $contaDetalhe,
+            'contaDetalheEmailOpcoes' => $contaDetalheEmailOpcoes,
+            'contaDetalheVencimentoSugerido' => $contaDetalheVencimentoSugerido,
+            'contaDetalheVencimentoDiaParametro' => $contaDetalheVencimentoDiaParametro,
+            'formasPagamento' => $this->formasPagamento(),
             'filtros' => [
                 'tipo_data' => $tipoData,
                 'data_inicio' => $dataInicio,
                 'data_fim' => $dataFim,
                 'cliente_id' => $clienteId,
-                'status_conta' => $statusConta,
+                'cliente' => $clienteSelecionadoLabel,
+            ],
+            'filtrosFaturas' => [
+                'cliente_id' => $faturasClienteId,
+                'cliente' => $faturasClienteSelecionadoLabel,
+                'status' => $statusConta,
+                'numero' => $faturasNumero,
+                'tipo_periodo' => $faturasTipoPeriodo,
+                'data_inicio' => $faturasDataInicio,
+                'data_fim' => $faturasDataFim,
             ],
         ]);
     }
@@ -190,7 +388,7 @@ class ContasReceberController extends Controller
             'cliente_id' => ['required', 'exists:clientes,id'],
             'itens' => ['nullable', 'array'],
             'itens.*' => ['integer', 'exists:venda_itens,id'],
-            'vencimento' => ['required', 'date'],
+            'vencimento' => ['nullable', 'date'],
             'pago_em' => ['nullable', 'date'],
             'manual_items' => ['nullable', 'array'],
             'manual_items.*.servico_id' => ['nullable', 'exists:servicos,id'],
@@ -260,6 +458,13 @@ class ContasReceberController extends Controller
             }
         }
 
+        $emissaoReferencia = now();
+        $vencimentoCalculado = $data['vencimento'] ?? null;
+        if (!$vencimentoCalculado) {
+            $metaVencimento = $this->resolverVencimentoPropostoCliente((int) $data['cliente_id'], $empresaId, $emissaoReferencia);
+            $vencimentoCalculado = optional($metaVencimento['data'])->toDateString() ?? $emissaoReferencia->toDateString();
+        }
+
         $conta = DB::transaction(function () use ($data, $empresaId, $vendaItens, $manualItems, $service) {
             $conta = ContaReceber::create([
                 'empresa_id' => $empresaId,
@@ -267,7 +472,7 @@ class ContasReceberController extends Controller
                 'status' => 'FECHADA',
                 'total' => 0,
                 'total_baixado' => 0,
-                'vencimento' => $data['vencimento'],
+                'vencimento' => null,
                 'pago_em' => $data['pago_em'] ?? null,
             ]);
 
@@ -319,9 +524,47 @@ class ContasReceberController extends Controller
             return $conta;
         });
 
+        $conta->update([
+            'vencimento' => $vencimentoCalculado,
+        ]);
+
+        ContaReceberItem::query()
+            ->where('conta_receber_id', $conta->id)
+            ->where('status', '!=', 'CANCELADO')
+            ->update(['vencimento' => $vencimentoCalculado]);
+
         return redirect()
-            ->route('financeiro.contas-receber.show', $conta)
+            ->route('financeiro.contas-receber', [
+                'aba' => 'detalhe',
+                'fatura_id' => $conta->id,
+            ])
             ->with('success', 'Conta a receber gerada com sucesso.');
+    }
+
+    public function updateDatas(Request $request, ContaReceber $contaReceber): RedirectResponse
+    {
+        if ($contaReceber->empresa_id !== ($request->user()->empresa_id ?? null)) {
+            abort(403);
+        }
+
+        $data = $request->validate([
+            'emissao' => ['required', 'date'],
+            'vencimento' => ['required', 'date'],
+        ]);
+
+        $emissao = Carbon::parse($data['emissao'])->startOfDay();
+        $vencimento = Carbon::parse($data['vencimento'])->startOfDay();
+
+        $contaReceber->forceFill([
+            'created_at' => $emissao,
+            'vencimento' => $vencimento->toDateString(),
+        ])->save();
+
+        $contaReceber->itens()
+            ->where('status', '!=', 'CANCELADO')
+            ->update(['vencimento' => $vencimento->toDateString()]);
+
+        return back()->with('success', 'Datas da fatura atualizadas com sucesso.');
     }
 
     public function show(Request $request, ContaReceber $contaReceber): View
@@ -344,10 +587,148 @@ class ContasReceberController extends Controller
         ]);
     }
 
+    public function impressao(Request $request, ContaReceber $contaReceber)
+    {
+        if ($contaReceber->empresa_id !== ($request->user()->empresa_id ?? null)) {
+            abort(403);
+        }
+
+        $contaReceber->load(['cliente', 'empresa', 'itens.venda', 'itens.vendaItem', 'itens.servico', 'baixas']);
+
+        $pdf = $this->buildFaturaPdf($contaReceber);
+
+        return $pdf->stream('fatura-' . $contaReceber->id . '.pdf');
+    }
+
+    public function impressaoPublica(Request $request)
+    {
+        if (!$request->hasValidSignature()) {
+            abort(403);
+        }
+
+        $token = (string) $request->query('token', '');
+        if ($token === '') {
+            abort(404);
+        }
+
+        try {
+            $contaReceberId = (int) Crypt::decryptString($token);
+        } catch (\Throwable $e) {
+            abort(403);
+        }
+
+        $contaReceber = ContaReceber::query()->findOrFail($contaReceberId);
+        $contaReceber->load(['cliente', 'empresa', 'itens.venda', 'itens.vendaItem', 'itens.servico', 'baixas']);
+
+        $pdf = $this->buildFaturaPdf($contaReceber);
+
+        return $pdf->stream('fatura-' . $contaReceber->id . '.pdf');
+    }
+
+    public function whatsapp(Request $request, ContaReceber $contaReceber): RedirectResponse
+    {
+        if ($contaReceber->empresa_id !== ($request->user()->empresa_id ?? null)) {
+            abort(403);
+        }
+
+        $contaReceber->loadMissing(['cliente', 'empresa']);
+
+        $telefone = preg_replace('/\D+/', '', (string) ($contaReceber->cliente->telefone ?? ''));
+        if (in_array(strlen($telefone), [10, 11], true)) {
+            $telefone = '55' . $telefone;
+        }
+
+        if ($telefone === '') {
+            return back()->with('error', 'Telefone 1 do cliente não informado para envio via WhatsApp.');
+        }
+
+        $downloadUrl = URL::temporarySignedRoute(
+            'financeiro.contas-receber.impressao-publica',
+            now()->addDays(7),
+            ['token' => Crypt::encryptString((string) $contaReceber->id)]
+        );
+        $mensagem = rawurlencode(sprintf(
+            "Olá! Segue a fatura #%d.\nEmissão: %s\nVencimento: %s\nValor total: R$ %s\nLink para download: %s",
+            (int) $contaReceber->id,
+            optional($contaReceber->created_at)->format('d/m/Y') ?? '—',
+            optional($contaReceber->vencimento)->format('d/m/Y') ?? '—',
+            number_format((float) ($contaReceber->total ?? 0), 2, ',', '.'),
+            $downloadUrl
+        ));
+
+        return redirect()->away('https://wa.me/' . $telefone . '?text=' . $mensagem);
+    }
+
+    public function enviarFaturaEmail(Request $request, ContaReceber $contaReceber): RedirectResponse
+    {
+        if ($contaReceber->empresa_id !== ($request->user()->empresa_id ?? null)) {
+            abort(403);
+        }
+
+        $data = $request->validate([
+            'email_destino' => ['required', 'email', 'max:255'],
+        ]);
+
+        $contaReceber->load(['cliente', 'empresa']);
+
+        $clienteNome = $contaReceber->cliente->razao_social ?? $contaReceber->cliente->nome_fantasia ?? 'Cliente';
+        $assunto = 'Fatura #' . $contaReceber->id . ' - ' . $clienteNome;
+        $pdf = $this->buildFaturaPdf($contaReceber);
+        $pdfBinary = $pdf->output();
+        $pdfName = 'fatura-' . $contaReceber->id . '.pdf';
+
+        Mail::send('financeiro.contas-receber.mail-fatura', [
+            'conta' => $contaReceber,
+        ], function ($message) use ($data, $assunto, $pdfBinary, $pdfName) {
+            $message->to($data['email_destino'])->subject($assunto);
+            $message->attachData($pdfBinary, $pdfName, ['mime' => 'application/pdf']);
+        });
+
+        return back()->with('success', 'Fatura enviada por e-mail com sucesso.');
+    }
+
+    private function buildFaturaPdf(ContaReceber $contaReceber)
+    {
+        $contaReceber->loadMissing([
+            'cliente.cidade',
+            'empresa.cidade',
+            'itens.venda.contrato.propostaOrigem',
+            'itens.venda.tarefa.funcionario',
+            'itens.vendaItem',
+            'itens.servico',
+            'baixas',
+        ]);
+
+        return Pdf::loadView('financeiro.contas-receber.print', [
+            'conta' => $contaReceber,
+        ])->setPaper('a4', 'portrait');
+    }
+
+    public function excluirBaixa(Request $request, ContaReceber $contaReceber, ContaReceberService $service): RedirectResponse
+    {
+        if ($contaReceber->empresa_id !== ($request->user()->empresa_id ?? null)) {
+            abort(403);
+        }
+
+        if (!$contaReceber->baixas()->exists()) {
+            return back()->with('error', 'Esta fatura não possui baixa para excluir.');
+        }
+
+        DB::transaction(function () use ($contaReceber, $service) {
+            $service->excluirBaixas($contaReceber);
+        });
+
+        return back()->with('success', 'Baixa excluída com sucesso. A fatura foi reaberta para edição.');
+    }
+
     public function destroy(Request $request, ContaReceber $contaReceber, ContaReceberService $service): RedirectResponse
     {
         if ($contaReceber->empresa_id !== ($request->user()->empresa_id ?? null)) {
             abort(403);
+        }
+
+        if ($contaReceber->baixas()->exists()) {
+            return back()->with('error', 'Para remover esta fatura, primeiro exclua a baixa.');
         }
 
         DB::transaction(function () use ($contaReceber, $service) {
@@ -357,8 +738,6 @@ class ContasReceberController extends Controller
                 ->filter()
                 ->unique()
                 ->values();
-
-            $contaReceber->baixas()->delete();
             $contaReceber->itens()->delete();
             $contaReceber->delete();
 
@@ -470,5 +849,34 @@ class ContasReceberController extends Controller
         $service->recalcularConta($contaReceber->fresh());
 
         return back()->with('success', 'Item avulso adicionado.');
+    }
+
+    private function resolverVencimentoPropostoCliente(int $clienteId, ?int $empresaId, $baseDate = null): array
+    {
+        $base = $baseDate ? Carbon::parse($baseDate) : now();
+
+        $parametro = ParametroCliente::query()
+            ->where('cliente_id', $clienteId)
+            ->when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId))
+            ->latest('id')
+            ->first();
+
+        $dia = (int) ($parametro?->vencimento_servicos ?? 0);
+        if ($dia < 1 || $dia > 31) {
+            return ['dia' => null, 'data' => null];
+        }
+
+        $proposta = $base->copy()->startOfDay();
+        $diasNoMes = $proposta->daysInMonth;
+        $diaAplicado = min($dia, $diasNoMes);
+        $proposta->day($diaAplicado);
+
+        if ($proposta->lt($base->copy()->startOfDay())) {
+            $proposta = $base->copy()->addMonthNoOverflow()->startOfMonth();
+            $diaAplicado = min($dia, $proposta->daysInMonth);
+            $proposta->day($diaAplicado);
+        }
+
+        return ['dia' => $dia, 'data' => $proposta];
     }
 }

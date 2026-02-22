@@ -28,63 +28,44 @@ class FuncionarioArquivosZipService
 
     public function gerarZipPorIds(Cliente $cliente, array $tarefaIds, ?Funcionario $funcionario = null, bool $includeAnexos = true): string
     {
-        $ids = collect($tarefaIds)
-            ->map(fn ($id) => (int) $id)
-            ->filter(fn ($id) => $id > 0)
-            ->unique()
-            ->values();
-
-        if ($ids->isEmpty()) {
-            throw new RuntimeException('Selecione ao menos um arquivo para baixar.');
-        }
-
-        $query = Tarefa::query()
-            ->where('cliente_id', $cliente->id)
-            ->whereIn('id', $ids->all())
-            ->orderByDesc('finalizado_em')
-            ->orderByDesc('updated_at');
-
-        $query->with($includeAnexos ? ['servico', 'anexos'] : ['servico']);
-
-        if ($funcionario) {
-            $query->where('funcionario_id', $funcionario->id);
-        }
-
-        $tarefas = $query->get();
-        if ($tarefas->isEmpty()) {
-            throw new RuntimeException('Nenhum arquivo valido encontrado para os itens selecionados.');
-        }
+        $tarefas = $this->buscarTarefasPorIds($cliente, $tarefaIds, $funcionario, $includeAnexos);
 
         return $this->gerarZipComTarefas($tarefas, 'arquivos-selecionados', $includeAnexos);
     }
 
-    private function gerarZipComTarefas($tarefas, string $zipPrefix, bool $includeAnexos): string
+    public function listarArquivosPorIds(Cliente $cliente, array $tarefaIds, ?Funcionario $funcionario = null, bool $includeAnexos = true): array
     {
-        $arquivos = [];
+        $tarefas = $this->buscarTarefasPorIds($cliente, $tarefaIds, $funcionario, $includeAnexos);
 
-        foreach ($tarefas as $tarefa) {
-            if (!empty($tarefa->path_documento_cliente)) {
-                $arquivos[] = [
-                    'path' => $tarefa->path_documento_cliente,
-                    'name' => $this->nomeArquivoDocumentoCliente($tarefa),
-                ];
-            }
-
-            if ($includeAnexos) {
-                foreach ($tarefa->anexos as $anexo) {
-                    if (empty($anexo->path)) {
-                        continue;
-                    }
-
-                    $arquivos[] = [
-                        'path' => $anexo->path,
-                        'name' => $this->nomeArquivoAnexo($tarefa->id, (string) ($anexo->nome_original ?? 'anexo')),
-                    ];
-                }
-            }
+        $arquivos = $this->deduplicarPorPath($this->coletarArquivosDasTarefas($tarefas, $includeAnexos));
+        if (empty($arquivos)) {
+            throw new RuntimeException('Nenhum arquivo encontrado para os filtros informados.');
         }
 
-        $arquivos = $this->deduplicarPorPath($arquivos);
+        $disponiveis = [];
+        foreach ($arquivos as $arquivo) {
+            $disk = $this->resolverDiskParaPath((string) ($arquivo['path'] ?? ''));
+            if (!$disk) {
+                continue;
+            }
+
+            $disponiveis[] = [
+                'disk' => $disk,
+                'path' => (string) $arquivo['path'],
+                'name' => (string) ($arquivo['name'] ?? 'arquivo'),
+            ];
+        }
+
+        if (empty($disponiveis)) {
+            throw new RuntimeException('Nenhum arquivo disponivel para download nestes itens.');
+        }
+
+        return $disponiveis;
+    }
+
+    private function gerarZipComTarefas($tarefas, string $zipPrefix, bool $includeAnexos): string
+    {
+        $arquivos = $this->deduplicarPorPath($this->coletarArquivosDasTarefas($tarefas, $includeAnexos));
         if (empty($arquivos)) {
             throw new RuntimeException('Nenhum arquivo encontrado para os filtros informados.');
         }
@@ -134,6 +115,67 @@ class FuncionarioArquivosZipService
         }
 
         return $zipPath;
+    }
+
+    private function buscarTarefasPorIds(Cliente $cliente, array $tarefaIds, ?Funcionario $funcionario, bool $includeAnexos)
+    {
+        $ids = collect($tarefaIds)
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values();
+
+        if ($ids->isEmpty()) {
+            throw new RuntimeException('Selecione ao menos um arquivo para baixar.');
+        }
+
+        $query = Tarefa::query()
+            ->where('cliente_id', $cliente->id)
+            ->whereIn('id', $ids->all())
+            ->orderByDesc('finalizado_em')
+            ->orderByDesc('updated_at');
+
+        $query->with($includeAnexos ? ['servico', 'anexos'] : ['servico']);
+
+        if ($funcionario) {
+            $query->where('funcionario_id', $funcionario->id);
+        }
+
+        $tarefas = $query->get();
+        if ($tarefas->isEmpty()) {
+            throw new RuntimeException('Nenhum arquivo valido encontrado para os itens selecionados.');
+        }
+
+        return $tarefas;
+    }
+
+    private function coletarArquivosDasTarefas($tarefas, bool $includeAnexos): array
+    {
+        $arquivos = [];
+
+        foreach ($tarefas as $tarefa) {
+            if (!empty($tarefa->path_documento_cliente)) {
+                $arquivos[] = [
+                    'path' => $tarefa->path_documento_cliente,
+                    'name' => $this->nomeArquivoDocumentoCliente($tarefa),
+                ];
+            }
+
+            if ($includeAnexos) {
+                foreach ($tarefa->anexos as $anexo) {
+                    if (empty($anexo->path)) {
+                        continue;
+                    }
+
+                    $arquivos[] = [
+                        'path' => $anexo->path,
+                        'name' => $this->nomeArquivoAnexo($tarefa->id, (string) ($anexo->nome_original ?? 'anexo')),
+                    ];
+                }
+            }
+        }
+
+        return $arquivos;
     }
 
     private function deduplicarPorPath(array $arquivos): array

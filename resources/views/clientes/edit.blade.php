@@ -87,7 +87,7 @@
                     <button type="button"
                             class="px-4 py-2 rounded-full text-sm font-semibold text-slate-600 hover:bg-slate-100"
                             data-tab="forma-pagamento">
-                        Forma de Pagamento
+                        Pagamento
                     </button>
                     <button type="button"
                             class="px-4 py-2 rounded-full text-sm font-semibold text-slate-600 hover:bg-slate-100"
@@ -330,19 +330,19 @@
 
             @if($cliente->exists)
                 <div data-tab-panel="vendedor" data-tab-panel-root="cliente" class="hidden">
-                    <div class="w-full mx-auto px-4 sm:px-6 lg:px-8 py-0">
-                        <div class="bg-white rounded-2xl shadow border border-slate-200 overflow-hidden">
+                    <div class="w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+                        <div class="bg-white rounded-2xl shadow border border-slate-200 overflow-hidden min-h-[38rem] flex flex-col">
                             <div class="px-6 py-4 border-b bg-slate-900 text-white">
                                 <h1 class="text-lg font-semibold">Vendedor</h1>
                             </div>
                             <form method="POST"
                                   action="{{ route($routePrefix.'.update', $cliente) }}"
-                                  class="p-6 space-y-6">
+                                  class="p-6 flex flex-col flex-1 min-h-0">
                                 @csrf
                                 @method('PUT')
                                 <input type="hidden" name="update_vendedor" value="1">
 
-                                <div>
+                                <div class="space-y-6 flex-1">
                                     <label class="text-sm font-medium text-slate-700">Vendedor respons&aacute;vel</label>
                                     <select name="vendedor_id"
                                             class="w-full mt-2 border-slate-300 rounded-lg px-3 py-2">
@@ -359,11 +359,11 @@
                                     @enderror
                                 </div>
 
-                                <div class="flex justify-end">
-                                    <button @if(!$canUpdate) disabled title="Usuário sem permissão" @endif class="px-5 py-2 rounded-xl text-sm font-semibold {{ $canUpdate ? 'bg-slate-900 text-white hover:bg-slate-800' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}">
+                                <section class="pt-4 border-t mt-auto">
+                                    <button @if(!$canUpdate) disabled title="Usuário sem permissão" @endif class="w-full rounded-2xl px-5 py-3 text-base font-semibold {{ $canUpdate ? 'bg-slate-900 text-white hover:bg-slate-800' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}">
                                         Salvar vendedor
                                     </button>
-                                </div>
+                                </section>
                             </form>
                         </div>
                     </div>
@@ -679,7 +679,7 @@
                 }
 
                 if (!cnpjValido(cnpjLimpo)) {
-                    mostrarErroCNPJ(cnpjInput, 'CNPJ invÃƒÆ’Ã‚Â¡lido');
+                    mostrarErroCNPJ(cnpjInput, 'CNPJ inválido');
                     cnpjDuplicado = false;
                 } else {
                     limparErroCNPJ(cnpjInput);
@@ -693,7 +693,7 @@
                         const json = await resp.json();
                         if (json?.exists) {
                             cnpjDuplicado = true;
-                            mostrarErroCNPJ(cnpjInput, 'JÃƒÆ’Ã‚Â¡ existe um cliente cadastrado com este CNPJ.');
+                            mostrarErroCNPJ(cnpjInput, 'Já existe um cliente cadastrado com este CNPJ.');
                         } else {
                             cnpjDuplicado = false;
                             limparErroCNPJ(cnpjInput);
@@ -707,7 +707,7 @@
             formCliente?.addEventListener('submit', (e) => {
                 if (cnpjDuplicado) {
                     e.preventDefault();
-                    mostrarErroCNPJ(cnpjInput, 'JÃƒÆ’Ã‚Â¡ existe um cliente cadastrado com este CNPJ.');
+                    mostrarErroCNPJ(cnpjInput, 'Já existe um cliente cadastrado com este CNPJ.');
                 }
             });
         });
@@ -835,11 +835,6 @@
         });
     </script>
 @endsection
-
-
-
-
-
 
 
 

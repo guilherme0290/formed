@@ -108,9 +108,17 @@ class PrecificacaoService
         }
 
         $itemContrato = $itensContrato->first();
-        $descricao = $itensContrato->count() === 1
-            ? ($itemContrato?->descricao_snapshot ?: 'ASO')
-            : $this->descricaoAsoPorTipo((string) $aso->tipo_aso);
+        $tipoAsoLabel = $this->descricaoAsoTipoLabel((string) $aso->tipo_aso);
+        $funcionarioNome = trim((string) ($aso->funcionario?->nome ?? ''));
+        $detalheAso = implode(' - ', array_values(array_filter([
+            $tipoAsoLabel,
+            $funcionarioNome,
+        ])));
+
+        $descricao = $this->montarDescricaoVenda(
+            $this->resolverNomeServico($tarefa, (int) $tarefa->servico_id) ?: 'ASO',
+            $detalheAso !== '' ? $detalheAso : ($itemContrato?->descricao_snapshot ?: null)
+        );
 
         $itensVenda = [[
                 'servico_id' => $tarefa->servico_id,
@@ -142,9 +150,9 @@ class PrecificacaoService
         ];
     }
 
-    private function descricaoAsoPorTipo(string $tipoAso): string
+    private function descricaoAsoTipoLabel(string $tipoAso): string
     {
-        $label = match ($tipoAso) {
+        return match ($tipoAso) {
             'admissional' => 'Admissional',
             'periodico' => 'Periódico',
             'demissional' => 'Demissional',
@@ -152,8 +160,6 @@ class PrecificacaoService
             'retorno_trabalho' => 'Retorno ao Trabalho',
             default => '',
         };
-
-        return $label !== '' ? 'ASO - ' . $label : 'ASO';
     }
 
     /**
@@ -201,7 +207,44 @@ class PrecificacaoService
                 ]);
             }
 
-            $descricao = $itemContrato->descricao_snapshot ?: ($pacote['nome'] ?? 'Pacote de Treinamentos');
+            $codigosPacote = array_values((array) ($pacote['codigos'] ?? []));
+            $codigosPacote = array_values(array_filter(array_map(
+                fn ($codigo) => $this->normalizarCodigoTreinamento((string) $codigo),
+                $codigosPacote
+            )));
+
+            if (!empty($codigosPacote)) {
+                $mapaContrato = $this->buildMapaContratoTreinamentos($contrato, (int) $tarefa->servico_id);
+                $rateioUnitario = $this->ratearValorEmPartes((float) $itemContrato->preco_unitario_snapshot, count($codigosPacote));
+                $itensVendaPacote = [];
+
+                foreach ($codigosPacote as $idx => $codigo) {
+                    $itemContratoTreino = $mapaContrato[$codigo] ?? null;
+                    $detalhe = $itemContratoTreino?->descricao_snapshot ?: $codigo;
+                    $descricao = $this->montarDescricaoVenda(
+                        $this->resolverNomeServico($tarefa, (int) $tarefa->servico_id) ?: 'Treinamentos NRs',
+                        $detalhe
+                    );
+
+                    $itensVendaPacote[] = [
+                        'servico_id' => $tarefa->servico_id,
+                        'descricao_snapshot' => $descricao,
+                        'preco_unitario_snapshot' => (float) ($rateioUnitario[$idx] ?? 0),
+                        'quantidade' => $quantidadeParticipantes,
+                    ];
+                }
+
+                return [
+                    'contrato' => $contrato,
+                    'itemContrato' => $itemContrato,
+                    'itensVenda' => $itensVendaPacote,
+                ];
+            }
+
+            $descricao = $this->montarDescricaoVenda(
+                $this->resolverNomeServico($tarefa, (int) $tarefa->servico_id) ?: 'Treinamentos NRs',
+                $itemContrato->descricao_snapshot ?: ($pacote['nome'] ?? 'Pacote de Treinamentos')
+            );
 
             return [
                 'contrato' => $contrato,
@@ -240,61 +283,11 @@ class PrecificacaoService
             ]);
         }
 
-        $mapaContrato = [];
-
-        $itensOrigem = $contrato->parametroOrigem?->itens ?? collect();
-        if ($itensOrigem->isNotEmpty()) {
-            foreach ($itensOrigem as $origem) {
-                if (strtoupper((string) ($origem->tipo ?? '')) !== 'TREINAMENTO_NR') {
-                    continue;
-                }
-                $codigo = $origem->meta['codigo'] ?? null;
-                if (!$codigo) {
-                    $nome = (string) ($origem->nome ?? $origem->descricao ?? '');
-                    if ($nome !== '' && preg_match('/^(NR[-\\s]?\\d+[A-Z]?)/i', $nome, $m)) {
-                        $codigo = str_replace(' ', '-', $m[1]);
-                    }
-                }
-                $codigo = strtoupper(trim((string) $codigo));
-                if ($codigo === '') {
-                    continue;
-                }
-
-                if (preg_match('/^NR[-_]?\\d+$/i', $codigo)) {
-                    $numero = preg_replace('/\\D/', '', $codigo);
-                    $codigo = 'NR-' . str_pad($numero, 2, '0', STR_PAD_LEFT);
-                }
-
-                $descricaoSnapshot = $origem->descricao ?? $origem->nome;
-                $contratoItem = $itensContrato->first(function ($item) use ($descricaoSnapshot) {
-                    return trim((string) ($item->descricao_snapshot ?? '')) === trim((string) $descricaoSnapshot);
-                });
-
-                if ($contratoItem) {
-                    $mapaContrato[$codigo] = $contratoItem;
-                }
-            }
-        }
-
-        foreach ($itensContrato as $item) {
-            $descricao = (string) ($item->descricao_snapshot ?? '');
-            if ($descricao !== '' && preg_match('/(NR[-\\s]?\\d+[A-Z]?)/i', $descricao, $m)) {
-                $codigo = strtoupper(str_replace(' ', '-', $m[1]));
-                if (preg_match('/^NR[-_]?\\d+$/i', $codigo)) {
-                    $numero = preg_replace('/\\D/', '', $codigo);
-                    $codigo = 'NR-' . str_pad($numero, 2, '0', STR_PAD_LEFT);
-                }
-                $mapaContrato[$codigo] = $item;
-            }
-        }
+        $mapaContrato = $this->buildMapaContratoTreinamentos($contrato, (int) $tarefa->servico_id);
 
         $itensVenda = [];
         foreach ($treinamentos as $codigo) {
-            $codigo = strtoupper(trim((string) $codigo));
-            if (preg_match('/^NR[-_]?\\d+$/i', $codigo)) {
-                $numero = preg_replace('/\\D/', '', $codigo);
-                $codigo = 'NR-' . str_pad($numero, 2, '0', STR_PAD_LEFT);
-            }
+            $codigo = $this->normalizarCodigoTreinamento((string) $codigo);
 
             $itemContrato = $mapaContrato[$codigo] ?? null;
             if (!$itemContrato) {
@@ -309,7 +302,10 @@ class PrecificacaoService
                 ]);
             }
 
-            $descricao = $itemContrato->descricao_snapshot ?: $codigo;
+            $descricao = $this->montarDescricaoVenda(
+                $this->resolverNomeServico($tarefa, (int) $tarefa->servico_id) ?: 'Treinamentos NRs',
+                $itemContrato->descricao_snapshot ?: $codigo
+            );
             $itensVenda[] = [
                 'servico_id' => $tarefa->servico_id,
                 'descricao_snapshot' => $descricao,
@@ -352,7 +348,40 @@ class PrecificacaoService
                 ]);
             }
 
-            $descricao = $itemContrato->descricao_snapshot ?: ($treinamentoPacote['nome'] ?? 'Pacote de Treinamentos');
+            $codigosPacote = array_values((array) ($treinamentoPacote['codigos'] ?? []));
+            $codigosPacote = array_values(array_filter(array_map(
+                fn ($codigo) => $this->normalizarCodigoTreinamento((string) $codigo),
+                $codigosPacote
+            )));
+
+            if (!empty($codigosPacote)) {
+                $mapaContrato = $this->buildMapaContratoTreinamentos($contrato, $servicoTreinamentoId);
+                $rateioUnitario = $this->ratearValorEmPartes((float) $itemContrato->preco_unitario_snapshot, count($codigosPacote));
+                $itensVendaPacote = [];
+
+                foreach ($codigosPacote as $idx => $codigo) {
+                    $itemContratoTreino = $mapaContrato[$codigo] ?? null;
+                    $detalhe = $itemContratoTreino?->descricao_snapshot ?: $codigo;
+                    $descricao = $this->montarDescricaoVenda(
+                        $this->resolverNomeServico(null, $servicoTreinamentoId) ?: 'Treinamentos NRs',
+                        $detalhe
+                    );
+
+                    $itensVendaPacote[] = [
+                        'servico_id' => $servicoTreinamentoId,
+                        'descricao_snapshot' => $descricao,
+                        'preco_unitario_snapshot' => (float) ($rateioUnitario[$idx] ?? 0),
+                        'quantidade' => 1,
+                    ];
+                }
+
+                return $itensVendaPacote;
+            }
+
+            $descricao = $this->montarDescricaoVenda(
+                $this->resolverNomeServico(null, $servicoTreinamentoId) ?: 'Treinamentos NRs',
+                $itemContrato->descricao_snapshot ?: ($treinamentoPacote['nome'] ?? 'Pacote de Treinamentos')
+            );
 
             return [[
                 'servico_id' => $servicoTreinamentoId,
@@ -381,61 +410,11 @@ class PrecificacaoService
             ]);
         }
 
-        $mapaContrato = [];
-
-        $itensOrigem = $contrato->parametroOrigem?->itens ?? collect();
-        if ($itensOrigem->isNotEmpty()) {
-            foreach ($itensOrigem as $origem) {
-                if (strtoupper((string) ($origem->tipo ?? '')) !== 'TREINAMENTO_NR') {
-                    continue;
-                }
-                $codigo = $origem->meta['codigo'] ?? null;
-                if (!$codigo) {
-                    $nome = (string) ($origem->nome ?? $origem->descricao ?? '');
-                    if ($nome !== '' && preg_match('/^(NR[-\\s]?\\d+[A-Z]?)/i', $nome, $m)) {
-                        $codigo = str_replace(' ', '-', $m[1]);
-                    }
-                }
-                $codigo = strtoupper(trim((string) $codigo));
-                if ($codigo === '') {
-                    continue;
-                }
-
-                if (preg_match('/^NR[-_]?\\d+$/i', $codigo)) {
-                    $numero = preg_replace('/\\D/', '', $codigo);
-                    $codigo = 'NR-' . str_pad($numero, 2, '0', STR_PAD_LEFT);
-                }
-
-                $descricaoSnapshot = $origem->descricao ?? $origem->nome;
-                $contratoItem = $itensContrato->first(function ($item) use ($descricaoSnapshot) {
-                    return trim((string) ($item->descricao_snapshot ?? '')) === trim((string) $descricaoSnapshot);
-                });
-
-                if ($contratoItem) {
-                    $mapaContrato[$codigo] = $contratoItem;
-                }
-            }
-        }
-
-        foreach ($itensContrato as $item) {
-            $descricao = (string) ($item->descricao_snapshot ?? '');
-            if ($descricao !== '' && preg_match('/(NR[-\\s]?\\d+[A-Z]?)/i', $descricao, $m)) {
-                $codigo = strtoupper(str_replace(' ', '-', $m[1]));
-                if (preg_match('/^NR[-_]?\\d+$/i', $codigo)) {
-                    $numero = preg_replace('/\\D/', '', $codigo);
-                    $codigo = 'NR-' . str_pad($numero, 2, '0', STR_PAD_LEFT);
-                }
-                $mapaContrato[$codigo] = $item;
-            }
-        }
+        $mapaContrato = $this->buildMapaContratoTreinamentos($contrato, $servicoTreinamentoId);
 
         $itensVenda = [];
         foreach ($treinamentos as $codigo) {
-            $codigo = strtoupper(trim((string) $codigo));
-            if (preg_match('/^NR[-_]?\\d+$/i', $codigo)) {
-                $numero = preg_replace('/\\D/', '', $codigo);
-                $codigo = 'NR-' . str_pad($numero, 2, '0', STR_PAD_LEFT);
-            }
+            $codigo = $this->normalizarCodigoTreinamento((string) $codigo);
 
             $itemContrato = $mapaContrato[$codigo] ?? null;
             if (!$itemContrato) {
@@ -450,7 +429,10 @@ class PrecificacaoService
                 ]);
             }
 
-            $descricao = $itemContrato->descricao_snapshot ?: $codigo;
+            $descricao = $this->montarDescricaoVenda(
+                $this->resolverNomeServico(null, $servicoTreinamentoId) ?: 'Treinamentos NRs',
+                $itemContrato->descricao_snapshot ?: $codigo
+            );
             $itensVenda[] = [
                 'servico_id' => $servicoTreinamentoId,
                 'descricao_snapshot' => $descricao,
@@ -502,8 +484,12 @@ class PrecificacaoService
         }
 
         $tipoLabel = $pgr->tipo === 'especifico' ? 'Específico' : 'Matriz';
-        $obraLabel = $pgr->obra_nome ? ' - ' . $pgr->obra_nome : '';
-        $descricao = "PGR{$obraLabel}";
+        $obraNome = trim((string) ($pgr->obra_nome ?? ''));
+        $detalhePgr = $obraNome !== '' ? $obraNome : $tipoLabel;
+        $descricao = $this->montarDescricaoVenda(
+            $this->resolverNomeServico($tarefa, (int) $tarefa->servico_id) ?: 'PGR',
+            $detalhePgr
+        );
 
         $itensVenda = [[
             'servico_id' => $tarefa->servico_id,
@@ -537,7 +523,10 @@ class PrecificacaoService
 
             $itensVenda[] = [
                 'servico_id' => $servicoPcmsoId,
-                'descricao_snapshot' => 'PCMSO' . $obraLabel,
+                'descricao_snapshot' => $this->montarDescricaoVenda(
+                    $this->resolverNomeServico($tarefa, (int) $servicoPcmsoId) ?: 'PCMSO',
+                    $obraNome !== '' ? $obraNome : null
+                ),
                 'preco_unitario_snapshot' => (float) $itemPcmso->preco_unitario_snapshot,
                 'quantidade' => 1,
             ];
@@ -568,7 +557,10 @@ class PrecificacaoService
 
             $itensVenda[] = [
                 'servico_id' => $servicoArtId,
-                'descricao_snapshot' => 'ART' . $obraLabel,
+                'descricao_snapshot' => $this->montarDescricaoVenda(
+                    $this->resolverNomeServico($tarefa, (int) $servicoArtId) ?: 'ART',
+                    $obraNome !== '' ? $obraNome : null
+                ),
                 'preco_unitario_snapshot' => (float) $itemArt->preco_unitario_snapshot,
                 'quantidade' => 1,
             ];
@@ -579,5 +571,137 @@ class PrecificacaoService
             'itemContrato' => $itemContrato,
             'itensVenda' => $itensVenda,
         ];
+    }
+
+    private function resolverNomeServico(?Tarefa $tarefa, int $servicoId): ?string
+    {
+        if ($servicoId <= 0) {
+            return null;
+        }
+
+        if ($tarefa && (int) $tarefa->servico_id === $servicoId) {
+            $nome = trim((string) ($tarefa->servico?->nome ?? ''));
+            if ($nome !== '') {
+                return $nome;
+            }
+        }
+
+        $nome = trim((string) (Servico::query()->whereKey($servicoId)->value('nome') ?? ''));
+        return $nome !== '' ? $nome : null;
+    }
+
+    private function montarDescricaoVenda(?string $servicoNome, ?string $detalhe): string
+    {
+        $servico = trim((string) $servicoNome);
+        $desc = trim((string) $detalhe);
+
+        if ($servico === '') {
+            return $desc !== '' ? $desc : 'Serviço';
+        }
+
+        if ($desc === '') {
+            return $servico;
+        }
+
+        $servicoNorm = mb_strtolower($servico);
+        $descNorm = mb_strtolower($desc);
+        if ($descNorm === $servicoNorm || str_starts_with($descNorm, $servicoNorm . ' -')) {
+            return $desc;
+        }
+
+        return $servico . ' - ' . $desc;
+    }
+
+    /**
+     * @return array<string, ClienteContratoItem>
+     */
+    private function buildMapaContratoTreinamentos(ClienteContrato $contrato, int $servicoId): array
+    {
+        $contrato->loadMissing('itens', 'parametroOrigem.itens');
+        $itensContrato = $contrato->itens
+            ->where('servico_id', $servicoId)
+            ->where('ativo', true)
+            ->values();
+
+        $mapaContrato = [];
+        $itensOrigem = $contrato->parametroOrigem?->itens ?? collect();
+        if ($itensOrigem->isNotEmpty()) {
+            foreach ($itensOrigem as $origem) {
+                if (strtoupper((string) ($origem->tipo ?? '')) !== 'TREINAMENTO_NR') {
+                    continue;
+                }
+
+                $codigo = $origem->meta['codigo'] ?? null;
+                if (!$codigo) {
+                    $nome = (string) ($origem->nome ?? $origem->descricao ?? '');
+                    if ($nome !== '' && preg_match('/^(NR[-\\s]?\\d+[A-Z]?)/i', $nome, $m)) {
+                        $codigo = str_replace(' ', '-', $m[1]);
+                    }
+                }
+
+                $codigo = $this->normalizarCodigoTreinamento((string) $codigo);
+                if ($codigo === '') {
+                    continue;
+                }
+
+                $descricaoSnapshot = $origem->descricao ?? $origem->nome;
+                $contratoItem = $itensContrato->first(function ($item) use ($descricaoSnapshot) {
+                    return trim((string) ($item->descricao_snapshot ?? '')) === trim((string) $descricaoSnapshot);
+                });
+
+                if ($contratoItem) {
+                    $mapaContrato[$codigo] = $contratoItem;
+                }
+            }
+        }
+
+        foreach ($itensContrato as $item) {
+            $descricao = (string) ($item->descricao_snapshot ?? '');
+            if ($descricao !== '' && preg_match('/(NR[-\\s]?\\d+[A-Z]?)/i', $descricao, $m)) {
+                $codigo = $this->normalizarCodigoTreinamento((string) str_replace(' ', '-', $m[1]));
+                if ($codigo !== '') {
+                    $mapaContrato[$codigo] = $item;
+                }
+            }
+        }
+
+        return $mapaContrato;
+    }
+
+    private function normalizarCodigoTreinamento(string $codigo): string
+    {
+        $codigo = strtoupper(trim($codigo));
+        if ($codigo === '') {
+            return '';
+        }
+
+        if (preg_match('/^NR[-_]?\\d+$/i', $codigo)) {
+            $numero = preg_replace('/\\D/', '', $codigo);
+            $codigo = 'NR-' . str_pad((string) $numero, 2, '0', STR_PAD_LEFT);
+        }
+
+        return $codigo;
+    }
+
+    /**
+     * @return array<int, float>
+     */
+    private function ratearValorEmPartes(float $valor, int $partes): array
+    {
+        if ($partes <= 0) {
+            return [];
+        }
+
+        $totalCentavos = (int) round($valor * 100);
+        $base = intdiv($totalCentavos, $partes);
+        $resto = $totalCentavos % $partes;
+
+        $rateio = [];
+        for ($i = 0; $i < $partes; $i++) {
+            $centavos = $base + ($i < $resto ? 1 : 0);
+            $rateio[] = $centavos / 100;
+        }
+
+        return $rateio;
     }
 }

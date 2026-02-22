@@ -81,6 +81,7 @@ class ClienteParametroController extends Controller
         $data = $request->validate([
             'cliente_id' => ['required', 'integer', 'exists:clientes,id', Rule::in([$cliente->id])],
             'forma_pagamento' => ['required', 'string', 'max:80'],
+            'email_envio_fatura' => ['nullable', 'email', 'max:255'],
             'vencimento_servicos' => ['required', 'integer', 'min:1', 'max:31'],
 
             'incluir_esocial' => ['nullable', 'boolean'],
@@ -144,6 +145,7 @@ class ClienteParametroController extends Controller
         ], [
             'cliente_id' => 'cliente',
             'forma_pagamento' => 'forma de pagamento',
+            'email_envio_fatura' => 'email para envio da fatura',
             'vencimento_servicos' => 'vencimento dos serviços',
             'itens' => 'itens do parâmetro',
             'itens.*.tipo' => 'tipo do item',
@@ -398,6 +400,7 @@ class ClienteParametroController extends Controller
                 'cliente_id' => $cliente->id,
                 'vendedor_id' => $parametro?->vendedor_id ?? ($cliente->vendedor_id ?: auth()->id()),
                 'forma_pagamento' => $data['forma_pagamento'],
+                'email_envio_fatura' => !empty($data['email_envio_fatura']) ? mb_strtolower(trim((string) $data['email_envio_fatura'])) : null,
                 'vencimento_servicos' => $vencimentoServicos,
                 'incluir_esocial' => $incluirEsocial,
                 'esocial_qtd_funcionarios' => $incluirEsocial ? ($data['esocial_qtd_funcionarios'] ?? 0) : null,

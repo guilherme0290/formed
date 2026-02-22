@@ -227,6 +227,7 @@ class EnsureRoutePermission
         ) {
             if (in_array($routeName, [
                 'financeiro.contas-receber.baixar',
+                'financeiro.contas-receber.update-datas',
                 'financeiro.contas-receber.reabrir',
                 'financeiro.contas-receber.boleto',
             ], true)) {
@@ -502,6 +503,5 @@ class EnsureRoutePermission
         return route('dashboard');
     }
 }
-
 
 

@@ -292,16 +292,25 @@ class AprController extends Controller
         $regraTextoObrigatorio = $aprovando
             ? ['required', 'string']
             : ['nullable', 'string'];
+        $regraCnpj = function (string $attribute, mixed $value, \Closure $fail) {
+            $valor = trim((string) ($value ?? ''));
+
+            if ($valor === '') {
+                return;
+            }
+
+            if (!$this->cnpjValido($valor)) {
+                $fail('O campo cnpj da contratante e invalido.');
+            }
+        };
 
         return [
             'contratante_razao_social' => array_merge($regraTextoObrigatorio, ['max:255']),
             'contratante_cnpj' => $aprovando
-                ? ['required', 'string', 'max:20']
-                : ['nullable', 'string', 'max:20'],
-            'contratante_responsavel_nome' => array_merge($regraTextoObrigatorio, ['max:255']),
-            'contratante_telefone' => $aprovando
-                ? ['required', 'string', 'max:25']
-                : ['nullable', 'string', 'max:25'],
+                ? ['required', 'string', 'max:20', $regraCnpj]
+                : ['nullable', 'string', 'max:20', $regraCnpj],
+            'contratante_responsavel_nome' => ['nullable', 'string', 'max:255'],
+            'contratante_telefone' => ['nullable', 'string', 'max:25'],
             'contratante_email' => ['nullable', 'email', 'max:255'],
 
             'obra_nome' => array_merge($regraTextoObrigatorio, ['max:255']),
@@ -441,6 +450,45 @@ class AprController extends Controller
             'size' => 'O campo :attribute deve ter :size caracteres.',
             'boolean' => 'O campo :attribute deve ser verdadeiro ou falso.',
         ];
+    }
+
+    private function cnpjValido(string $valor): bool
+    {
+        $cnpj = preg_replace('/\D+/', '', $valor) ?? '';
+
+        if (strlen($cnpj) !== 14) {
+            return false;
+        }
+
+        if (preg_match('/^(\d)\1{13}$/', $cnpj) === 1) {
+            return false;
+        }
+
+        $calcularDigito = function (string $base): int {
+            $peso = strlen($base) - 7;
+            $soma = 0;
+
+            for ($i = 0; $i < strlen($base); $i++) {
+                $soma += ((int) $base[$i]) * $peso;
+                $peso--;
+                if ($peso < 2) {
+                    $peso = 9;
+                }
+            }
+
+            $resto = $soma % 11;
+            return $resto < 2 ? 0 : 11 - $resto;
+        };
+
+        $base12 = substr($cnpj, 0, 12);
+        $dig1 = $calcularDigito($base12);
+        if ($dig1 !== (int) $cnpj[12]) {
+            return false;
+        }
+
+        $base13 = substr($cnpj, 0, 13);
+        $dig2 = $calcularDigito($base13);
+        return $dig2 === (int) $cnpj[13];
     }
 
     private function atributosValidacao(): array

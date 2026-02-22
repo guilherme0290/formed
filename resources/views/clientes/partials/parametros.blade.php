@@ -125,7 +125,7 @@
                                     (function () {
                                         const keys = @json(array_keys($errors->toArray()));
                                         let targetTab = 'parametros';
-                                        if (keys.some(k => k === 'forma_pagamento' || k === 'vencimento_servicos')) {
+                                        if (keys.some(k => k === 'forma_pagamento' || k === 'vencimento_servicos' || k === 'email_envio_fatura')) {
                                             targetTab = 'forma-pagamento';
                                         } else if (keys.some(k => k === 'incluir_esocial' || k.startsWith('esocial_'))) {
                                             targetTab = 'esocial';
@@ -322,17 +322,29 @@
                         </div>
                         {{-- Lista itens (compacto) --}}
                         <div class="mt-5">
-                            <h3 class="text-sm font-semibold text-black mb-2">Serviços Adicionados</h3>
-                            <div class="rounded-xl border border-slate-200 overflow-hidden">
-                                <div class="hidden md:grid grid-cols-12 gap-1 bg-slate-50 px-2 py-1.5 text-sm font-semibold text-black">
-                                    <div class="col-span-4">Item</div>
+                            <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+                                <div>
+                                    <h3 class="text-sm font-semibold text-black">Serviços Adicionados</h3>
+                                    <p class="text-xs text-slate-500">Revise os itens e ajuste valores antes de salvar.</p>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span id="lista-itens-count" class="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700">
+                                        0 itens
+                                    </span>
+                                    <span class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
+                                        <span>Total</span>
+                                        <span id="valor-total-display">R$ 0,00</span>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                                <div class="hidden md:grid grid-cols-12 gap-2 border-b border-slate-200 bg-slate-50/90 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-600">
+                                    <div class="col-span-7">Item</div>
                                     <div class="col-span-2">Valor</div>
-                                    <div class="col-span-2">Prazo</div>
-                                    <div class="col-span-2">Qtd</div>
-                                    <div class="col-span-1 text-right">Total</div>
+                                    <div class="col-span-2 text-right">Total</div>
                                     <div class="col-span-1 text-center">Ação</div>
                                 </div>
-                                <div id="lista-itens" class="divide-y divide-slate-200"></div>
+                                <div id="lista-itens" class="space-y-2 bg-slate-50/40 p-2 md:p-3"></div>
                             </div>
                         </div>
                     </section>
@@ -450,7 +462,7 @@
             <div data-tab-panel="forma-pagamento" data-tab-panel-root="cliente" class="hidden">
                 <div class="bg-white rounded-2xl shadow border border-slate-200 overflow-hidden">
                     <div class="px-6 py-4 border-b bg-indigo-600 text-white">
-                        <h1 class="text-lg font-semibold">Forma de Pagamento</h1>
+                        <h1 class="text-lg font-semibold">Pagamento</h1>
                     </div>
                     <div class="p-6 space-y-8">
                         <section class="space-y-3">
@@ -477,6 +489,20 @@
                                    value="{{ old('vencimento_servicos', $isEdit ? ($parametro->vencimento_servicos ?? '') : '') }}"
                                    class="w-full border border-slate-200 rounded-xl text-sm px-3 py-2">
                             @error('vencimento_servicos')
+                                <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                            @enderror
+                        </section>
+
+                        <section class="space-y-3">
+                            <h2 class="text-sm font-semibold text-black">Email para envio da fatura</h2>
+
+                            <input type="email"
+                                   name="email_envio_fatura"
+                                   value="{{ old('email_envio_fatura', $isEdit ? ($parametro->email_envio_fatura ?? '') : '') }}"
+                                   placeholder="financeiro@cliente.com.br"
+                                   class="w-full border border-slate-200 rounded-xl text-sm px-3 py-2">
+                            <p class="text-xs text-slate-500">Opcional. Este e-mail ficará disponível como destino alternativo no envio da fatura.</p>
+                            @error('email_envio_fatura')
                                 <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
                             @enderror
                         </section>
@@ -618,6 +644,7 @@
                     medicoes: { loaded: false, list: [] }, // [{id, titulo, descricao, preco}]
                     medicoesTarget: null,
                     medicoesSelected: new Set(),
+                    pacoteTreinamentosEditItemId: null,
                     esocial: { enabled:false, qtd:0, valor:0, aviso:null },
                     gruposExames: [],
                     gheCatalog: [],
@@ -632,6 +659,7 @@
                 // =========================
                 const el = {
                     lista: document.getElementById('lista-itens'),
+                    listaCount: document.getElementById('lista-itens-count'),
                     total: document.getElementById('valor-total-display'),
                     clienteSelect: document.querySelector('[name="cliente_id"]'),
                     itemToast: document.getElementById('itemToast'),
@@ -1552,15 +1580,57 @@
                     });
                 }
 
+                function getItemTipoUi(item) {
+                    const tipo = String(item?.tipo || '').toUpperCase();
+                    const map = {
+                        SERVICO: { label: 'Serviço', cls: 'border-slate-200 bg-slate-100 text-slate-700' },
+                        TREINAMENTO_NR: { label: 'Treinamento', cls: 'border-blue-200 bg-blue-50 text-blue-700' },
+                        PACOTE_TREINAMENTOS: { label: 'Pacote Trein.', cls: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
+                        EXAME: { label: 'Exame', cls: 'border-cyan-200 bg-cyan-50 text-cyan-700' },
+                        PACOTE_EXAMES: { label: 'Pacote Exames', cls: 'border-teal-200 bg-teal-50 text-teal-700' },
+                        MEDICAO: { label: 'Medição', cls: 'border-indigo-200 bg-indigo-50 text-indigo-700' },
+                        ASO_TIPO: { label: 'ASO', cls: 'border-amber-200 bg-amber-50 text-amber-700' },
+                        ESOCIAL: { label: 'eSocial', cls: 'border-violet-200 bg-violet-50 text-violet-700' },
+                    };
+                    return map[tipo] || { label: tipo || 'Item', cls: 'border-slate-200 bg-slate-100 text-slate-700' };
+                }
+
+                function getItemMetaResumo(item) {
+                    if (item?.meta?.treinamentos?.length) {
+                        return `${item.meta.treinamentos.length} treinamento(s)`;
+                    }
+                    if (item?.meta?.exames?.length) {
+                        return `${item.meta.exames.length} exame(s)`;
+                    }
+                    if (item?.meta?.codigo) {
+                        return `NR ${item.meta.codigo}`;
+                    }
+                    if (item?.meta?.medicao_titulo) {
+                        return item.meta.medicao_titulo;
+                    }
+                    if (item?.meta?.aso_tipo) {
+                        return '';
+                    }
+                    return '';
+                }
+
                 // =========================
                 // Render card (igual protótipo)
                 // =========================
                 function render() {
                     el.lista.innerHTML = '';
                     removeEsocialItens();
+                    if (el.listaCount) {
+                        el.listaCount.textContent = `${state.itens.length} item${state.itens.length === 1 ? '' : 's'}`;
+                    }
 
                     if (!state.itens.length) {
-                        el.lista.innerHTML = '<div class="px-3 py-4 text-sm text-slate-500">Nenhum item adicionado.</div>';
+                        el.lista.innerHTML = `
+                            <div class="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-6 text-center">
+                                <div class="text-sm font-semibold text-slate-700">Nenhum item adicionado</div>
+                                <div class="mt-1 text-xs text-slate-500">Use os botões acima para incluir serviços, treinamentos, ASO ou pacotes.</div>
+                            </div>
+                        `;
                         recalcTotals();
                         syncHiddenInputs();
                         return;
@@ -1570,20 +1640,36 @@
                     state.itens.forEach(item => {
                         const hasZeroPrice = Number(item.valor_unitario || 0) <= 0;
                         const isAsoTipo = !!item?.meta?.aso_tipo;
+                        const isPacoteTreinamentos = String(item?.tipo || '').toUpperCase() === 'PACOTE_TREINAMENTOS';
+                        const tipoUi = getItemTipoUi(item);
+                        const metaResumo = getItemMetaResumo(item);
                         const stripeClass = rowIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50/60';
                         const row = document.createElement('div');
                         row.setAttribute('data-item-id', String(item.id));
                         row.className = hasZeroPrice
-                            ? 'grid grid-cols-12 gap-1 items-center px-2 py-1.5 bg-amber-50/60'
-                            : `grid grid-cols-12 gap-1 items-center px-2 py-1.5 ${stripeClass}`;
+                            ? 'grid grid-cols-12 gap-2 items-center rounded-xl border border-amber-200 bg-amber-50/70 px-3 py-2 shadow-sm'
+                            : `grid grid-cols-12 gap-2 items-center rounded-xl border border-slate-200 px-3 py-2 shadow-sm hover:shadow-md transition-shadow ${stripeClass}`;
                         rowIndex += 1;
 
                         row.innerHTML = `
-                <div class="col-span-12 md:col-span-4">
+                <div class="col-span-12 md:col-span-7">
                     <div class="text-[11px] font-semibold text-slate-500 md:hidden">Item</div>
                     <div class="min-w-0">
-                        <div class="font-semibold text-slate-800 text-sm leading-tight truncate">${escapeHtml(item.nome)}</div>
-                        ${item.descricao ? `<div class="text-[11px] text-slate-500 truncate">${escapeHtml(item.descricao)}</div>` : ``}
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${tipoUi.cls}">
+                                ${escapeHtml(tipoUi.label)}
+                            </span>
+                            ${metaResumo ? `<span class="text-[11px] text-slate-500 truncate">${escapeHtml(metaResumo)}</span>` : ``}
+                        </div>
+                        <div class="mt-1 font-semibold text-slate-800 text-sm leading-tight truncate">${escapeHtml(item.nome)}</div>
+                        ${isPacoteTreinamentos ? `
+                            <button type="button"
+                                    class="mt-1 text-[11px] font-semibold text-blue-600 hover:underline"
+                                    data-act="edit-pacote-treinamentos">
+                                Alterar treinamentos do pacote
+                            </button>
+                        ` : ``}
+                        ${item.descricao ? `<div class="mt-0.5 text-[11px] text-slate-500 truncate">${escapeHtml(item.descricao)}</div>` : ``}
                         ${hasZeroPrice ? `<div class="mt-1 flex flex-wrap items-center gap-2 text-[11px]">
                             <span class="inline-flex items-center font-semibold text-amber-700 bg-amber-100/70 px-2 py-0.5 rounded-full">Sem preço definido</span>
                             <a href="{{ route('comercial.tabela-precos.itens.index') }}" target="_blank" rel="noopener"
@@ -1596,17 +1682,17 @@
 
                 <div class="col-span-6 md:col-span-2">
                     <div class="text-[11px] font-semibold text-slate-500 md:hidden">Valor</div>
-                    <input type="text" class="w-full h-8 rounded-md border border-slate-200 text-sm px-2"
+                    <input type="text" class="w-full h-9 rounded-lg border border-slate-200 bg-white text-sm px-2.5 font-medium shadow-sm focus:border-emerald-400 focus:ring-emerald-200"
                            data-act="valor_view" value="${brl(item.valor_unitario)}">
                 </div>
 
-                <div class="col-span-6 md:col-span-2">
+                <div class="hidden col-span-6 md:col-span-2">
                     <div class="text-[11px] font-semibold text-slate-500 md:hidden">Prazo</div>
                     <input type="text" class="w-full h-8 rounded-md border border-slate-200 text-sm px-2"
                            data-act="prazo" placeholder="Ex: 15 dias">
                 </div>
 
-                <div class="col-span-6 md:col-span-2">
+                <div class="hidden col-span-6 md:col-span-2">
                     <div class="text-[11px] font-semibold text-slate-500 md:hidden">Qtd</div>
                     <div class="inline-flex items-center gap-1">
                         <button type="button" class="h-8 w-8 rounded-md border border-slate-200 hover:bg-slate-50 text-sm" data-act="qtd_minus">-</button>
@@ -1615,16 +1701,16 @@
                     </div>
                 </div>
 
-                <div class="col-span-4 md:col-span-1 text-right md:text-right">
+                <div class="col-span-4 md:col-span-2 text-right md:text-right">
                     <div class="text-[11px] font-semibold text-slate-500 md:hidden">Total</div>
-                    <span data-el="valor_total" class="text-sm font-semibold text-emerald-700">
+                    <span data-el="valor_total" class="inline-flex items-center justify-end rounded-full bg-emerald-50 px-2.5 py-1 text-sm font-semibold text-emerald-700">
                         ${brl(item.valor_total)}
                     </span>
                 </div>
 
                 <div class="col-span-2 md:col-span-1 flex justify-end md:justify-center">
                     <button type="button"
-                            class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 text-lg leading-none"
+                            class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-red-200 bg-white text-red-600 hover:bg-red-50 hover:text-red-700 text-lg leading-none shadow-sm"
                             data-act="remove"
                             aria-label="Remover item">
                         ×
@@ -1634,6 +1720,9 @@
 
                         // Actions
                         row.querySelector('[data-act="remove"]').addEventListener('click', () => removeItem(item.id));
+                        row.querySelector('[data-act="edit-pacote-treinamentos"]')?.addEventListener('click', () => {
+                            openPacoteTreinamentosModal(item);
+                        });
 
                         // Prazo
                         const prazoInput = row.querySelector('[data-act="prazo"]');
@@ -2364,6 +2453,32 @@
                         });
                     });
                 });
+                function openPacoteTreinamentosModal(item = null) {
+                    if (!modalPkg || !pkgList || !pkgNome || !pkgCount || !pkgValorView || !pkgValorHidden) return;
+
+                    const isEdit = !!item && String(item?.tipo || '').toUpperCase() === 'PACOTE_TREINAMENTOS';
+                    state.pacoteTreinamentosEditItemId = isEdit ? item.id : null;
+
+                    modalPkg.classList.remove('hidden');
+
+                    const selectedIds = new Set(
+                        isEdit
+                            ? ((item?.meta?.treinamentos || []).map(t => Number(t?.id || 0)).filter(Boolean))
+                            : []
+                    );
+
+                    pkgNome.value = isEdit ? String(item?.nome || '') : '';
+                    pkgList.querySelectorAll('input[type="checkbox"]').forEach(c => {
+                        c.checked = selectedIds.has(Number(c.value || 0));
+                    });
+                    pkgCount.textContent = String(selectedIds.size);
+
+                    const valorAtual = isEdit ? Number(item?.valor_unitario || 0) : 0;
+                    pkgValorHidden.value = Number(valorAtual || 0).toFixed(2);
+                    pkgValorView.value = brl(valorAtual);
+                    attachMoneyMask(pkgValorView, pkgValorHidden);
+                }
+
                 window.confirmPacoteTreinamentos = function () {
                     const nomePacote = (pkgNome.value || '').trim();
                     if (!nomePacote) return window.uiAlert('Informe o nome do pacote.');
@@ -2378,29 +2493,46 @@
                     }));
 
                     const valor = Number(pkgValorHidden.value || 0);
+                    const editingId = state.pacoteTreinamentosEditItemId;
+                    const item = editingId ? state.itens.find(x => x.id === editingId) : null;
+                    const descricaoPacote = buildPacoteDescricao(
+                        `Pacote com ${treinamentos.length} treinamento(s)`,
+                        treinamentos.map(t => `${t.codigo} ${t.titulo}`.trim())
+                    );
 
-                    const item = {
-                        id: uid(),
-                        servico_id: SERVICO_TREINAMENTO_ID ? Number(SERVICO_TREINAMENTO_ID) : null,
-                        tipo: 'PACOTE_TREINAMENTOS',
-                        nome: nomePacote,
-                        descricao: treinamentos.map(t => `${t.codigo} ${t.titulo}`).join(', '),
-                        valor_unitario: valor,
-                        quantidade: 1,
-                        prazo: 'Ex: 15 dias',
-                        acrescimo: 0,
-                        desconto: 0,
-                        meta: { treinamentos },
-                        valor_total: 0,
-                    };
+                    if (item) {
+                        item.servico_id = SERVICO_TREINAMENTO_ID ? Number(SERVICO_TREINAMENTO_ID) : (item.servico_id ?? null);
+                        item.tipo = 'PACOTE_TREINAMENTOS';
+                        item.nome = nomePacote;
+                        item.descricao = descricaoPacote;
+                        item.valor_unitario = valor;
+                        item.meta = { treinamentos };
+                        recalcItemTotal(item);
+                    } else {
+                        const novoItem = {
+                            id: uid(),
+                            servico_id: SERVICO_TREINAMENTO_ID ? Number(SERVICO_TREINAMENTO_ID) : null,
+                            tipo: 'PACOTE_TREINAMENTOS',
+                            nome: nomePacote,
+                            descricao: descricaoPacote,
+                            valor_unitario: valor,
+                            quantidade: 1,
+                            prazo: 'Ex: 15 dias',
+                            acrescimo: 0,
+                            desconto: 0,
+                            meta: { treinamentos },
+                            valor_total: 0,
+                        };
 
-                    recalcItemTotal(item);
-                    state.itens.push(item);
+                        recalcItemTotal(novoItem);
+                        state.itens.push(novoItem);
+                    }
 
                     closePacoteTreinamentosModal();
                     render();
-                    showItemToast(`Pacote de treinamentos: ${nomePacote}`);
-                    if (Number(item.valor_unitario || 0) <= 0) {
+                    showItemToast(`${editingId ? 'Pacote atualizado' : 'Pacote de treinamentos'}: ${nomePacote}`);
+                    const valorChecado = item ? Number(item.valor_unitario || 0) : valor;
+                    if (valorChecado <= 0) {
                         showItemAlert(`Pacote ${nomePacote} sem preço definido.`);
                     }
                 };
@@ -2413,19 +2545,13 @@
                 const pkgValorHidden = document.getElementById('pkgTreinValorHidden');
 
                 document.getElementById('btnPacoteTreinamentos')?.addEventListener('click', () => {
-                    modalPkg.classList.remove('hidden');
-                    pkgNome.value = '';
-                    // limpar checks
-                    pkgList.querySelectorAll('input[type="checkbox"]').forEach(c => c.checked = false);
-                    pkgCount.textContent = '0';
-                    // reset valor
-                    pkgValorHidden.value = '0.00';
-                    pkgValorView.value = brl(0);
-                    // preparar máscara por centavos (igual você já usa)
-                    attachMoneyMask(pkgValorView, pkgValorHidden);
+                    openPacoteTreinamentosModal();
                 });
 
-                window.closePacoteTreinamentosModal = () => modalPkg.classList.add('hidden');
+                window.closePacoteTreinamentosModal = () => {
+                    state.pacoteTreinamentosEditItemId = null;
+                    modalPkg.classList.add('hidden');
+                };
 
                 pkgList?.addEventListener('change', () => {
                     const checked = pkgList.querySelectorAll('input[type="checkbox"]:checked').length;
