@@ -40,7 +40,6 @@
                         ['label' => 'Contratos', 'icon' => '📄', 'route' => route('financeiro.contratos'), 'active' => request()->routeIs('financeiro.contratos*')],
                         ['label' => 'Contas a Receber', 'icon' => '💳', 'route' => route('financeiro.contas-receber'), 'active' => request()->routeIs('financeiro.contas-receber*')],
                         ['label' => 'Contas a Pagar', 'icon' => '💸', 'route' => route('financeiro.contas-pagar.index'), 'active' => request()->routeIs('financeiro.contas-pagar*')],
-                        ['label' => 'Fornecedores', 'icon' => '🏢', 'route' => route('financeiro.fornecedores.index'), 'active' => request()->routeIs('financeiro.fornecedores*')],
                     ];
                 @endphp
                 @foreach($links as $link)

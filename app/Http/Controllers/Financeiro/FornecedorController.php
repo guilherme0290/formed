@@ -27,6 +27,8 @@ class FornecedorController extends Controller
     {
         $empresaId = $request->user()->empresa_id;
         $busca = trim((string) $request->input('busca', ''));
+        $modal = (string) $request->input('modal', '');
+        $fornecedorEdicaoId = $request->input('fornecedor');
 
         $fornecedores = Fornecedor::query()
             ->where('empresa_id', $empresaId)
@@ -41,17 +43,59 @@ class FornecedorController extends Controller
             ->paginate(12)
             ->withQueryString();
 
+        $fornecedorEdicao = null;
+        if ($modal === 'edit' && is_numeric($fornecedorEdicaoId)) {
+            $fornecedorEdicao = Fornecedor::query()
+                ->where('empresa_id', $empresaId)
+                ->whereKey((int) $fornecedorEdicaoId)
+                ->first();
+        }
+
+        $modalAberto = in_array($modal, ['create', 'edit'], true)
+            || (bool) old('fornecedor_modal_context')
+            || $request->session()->has('errors');
+
+        $modalContexto = old('fornecedor_modal_context');
+        if ($modalContexto === 'create' || $modalContexto === 'edit') {
+            $modal = $modalContexto;
+        }
+        if ($modal === '' && $modalAberto) {
+            $modal = 'create';
+        }
+
+        if (!$fornecedorEdicao && $modal === 'edit') {
+            $oldEdicaoId = old('fornecedor_modal_edit_id');
+            if (is_numeric($oldEdicaoId)) {
+                $fornecedorEdicao = Fornecedor::query()
+                    ->where('empresa_id', $empresaId)
+                    ->whereKey((int) $oldEdicaoId)
+                    ->first();
+            }
+        }
+
+        if ($modal === 'edit' && !$fornecedorEdicao) {
+            $modal = 'create';
+        }
+
         return view('financeiro.fornecedores.index', [
             'fornecedores' => $fornecedores,
             'filtros' => [
                 'busca' => $busca,
             ],
+            'modalFornecedor' => [
+                'aberto' => $modalAberto,
+                'modo' => $modal,
+                'fornecedorEdicao' => $fornecedorEdicao,
+            ],
         ]);
     }
 
-    public function create(): View
+    public function create(Request $request): RedirectResponse
     {
-        return view('financeiro.fornecedores.create');
+        return redirect()->route('financeiro.fornecedores.index', array_filter([
+            'busca' => $request->input('busca'),
+            'modal' => 'create',
+        ], fn ($value) => $value !== null && $value !== ''));
     }
 
     public function store(Request $request): RedirectResponse
@@ -61,18 +105,19 @@ class FornecedorController extends Controller
 
         Fornecedor::create($data);
 
-        return redirect()
-            ->route('financeiro.fornecedores.index')
+        return $this->redirectPosAcao($request)
             ->with('success', 'Fornecedor cadastrado com sucesso.');
     }
 
-    public function edit(Request $request, Fornecedor $fornecedor): View
+    public function edit(Request $request, Fornecedor $fornecedor): RedirectResponse
     {
         $this->autorizarFornecedor($request, $fornecedor);
 
-        return view('financeiro.fornecedores.edit', [
-            'fornecedor' => $fornecedor,
-        ]);
+        return redirect()->route('financeiro.fornecedores.index', array_filter([
+            'busca' => $request->input('busca'),
+            'modal' => 'edit',
+            'fornecedor' => $fornecedor->id,
+        ], fn ($value) => $value !== null && $value !== ''));
     }
 
     public function update(Request $request, Fornecedor $fornecedor): RedirectResponse
@@ -83,8 +128,7 @@ class FornecedorController extends Controller
         $data = $this->validateData($request, $empresaId, $fornecedor->id);
         $fornecedor->update($data);
 
-        return redirect()
-            ->route('financeiro.fornecedores.index')
+        return $this->redirectPosAcao($request)
             ->with('success', 'Fornecedor atualizado com sucesso.');
     }
 
@@ -97,12 +141,12 @@ class FornecedorController extends Controller
             ->exists();
 
         if ($possuiContas) {
-            return back()->with('error', 'Não é possível excluir: fornecedor já possui contas a pagar vinculadas.');
+            return $this->redirectPosAcao($request)->with('error', 'Não é possível excluir: fornecedor já possui contas a pagar vinculadas.');
         }
 
         $fornecedor->delete();
 
-        return back()->with('success', 'Fornecedor excluído com sucesso.');
+        return $this->redirectPosAcao($request)->with('success', 'Fornecedor excluído com sucesso.');
     }
 
     private function autorizarFornecedor(Request $request, Fornecedor $fornecedor): void
@@ -154,5 +198,21 @@ class FornecedorController extends Controller
         $data['ativo'] = (bool) ($data['ativo'] ?? false);
 
         return $data;
+    }
+
+    private function redirectPosAcao(Request $request): RedirectResponse
+    {
+        $returnUrl = trim((string) $request->input('_return_url', ''));
+        if ($returnUrl !== '') {
+            $appUrl = rtrim((string) config('app.url'), '/');
+            if (str_starts_with($returnUrl, '/')) {
+                return redirect($returnUrl);
+            }
+            if ($appUrl !== '' && str_starts_with($returnUrl, $appUrl)) {
+                return redirect($returnUrl);
+            }
+        }
+
+        return redirect()->route('financeiro.fornecedores.index');
     }
 }

@@ -25,10 +25,6 @@
        class="px-3 py-2 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100 {{ request()->routeIs('financeiro.contas-pagar*') ? 'bg-indigo-600 text-white shadow hover:bg-indigo-600' : '' }}">
         Contas a Pagar
     </a>
-    <a href="{{ route('financeiro.fornecedores.index') }}"
-       class="px-3 py-2 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-100 {{ request()->routeIs('financeiro.fornecedores*') ? 'bg-indigo-600 text-white shadow hover:bg-indigo-600' : '' }}">
-        Fornecedores
-    </a>
     <a href="{{ $can('financeiro.faturamento.view') ? route('financeiro.faturamento-detalhado') : 'javascript:void(0)' }}"
        @if(!$can('financeiro.faturamento.view')) title="Usuário sem permissão" aria-disabled="true" @endif
        class="px-3 py-2 rounded-xl text-sm font-semibold {{ $can('financeiro.faturamento.view') ? 'text-slate-700 hover:bg-slate-100' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} {{ request()->routeIs('financeiro.faturamento-detalhado*') ? 'bg-indigo-600 text-white shadow hover:bg-indigo-600' : '' }}">

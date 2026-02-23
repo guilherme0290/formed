@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Financeiro;
 use App\Helpers\S3Helper;
 use App\Http\Controllers\Controller;
 use App\Models\ContaPagar;
+use App\Models\ContaPagarBaixa;
 use App\Models\ContaPagarItem;
 use App\Models\Fornecedor;
 use App\Services\ContaPagarService;
@@ -29,29 +30,224 @@ class ContasPagarController extends Controller
     public function index(Request $request): View
     {
         $empresaId = $request->user()->empresa_id;
+        $subAba = $request->input('subaba', 'contas');
+        if (!in_array($subAba, ['contas', 'fornecedores'], true)) {
+            $subAba = 'contas';
+        }
+
+        $contaIdFiltro = trim((string) $request->input('conta_id', ''));
         $fornecedorId = $request->input('fornecedor_id');
-        $statusConta = $request->input('status_conta');
+        $statusConta = strtolower(trim((string) $request->input('status_conta', '')));
+        $descricao = trim((string) $request->input('descricao', ''));
+        $tipoPeriodo = strtolower(trim((string) $request->input('tipo_periodo', 'vencimento')));
+        if (!in_array($tipoPeriodo, ['vencimento', 'pagamento', 'criacao'], true)) {
+            $tipoPeriodo = 'vencimento';
+        }
+        $dataInicio = $request->input('data_inicio');
+        $dataFim = $request->input('data_fim');
+        $detalheId = $request->input('detalhe_id');
+        $fornecedorBusca = trim((string) $request->input('fornecedor_busca', ''));
+        $fornecedorModal = (string) $request->input('fornecedor_modal', '');
+        $fornecedorModalId = $request->input('fornecedor');
 
         $fornecedores = Fornecedor::query()
             ->where('empresa_id', $empresaId)
             ->orderBy('razao_social')
             ->get();
 
-        $contas = ContaPagar::query()
-            ->with('fornecedor')
+        $applyContaFilters = function ($query) use (
+            $contaIdFiltro,
+            $fornecedorId,
+            $statusConta,
+            $descricao,
+            $tipoPeriodo,
+            $dataInicio,
+            $dataFim
+        ) {
+            $query
+                ->when($contaIdFiltro !== '', function ($q) use ($contaIdFiltro) {
+                    $digits = preg_replace('/\D+/', '', $contaIdFiltro);
+                    if ($digits === '') {
+                        $q->whereRaw('1 = 0');
+                        return;
+                    }
+                    $q->where('id', (int) $digits);
+                })
+                ->when($fornecedorId, fn ($q) => $q->where('fornecedor_id', $fornecedorId))
+                ->when($descricao !== '', function ($q) use ($descricao) {
+                    $q->where(function ($q2) use ($descricao) {
+                        $q2->where('observacao', 'like', '%' . $descricao . '%')
+                            ->orWhereHas('itens', function ($q3) use ($descricao) {
+                                $q3->where('descricao', 'like', '%' . $descricao . '%');
+                            });
+                    });
+                })
+                ->when($statusConta !== '', function ($q) use ($statusConta) {
+                    if ($statusConta === 'paga') {
+                        $q->whereRaw('COALESCE(total, 0) > 0')
+                            ->whereRaw('COALESCE(total_baixado, 0) >= COALESCE(total, 0)');
+                        return;
+                    }
+
+                    if ($statusConta === 'parcial') {
+                        $q->whereRaw('COALESCE(total_baixado, 0) > 0')
+                            ->whereRaw('COALESCE(total_baixado, 0) < COALESCE(total, 0)');
+                        return;
+                    }
+
+                    if ($statusConta === 'aberta') {
+                        $q->whereRaw('COALESCE(total_baixado, 0) <= 0');
+                        return;
+                    }
+
+                    $q->where('status', strtoupper($statusConta));
+                });
+
+            if ($dataInicio || $dataFim) {
+                if ($tipoPeriodo === 'criacao') {
+                    if ($dataInicio) {
+                        $query->whereDate('created_at', '>=', $dataInicio);
+                    }
+                    if ($dataFim) {
+                        $query->whereDate('created_at', '<=', $dataFim);
+                    }
+                } elseif ($tipoPeriodo === 'vencimento') {
+                    if ($dataInicio) {
+                        $query->whereDate('vencimento', '>=', $dataInicio);
+                    }
+                    if ($dataFim) {
+                        $query->whereDate('vencimento', '<=', $dataFim);
+                    }
+                } else {
+                    $query->whereHas('baixas', function ($q) use ($dataInicio, $dataFim) {
+                        if ($dataInicio) {
+                            $q->whereDate(DB::raw('COALESCE(pago_em, created_at)'), '>=', $dataInicio);
+                        }
+                        if ($dataFim) {
+                            $q->whereDate(DB::raw('COALESCE(pago_em, created_at)'), '<=', $dataFim);
+                        }
+                    });
+                }
+            }
+        };
+
+        $contasBase = ContaPagar::query()
+            ->where('empresa_id', $empresaId);
+        $applyContaFilters($contasBase);
+
+        $contasTotaisBase = clone $contasBase;
+
+        $totaisContas = [
+            'valor_total' => (float) (clone $contasTotaisBase)->sum('total'),
+            'valor_pago' => (float) (clone $contasTotaisBase)->sum('total_baixado'),
+            'valor_aberto' => (float) (clone $contasTotaisBase)->sum(DB::raw('CASE WHEN COALESCE(total,0) - COALESCE(total_baixado,0) > 0 THEN COALESCE(total,0) - COALESCE(total_baixado,0) ELSE 0 END')),
+            'qtd_contas' => (int) (clone $contasTotaisBase)->count(),
+            'qtd_pagas' => (int) (clone $contasTotaisBase)
+                ->whereRaw('COALESCE(total, 0) > 0')
+                ->whereRaw('COALESCE(total_baixado, 0) >= COALESCE(total, 0)')
+                ->count(),
+        ];
+
+        $baixasNoPeriodoQuery = ContaPagarBaixa::query()
             ->where('empresa_id', $empresaId)
-            ->when($fornecedorId, fn ($q) => $q->where('fornecedor_id', $fornecedorId))
-            ->when($statusConta, fn ($q) => $q->where('status', $statusConta))
+            ->whereIn('conta_pagar_id', (clone $contasBase)->select('contas_pagar.id'));
+        if ($dataInicio) {
+            $baixasNoPeriodoQuery->whereDate(DB::raw('COALESCE(pago_em, created_at)'), '>=', $dataInicio);
+        }
+        if ($dataFim) {
+            $baixasNoPeriodoQuery->whereDate(DB::raw('COALESCE(pago_em, created_at)'), '<=', $dataFim);
+        }
+        $totaisContas['valor_pago_periodo'] = (float) $baixasNoPeriodoQuery->sum('valor');
+
+        $contas = (clone $contasBase)
+            ->with([
+                'fornecedor',
+                'itens' => fn ($q) => $q->select('id', 'conta_pagar_id', 'descricao', 'valor')->orderBy('id'),
+            ])
+            ->withCount('itens')
             ->orderByDesc('id')
             ->paginate(10)
             ->withQueryString();
 
+        $contaDetalhe = null;
+        if ($detalheId && is_numeric($detalheId)) {
+            $contaDetalhe = ContaPagar::query()
+                ->where('empresa_id', $empresaId)
+                ->whereKey((int) $detalheId)
+                ->with(['fornecedor', 'itens.baixas', 'baixas'])
+                ->first();
+        }
+
+        $fornecedoresLista = Fornecedor::query()
+            ->where('empresa_id', $empresaId)
+            ->when($fornecedorBusca !== '', function ($query) use ($fornecedorBusca) {
+                $query->where(function ($q) use ($fornecedorBusca) {
+                    $q->where('razao_social', 'like', '%' . $fornecedorBusca . '%')
+                        ->orWhere('nome_fantasia', 'like', '%' . $fornecedorBusca . '%')
+                        ->orWhere('cpf_cnpj', 'like', '%' . $fornecedorBusca . '%');
+                });
+            })
+            ->orderBy('razao_social')
+            ->paginate(12, ['*'], 'fornecedores_page')
+            ->withQueryString();
+
+        $fornecedorEdicao = null;
+        if ($fornecedorModal === 'edit' && is_numeric($fornecedorModalId)) {
+            $fornecedorEdicao = Fornecedor::query()
+                ->where('empresa_id', $empresaId)
+                ->whereKey((int) $fornecedorModalId)
+                ->first();
+        }
+
+        $modalFornecedorAberto = $subAba === 'fornecedores' && (
+            in_array($fornecedorModal, ['create', 'edit'], true)
+            || (bool) old('fornecedor_modal_context')
+            || $request->session()->has('errors')
+        );
+
+        $oldModalContexto = old('fornecedor_modal_context');
+        if (in_array($oldModalContexto, ['create', 'edit'], true)) {
+            $fornecedorModal = $oldModalContexto;
+        }
+        if ($fornecedorModal === '' && $modalFornecedorAberto) {
+            $fornecedorModal = 'create';
+        }
+        if (!$fornecedorEdicao && $fornecedorModal === 'edit') {
+            $oldFornecedorEdicaoId = old('fornecedor_modal_edit_id');
+            if (is_numeric($oldFornecedorEdicaoId)) {
+                $fornecedorEdicao = Fornecedor::query()
+                    ->where('empresa_id', $empresaId)
+                    ->whereKey((int) $oldFornecedorEdicaoId)
+                    ->first();
+            }
+        }
+        if ($fornecedorModal === 'edit' && !$fornecedorEdicao) {
+            $fornecedorModal = 'create';
+        }
+
         return view('financeiro.contas-pagar.index', [
             'fornecedores' => $fornecedores,
+            'fornecedoresLista' => $fornecedoresLista,
             'contas' => $contas,
+            'subAba' => $subAba,
+            'contaDetalhe' => $contaDetalhe,
+            'totaisContas' => $totaisContas,
+            'fornecedorArea' => [
+                'busca' => $fornecedorBusca,
+                'modalAberto' => $modalFornecedorAberto,
+                'modalModo' => $fornecedorModal,
+                'fornecedorEdicao' => $fornecedorEdicao,
+            ],
             'filtros' => [
+                'conta_id' => $contaIdFiltro,
                 'fornecedor_id' => $fornecedorId,
                 'status_conta' => $statusConta,
+                'descricao' => $descricao,
+                'tipo_periodo' => $tipoPeriodo,
+                'data_inicio' => $dataInicio,
+                'data_fim' => $dataFim,
+                'detalhe_id' => $detalheId,
+                'fornecedor_busca' => $fornecedorBusca,
             ],
         ]);
     }
