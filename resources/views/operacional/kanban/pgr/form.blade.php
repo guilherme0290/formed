@@ -624,7 +624,7 @@
                     atualizarTotal();
                 }
 
-                // ========= FUNÇÕES DINÂMICAS =========
+                // ========= FUNCOES DINAMICAS =========
                 const wrapper = document.getElementById('funcoes-wrapper');
                 const btnAdd = document.getElementById('btn-add-funcao');
                 const nrModal = document.getElementById('nrModal');

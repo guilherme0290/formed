@@ -36,11 +36,11 @@
             <nav class="relative z-10 flex-1 px-3 mt-4 space-y-1">
                 @php
                     $links = [
-                        ['label' => 'Dashboard', 'icon' => 'ðŸ“Š', 'route' => route('financeiro.dashboard'), 'active' => request()->routeIs('financeiro.dashboard')],
-                        ['label' => 'Contratos', 'icon' => 'ðŸ“„', 'route' => route('financeiro.contratos'), 'active' => request()->routeIs('financeiro.contratos*')],
-                        ['label' => 'Contas a Receber', 'icon' => 'ðŸ’³', 'route' => route('financeiro.contas-receber'), 'active' => request()->routeIs('financeiro.contas-receber*')],
-                        ['label' => 'Contas a Pagar', 'icon' => 'ðŸ’¸', 'route' => route('financeiro.contas-pagar.index'), 'active' => request()->routeIs('financeiro.contas-pagar*')],
-                        ['label' => 'Fornecedores', 'icon' => 'ðŸ¢', 'route' => route('financeiro.fornecedores.index'), 'active' => request()->routeIs('financeiro.fornecedores*')],
+                        ['label' => 'Dashboard', 'icon' => '📊', 'route' => route('financeiro.dashboard'), 'active' => request()->routeIs('financeiro.dashboard')],
+                        ['label' => 'Contratos', 'icon' => '📄', 'route' => route('financeiro.contratos'), 'active' => request()->routeIs('financeiro.contratos*')],
+                        ['label' => 'Contas a Receber', 'icon' => '💳', 'route' => route('financeiro.contas-receber'), 'active' => request()->routeIs('financeiro.contas-receber*')],
+                        ['label' => 'Contas a Pagar', 'icon' => '💸', 'route' => route('financeiro.contas-pagar.index'), 'active' => request()->routeIs('financeiro.contas-pagar*')],
+                        ['label' => 'Fornecedores', 'icon' => '🏢', 'route' => route('financeiro.fornecedores.index'), 'active' => request()->routeIs('financeiro.fornecedores*')],
                     ];
                 @endphp
                 @foreach($links as $link)
@@ -62,12 +62,12 @@
             </nav>
             <div class="relative z-10 px-4 py-4 border-t border-slate-900 space-y-2 text-sm">
                 <a href="{{ url('/') }}" class="flex items-center gap-2 text-slate-300 hover:text-white">
-                    <span>âª</span><span>Voltar</span>
+                    <span>←</span><span>Voltar</span>
                 </a>
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
                     <button class="flex items-center gap-2 text-rose-400 hover:text-rose-300">
-                        <span>ðŸšª</span> Sair
+                        <span>🚪</span> Sair
                     </button>
                 </form>
             </div>
@@ -124,14 +124,14 @@
                             <a href="{{ route('master.acessos', ['tab' => 'senhas']) }}"
                                data-only-my-password
                                class="flex items-center gap-2 px-4 py-3 text-sm hover:bg-slate-50">
-                                <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">ðŸ”’</span>
+                                <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">🔒</span>
                                 <span>Alterar Senha</span>
                             </a>
                             <form method="POST" action="{{ route('logout') }}">
                                 @csrf
                                 <button type="submit"
                                         class="w-full flex items-center gap-2 px-4 py-3 text-sm hover:bg-slate-50 text-left">
-                                    <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-600">ðŸšª</span>
+                                    <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-600">🚪</span>
                                     <span>Sair</span>
                                 </button>
                             </form>
@@ -273,4 +273,3 @@
 @stack('scripts')
 </body>
 </html>
-

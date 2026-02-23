@@ -110,7 +110,7 @@
                                     <button type="button"
                                             class="absolute right-0 top-0 h-full w-8 flex items-center justify-center text-slate-400 hover:text-slate-600 date-picker-btn z-10"
                                             data-date-target="nf-nascimento"
-                                            aria-label="Abrir calendÃ¡rio">
+                                            aria-label="Abrir calendário">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" viewBox="0 0 24 24" fill="currentColor">
                                             <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v2H2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 2 0v1zm15 8H2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V10z"/>
                                         </svg>
@@ -743,5 +743,4 @@
 </script>
 @endpush
 @endsection
-
 

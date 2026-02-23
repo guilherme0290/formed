@@ -6,7 +6,7 @@
     <div class="w-full px-3 md:px-5 py-4 md:py-5 space-y-6">
         <div class="flex flex-col gap-2">
             <div class="inline-flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-indigo-400">
-                <span class="inline-flex h-7 w-7 items-center justify-center rounded-2xl bg-indigo-500/20 text-pink-100 text-lg">ðŸ§¾</span>
+                <span class="inline-flex h-7 w-7 items-center justify-center rounded-2xl bg-indigo-500/20 text-pink-100 text-lg">🧾</span>
                 Itens do contas a receber
             </div>
             <div class="flex flex-wrap items-center gap-3">
@@ -61,8 +61,8 @@
                                 @endphp
                                 <tr>
                                     <td class="px-4 py-3 text-slate-800">{{ $servicoNome }}</td>
-                                    <td class="px-4 py-3 text-slate-600">{{ $dataRealizacao?->format('d/m/Y') ?? 'â€”' }}</td>
-                                    <td class="px-4 py-3 text-slate-600">â€”</td>
+                                    <td class="px-4 py-3 text-slate-600">{{ $dataRealizacao?->format('d/m/Y') ?? '—' }}</td>
+                                    <td class="px-4 py-3 text-slate-600">—</td>
                                     <td class="px-4 py-3">
                                         <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-100">
                                             Em aberto
@@ -248,8 +248,8 @@
                 const linha = document.createElement('tr');
                 linha.innerHTML = `
                     <td class="px-4 py-3 text-slate-800">${servicoNome || descricao}</td>
-                    <td class="px-4 py-3 text-slate-600">${data ? data.split('-').reverse().join('/') : 'â€”'}</td>
-                    <td class="px-4 py-3 text-slate-600">${vencimento ? vencimento.split('-').reverse().join('/') : 'â€”'}</td>
+                    <td class="px-4 py-3 text-slate-600">${data ? data.split('-').reverse().join('/') : '—'}</td>
+                    <td class="px-4 py-3 text-slate-600">${vencimento ? vencimento.split('-').reverse().join('/') : '—'}</td>
                     <td class="px-4 py-3">
                         <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-100">
                             Em aberto
@@ -361,5 +361,4 @@
     });
 </script>
 @endsection
-
 

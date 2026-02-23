@@ -35,7 +35,7 @@
         {{-- Card principal --}}
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
 
-            {{-- CabeÃ§alho --}}
+            {{-- Cabeçalho --}}
             <div class="px-5 md:px-6 py-4 md:py-5
             flex flex-col md:flex-row md:items-center justify-between gap-4
             bg-sky-50 border-b border-sky-100">
@@ -43,15 +43,15 @@
                 <div class="flex items-start gap-3">
                     <div class="w-10 h-10 rounded-2xl bg-[color:var(--color-brand-azul)]/10
                     flex items-center justify-center text-xl">
-                        ðŸ§©
+                        &#x1F9E9;
                     </div>
 
                     <div>
                         <p class="text-[11px] md:text-xs uppercase tracking-wide text-[color:var(--color-brand-azul)]/80">
-                            Operacional â€¢ Formed
+                            Operacional &bull; Formed
                         </p>
                         <h1 class="text-base md:text-xl font-semibold text-slate-900 leading-snug">
-                            Selecione o serviÃ§o para este cliente
+                            Selecione o serviço para este cliente
                         </h1>
                     </div>
                 </div>
@@ -71,11 +71,11 @@
                 </div>
             </div>
 
-            {{-- ConteÃºdo --}}
+            {{-- Conteúdo --}}
             <div class="px-6 py-6">
                 @unless($temContratoAtivo)
                     <div class="mb-4 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
-                        Este cliente nÃ£o possui contrato ativo ou vigÃªncia vÃ¡lida. Selecione outro cliente ou acione o Comercial para ajustar o contrato.
+                        Este cliente não possui contrato ativo ou vigência válida. Selecione outro cliente ou acione o Comercial para ajustar o contrato.
                     </div>
                 @endunless
 
@@ -83,8 +83,8 @@
 
                     {{-- helper inline --}}
                     @php
-                        $bloqueadoMsg = 'Bloqueado: serviÃ§o nÃ£o consta na tabela de preÃ§o vigente do contrato.';
-                        $semPermissaoMsg = 'Usuário sem permissão para criar este servico.';
+                        $bloqueadoMsg = 'Bloqueado: serviço não consta na tabela de preço vigente do contrato.';
+                        $semPermissaoMsg = 'Usuário sem permissão para criar este serviço.';
                     @endphp
 
                     {{-- ASO --}}
@@ -94,17 +94,17 @@
           flex flex-col justify-between {{ $asoPermitido ? 'hover:from-sky-100 hover:to-sky-200 hover:border-sky-300 hover:shadow-md' : 'opacity-60 cursor-not-allowed' }} transition">
                         <div class="space-y-2">
                             <div class="w-9 h-9 rounded-xl bg-sky-500 flex items-center justify-center text-white text-xl mb-1">
-                                ðŸ“…
+                                &#x1F4C4;
                             </div>
                             <h2 class="text-sm font-semibold text-sky-900">ASO</h2>
                             <p class="text-xs text-sky-800/80">
-                                Atestado de SaÃºde Ocupacional para colaboradores.
+                                Atestado de Saúde Ocupacional para colaboradores.
                             </p>
                         </div>
                         @if($asoPermitido)
                             <div class="mt-3 text-xs text-sky-800 flex items-center gap-1 font-medium">
                                 <span>Selecionar</span>
-                                <span>â€º</span>
+                                <span>&rsaquo;</span>
                             </div>
                         @else
                             <p class="mt-3 text-[11px] text-amber-700 font-medium">
@@ -121,7 +121,7 @@
           transition">
                         <div class="space-y-2">
                             <div class="w-9 h-9 rounded-xl bg-emerald-500 flex items-center justify-center text-white text-xl mb-1">
-                                ðŸ“„
+                                &#x1F4C4;
                             </div>
                             <h2 class="text-sm font-semibold text-emerald-900">PGR</h2>
                             <p class="text-xs text-emerald-800/80">
@@ -131,7 +131,7 @@
                         @if($pgrPermitido)
                             <div class="mt-3 text-xs text-emerald-800 flex items-center gap-1 font-medium">
                                 <span>Selecionar</span>
-                                <span>â€º</span>
+                                <span>&rsaquo;</span>
                             </div>
                         @else
                             <p class="mt-3 text-[11px] text-amber-700 font-medium">
@@ -148,11 +148,11 @@
           transition">
                         <div class="space-y-2">
                             <div class="w-9 h-9 rounded-xl bg-purple-500 flex items-center justify-center text-white text-xl mb-1">
-                                ðŸ©º
+                                &#x1FA7A;
                             </div>
                             <h2 class="text-sm font-semibold text-purple-900">PCMSO</h2>
                             <p class="text-xs text-purple-800/80">
-                                Programa de Controle MÃ©dico Ocupacional.
+                                Programa de Controle Médico Ocupacional.
                             </p>
                         </div>
                         @if($pcmsoPermitido)
@@ -174,11 +174,11 @@
           transition">
                         <div class="space-y-2">
                             <div class="w-9 h-9 rounded-xl bg-orange-500 flex items-center justify-center text-white text-xl mb-1">
-                                ðŸ“‘
+                                &#x1F4D1;
                             </div>
                             <h2 class="text-sm font-semibold text-orange-900">LTCAT</h2>
                             <p class="text-xs text-orange-800/80">
-                                Laudo TÃ©cnico das CondiÃ§Ãµes Ambientais.
+                                Laudo Técnico das Condições Ambientais.
                             </p>
                         </div>
 
@@ -201,7 +201,7 @@
           transition">
                         <div class="space-y-2">
                             <div class="w-9 h-9 rounded-xl bg-red-600 flex items-center justify-center text-white text-xl mb-1">
-                                âš ï¸
+                                &#9888;&#65039;
                             </div>
                             <h2 class="text-sm font-semibold text-red-900">LTIP</h2>
                             <p class="text-xs text-red-800/80">
@@ -227,17 +227,17 @@
           transition">
                         <div class="space-y-2">
                             <div class="w-9 h-9 rounded-xl bg-amber-600 flex items-center justify-center text-white text-xl mb-1">
-                                âš ï¸
+                                &#9888;&#65039;
                             </div>
                             <h2 class="text-sm font-semibold text-amber-900">APR</h2>
                             <p class="text-xs text-amber-800/80">
-                                AnÃ¡lise Preliminar de Riscos da atividade.
+                                Análise Preliminar de Riscos da atividade.
                             </p>
                         </div>
                         @if($aprPermitido)
                             <div class="mt-3 text-xs text-amber-800 flex items-center gap-1 font-medium">
                                 <span>Selecionar</span>
-                                <span>â€º</span>
+                                <span>&rsaquo;</span>
                             </div>
                         @else
                             <p class="mt-3 text-[11px] text-amber-700 font-medium">
@@ -254,16 +254,16 @@
           transition">
                         <div class="space-y-2">
                             <div class="w-9 h-9 rounded-xl bg-rose-600 flex items-center justify-center text-white text-xl mb-1">
-                                ðŸš¨
+                                &#x1F6A8;
                             </div>
                             <h2 class="text-sm font-semibold text-rose-900">PAE</h2>
                             <p class="text-xs text-rose-800/80">
-                                Plano de Atendimento a EmergÃªncias.
+                                Plano de Atendimento a Emergências.
                             </p>
                         </div>
                         @if($paePermitido)
                             <p class="mt-3 text-[11px] text-rose-700">
-                                Clique para criar uma nova solicitaÃ§Ã£o de PAE para este cliente.
+                                Clique para criar uma nova solicitação de PAE para este cliente.
                             </p>
                         @else
                             <p class="mt-3 text-[11px] text-amber-700 font-medium">
@@ -280,16 +280,16 @@
           transition">
                         <div class="space-y-2">
                             <div class="w-9 h-9 rounded-xl bg-indigo-500 flex items-center justify-center text-white text-xl mb-1">
-                                ðŸŽ“
+                                &#x1F393;
                             </div>
                             <h2 class="text-sm font-semibold text-indigo-900">Treinamentos NRs</h2>
                             <p class="text-xs text-indigo-800/80">
-                                Normas regulamentadoras e capacitaÃ§Ãµes.
+                                Normas regulamentadoras e capacitações.
                             </p>
                         </div>
                         @if($treinPermitido)
                             <p class="mt-3 text-[11px] text-indigo-700">
-                                Clique para criar uma nova solicitaÃ§Ã£o de Treinamento de NRs para este cliente.
+                                Clique para criar uma nova solicitação de Treinamento de NRs para este cliente.
                             </p>
                         @else
                             <p class="mt-3 text-[11px] text-amber-700 font-medium">
@@ -303,6 +303,5 @@
         </div>
     </div>
 @endsection
-
 
 

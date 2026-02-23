@@ -104,14 +104,14 @@
                     @forelse($propostas as $proposta)
                         @php
                             $cliente = $proposta->cliente;
-                            $empresaTxt = $proposta->empresa?->nome ?? 'â€”';
-                            $clienteTxt = $cliente?->razao_social ?? 'â€”';
+                            $empresaTxt = $proposta->empresa?->nome ?? '—';
+                            $clienteTxt = $cliente?->razao_social ?? '—';
                             $cnpjRaw = $cliente?->cnpj ?? '';
                             $cnpjDigits = preg_replace('/\D+/', '', (string) $cnpjRaw);
                             if (strlen($cnpjDigits) === 14) {
                                 $cnpjClienteTxt = substr($cnpjDigits, 0, 2) . '.' . substr($cnpjDigits, 2, 3) . '.' . substr($cnpjDigits, 5, 3) . '/' . substr($cnpjDigits, 8, 4) . '-' . substr($cnpjDigits, 12, 2);
                             } else {
-                                $cnpjClienteTxt = $cnpjRaw !== '' ? $cnpjRaw : 'â€”';
+                                $cnpjClienteTxt = $cnpjRaw !== '' ? $cnpjRaw : '—';
                             }
                             $ref = str_pad((int) $proposta->id, 2, '0', STR_PAD_LEFT);
                             $status = strtoupper((string) ($proposta->status ?? ''));
@@ -135,7 +135,7 @@
 
                             <td class="px-5 py-3">
                                 <div class="font-medium text-slate-800">{{ $ref }}</div>
-                                <div class="text-xs text-slate-500">â€”</div>
+                                <div class="text-xs text-slate-500">—</div>
                             </td>
 
                             <td class="px-5 py-3">
@@ -145,10 +145,10 @@
                                         data-action="{{ route('comercial.propostas.status', $proposta) }}"
                                         data-id="{{ $proposta->id }}"
                                         data-cliente="{{ e($clienteTxt) }}"
-                                        data-status="{{ $status ?: 'â€”' }}"
+                                        data-status="{{ $status ?: '—' }}"
                                         title="{{ $canUpdate ? 'Alterar status' : 'Usuário sem permissão' }}"
                                         @if(!$canUpdate) disabled @endif>
-                                    {{ $status ?: 'â€”' }}
+                                    {{ $status ?: '—' }}
                                 </button>
                             </td>
 
@@ -157,7 +157,7 @@
                             </td>
 
                             <td class="px-5 py-3 text-slate-700">
-                                {{ optional($proposta->created_at)->format('d/m/Y H:i') ?? 'â€”' }}
+                                {{ optional($proposta->created_at)->format('d/m/Y H:i') ?? '—' }}
                             </td>
 
                             <td class="px-5 py-3 whitespace-nowrap">
@@ -365,8 +365,8 @@
                         @csrf
 
                         <div class="text-sm text-slate-600">
-                            Duplicando a proposta <span class="font-semibold text-slate-800">#<span id="duplicarPropostaRef">â€”</span></span>
-                            <span class="text-slate-500">(<span id="duplicarPropostaCliente">â€”</span>)</span>
+                            Duplicando a proposta <span class="font-semibold text-slate-800">#<span id="duplicarPropostaRef">—</span></span>
+                            <span class="text-slate-500">(<span id="duplicarPropostaCliente">—</span>)</span>
                         </div>
 
                         <div id="duplicarClienteWrap">
@@ -408,9 +408,9 @@
                         @csrf
 
                         <div class="text-sm text-slate-700 space-y-1">
-                            <div><span class="text-slate-500">Proposta:</span> <span class="font-semibold text-slate-800">#<span id="statusPropostaId">â€”</span></span></div>
-                            <div><span class="text-slate-500">Cliente:</span> <span id="statusCliente" class="font-medium text-slate-800">â€”</span></div>
-                            <div><span class="text-slate-500">Status atual:</span> <span id="statusAtual" class="font-medium text-slate-800">â€”</span></div>
+                            <div><span class="text-slate-500">Proposta:</span> <span class="font-semibold text-slate-800">#<span id="statusPropostaId">—</span></span></div>
+                            <div><span class="text-slate-500">Cliente:</span> <span id="statusCliente" class="font-medium text-slate-800">—</span></div>
+                            <div><span class="text-slate-500">Status atual:</span> <span id="statusAtual" class="font-medium text-slate-800">—</span></div>
                         </div>
 
                         <div>
@@ -505,8 +505,8 @@
                 function openDuplicarModal(action, ref, cliente) {
                     if (!modalDuplicar || !formDuplicar) return;
                     formDuplicar.action = action;
-                    if (duplicarPropostaRef) duplicarPropostaRef.textContent = ref || 'â€”';
-                    if (duplicarPropostaCliente) duplicarPropostaCliente.textContent = cliente || 'â€”';
+                    if (duplicarPropostaRef) duplicarPropostaRef.textContent = ref || '—';
+                    if (duplicarPropostaCliente) duplicarPropostaCliente.textContent = cliente || '—';
                     resetDuplicarCliente();
                     modalDuplicar.classList.remove('hidden');
                     const textInput = duplicarClienteWrap?.querySelector('input[type="text"]');
@@ -547,7 +547,7 @@
                         'FECHADA': 'Fechada',
                         'CANCELADA': 'Cancelada',
                     };
-                    return map[status] || status || 'â€”';
+                    return map[status] || status || '—';
                 }
 
                 function buildStatusOptions(atual) {
@@ -572,8 +572,8 @@
                 function openStatusModal(btn) {
                     if (!modalStatus || !statusForm) return;
                     statusTrigger = btn;
-                    const id = btn?.dataset?.id || 'â€”';
-                    const cliente = btn?.dataset?.cliente || 'â€”';
+                    const id = btn?.dataset?.id || '—';
+                    const cliente = btn?.dataset?.cliente || '—';
                     const atual = (btn?.dataset?.status || '').toUpperCase();
 
                     statusForm.action = btn?.dataset?.action || '#';
@@ -632,7 +632,7 @@
                         const novoStatus = (data?.status || statusSelect.value || '').toUpperCase();
                         if (statusTrigger) {
                             statusTrigger.dataset.status = novoStatus;
-                            statusTrigger.textContent = novoStatus || 'â€”';
+                            statusTrigger.textContent = novoStatus || '—';
                             const cls = badgeClassByStatus[novoStatus] || badgeClassByStatus['PENDENTE'];
                             statusTrigger.className = `${badgeBaseClass} ${cls}`;
                         }
@@ -705,4 +705,3 @@
         </script>
     @endpush
 @endsection
-

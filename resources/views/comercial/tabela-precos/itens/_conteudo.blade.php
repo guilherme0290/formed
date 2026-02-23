@@ -345,10 +345,10 @@
 
 
                     <div>
-                        <label class="text-xs font-semibold text-slate-600">ServiÃ§o (opcional)</label>
+                        <label class="text-xs font-semibold text-slate-600">Serviço (opcional)</label>
                         <select id="item_servico_id" name="servico_id"
                                 class="w-full mt-1 rounded-xl border-slate-200 text-sm px-3 py-2">
-                            <option value="">â€” Item livre (sem serviÃ§o) â€”</option>
+                            <option value="">— Item livre (sem serviço) —</option>
                             @foreach($servicos as $s)
                                 <option value="{{ $s->id }}" @selected(old('servico_id') == $s->id)>
                                     {{ $s->nome }}
@@ -696,4 +696,3 @@
         })();
     </script>
 @endpush
-

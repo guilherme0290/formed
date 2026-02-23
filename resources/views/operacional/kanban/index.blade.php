@@ -107,7 +107,7 @@
             </div>
 
             <a href="{{ $canCreateTask ? route('operacional.kanban.aso.clientes') : 'javascript:void(0)' }}"
-               @if(!$canCreateTask) title="Usu�rio sem permiss�o" aria-disabled="true" @endif
+               @if(!$canCreateTask) title="Usuário sem permissão" aria-disabled="true" @endif
                class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl
                   {{ $canCreateTask ? 'bg-gradient-to-r from-sky-500 to-cyan-400 text-white shadow-md shadow-sky-500/30 hover:from-sky-600 hover:to-cyan-500' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}
                   text-sm font-semibold transition">
@@ -203,7 +203,7 @@
                         <button type="button"
                                 class="absolute right-0 top-0 h-full w-8 flex items-center justify-center text-slate-400 hover:text-slate-600 date-picker-btn z-10"
                                 data-date-target="kanban_de"
-                                aria-label="Abrir calendÃ¡rio">
+                                aria-label="Abrir calendário">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v2H2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 2 0v1zm15 8H2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V10z"/>
                             </svg>
@@ -227,7 +227,7 @@
                         <button type="button"
                                 class="absolute right-0 top-0 h-full w-8 flex items-center justify-center text-slate-400 hover:text-slate-600 date-picker-btn z-10"
                                 data-date-target="kanban_ate"
-                                aria-label="Abrir calendÃ¡rio">
+                                aria-label="Abrir calendário">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v2H2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 2 0v1zm15 8H2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V10z"/>
                             </svg>
@@ -1387,7 +1387,7 @@
                             <button type="button"
                                     id="btn-editar-tarefa"
                                     data-permission-locked="{{ $canUpdateTask ? '0' : '1' }}"
-                                    @if(!$canUpdateTask) title="Usu�rio sem permiss�o" @endif
+                                    @if(!$canUpdateTask) title="Usuário sem permissão" @endif
                                     class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg
                        {{ $canUpdateTask ? 'bg-emerald-500 text-white hover:bg-emerald-600' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} text-sm font-semibold shadow-sm
                        transition"
@@ -1401,7 +1401,7 @@
                             <button type="button"
                                     data-coluna-id="2"
                                     data-permission-locked="{{ $canUpdateTask ? '0' : '1' }}"
-                                    @if(!$canUpdateTask) title="Usu�rio sem permiss�o" @endif
+                                    @if(!$canUpdateTask) title="Usuário sem permissão" @endif
                                     class="js-mover-coluna w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg
                        {{ $canUpdateTask ? 'bg-[color:var(--color-brand-azul,#2563eb)] text-white hover:bg-blue-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} text-sm font-semibold shadow-sm
                        transition"
@@ -1412,7 +1412,7 @@
                             <button type="button"
                                     data-coluna-id="6"
                                     data-permission-locked="{{ $canUpdateTask ? '0' : '1' }}"
-                                    @if(!$canUpdateTask) title="Usu�rio sem permiss�o" @endif
+                                    @if(!$canUpdateTask) title="Usuário sem permissão" @endif
                                     class="js-mover-coluna w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg
                        {{ $canUpdateTask ? 'bg-rose-500 text-white hover:bg-rose-600' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} text-sm font-semibold shadow-sm
                        transition"
@@ -1531,7 +1531,7 @@
                                     type="button"
                                     id="btn-excluir-tarefa"
                                     data-permission-locked="{{ $canDeleteTask ? '0' : '1' }}"
-                                    @if(!$canDeleteTask) title="Usu�rio sem permiss�o" @endif
+                                    @if(!$canDeleteTask) title="Usuário sem permissão" @endif
                                     class="mt-2 w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg
                                    border {{ $canDeleteTask ? 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100' : 'border-slate-300 bg-slate-200 text-slate-500 cursor-not-allowed' }} text-sm font-semibold shadow-sm
                                    transition"
@@ -3367,4 +3367,3 @@
     </script>
 
 @endpush
-

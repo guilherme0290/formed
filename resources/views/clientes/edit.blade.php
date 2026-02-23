@@ -385,7 +385,7 @@
         </div>
     </div>
 
-    {{-- jQuery + MÃƒÆ’Ã†â€™Ãƒâ€šÃ‚ÂSCARAS (CNPJ, CEP, Telefone) --}}
+    {{-- jQuery + MÁSCARAS (CNPJ, CEP, Telefone) --}}
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
     <script>
@@ -441,7 +441,7 @@
             // CEP
             $('#cep').mask('00000-000');
 
-            // Telefone (celular/padrÃƒÆ’Ã‚Â£o BR)
+            // Telefone (celular/padrão BR)
             $('input[name="telefone"]').mask('(00) 00000-0000');
         });
     </script>
@@ -454,7 +454,7 @@
                 .toString()
                 .normalize('NFD')                     // quebra acentos
                 .replace(/[\u0300-\u036f]/g, '')     // remove marcas de acento
-                .replace(/\s+/g, ' ')                // colapsa espaÃƒÆ’Ã‚Â§os
+                .replace(/\s+/g, ' ')                // colapsa espaços
                 .trim()
                 .toUpperCase();
         }
@@ -556,7 +556,7 @@
         document.querySelector('input[name="cnpj"]').addEventListener('blur', async function () {
             let cnpjLimpo = this.value.replace(/\D/g, '');
 
-            // CNPJ vazio ou incompleto: nÃƒÆ’Ã‚Â£o faz nada
+            // CNPJ vazio ou incompleto: não faz nada
             if (cnpjLimpo.length !== 14) {
                 return;
             }
@@ -584,7 +584,7 @@
                     return;
                 }
 
-                // Preenche campos bÃƒÆ’Ã‚Â¡sicos
+                // Preenche campos básicos
                 if (razaoInput && json.razao_social) {
                     razaoInput.value = json.razao_social;
                 }
@@ -634,8 +634,8 @@
                     }
                 }
 
-                // OBS: se vocÃƒÆ’Ã‚Âª quiser, aqui ainda pode disparar manualmente o blur do CEP
-                // para "refinar" o endereÃƒÆ’Ã‚Â§o via ViaCEP:
+                // OBS: se você quiser, aqui ainda pode disparar manualmente o blur do CEP
+                // para "refinar" o endereço via ViaCEP:
                 // if (cepInput && cepInput.value) {
                 //     cepInput.dispatchEvent(new Event('blur'));
                 // }
@@ -651,16 +651,16 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            // pega o primeiro input com name="cnpj" da pÃƒÆ’Ã‚Â¡gina
+            // pega o primeiro input com name="cnpj" da página
             var cnpjInput = document.querySelector('input[name="cnpj"]');
             var formCliente = cnpjInput?.closest('form');
             var cnpjDuplicado = false;
             if (!cnpjInput) return;
 
-            // mÃƒÆ’Ã‚Â¡scara enquanto digita
+            // máscara enquanto digita
             cnpjInput.addEventListener('input', function () {
-                var v = cnpjInput.value.replace(/\D/g, '');   // sÃƒÆ’Ã‚Â³ nÃƒÆ’Ã‚Âºmeros
-                v = v.slice(0, 14);                           // mÃƒÆ’Ã‚Â¡ximo 14 dÃƒÆ’Ã‚Â­gitos
+                var v = cnpjInput.value.replace(/\D/g, '');   // só números
+                v = v.slice(0, 14);                           // máximo 14 dígitos
 
                 if (v.length > 12) {
                     // 00.000.000/0000-00
@@ -679,7 +679,7 @@
                 }
             });
 
-            // validaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o ao sair do campo
+            // validação ao sair do campo
             cnpjInput.addEventListener('blur', async function () {
                 var cnpjLimpo = cnpjInput.value.replace(/\D/g, '');
 
@@ -722,11 +722,11 @@
             });
         });
 
-        // valida CNPJ (algoritmo padrÃƒÆ’Ã‚Â£o)
+        // valida CNPJ (algoritmo padrão)
         function cnpjValido(cnpj) {
             if (!cnpj || cnpj.length !== 14) return false;
 
-            // elimina sequÃƒÆ’Ã‚Âªncias como 00.000.000/0000-00, 11..., etc.
+            // elimina sequências como 00.000.000/0000-00, 11..., etc.
             if (/^(\d)\1{13}$/.test(cnpj)) return false;
 
             var tamanho = 12;
@@ -845,7 +845,6 @@
         });
     </script>
 @endsection
-
 
 
 
