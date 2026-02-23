@@ -183,8 +183,7 @@
                     <input type="hidden" name="cliente_id" id="crClienteIdFatura" value="">
                     <input type="hidden" name="vencimento" value="">
                     <div class="px-4 py-3 border-b border-indigo-200 bg-indigo-100/60 rounded-t-2xl">
-                        <p class="text-xs font-semibold uppercase tracking-wide text-indigo-700">Container fixo de seleção</p>
-                        <p class="text-xs text-indigo-600 mt-1">Itens listados dentro da área rolável; ações permanecem fixas no rodapé</p>
+                        <p class="text-xs font-semibold uppercase tracking-wide text-indigo-700">Seleção de vendas para faturamento</p>
                     </div>
 
                     <div class="flex-1 min-h-0 p-4 md:p-5">
@@ -444,8 +443,31 @@
                         </div>
                     </form>
 
+                    @php
+                        $totaisFaturas = $totaisFaturas ?? ['faturas_com_baixa_registrada' => 0, 'valor_em_aberto' => 0];
+                    @endphp
+                    <div class="px-4 md:px-5 pt-4">
+                        <div class="grid gap-3 md:grid-cols-2">
+                            <div class="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-4">
+                                <p class="text-xs uppercase tracking-wide font-semibold text-amber-700">Faturas em aberto</p>
+                                <p class="mt-1 text-2xl font-semibold text-amber-900">
+                                    R$ {{ number_format((float) ($totaisFaturas['valor_em_aberto'] ?? 0), 2, ',', '.') }}
+                                </p>
+                                <p class="mt-1 text-xs text-amber-700/80">Saldo em aberto dentro do filtro atual</p>
+                            </div>
+
+                            <div class="rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-4">
+                                <p class="text-xs uppercase tracking-wide font-semibold text-indigo-700">Faturas com baixas registradas</p>
+                                <p class="mt-1 text-2xl font-semibold text-indigo-900">
+                                    R$ {{ number_format((float) ($totaisFaturas['faturas_com_baixa_registrada'] ?? 0), 2, ',', '.') }}
+                                </p>
+                                <p class="mt-1 text-xs text-indigo-700/80">Somatório das faturas do filtro que possuem ao menos uma baixa</p>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="flex-1 min-h-0 px-4 pb-4 md:px-5 md:pb-5">
-                        <div class="h-full min-h-0 rounded-xl border border-indigo-200/80 bg-white/95 p-3 md:p-4 shadow-sm">
+                        <div class="h-full min-h-0 mt-4 rounded-xl border border-indigo-200/80 bg-white/95 p-3 md:p-4 shadow-sm">
                             <div class="h-full min-h-0 overflow-auto rounded-lg border border-slate-200">
                                 <table class="min-w-full divide-y divide-slate-100 text-sm">
                                     <thead class="bg-slate-50 text-slate-600 sticky top-0 z-10">

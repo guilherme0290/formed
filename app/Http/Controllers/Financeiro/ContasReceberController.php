@@ -210,6 +210,16 @@ class ContasReceberController extends Controller
             }
         }
 
+        $contasTotaisQuery = clone $contasQuery;
+        $totaisFaturas = [
+            'faturas_com_baixa_registrada' => (float) (clone $contasTotaisQuery)
+                ->whereRaw('COALESCE(total_baixado, 0) > 0')
+                ->sum('total'),
+            'valor_em_aberto' => (float) (clone $contasTotaisQuery)->sum(
+                DB::raw('CASE WHEN status = \'CANCELADO\' THEN 0 WHEN COALESCE(total,0) - COALESCE(total_baixado,0) > 0 THEN COALESCE(total,0) - COALESCE(total_baixado,0) ELSE 0 END')
+            ),
+        ];
+
         $contas = $contasQuery->paginate(10)->withQueryString();
 
         $clienteAutocomplete = $clientes
@@ -310,6 +320,7 @@ class ContasReceberController extends Controller
                 'data_inicio' => $faturasDataInicio,
                 'data_fim' => $faturasDataFim,
             ],
+            'totaisFaturas' => $totaisFaturas,
         ]);
     }
 

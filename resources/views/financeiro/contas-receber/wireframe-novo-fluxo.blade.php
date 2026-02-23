@@ -96,8 +96,8 @@
 
                 <form class="m-4 flex flex-col h-[68vh] rounded-2xl border border-indigo-200 bg-indigo-50/40 shadow-inner">
                     <div class="px-4 py-3 border-b border-indigo-200 bg-indigo-100/60 rounded-t-2xl">
-                        <p class="text-xs font-semibold uppercase tracking-wide text-indigo-700">Container fixo de seleção</p>
-                        <p class="text-xs text-indigo-600 mt-1">Lista rolável interna com ações mantidas fora do scroll</p>
+                        <p class="text-xs font-semibold uppercase tracking-wide text-indigo-700">Seleção de vendas para faturamento</p>
+                        <p class="text-xs text-indigo-600 mt-1">Lista rolável interna com ações fixas no rodapé</p>
                     </div>
 
                     <div class="flex-1 min-h-0 p-4 md:p-5">

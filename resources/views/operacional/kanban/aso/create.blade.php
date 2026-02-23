@@ -555,6 +555,7 @@
                                                id="campo_data_aso"
                                                name="data_aso"
                                                value="{{ $dataAsoValue }}"
+                                               min="{{ now()->toDateString() }}"
                                                class="absolute right-0 top-0 h-full w-10 opacity-0 pointer-events-none js-date-hidden">
                                     </div>
                                 </div>
@@ -564,8 +565,9 @@
                                         Unidade *
                                     </label>
                                     <select name="unidade_id"
-                                            class="w-full rounded-xl border border-slate-200 text-sm py-2.5 px-3 bg-white
-                                               focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400">
+                                            required
+                                            class="w-full rounded-xl border text-sm py-2.5 px-3 bg-white
+                                               focus:outline-none focus:ring-2 {{ $errors->has('unidade_id') ? 'border-red-300 focus:ring-red-300 focus:border-red-400' : 'border-slate-200 focus:ring-sky-400 focus:border-sky-400' }}">
                                         <option value="">Selecione a unidade</option>
                                         @foreach($unidades as $unidade)
                                             <option value="{{ $unidade->id }}"
@@ -574,6 +576,9 @@
                                             </option>
                                         @endforeach
                                     </select>
+                                    @error('unidade_id')
+                                        <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+                                    @enderror
                                 </div>
                             </div>
                         </div>
@@ -1335,6 +1340,11 @@
                 const tabDados = document.getElementById('tab-dados');
                 const tabAnexos = document.getElementById('tab-anexos');
                 const dadosPanes = document.querySelectorAll('[data-step-pane]');
+                const initialStep = @json(
+                    ($errors->has('anexos') || $errors->has('pcmso_elaborado_formed'))
+                        ? 'anexos'
+                        : 'colaborador'
+                );
 
                 const setStep = (step) => {
                     const isAnexos = step === 'anexos';
@@ -1376,7 +1386,7 @@
                     });
                 });
 
-                setStep('colaborador');
+                setStep(initialStep);
 
                 // ====== DROPZONE ======
                 const dropzone = document.getElementById('dropzone-anexos');
@@ -1478,27 +1488,69 @@
                 return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
             }
 
+            function normalizeDate(date) {
+                if (!(date instanceof Date) || Number.isNaN(date.getTime())) return null;
+                return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+            }
+
+            function parseIsoDateStart(isoValue) {
+                if (!isoValue) return null;
+                const parts = String(isoValue).split('-');
+                if (parts.length !== 3) return null;
+                const [y, m, d] = parts.map(Number);
+                if (!y || !m || !d) return null;
+                return normalizeDate(new Date(y, m - 1, d));
+            }
+
             document.querySelectorAll('.js-date-text').forEach((textInput) => {
                 const hiddenId = textInput.dataset.dateTarget;
                 const hiddenInput = hiddenId ? document.getElementById(hiddenId) : null;
                 const defaultDate = hiddenInput && hiddenInput.value ? hiddenInput.value : null;
+                const minDate = hiddenInput ? parseIsoDateStart(hiddenInput.min) : null;
 
-                    const fp = flatpickr(textInput, {
-                        allowInput: true,
-                        dateFormat: 'd/m/Y',
-                        defaultDate: defaultDate,
-                        onChange: function (selectedDates) {
-                            if (!hiddenInput) return;
-                            hiddenInput.value = selectedDates.length
-                                ? flatpickr.formatDate(selectedDates[0], 'Y-m-d')
-                                : '';
-                        },
-                        onClose: function (selectedDates) {
-                            if (!hiddenInput) return;
-                            hiddenInput.value = selectedDates.length
-                                ? flatpickr.formatDate(selectedDates[0], 'Y-m-d')
-                                : '';
-                        },
+                const isBeforeMin = (date) => {
+                    const normalized = normalizeDate(date);
+                    return !!(minDate && normalized && normalized < minDate);
+                };
+
+                const setInvalidRetroDate = () => {
+                    textInput.setCustomValidity('Não é permitido informar uma data retroativa.');
+                    if (typeof textInput.reportValidity === 'function') {
+                        textInput.reportValidity();
+                    }
+                };
+
+                const clearInvalidDate = () => textInput.setCustomValidity('');
+
+                const syncHiddenFromDate = (date) => {
+                    if (!hiddenInput) return;
+                    if (!date) {
+                        hiddenInput.value = '';
+                        clearInvalidDate();
+                        return;
+                    }
+
+                    if (isBeforeMin(date)) {
+                        hiddenInput.value = '';
+                        setInvalidRetroDate();
+                        return;
+                    }
+
+                    hiddenInput.value = fp.formatDate(date, 'Y-m-d');
+                    clearInvalidDate();
+                };
+
+                const fp = flatpickr(textInput, {
+                    allowInput: true,
+                    dateFormat: 'd/m/Y',
+                    defaultDate: defaultDate,
+                    minDate: minDate || undefined,
+                    onChange: function (selectedDates) {
+                        syncHiddenFromDate(selectedDates.length ? selectedDates[0] : null);
+                    },
+                    onClose: function (selectedDates) {
+                        syncHiddenFromDate(selectedDates.length ? selectedDates[0] : null);
+                    },
                 });
 
                 textInput.addEventListener('input', () => {
@@ -1506,26 +1558,29 @@
                     if (!hiddenInput) return;
                     if (textInput.value.length === 10) {
                         const parsed = fp.parseDate(textInput.value, 'd/m/Y');
-                        hiddenInput.value = parsed ? fp.formatDate(parsed, 'Y-m-d') : '';
+                        syncHiddenFromDate(parsed || null);
+                    } else {
+                        clearInvalidDate();
                     }
                 });
 
                 textInput.addEventListener('blur', () => {
                     if (!hiddenInput) return;
                     const parsed = fp.parseDate(textInput.value, 'd/m/Y');
-                        hiddenInput.value = parsed ? fp.formatDate(parsed, 'Y-m-d') : '';
-                    });
+                    syncHiddenFromDate(parsed || null);
                 });
+
+            });
 
                 document.querySelectorAll('.date-picker-btn').forEach((btn) => {
                     btn.addEventListener('click', () => {
                         const targetId = btn.dataset.dateTarget;
-                        const textInput = targetId
+                        const targetTextInput = targetId
                             ? document.querySelector(`.js-date-text[data-date-target="${targetId}"]`)
                             : null;
-                        if (textInput && textInput._flatpickr) {
-                            textInput.focus();
-                            textInput._flatpickr.open();
+                        if (targetTextInput && targetTextInput._flatpickr) {
+                            targetTextInput.focus();
+                            targetTextInput._flatpickr.open();
                         }
                     });
                 });
@@ -1556,7 +1611,3 @@
         </script>
     @endpush
 @endsection
-
-
-
-
