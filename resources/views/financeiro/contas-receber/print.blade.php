@@ -69,6 +69,15 @@
 
     $formatMoney = fn ($v) => 'R$ ' . number_format((float) $v, 2, ',', '.');
     $formatDate = fn ($d) => $d ? Carbon::parse($d)->format('d/m/Y') : '—';
+
+    $logoSrc = null;
+    $logoPath = public_path('favicon.png');
+    if (is_file($logoPath) && is_readable($logoPath)) {
+        $logoBin = @file_get_contents($logoPath);
+        if ($logoBin !== false) {
+            $logoSrc = 'data:image/png;base64,' . base64_encode($logoBin);
+        }
+    }
 @endphp
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -153,6 +162,7 @@
             width: 32px;
             height: 32px;
             color: #ffffff;
+            object-fit: contain;
         }
         .brand-sub {
             font-size: 9px;
@@ -289,10 +299,9 @@
                         <table class="brand-wrap">
                             <tr>
                                 <td class="brand-logo-cell">
-                                    <svg class="brand-logo" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                                        <circle cx="24" cy="24" r="22" fill="currentColor" opacity=".14"/>
-                                        <path d="M14 30l10-18 10 18h-6l-4-8-4 8h-6z" fill="currentColor"/>
-                                    </svg>
+                                    @if($logoSrc)
+                                        <img src="{{ $logoSrc }}" alt="Formed" class="brand-logo">
+                                    @endif
                                 </td>
                                 <td class="brand-text-cell">
                                     <div class="brand-name">FORMED</div>
