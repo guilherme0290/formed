@@ -12,17 +12,17 @@
     <link rel="shortcut icon" type="image/png" href="{{ asset('favicon.png') }}">
 </head>
 <body class="bg-slate-900">
-<div class="min-h-screen flex relative">
+<div class="min-h-screen flex relative overflow-x-hidden">
 
     @include('layouts.partials.master-sidebar')
 
     {{-- Área principal --}}
-    <div class="flex-1 flex flex-col bg-slate-50">
+    <div class="flex-1 min-w-0 flex flex-col bg-slate-50">
 
         <header class="bg-indigo-700 text-white shadow-sm sticky top-0 z-20">
             <div class="w-full px-4 md:px-6 h-16 flex items-center justify-between gap-3 py-2">
 
-                <div class="flex items-center gap-3">
+                <div class="flex min-w-0 items-center gap-3">
                     {{-- Botão abrir/fechar sidebar (MOBILE) --}}
                     <button type="button"
                             class="inline-flex md:hidden items-center justify-center p-2 rounded-lg text-indigo-50 hover:bg-indigo-800 focus:outline-none focus:ring-2 focus:ring-white"
@@ -43,7 +43,7 @@
                     </div>
                 </div>
 
-                <div class="flex items-center gap-3 text-xs md:text-sm text-indigo-50">
+                <div class="flex min-w-0 items-center gap-3 text-xs md:text-sm text-indigo-50">
                     <div x-data="{ open: false }" class="relative">
                         <button type="button"
                                 class="flex items-center gap-2 rounded-full bg-indigo-600/40 px-2.5 py-1.5 hover:bg-indigo-600/60 transition"
@@ -54,7 +54,7 @@
                             <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-indigo-500 text-white text-xs font-semibold">
                                 {{ \Illuminate\Support\Str::of(auth()->user()->name ?? 'U')->substr(0,1) }}
                             </span>
-                            <span class="hidden md:inline">
+                            <span class="hidden md:inline max-w-[14rem] truncate">
                                 {{ auth()->user()->name ?? '' }}
                             </span>
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-100" fill="none"
@@ -87,7 +87,7 @@
             </div>
         </header>
 
-        <main class="flex-1 relative overflow-hidden">
+        <main class="flex-1 min-w-0 relative overflow-x-hidden overflow-y-auto">
 
             {{-- Marca d’água --}}
             <div class="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.05]">
@@ -96,7 +96,7 @@
                      class="max-w-[512px] w-full">
             </div>
 
-            <div class="relative z-10">
+            <div class="relative z-10 min-w-0">
                 @yield('content')
             </div>
         </main>
@@ -228,6 +228,8 @@
         const btnCollapse   = document.querySelector('[data-sidebar-collapse]');
         const labels        = document.querySelectorAll('[data-sidebar-label]');
         const headerTitle   = document.querySelector('[data-sidebar-label-header]');
+        const submenuWraps  = document.querySelectorAll('[data-sidebar-children]');
+        const submenuToggles = document.querySelectorAll('[data-sidebar-chevron]');
 
         let desktopCollapsed = false;
 
@@ -256,6 +258,8 @@
             sidebar.classList.toggle('w-64', !desktopCollapsed);
             sidebar.classList.toggle('w-16', desktopCollapsed);
             labels.forEach(l => l.classList.toggle('hidden', desktopCollapsed));
+            submenuWraps.forEach(el => el.classList.toggle('hidden', desktopCollapsed));
+            submenuToggles.forEach(el => el.classList.toggle('hidden', desktopCollapsed));
             if (headerTitle) headerTitle.textContent = desktopCollapsed ? 'M' : 'Master';
         });
     });

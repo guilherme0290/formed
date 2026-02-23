@@ -15,7 +15,7 @@
         <div>
             <a href="{{ route('comercial.dashboard') }}"
                class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900">
-                â† Voltar ao Painel
+                &larr; Voltar ao Painel
             </a>
         </div>
 
@@ -30,7 +30,7 @@
                class="inline-flex items-center justify-center gap-2 rounded-2xl
                       {{ $canCreate ? 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white ring-1 ring-blue-600/20 hover:ring-blue-700/30' : 'bg-slate-200 text-slate-500 cursor-not-allowed ring-1 ring-slate-300' }}
                       px-5 py-2.5 text-sm font-semibold shadow-sm transition">
-                <span class="text-base leading-none">ï¼‹</span>
+                <span class="text-base leading-none">＋</span>
                 <span>Nova Proposta</span>
             </a>
         </header>
@@ -93,11 +93,11 @@
                     <tr class="text-left text-slate-600">
                         <th class="px-5 py-3 font-semibold">ID</th>
                         <th class="px-5 py-3 font-semibold">Empresa / Cliente</th>
-                        <th class="px-5 py-3 font-semibold">TÃ­tulo / ReferÃªncia</th>
+                        <th class="px-5 py-3 font-semibold">Título / Referência</th>
                         <th class="px-5 py-3 font-semibold">Status</th>
                         <th class="px-5 py-3 font-semibold">Valor Total</th>
                         <th class="px-5 py-3 font-semibold">Criada em</th>
-                        <th class="px-5 py-3 font-semibold w-[300px]">AÃ§Ãµes</th>
+                        <th class="px-5 py-3 font-semibold w-[300px]">Ações</th>
                     </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
@@ -267,7 +267,7 @@
                     <div class="px-6 py-4 border-b flex items-center justify-between">
                         <h3 class="text-lg font-semibold text-slate-800">Enviar por WhatsApp</h3>
                         <button type="button" class="h-9 w-9 rounded-xl hover:bg-slate-100 text-slate-500"
-                                onclick="closeWhatsappModal()">âœ•</button>
+                                onclick="closeWhatsappModal()">✕</button>
                     </div>
 
                     <form id="formWhatsapp" method="POST" class="p-6 space-y-4">
@@ -309,7 +309,7 @@
                     <div class="px-6 py-4 border-b flex items-center justify-between">
                         <h3 class="text-lg font-semibold text-slate-800">Enviar por E-mail</h3>
                         <button type="button" class="h-9 w-9 rounded-xl hover:bg-slate-100 text-slate-500"
-                                onclick="closeEmailModal()">âœ•</button>
+                                onclick="closeEmailModal()">✕</button>
                     </div>
 
                     <form id="formEmail" method="POST" class="p-6 space-y-4">
@@ -358,7 +358,7 @@
                     <div class="px-6 py-4 border-b flex items-center justify-between">
                         <h3 class="text-lg font-semibold text-slate-800">Duplicar proposta</h3>
                         <button type="button" class="h-9 w-9 rounded-xl hover:bg-slate-100 text-slate-500"
-                                onclick="closeDuplicarModal()">âœ•</button>
+                                onclick="closeDuplicarModal()">✕</button>
                     </div>
 
                     <form id="formDuplicar" method="POST" class="p-6 space-y-4">
@@ -401,7 +401,7 @@
                     <div class="px-6 py-4 border-b flex items-center justify-between">
                         <h3 class="text-lg font-semibold text-slate-800">Alterar status da proposta</h3>
                         <button type="button" class="h-9 w-9 rounded-xl hover:bg-slate-100 text-slate-500"
-                                onclick="closeStatusModal()">âœ•</button>
+                                onclick="closeStatusModal()">✕</button>
                     </div>
 
                     <form id="statusForm" method="POST" class="p-6 space-y-4">
@@ -465,7 +465,7 @@
                     if (!modalWhatsapp || !formWhatsapp) return;
                     formWhatsapp.action = action;
                     whatsappTelefone.value = telefone || '';
-                    whatsappMensagem.value = `OlÃ¡! Segue a proposta ${ref}.`;
+                    whatsappMensagem.value = `Olá! Segue a proposta ${ref}.`;
                     modalWhatsapp.classList.remove('hidden');
                     setTimeout(() => whatsappTelefone?.focus(), 0);
                 }
@@ -479,7 +479,7 @@
                     formEmail.action = action;
                     emailTo.value = email || '';
                     emailAssunto.value = `Proposta ${ref}`;
-                    emailMensagem.value = `OlÃ¡! Segue a proposta ${ref}.`;
+                    emailMensagem.value = `Olá! Segue a proposta ${ref}.`;
                     modalEmail.classList.remove('hidden');
                     setTimeout(() => emailTo?.focus(), 0);
                 }
@@ -566,7 +566,7 @@
                     statusSubmit.disabled = !hasOptions;
                     statusHelp.textContent = hasOptions
                         ? 'Selecione o novo status permitido.'
-                        : 'TransiÃ§Ã£o nÃ£o permitida para este status.';
+                        : 'Transição não permitida para este status.';
                 }
 
                 function openStatusModal(btn) {

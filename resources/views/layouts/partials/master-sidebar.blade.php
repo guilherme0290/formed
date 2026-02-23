@@ -3,7 +3,7 @@
      class="fixed inset-0 bg-black/40 z-20 opacity-0 pointer-events-none transition-opacity duration-200 md:hidden"></div>
 
 <aside id="master-sidebar"
-       class="fixed inset-y-0 left-0 z-30 w-64 bg-slate-950 text-slate-100
+       class="fixed inset-y-0 left-0 z-30 w-64 shrink-0 bg-slate-950 text-slate-100
               transform -translate-x-full transition-transform duration-200 ease-in-out
               flex flex-col relative overflow-hidden
               md:static md:translate-x-0">
@@ -137,7 +137,7 @@
         ];
     @endphp
 
-    <nav class="relative z-10 flex-1 px-3 mt-4 space-y-1">
+    <nav class="relative z-10 flex-1 px-3 mt-4 space-y-1 overflow-y-auto">
         @foreach($navItems as $item)
             @php
                 $isActive = $item['active'];
@@ -150,18 +150,18 @@
 
             @if(!empty($children))
                 <details class="group" @if($isActive) open @endif>
-                    <summary class="{{ $baseClasses }} {{ $activeClasses }} cursor-pointer list-none">
+                    <summary class="{{ $baseClasses }} {{ $activeClasses }} min-w-0 cursor-pointer list-none">
                         <a href="{{ route('comercial.dashboard') }}"
-                           class="flex items-center gap-2 flex-1"
+                           class="flex min-w-0 items-center gap-2 flex-1"
                            onclick="event.stopPropagation()">
                             @if(!empty($item['icon']))
                                 <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800">
                                     {{ $item['icon'] }}
                                 </span>
                             @endif
-                            <span data-sidebar-label>{{ $item['label'] }}</span>
+                            <span data-sidebar-label class="truncate">{{ $item['label'] }}</span>
                         </a>
-                        <span class="ml-auto inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-200 bg-slate-900/60 border border-slate-700 group-open:rotate-180 transition-transform" aria-hidden="true">
+                        <span data-sidebar-chevron class="ml-auto inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-200 bg-slate-900/60 border border-slate-700 group-open:rotate-180 transition-transform" aria-hidden="true">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
                                  viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
@@ -170,7 +170,7 @@
                         <span class="sr-only">Expandir/Recolher menu Comercial</span>
                     </summary>
 
-                    <div class="mt-1 space-y-1 pl-5">
+                    <div data-sidebar-children class="mt-1 space-y-1 pl-3 min-w-0">
                         @foreach($children as $child)
                             @php
                                 $childBase = 'flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition';
@@ -179,26 +179,26 @@
                                     : 'text-slate-200 hover:bg-slate-800';
                             @endphp
                             <a href="{{ $child['route'] }}"
-                               class="{{ $childBase }} {{ $childActive }}">
+                               class="{{ $childBase }} {{ $childActive }} min-w-0">
                                 @if(!empty($child['icon']))
                                     <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800">
                                         {{ $child['icon'] }}
                                     </span>
                                 @endif
-                                <span data-sidebar-label>{{ $child['label'] }}</span>
+                                <span data-sidebar-label class="truncate">{{ $child['label'] }}</span>
                             </a>
                         @endforeach
                     </div>
                 </details>
             @else
                 <a href="{{ $item['route'] }}"
-                   class="{{ $baseClasses }} {{ $activeClasses }}">
+                   class="{{ $baseClasses }} {{ $activeClasses }} min-w-0">
                     @if(!empty($item['icon']))
                         <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800">
                             {{ $item['icon'] }}
                         </span>
                     @endif
-                    <span data-sidebar-label>{{ $item['label'] }}</span>
+                    <span data-sidebar-label class="truncate">{{ $item['label'] }}</span>
                 </a>
             @endif
         @endforeach
@@ -214,7 +214,6 @@
         </form>
     </div>
 </aside>
-
 
 
 

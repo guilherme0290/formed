@@ -1421,15 +1421,23 @@
                             </button>
                         </div>
                     </section>
-                    {{-- 5. Documento enviado ao cliente --}}
+                    {{-- 5. Documento final da tarefa --}}
                     <section id="modal-arquivo-wrapper"
                              class="bg-emerald-50 border border-emerald-100 rounded-xl p-4 mt-3 hidden">
                         <h3 class="text-xs font-semibold text-emerald-700 mb-2">
-                            5. DOCUMENTO ENVIADO AO CLIENTE
+                            5. DOCUMENTO FINAL DA TAREFA
                         </h3>
 
-                        <p class="text-[12px] text-emerald-800 mb-2">
-                            Este é o arquivo anexado e enviado ao cliente na finalização da tarefa.
+                        <p id="modal-arquivo-descricao" class="text-[12px] text-emerald-800 mb-2">
+                            Este é o documento principal concluído desta tarefa, disponibilizado ao cliente.
+                        </p>
+
+                        <p id="modal-arquivo-status" class="text-[12px] text-emerald-900 font-semibold mb-2">
+                            Status: Documento final ainda não anexado.
+                        </p>
+
+                        <p id="modal-arquivo-ajuda" class="text-[11px] text-emerald-800/90 mb-2">
+                            Anexe o documento final concluído desta tarefa.
                         </p>
 
                         <a id="modal-arquivo-link"
@@ -1437,9 +1445,9 @@
                            target="_blank"
                            class="inline-flex items-center gap-2 text-xs font-semibold text-emerald-700
                                  hover:text-emerald-900 underline hidden">
-                            📎 Abrir arquivo anexado
+                            📎 Visualizar documento final
                         </a>
-                        <div class="mt-3">
+                        <div class="mt-3 flex flex-col gap-2">
                             <input
                                 type="file"
                                 id="modal-arquivo-replace-input"
@@ -1452,8 +1460,11 @@
                                 class="inline-flex items-center justify-center px-3 py-2 rounded-lg
                                    border border-emerald-200 bg-white text-emerald-700 text-xs font-semibold
                                    hover:bg-emerald-50 transition">
-                                Substituir documento
+                                Anexar documento final
                             </button>
+                            <p id="modal-arquivo-impacto" class="text-[11px] text-emerald-700/90">
+                                Quando anexado, este documento ficará disponível para o cliente.
+                            </p>
                         </div>
                         <button
                             type="button"
@@ -1746,6 +1757,10 @@
             const btnNotificarCliente = document.getElementById('btn-notificar-cliente');
             const arquivoReplaceInput = document.getElementById('modal-arquivo-replace-input');
             const arquivoReplaceBtn = document.getElementById('modal-arquivo-replace-btn');
+            const arquivoDescricao = document.getElementById('modal-arquivo-descricao');
+            const arquivoStatus = document.getElementById('modal-arquivo-status');
+            const arquivoAjuda = document.getElementById('modal-arquivo-ajuda');
+            const arquivoImpacto = document.getElementById('modal-arquivo-impacto');
             let detalhesCurrentCard = null;
 
             function formatTelefone(raw) {
@@ -1786,6 +1801,23 @@
                 const mensagem = `Olá! Segue abaixo o anexo do ${servico}.\n\nEnviado pela Formed.${linksTexto}`;
 
                 return { telefone, mensagem };
+            }
+
+            function getDocumentoFinalAjuda(card) {
+                const servico = String(card?.dataset?.servico || '').toLowerCase();
+                const isAsoTask = card?.dataset?.isAso === '1';
+
+                if (isAsoTask) {
+                    return 'Anexe o ASO final assinado/emitido para o cliente.';
+                }
+                if (servico.includes('pgr')) {
+                    return 'Anexe o documento final do PGR entregue ao cliente.';
+                }
+                if (servico.includes('treinamento')) {
+                    return 'Anexe o documento final desta solicitação de treinamento entregue ao cliente.';
+                }
+
+                return 'Anexe o documento final concluído desta tarefa.';
             }
 
             function parseIsoToMs(iso) {
@@ -1899,22 +1931,68 @@
                 }
                 modal.dataset.observacaoUrl = card.dataset.observacaoUrl || '';
 
-                // Link do arquivo do cliente
+                // Documento final da tarefa
                 if (arquivoWrapper && arquivoLink) {
                     const urlArquivo = card.dataset.arquivoClienteUrl || '';
+                    const isAsoTask = card.dataset.isAso === '1';
+                    const totalCertificados = Number(card.dataset.certificadosTotal || '0');
+                    const enviadosCertificados = Number(card.dataset.certificadosEnviados || '0');
+                    const pendentesCertificados = card.dataset.certificadosPendentes === '1';
+                    const temDocumentoFinal = !!urlArquivo;
+
                     arquivoWrapper.classList.remove('hidden');
-                    if (urlArquivo) {
+
+                    if (arquivoDescricao) {
+                        arquivoDescricao.textContent = 'Este é o documento principal concluído desta tarefa, disponibilizado ao cliente.';
+                    }
+                    if (arquivoAjuda) {
+                        arquivoAjuda.textContent = getDocumentoFinalAjuda(card);
+                    }
+
+                    if (temDocumentoFinal) {
                         arquivoLink.href = urlArquivo;
                         arquivoLink.classList.remove('hidden');
+
+                        if (arquivoStatus) {
+                            arquivoStatus.textContent = 'Status: Documento final anexado.';
+                        }
+                        if (arquivoReplaceBtn) {
+                            arquivoReplaceBtn.textContent = 'Enviar nova versão';
+                            arquivoReplaceBtn.title = 'Substitui o documento final atual da tarefa';
+                        }
+                        if (arquivoImpacto) {
+                            arquivoImpacto.textContent = 'A nova versão substituirá o documento atual da tarefa.';
+                        }
                         if (btnNotificarCliente) {
                             btnNotificarCliente.classList.remove('hidden');
                         }
                     } else {
                         arquivoLink.href = '#';
                         arquivoLink.classList.add('hidden');
+
+                        if (arquivoStatus) {
+                            arquivoStatus.textContent = 'Status: Documento final ainda não anexado.';
+                        }
+                        if (arquivoReplaceBtn) {
+                            arquivoReplaceBtn.textContent = 'Anexar documento final';
+                            arquivoReplaceBtn.title = 'Anexar o documento final da tarefa';
+                        }
+                        if (arquivoImpacto) {
+                            arquivoImpacto.textContent = 'Quando anexado, este documento ficará disponível para o cliente.';
+                        }
                         if (btnNotificarCliente) {
                             btnNotificarCliente.classList.add('hidden');
                         }
+                    }
+
+                    if (arquivoAjuda && isAsoTask && totalCertificados > 0 && !temDocumentoFinal) {
+                        arquivoAjuda.textContent += ' Após anexar o documento final do ASO, os certificados de treinamento serão liberados abaixo.';
+                    }
+
+                    if (arquivoStatus && isAsoTask && totalCertificados > 0 && temDocumentoFinal) {
+                        arquivoStatus.textContent += pendentesCertificados
+                            ? ` Certificados pendentes: ${enviadosCertificados}/${totalCertificados}.`
+                            : ` Certificados concluídos: ${enviadosCertificados}/${totalCertificados}.`;
                     }
                 }
                 // ===============================
@@ -1930,10 +2008,10 @@
                     // limpa lista anterior
                     docsList.innerHTML = '';
 
-                    // 1) Documento enviado ao cliente (path_documento_cliente)
+                    // 1) Documento final da tarefa (path_documento_cliente)
                     if (card.dataset.arquivoClienteUrl) {
                         anexos.push({
-                            label: 'Documento enviado ao cliente',
+                            label: 'Documento final da tarefa',
                             url: card.dataset.arquivoClienteUrl
                         });
                     }
@@ -2456,8 +2534,10 @@
 
             function closeModal() {
                 if (!modal) return;
+                if (modal.classList.contains('hidden')) return;
                 modal.classList.add('hidden');
                 modal.classList.remove('flex');
+                window.location.reload();
             }
 
             if (closeBtn) {
@@ -2807,6 +2887,17 @@
                         detalhesCurrentCard.dataset.certificadosEnviados = String(enviados);
                         detalhesCurrentCard.dataset.certificadosTotal = String(total);
                         detalhesCurrentCard.dataset.certificadosPendentes = cert.pendente ? '1' : '0';
+                        if (data.status_label) {
+                            detalhesCurrentCard.dataset.status = String(data.status_label);
+                        }
+                        if (data.movida_para_finalizada) {
+                            detalhesCurrentCard.dataset.finalizado = '1';
+                            const colunaFinalizadaEl = document.querySelector('.kanban-column[data-coluna-slug="finalizada"]');
+                            const colunaFinalizadaId = colunaFinalizadaEl?.dataset?.colunaId;
+                            if (colunaFinalizadaId) {
+                                moveCardToColumn(detalhesCurrentCard, colunaFinalizadaId, data.status_label || 'Finalizada');
+                            }
+                        }
 
                         if (data.movida_para_finalizada) {
                             window.uiAlert('Certificados concluídos. Tarefa movida para Finalizada.', {
@@ -2820,7 +2911,10 @@
                             });
                         }
 
-                        window.location.reload();
+                        if (certificadosInput) {
+                            certificadosInput.value = '';
+                        }
+                        openDetalhesModal(detalhesCurrentCard);
                     })
                     .catch((error) => {
                         window.uiAlert(error?.message || 'Erro ao enviar certificados.');
