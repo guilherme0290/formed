@@ -23,7 +23,6 @@
      data-funcao-select-wrapper
      data-funcao-route="{{ route('operacional.funcoes.store-ajax') }}"
      data-funcao-csrf="{{ csrf_token() }}">
-
     {{-- Label --}}
     <label for="{{ $fieldId }}" class="flex items-center gap-2 text-xs font-medium text-slate-600">
         <span>{{ $label }}</span>
@@ -132,6 +131,34 @@
     @push('scripts')
         <script>
             document.addEventListener('DOMContentLoaded', function () {
+                if (!window.showFuncaoFeedbackPopup) {
+                    window.showFuncaoFeedbackPopup = function (message, type = 'success') {
+                        const popup = document.createElement('div');
+                        const success = type === 'success';
+                        popup.className = [
+                            'fixed z-[9999] left-1/2 top-6 -translate-x-1/2',
+                            'rounded-xl border px-4 py-3 text-sm font-semibold shadow-xl',
+                            'transition-all duration-300 opacity-0 -translate-y-2',
+                            success
+                                ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                                : 'bg-red-50 border-red-200 text-red-700'
+                        ].join(' ');
+                        popup.textContent = message;
+
+                        document.body.appendChild(popup);
+                        requestAnimationFrame(function () {
+                            popup.classList.remove('opacity-0', '-translate-y-2');
+                        });
+
+                        setTimeout(function () {
+                            popup.classList.add('opacity-0', '-translate-y-2');
+                            setTimeout(function () {
+                                popup.remove();
+                            }, 250);
+                        }, 2800);
+                    };
+                }
+
                 document.querySelectorAll('[data-funcao-select-wrapper]').forEach(function (wrapper) {
                     const route     = wrapper.getAttribute('data-funcao-route');
                     const csrfToken = wrapper.getAttribute('data-funcao-csrf');
@@ -156,7 +183,6 @@
                             erroModal.textContent = '';
                             erroModal.classList.add('hidden');
                         }
-
                         inputNome.value = '';
                         inputNome.focus();
                     }
@@ -184,10 +210,7 @@
                         const nome = (inputNome.value || '').trim();
 
                         if (!nome) {
-                            if (erroModal) {
-                                erroModal.textContent = 'Informe o nome da função.';
-                                erroModal.classList.remove('hidden');
-                            }
+                            window.showFuncaoFeedbackPopup('Informe o nome da função.', 'error');
                             inputNome.focus();
                             return;
                         }
@@ -211,10 +234,7 @@
                             .then(json => {
                                 if (!json.ok) {
                                     const msg = json.message || 'Não foi possível salvar a função.';
-                                    if (erroModal) {
-                                        erroModal.textContent = msg;
-                                        erroModal.classList.remove('hidden');
-                                    }
+                                    window.showFuncaoFeedbackPopup(msg, 'error');
                                     return;
                                 }
 
@@ -233,15 +253,17 @@
                                 select.value = json.id;
                                 // dispara evento change pra quem estiver ouvindo
                                 select.dispatchEvent(new Event('change'));
+                                window.showFuncaoFeedbackPopup(
+                                    json.existing
+                                        ? 'Função já cadastrada e selecionada com sucesso.'
+                                        : 'Função cadastrada com sucesso.',
+                                    'success'
+                                );
 
                                 fecharModal();
                             })
                             .catch(function () {
-                                const msg = 'Erro na comunicação com o servidor.';
-                                if (erroModal) {
-                                    erroModal.textContent = msg;
-                                    erroModal.classList.remove('hidden');
-                                }
+                                window.showFuncaoFeedbackPopup('Erro na comunicação com o servidor.', 'error');
                             })
                             .finally(function () {
                                 btnSave.disabled = false;

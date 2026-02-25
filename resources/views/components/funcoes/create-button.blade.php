@@ -41,11 +41,6 @@
      data-funcao-route="{{ $route }}"
      data-funcao-csrf="{{ csrf_token() }}">
 
-    {{-- Container de erro global (duplicado, etc.) --}}
-    <div class="hidden rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700"
-         data-funcao-error-global>
-    </div>
-
     @if ($allowCreate)
         {{-- Botão principal --}}
         <button type="button"
@@ -110,6 +105,34 @@
     @push('scripts')
         <script>
             document.addEventListener('DOMContentLoaded', function () {
+                if (!window.showFuncaoFeedbackPopup) {
+                    window.showFuncaoFeedbackPopup = function (message, type = 'success') {
+                        const popup = document.createElement('div');
+                        const success = type === 'success';
+                        popup.className = [
+                            'fixed z-[9999] left-1/2 top-6 -translate-x-1/2',
+                            'rounded-xl border px-4 py-3 text-sm font-semibold shadow-xl',
+                            'transition-all duration-300 opacity-0 -translate-y-2',
+                            success
+                                ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                                : 'bg-red-50 border-red-200 text-red-700'
+                        ].join(' ');
+                        popup.textContent = message;
+
+                        document.body.appendChild(popup);
+                        requestAnimationFrame(function () {
+                            popup.classList.remove('opacity-0', '-translate-y-2');
+                        });
+
+                        setTimeout(function () {
+                            popup.classList.add('opacity-0', '-translate-y-2');
+                            setTimeout(function () {
+                                popup.remove();
+                            }, 250);
+                        }, 2800);
+                    };
+                }
+
                 document.querySelectorAll('[data-funcao-create-wrapper]').forEach(function (wrapper) {
                     const route      = wrapper.getAttribute('data-funcao-route');
                     const csrfToken  = wrapper.getAttribute('data-funcao-csrf');
@@ -120,7 +143,6 @@
                     const btnCancel  = wrapper.querySelector('[data-funcao-cancel]');
                     const btnSave    = wrapper.querySelector('[data-funcao-save]');
                     const erroModal  = wrapper.querySelector('[data-funcao-error-modal]');
-                    const erroGlobal = wrapper.querySelector('[data-funcao-error-global]');
 
                     if (!btnOpen || !modal || !inputNome || !btnCancel || !btnSave) {
                         return;
@@ -134,11 +156,6 @@
                             erroModal.textContent = '';
                             erroModal.classList.add('hidden');
                         }
-                        if (erroGlobal) {
-                            erroGlobal.textContent = '';
-                            erroGlobal.classList.add('hidden');
-                        }
-
                         inputNome.value = '';
                         inputNome.focus();
                     }
@@ -161,10 +178,7 @@
                     btnSave.addEventListener('click', function () {
                         const nome = (inputNome.value || '').trim();
                         if (!nome) {
-                            if (erroModal) {
-                                erroModal.textContent = 'Informe o nome da função.';
-                                erroModal.classList.remove('hidden');
-                            }
+                            window.showFuncaoFeedbackPopup('Informe o nome da função.', 'error');
                             inputNome.focus();
                             return;
                         }
@@ -174,11 +188,6 @@
                             erroModal.textContent = '';
                             erroModal.classList.add('hidden');
                         }
-                        if (erroGlobal) {
-                            erroGlobal.textContent = '';
-                            erroGlobal.classList.add('hidden');
-                        }
-
                         fetch(route, {
                             method: 'POST',
                             headers: {
@@ -192,14 +201,7 @@
                             .then(json => {
                                 if (!json.ok) {
                                     const msg = json.message || 'Não foi possível salvar a função.';
-                                    if (erroModal) {
-                                        erroModal.textContent = msg;
-                                        erroModal.classList.remove('hidden');
-                                    }
-                                    if (erroGlobal) {
-                                        erroGlobal.textContent = msg;
-                                        erroGlobal.classList.remove('hidden');
-                                    }
+                                    window.showFuncaoFeedbackPopup(msg, 'error');
                                     return;
                                 }
 
@@ -218,21 +220,20 @@
                                         select.appendChild(opt);
                                     }
                                 });
+                                window.showFuncaoFeedbackPopup(
+                                    json.existing
+                                        ? 'Função já cadastrada e selecionada com sucesso.'
+                                        : 'Função cadastrada com sucesso.',
+                                    'success'
+                                );
+
+                                fecharModal();
                             })
                             .catch(() => {
-                                const msg = 'Erro na comunicação com o servidor.';
-                                if (erroModal) {
-                                    erroModal.textContent = msg;
-                                    erroModal.classList.remove('hidden');
-                                }
-                                if (erroGlobal) {
-                                    erroGlobal.textContent = msg;
-                                    erroGlobal.classList.remove('hidden');
-                                }
+                                window.showFuncaoFeedbackPopup('Erro na comunicação com o servidor.', 'error');
                             })
                             .finally(() => {
                                 btnSave.disabled = false;
-                                fecharModal();
                             });
                     });
                 });
