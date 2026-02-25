@@ -1,366 +1,185 @@
-﻿<section class="w-full px-3 md:px-5 py-4 md:py-5">
-        <div class="flex items-center justify-between mb-6">
-            <div>
-                <h2 class="text-xl md:text-2xl font-semibold text-slate-900">
-                    Faturas e serviços realizados
-                </h2>
-                <p class="text-xs md:text-sm text-slate-500">
-                    Histórico de contas a receber e seus valores.
-                </p>
-            </div>
+@php
+    $itensPaginados = $itens instanceof \Illuminate\Pagination\AbstractPaginator
+        ? $itens->getCollection()
+        : collect($itens ?? []);
+    $listaFaturas = collect($itensEmAberto ?? [])->concat($itensPaginados);
+    $totalRegistros = $listaFaturas->count();
+    $totalAndamento = collect($itensEmAberto ?? [])->count();
+@endphp
 
-            <a href="{{ route('cliente.dashboard') }}"
-               class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-900 text-white text-xs md:text-sm font-semibold shadow">
-                Voltar ao painel
-            </a>
+<section class="w-full px-3 md:px-5 py-4 md:py-5">
+    <div class="mb-5">
+        <div>
+            <h1 class="text-lg md:text-xl font-semibold text-slate-900">
+                Faturas e Serviços
+            </h1>
+            <p class="text-xs md:text-sm text-slate-500">
+                Histórico de contas a receber e serviços realizados.
+            </p>
+        </div>
+    </div>
+
+    <div class="mb-6 grid gap-3 md:grid-cols-2">
+        <div class="rounded-xl border border-emerald-100 bg-emerald-50/80 px-4 py-3">
+            <p class="text-[11px] uppercase tracking-wide text-emerald-700">Faturas em Aberto</p>
+            <p class="mt-1 text-2xl font-semibold text-emerald-600">R$ {{ number_format($totalFaturaAberto ?? 0, 2, ',', '.') }}</p>
         </div>
 
-        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 mb-6">
-            <form method="GET" class="grid gap-4 md:grid-cols-5 items-end">
-                <div class="md:col-span-2">
-                    <label class="text-xs font-semibold text-slate-600">Período</label>
-                    <div class="flex items-center gap-2">
-                        <div class="relative w-full">
-                            <input type="text"
-                                   inputmode="numeric"
-                                   placeholder="dd/mm/aaaa"
-                                   class="w-full rounded-lg border-slate-200 bg-white text-slate-900 text-sm pl-3 pr-10 py-2 js-date-text"
-                                   data-date-target="faturas_inicio">
-                            <button type="button"
-                                    class="absolute right-0 top-0 h-full w-8 flex items-center justify-center text-slate-400 hover:text-slate-600 date-picker-btn z-10"
-                                    data-date-target="faturas_inicio"
-                                    aria-label="Abrir calendário">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v2H2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 2 0v1zm15 8H2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V10z"/>
-                                </svg>
-                            </button>
-                            <input type="hidden" id="faturas_inicio" name="data_inicio" value="{{ $filtros['data_inicio'] ?? '' }}">
+        <div class="rounded-xl border border-amber-100 bg-amber-50/80 px-4 py-3">
+            <p class="text-[11px] uppercase tracking-wide text-amber-700">Vencidos</p>
+            <p class="mt-1 text-2xl font-semibold text-amber-600">R$ {{ number_format($totalVencido ?? 0, 2, ',', '.') }}</p>
+        </div>
+    </div>
+
+    <div class="rounded-2xl border border-slate-200 bg-white shadow-inner overflow-hidden p-1 md:p-2">
+        <div class="px-4 py-3 border-b border-slate-900 bg-slate-900 rounded-xl">
+            <p class="text-xs font-semibold uppercase tracking-wide text-white">Faturas</p>
+        </div>
+
+        <div class="p-3 md:p-4">
+            <div class="rounded-xl border border-indigo-200/80 bg-white/95 p-3 md:p-4 shadow-sm space-y-4 max-h-[72vh] flex flex-col overflow-hidden">
+                <form method="GET" action="{{ route('cliente.faturas') }}" class="flex flex-col gap-3 shrink-0">
+                    <div class="grid gap-3 md:grid-cols-4">
+                        <div class="md:col-span-2">
+                            <label class="text-[11px] font-bold text-slate-600">Período</label>
+                            <div class="mt-1 flex items-center gap-2">
+                                <div class="relative w-full">
+                                    <input type="text"
+                                           inputmode="numeric"
+                                           placeholder="dd/mm/aaaa"
+                                           class="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2 text-xs text-slate-700 js-date-text"
+                                           data-date-target="faturas_inicio">
+                                    <button type="button"
+                                            class="absolute right-0 top-0 h-full w-8 flex items-center justify-center text-slate-400 hover:text-slate-600 date-picker-btn z-10"
+                                            data-date-target="faturas_inicio"
+                                            aria-label="Abrir calendario">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v2H2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 2 0v1zm15 8H2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V10z"/>
+                                        </svg>
+                                    </button>
+                                    <input type="hidden" id="faturas_inicio" name="data_inicio" value="{{ $filtros['data_inicio'] ?? '' }}">
+                                </div>
+                                <span class="text-slate-400">a</span>
+                                <div class="relative w-full">
+                                    <input type="text"
+                                           inputmode="numeric"
+                                           placeholder="dd/mm/aaaa"
+                                           class="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2 text-xs text-slate-700 js-date-text"
+                                           data-date-target="faturas_fim">
+                                    <button type="button"
+                                            class="absolute right-0 top-0 h-full w-8 flex items-center justify-center text-slate-400 hover:text-slate-600 date-picker-btn z-10"
+                                            data-date-target="faturas_fim"
+                                            aria-label="Abrir calendario">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v2H2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 2 0v1zm15 8H2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V10z"/>
+                                        </svg>
+                                    </button>
+                                    <input type="hidden" id="faturas_fim" name="data_fim" value="{{ $filtros['data_fim'] ?? '' }}">
+                                </div>
+                            </div>
                         </div>
-                        <span class="text-slate-400">a</span>
-                        <div class="relative w-full">
-                            <input type="text"
-                                   inputmode="numeric"
-                                   placeholder="dd/mm/aaaa"
-                                   class="w-full rounded-lg border-slate-200 bg-white text-slate-900 text-sm pl-3 pr-10 py-2 js-date-text"
-                                   data-date-target="faturas_fim">
-                            <button type="button"
-                                    class="absolute right-0 top-0 h-full w-8 flex items-center justify-center text-slate-400 hover:text-slate-600 date-picker-btn z-10"
-                                    data-date-target="faturas_fim"
-                                    aria-label="Abrir calendário">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v2H2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 2 0v1zm15 8H2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V10z"/>
-                                </svg>
+
+                        <div>
+                            <label class="text-[11px] font-bold text-slate-600">Status</label>
+                            <select name="status" class="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2 text-xs text-slate-700">
+                                <option value="">Todos</option>
+                                <option value="ABERTO" @selected(($filtros['status'] ?? '') === 'ABERTO')>Em aberto</option>
+                                <option value="VENCIDO" @selected(($filtros['status'] ?? '') === 'VENCIDO')>Vencidos</option>
+                                <option value="BAIXADO" @selected(($filtros['status'] ?? '') === 'BAIXADO')>Pago</option>
+                            </select>
+                        </div>
+
+                        <div class="flex items-end gap-2 md:justify-end">
+                            <button type="submit" class="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition">
+                                Filtrar
                             </button>
-                            <input type="hidden" id="faturas_fim" name="data_fim" value="{{ $filtros['data_fim'] ?? '' }}">
+                            <a href="{{ route('cliente.faturas') }}" class="inline-flex items-center justify-center px-4 py-2 rounded-xl border border-slate-300 text-slate-700 text-sm font-semibold hover:bg-slate-50 transition">
+                                Limpar
+                            </a>
                         </div>
                     </div>
-                </div>
-                <div>
-                    <label class="text-xs font-semibold text-slate-600">Período</label>
-                    <select name="status" class="w-full rounded-lg border-slate-200 bg-white text-slate-900 text-sm">
-                        <option value="" class="text-slate-900">Todos</option>
-                        <option value="ABERTO" class="text-slate-900" @selected(($filtros['status'] ?? '') === 'ABERTO')>Em aberto</option>
-                        <option value="VENCIDO" class="text-slate-900" @selected(($filtros['status'] ?? '') === 'VENCIDO')>Vencidos</option>
-                        <option value="BAIXADO" class="text-slate-900" @selected(($filtros['status'] ?? '') === 'BAIXADO')>Pago</option>
-                    </select>
-                </div>
-                <div class="flex items-end gap-3 md:col-span-2">
-                    <button class="px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700">
-                        Filtrar
-                    </button>
-                    <a href="{{ route('cliente.faturas') }}" class="text-sm text-slate-500 hover:text-slate-700">Limpar</a>
-                </div>
-            </form>
-        </div>
+                </form>
 
-        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-2 mb-6">
-            <div class="rounded-2xl bg-[#059669] text-white shadow-lg shadow-emerald-900/25 p-5 flex items-center justify-between">
-                <div>
-                    <p class="text-[11px] uppercase tracking-[0.18em] text-emerald-50/90">Fatura em aberto
-                    </p>
-                    <p class="mt-1 text-2xl md:text-3xl font-semibold">
-                        R$ {{ number_format($totalFaturaAberto ?? 0, 2, ',', '.') }}
-                    </p>
-                    <p class="text-[11px] text-emerald-50/80 mt-1">
-                        Contas em aberto + tarefas em andamento
-                    </p>
-                </div>
-                <div class="hidden md:block text-4xl">$</div>
-            </div>
-            <div class="rounded-2xl bg-rose-600 text-white shadow-lg shadow-rose-900/25 p-5 flex items-center justify-between">
-                <div>
-                    <p class="text-[11px] uppercase tracking-[0.18em] text-rose-100/90">
-                        Vencidos
-                    </p>
-                    <p class="mt-1 text-2xl md:text-3xl font-semibold">
-                        R$ {{ number_format($totalVencido ?? 0, 2, ',', '.') }}
-                    </p>
-                    <p class="text-[11px] text-rose-100/80 mt-1">
-                        Faturas em atraso
-                    </p>
-                </div>
-                <div class="hidden md:block text-4xl">!</div>
-            </div>
-        </div>
+                @if($listaFaturas->isNotEmpty())
+                    <div class="flex-1 min-h-0 overflow-y-auto pr-1">
+                        <div class="overflow-x-auto rounded-xl border border-slate-200">
+                            <div class="min-w-[760px]">
+                                <div class="sticky top-0 z-10 grid grid-cols-12 gap-3 bg-blue-50 border-b border-blue-200 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-blue-700">
+                                    <div class="col-span-2">Data</div>
+                                    <div class="col-span-5">Serviços</div>
+                                    <div class="col-span-2">Status</div>
+                                    <div class="col-span-1">Venc.</div>
+                                    <div class="col-span-2 text-right">Valor</div>
+                                </div>
 
-        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <header class="bg-slate-900 text-white px-4 py-3 flex items-center justify-between">
-                <div class="flex items-center gap-2 text-sm font-semibold">
-                    <span>Detalhes da fatura</span>
-                </div>
-                <span class="text-[12px] text-slate-200">
-                    Atualizado automaticamente
-                </span>
-            </header>
+                                <div class="divide-y divide-slate-100 bg-white">
+                                    @foreach($listaFaturas as $item)
+                                            @php
+                                                $servicoNome = $item->servico ?? 'Servico';
+                                                $servicoDisplay = $item->servico_detalhe ?? $servicoNome;
+                                                if (($item->treinamento_modo ?? null) === 'pacote' && !empty($item->treinamento_pacote)) {
+                                                    $servicoDisplay = 'Treinamentos NRs - ' . $item->treinamento_pacote;
+                                                } elseif (($item->treinamento_modo ?? null) === 'avulso' && !empty($item->treinamento_codigos)) {
+                                                    $codigosTitulo = is_array($item->treinamento_codigos)
+                                                        ? array_values(array_filter($item->treinamento_codigos))
+                                                        : array_values(array_filter(array_map('trim', explode(',', (string) $item->treinamento_codigos))));
+                                                    if (count($codigosTitulo) === 1) {
+                                                        $servicoDisplay = 'Treinamentos NRs - ' . $codigosTitulo[0];
+                                                    }
+                                                }
 
-            @if($itens->isEmpty() && ($itensEmAberto ?? collect())->isEmpty())
-                <div class="p-6 text-sm text-slate-500">
-                    Nenhuma cobrança encontrada. Assim que houver contas geradas, elas aparecerão aqui.
-                </div>
-            @else
-                <div class="overflow-x-auto">
-                    <table class="w-full min-w-full divide-y divide-slate-200 text-sm">
-                        <thead class="bg-slate-50 text-slate-600">
-                            <tr>
-                                <th class="px-4 py-3 text-left font-semibold">Data</th>
-                                <th class="px-4 py-3 text-left font-semibold">Serviço</th>
-                                <th class="px-4 py-3 text-left font-semibold">Status</th>
-                                <th class="px-4 py-3 text-left font-semibold">Vencimento</th>
-                                <th class="px-4 py-3 text-right font-semibold">Valor</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                            @foreach(($itensEmAberto ?? collect()) as $item)
-                                @php
-                                    $servicoNome = $item->servico ?? 'Serviço';
-                                    $servicoDisplay = $item->servico_detalhe ?? $servicoNome;
-                                    if (($item->treinamento_modo ?? null) === 'pacote' && !empty($item->treinamento_pacote)) {
-                                        $servicoDisplay = 'Treinamentos NRs - ' . $item->treinamento_pacote;
-                                    } elseif (($item->treinamento_modo ?? null) === 'avulso' && !empty($item->treinamento_codigos)) {
-                                        $codigosTitulo = is_array($item->treinamento_codigos)
-                                            ? array_values(array_filter($item->treinamento_codigos))
-                                            : array_values(array_filter(array_map('trim', explode(',', (string) $item->treinamento_codigos))));
-                                        if (count($codigosTitulo) === 1) {
-                                            $servicoDisplay = 'Treinamentos NRs - ' . $codigosTitulo[0];
-                                        }
-                                    }
-                                    $temDetalheAso = !empty($item->aso_colaborador) || !empty($item->aso_tipo) || !empty($item->aso_data) || !empty($item->aso_unidade) || !empty($item->aso_email);
-                                    $temDetalhePgr = !empty($item->pgr_tipo) || !empty($item->pgr_obra) || !empty($item->pgr_contratante) || !empty($item->pgr_total);
-                                    $temDetalheTrein = !empty($item->treinamento_modo) || !empty($item->treinamento_codigos) || !empty($item->treinamento_pacote) || !empty($item->treinamento_participantes);
-                                    $temDetalhe = $temDetalheAso || $temDetalhePgr || $temDetalheTrein;
-                                    $status = 'EM ANDAMENTO';
-                                    $vencimento = null;
-                                    $valorReal = isset($item->valor_real) ? (float) $item->valor_real : (float) $item->valor;
-                                    $badge = 'bg-sky-50 text-sky-700 border-sky-100';
-                                    $label = 'Em andamento';
-                                @endphp
-                                <tr class="hover:bg-slate-50/60">
-                                    <td class="px-4 py-3 text-slate-700">
-                                        {{ $item->data_realizacao ? \Carbon\Carbon::parse($item->data_realizacao)->format('d/m/Y') : 'N/A' }}
-                                    </td>
-                                    <td class="px-4 py-3 text-slate-800">
-                                        <div class="font-medium text-slate-800">{{ $servicoDisplay }}</div>
-                                        @if($temDetalhe)
-                                            <details class="mt-1">
-                                                <summary class="text-xs text-slate-500 cursor-pointer select-none">Detalhar</summary>
-                                                <div class="mt-2 text-xs text-slate-600 space-y-1">
-                                                    @if(!empty($item->aso_colaborador))
-                                                        <div><span class="font-semibold">Colaborador:</span> {{ $item->aso_colaborador }}</div>
-                                                    @endif
-                                                    @if(!empty($item->aso_tipo))
-                                                        <div><span class="font-semibold">Tipo:</span> {{ $item->aso_tipo }}</div>
-                                                    @endif
-                                                    @if(!empty($item->aso_data))
-                                                        <div><span class="font-semibold">Data:</span> {{ \Carbon\Carbon::parse($item->aso_data)->format('d/m/Y') }}</div>
-                                                    @endif
-                                                    @if(!empty($item->aso_unidade))
-                                                        <div><span class="font-semibold">Unidade:</span> {{ $item->aso_unidade }}</div>
-                                                    @endif
-                                                    @if(!empty($item->aso_email))
-                                                        <div><span class="font-semibold">E-mail:</span> {{ $item->aso_email }}</div>
-                                                    @endif
-                                                    @if($temDetalhePgr)
-                                                        @php
-                                                            $rotuloPrincipalPgr = str_contains(mb_strtolower((string) ($servicoDisplay ?? $servicoNome)), 'pcmso') ? 'PCMSO' : 'PGR';
-                                                            $rotuloComplementarPgr = $rotuloPrincipalPgr === 'PCMSO' ? 'PGR' : 'PCMSO';
-                                                        @endphp
-                                                        <div class="pt-1"></div>
-                                                        @if(!empty($item->pgr_tipo))
-                                                            <div><span class="font-semibold">{{ $rotuloPrincipalPgr }}:</span> {{ $item->pgr_tipo }}</div>
-                                                        @endif
-                                                        @if(!empty($item->pgr_obra))
-                                                            <div><span class="font-semibold">Obra:</span> {{ $item->pgr_obra }}</div>
-                                                        @endif
-                                                        @if(!empty($item->pgr_total))
-                                                            <div><span class="font-semibold">Trabalhadores:</span> {{ $item->pgr_total }}</div>
-                                                        @endif
-                                                        <div><span class="font-semibold">{{ $rotuloComplementarPgr }}:</span> {{ !empty($item->pgr_com_pcms0) ? 'Com ' . $rotuloComplementarPgr : 'Sem ' . $rotuloComplementarPgr }}</div>
-                                                        <div><span class="font-semibold">ART:</span> {{ !empty($item->pgr_com_art) ? 'Com ART' : 'Sem ART' }}</div>
-                                                    @endif
-                                                    @if($temDetalheTrein)
-                                                        <div class="pt-1"></div>
-                                                        <div><span class="font-semibold">Treinamento:</span> {{ $item->treinamento_modo === 'pacote' ? 'Pacote' : 'Avulso' }}</div>
-                                                        @if(!empty($item->treinamento_pacote))
-                                                            <div><span class="font-semibold">Pacote:</span> {{ $item->treinamento_pacote }}</div>
-                                                        @endif
-                                                        @if(!empty($item->treinamento_codigos))
-                                                            <div><span class="font-semibold">NRs:</span> {{ is_array($item->treinamento_codigos) ? implode(', ', $item->treinamento_codigos) : $item->treinamento_codigos }}</div>
-                                                        @endif
-                                                        @if(!empty($item->treinamento_local))
-                                                            <div><span class="font-semibold">Local:</span> {{ $item->treinamento_local === 'clinica' ? 'Clínica' : 'In Company' }}</div>
-                                                        @endif
-                                                        @if(!empty($item->treinamento_unidade))
-                                                            <div><span class="font-semibold">Unidade:</span> {{ $item->treinamento_unidade }}</div>
-                                                        @endif
-                                                        @if(!empty($item->treinamento_participantes))
-                                                            <div><span class="font-semibold">Participantes:</span>
-                                                                <div class="mt-1">
-                                                                    {!! implode('<br>', array_map('e', (array) $item->treinamento_participantes)) !!}
-                                                                </div>
-                                                            </div>
-                                                        @endif
-                                                    @endif
+                                                $status = strtoupper((string) ($item->status ?? ''));
+                                                $vencimento = !empty($item->vencimento) ? \Carbon\Carbon::parse($item->vencimento) : null;
+                                                $isAndamento = $status === '' || $status === 'EM ANDAMENTO';
+                                                $vencido = !$isAndamento && ($vencimento?->lt(now()->startOfDay()) ?? false);
+                                                $valorReal = isset($item->valor_real) ? (float) $item->valor_real : (float) ($item->valor ?? 0);
+
+                                                $badge = match (true) {
+                                                    $isAndamento => 'bg-sky-50 text-sky-700 border-sky-100',
+                                                    $status === 'BAIXADO' => 'bg-emerald-50 text-emerald-700 border-emerald-100',
+                                                    $vencido => 'bg-rose-50 text-rose-700 border-rose-100',
+                                                    default => 'bg-amber-50 text-amber-700 border-amber-100',
+                                                };
+                                                $label = $isAndamento ? 'Em andamento' : ($vencido ? 'Vencido' : ($status === 'BAIXADO' ? 'Pago' : 'Em aberto'));
+                                            @endphp
+
+                                            <div class="grid grid-cols-12 gap-3 px-4 py-3 text-xs text-slate-700 {{ $loop->even ? 'bg-slate-50/60' : 'bg-white' }} hover:bg-slate-100/70">
+                                                <div class="col-span-2">
+                                                    {{ $item->data_realizacao ? \Carbon\Carbon::parse($item->data_realizacao)->format('d/m/Y') : 'N/A' }}
                                                 </div>
-                                            </details>
-                                        @endif
-                                    </td>
-                                    <td class="px-4 py-3">
-                                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[12px] font-semibold {{ $badge }}">
-                                            {{ $label }}
-                                        </span>
-                                    </td>
-                                    <td class="px-4 py-3 text-slate-700">
-                                        —
-                                    </td>
-                                    <td class="px-4 py-3 text-right font-semibold text-slate-900">
-                                        R$ {{ number_format($valorReal, 2, ',', '.') }}
-                                    </td>
-                                </tr>
-                            @endforeach
-                            @foreach($itens as $item)
-                                @php
-                                    $servicoNome = $item->servico ?? 'Serviço';
-                                    $servicoDisplay = $item->servico_detalhe ?? $servicoNome;
-                                    if (($item->treinamento_modo ?? null) === 'pacote' && !empty($item->treinamento_pacote)) {
-                                        $servicoDisplay = 'Treinamentos NRs - ' . $item->treinamento_pacote;
-                                    } elseif (($item->treinamento_modo ?? null) === 'avulso' && !empty($item->treinamento_codigos)) {
-                                        $codigosTitulo = is_array($item->treinamento_codigos)
-                                            ? array_values(array_filter($item->treinamento_codigos))
-                                            : array_values(array_filter(array_map('trim', explode(',', (string) $item->treinamento_codigos))));
-                                        if (count($codigosTitulo) === 1) {
-                                            $servicoDisplay = 'Treinamentos NRs - ' . $codigosTitulo[0];
-                                        }
-                                    }
-                                    $temDetalheAso = !empty($item->aso_colaborador) || !empty($item->aso_tipo) || !empty($item->aso_data) || !empty($item->aso_unidade) || !empty($item->aso_email);
-                                    $temDetalhePgr = !empty($item->pgr_tipo) || !empty($item->pgr_obra) || !empty($item->pgr_contratante) || !empty($item->pgr_total);
-                                    $temDetalheTrein = !empty($item->treinamento_modo) || !empty($item->treinamento_codigos) || !empty($item->treinamento_pacote) || !empty($item->treinamento_participantes);
-                                    $temDetalhe = $temDetalheAso || $temDetalhePgr || $temDetalheTrein;
-                                    $status = strtoupper((string) $item->status);
-                                    $vencimento = $item->vencimento ? \Carbon\Carbon::parse($item->vencimento) : null;
-                                    $vencido = $vencimento?->lt(now()->startOfDay()) ?? false;
-                                    $valorReal = isset($item->valor_real) ? (float) $item->valor_real : (float) $item->valor;
-                                    $badge = match(true) {
-                                        $status === 'BAIXADO' => 'bg-emerald-50 text-emerald-700 border-emerald-100',
-                                        $vencido => 'bg-rose-50 text-rose-700 border-rose-100',
-                                        default => 'bg-amber-50 text-amber-700 border-amber-100',
-                                    };
-                                    $label = $vencido ? 'Vencido' : ($status === 'BAIXADO' ? 'Pago' : 'Em aberto');
-                                @endphp
-                                <tr class="hover:bg-slate-50/60">
-                                    <td class="px-4 py-3 text-slate-700">
-                                        {{ $item->data_realizacao ? \Carbon\Carbon::parse($item->data_realizacao)->format('d/m/Y') : 'N/A' }}
-                                    </td>
-                                    <td class="px-4 py-3 text-slate-800">
-                                        <div class="font-medium text-slate-800">{{ $servicoDisplay }}</div>
-                                        @if($temDetalhe)
-                                            <details class="mt-1">
-                                                <summary class="text-xs text-slate-500 cursor-pointer select-none">Detalhar</summary>
-                                                <div class="mt-2 text-xs text-slate-600 space-y-1">
-                                                    @if(!empty($item->aso_colaborador))
-                                                        <div><span class="font-semibold">Colaborador:</span> {{ $item->aso_colaborador }}</div>
-                                                    @endif
-                                                    @if(!empty($item->aso_tipo))
-                                                        <div><span class="font-semibold">Tipo:</span> {{ $item->aso_tipo }}</div>
-                                                    @endif
-                                                    @if(!empty($item->aso_data))
-                                                        <div><span class="font-semibold">Data:</span> {{ \Carbon\Carbon::parse($item->aso_data)->format('d/m/Y') }}</div>
-                                                    @endif
-                                                    @if(!empty($item->aso_unidade))
-                                                        <div><span class="font-semibold">Unidade:</span> {{ $item->aso_unidade }}</div>
-                                                    @endif
-                                                    @if(!empty($item->aso_email))
-                                                        <div><span class="font-semibold">E-mail:</span> {{ $item->aso_email }}</div>
-                                                    @endif
-                                                    @if($temDetalhePgr)
-                                                        @php
-                                                            $rotuloPrincipalPgr = str_contains(mb_strtolower((string) ($servicoDisplay ?? $servicoNome)), 'pcmso') ? 'PCMSO' : 'PGR';
-                                                            $rotuloComplementarPgr = $rotuloPrincipalPgr === 'PCMSO' ? 'PGR' : 'PCMSO';
-                                                        @endphp
-                                                        <div class="pt-1"></div>
-                                                        @if(!empty($item->pgr_tipo))
-                                                            <div><span class="font-semibold">{{ $rotuloPrincipalPgr }}:</span> {{ $item->pgr_tipo }}</div>
-                                                        @endif
-                                                        @if(!empty($item->pgr_obra))
-                                                            <div><span class="font-semibold">Obra:</span> {{ $item->pgr_obra }}</div>
-                                                        @endif
-                                                        @if(!empty($item->pgr_total))
-                                                            <div><span class="font-semibold">Trabalhadores:</span> {{ $item->pgr_total }}</div>
-                                                        @endif
-                                                        <div><span class="font-semibold">{{ $rotuloComplementarPgr }}:</span> {{ !empty($item->pgr_com_pcms0) ? 'Com ' . $rotuloComplementarPgr : 'Sem ' . $rotuloComplementarPgr }}</div>
-                                                        <div><span class="font-semibold">ART:</span> {{ !empty($item->pgr_com_art) ? 'Com ART' : 'Sem ART' }}</div>
-                                                    @endif
-                                                    @if($temDetalheTrein)
-                                                        <div class="pt-1"></div>
-                                                        <div><span class="font-semibold">Treinamento:</span> {{ $item->treinamento_modo === 'pacote' ? 'Pacote' : 'Avulso' }}</div>
-                                                        @if(!empty($item->treinamento_pacote))
-                                                            <div><span class="font-semibold">Pacote:</span> {{ $item->treinamento_pacote }}</div>
-                                                        @endif
-                                                        @if(!empty($item->treinamento_codigos))
-                                                            <div><span class="font-semibold">NRs:</span> {{ is_array($item->treinamento_codigos) ? implode(', ', $item->treinamento_codigos) : $item->treinamento_codigos }}</div>
-                                                        @endif
-                                                        @if(!empty($item->treinamento_local))
-                                                            <div><span class="font-semibold">Local:</span> {{ $item->treinamento_local === 'clinica' ? 'Clínica' : 'In Company' }}</div>
-                                                        @endif
-                                                        @if(!empty($item->treinamento_unidade))
-                                                            <div><span class="font-semibold">Unidade:</span> {{ $item->treinamento_unidade }}</div>
-                                                        @endif
-                                                        @if(!empty($item->treinamento_participantes))
-                                                            <div><span class="font-semibold">Participantes:</span>
-                                                                <div class="mt-1">
-                                                                    {!! implode('<br>', array_map('e', (array) $item->treinamento_participantes)) !!}
-                                                                </div>
-                                                            </div>
-                                                        @endif
-                                                    @endif
+                                                <div class="col-span-5">
+                                                    <p class="font-semibold text-slate-900">{{ $servicoDisplay }}</p>
+                                                    <p class="text-[11px] text-slate-500">{{ $servicoNome }}</p>
                                                 </div>
-                                            </details>
-                                        @endif
-                                    </td>
-                                    <td class="px-4 py-3">
-                                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[12px] font-semibold
-                                            {{ $badge }}">
-                                            {{ $label }}
-                                        </span>
-                                    </td>
-                                    <td class="px-4 py-3 text-slate-700">
-                                        {{ $vencimento?->format('d/m/Y') ?? 'N/A' }}
-                                    </td>
-                                    <td class="px-4 py-3 text-right font-semibold text-slate-900">
-                                        R$ {{ number_format($valorReal, 2, ',', '.') }}
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
+                                                <div class="col-span-2">
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full border text-[11px] font-semibold {{ $badge }}">
+                                                        {{ $label }}
+                                                    </span>
+                                                </div>
+                                                <div class="col-span-1">
+                                                    {{ $vencimento?->format('d/m/Y') ?? '-' }}
+                                                </div>
+                                                <div class="col-span-2 text-right font-semibold text-slate-900">
+                                                    R$ {{ number_format($valorReal, 2, ',', '.') }}
+                                                </div>
+                                            </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-                <div class="px-4 py-3 border-t border-slate-200">
-                    {{ $itens->links() }}
-                </div>
-            @endif
+                @else
+                    <div class="mt-2 rounded-2xl border border-dashed border-slate-300 bg-slate-50/60 px-4 py-6 text-center">
+                        <p class="text-xs md:text-sm text-slate-500">
+                            Nenhuma cobranca encontrada.
+                        </p>
+                    </div>
+                @endif
+            </div>
         </div>
-    </section>
-
+    </div>
+</section>
 
 @push('scripts')
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
@@ -405,6 +224,9 @@
                             : '';
                     },
                 });
+                if (defaultDate) {
+                    fp.setDate(defaultDate, false, 'Y-m-d');
+                }
 
                 textInput.addEventListener('input', () => {
                     textInput.value = maskBrDate(textInput.value);
@@ -429,6 +251,13 @@
                         ? document.querySelector(`.js-date-text[data-date-target="${targetId}"]`)
                         : null;
                     if (textInput && textInput._flatpickr) {
+                        const hiddenInput = targetId ? document.getElementById(targetId) : null;
+                        if (hiddenInput && hiddenInput.value) {
+                            textInput._flatpickr.setDate(hiddenInput.value, false, 'Y-m-d');
+                            textInput._flatpickr.jumpToDate(hiddenInput.value);
+                        } else {
+                            textInput._flatpickr.jumpToDate(new Date());
+                        }
                         textInput.focus();
                         textInput._flatpickr.open();
                     }

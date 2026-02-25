@@ -141,16 +141,6 @@
                                 @php
                                     $servicoNome = $item->servico ?? 'Serviço';
                                     $servicoDisplay = $item->servico_detalhe ?? $servicoNome;
-                                    if (($item->treinamento_modo ?? null) === 'pacote' && !empty($item->treinamento_pacote)) {
-                                        $servicoDisplay = 'Treinamentos NRs - ' . $item->treinamento_pacote;
-                                    } elseif (($item->treinamento_modo ?? null) === 'avulso' && !empty($item->treinamento_codigos)) {
-                                        $codigosTitulo = is_array($item->treinamento_codigos)
-                                            ? array_values(array_filter($item->treinamento_codigos))
-                                            : array_values(array_filter(array_map('trim', explode(',', (string) $item->treinamento_codigos))));
-                                        if (count($codigosTitulo) === 1) {
-                                            $servicoDisplay = 'Treinamentos NRs - ' . $codigosTitulo[0];
-                                        }
-                                    }
                                     $temDetalheAso = !empty($item->aso_colaborador) || !empty($item->aso_tipo) || !empty($item->aso_data) || !empty($item->aso_unidade) || !empty($item->aso_email);
                                     $temDetalhePgr = !empty($item->pgr_tipo) || !empty($item->pgr_obra) || !empty($item->pgr_contratante) || !empty($item->pgr_total);
                                     $temDetalheTrein = !empty($item->treinamento_modo) || !empty($item->treinamento_codigos) || !empty($item->treinamento_pacote) || !empty($item->treinamento_participantes);
@@ -248,16 +238,6 @@
                                 @php
                                     $servicoNome = $item->servico ?? 'Serviço';
                                     $servicoDisplay = $item->servico_detalhe ?? $servicoNome;
-                                    if (($item->treinamento_modo ?? null) === 'pacote' && !empty($item->treinamento_pacote)) {
-                                        $servicoDisplay = 'Treinamentos NRs - ' . $item->treinamento_pacote;
-                                    } elseif (($item->treinamento_modo ?? null) === 'avulso' && !empty($item->treinamento_codigos)) {
-                                        $codigosTitulo = is_array($item->treinamento_codigos)
-                                            ? array_values(array_filter($item->treinamento_codigos))
-                                            : array_values(array_filter(array_map('trim', explode(',', (string) $item->treinamento_codigos))));
-                                        if (count($codigosTitulo) === 1) {
-                                            $servicoDisplay = 'Treinamentos NRs - ' . $codigosTitulo[0];
-                                        }
-                                    }
                                     $temDetalheAso = !empty($item->aso_colaborador) || !empty($item->aso_tipo) || !empty($item->aso_data) || !empty($item->aso_unidade) || !empty($item->aso_email);
                                     $temDetalhePgr = !empty($item->pgr_tipo) || !empty($item->pgr_obra) || !empty($item->pgr_contratante) || !empty($item->pgr_total);
                                     $temDetalheTrein = !empty($item->treinamento_modo) || !empty($item->treinamento_codigos) || !empty($item->treinamento_pacote) || !empty($item->treinamento_participantes);

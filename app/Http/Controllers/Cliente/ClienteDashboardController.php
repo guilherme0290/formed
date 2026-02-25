@@ -237,11 +237,39 @@ class ClienteDashboardController extends Controller
         $itens = DB::query()
             ->fromSub($union, 'reg')
             ->orderByDesc('data_realizacao')
-            ->paginate(10)
-            ->withQueryString();
+            ->get();
         $itensEmAberto = $this->itensEmAndamento($contratoAtivo, $cliente);
-        $itens->setCollection($this->anexarDetalhesServicos($itens->getCollection()));
+        $itens = $this->anexarDetalhesServicos($itens);
         $itensEmAberto = $this->anexarDetalhesServicos($itensEmAberto);
+        $itensEmAberto = $itensEmAberto
+            ->filter(function ($item) use ($status, $dataInicio, $dataFim) {
+                $statusFiltro = strtoupper((string) $status);
+                if ($statusFiltro === 'BAIXADO' || $statusFiltro === 'VENCIDO') {
+                    return false;
+                }
+                if ($statusFiltro !== '' && $statusFiltro !== 'ABERTO') {
+                    return false;
+                }
+
+                if (!$dataInicio && !$dataFim) {
+                    return true;
+                }
+
+                if (empty($item->data_realizacao)) {
+                    return false;
+                }
+
+                $dataItem = \Carbon\Carbon::parse($item->data_realizacao)->toDateString();
+                if ($dataInicio && $dataItem < $dataInicio) {
+                    return false;
+                }
+                if ($dataFim && $dataItem > $dataFim) {
+                    return false;
+                }
+
+                return true;
+            })
+            ->values();
 
         return view('clientes.portal.index', [
             'activeTab' => 'faturas',
@@ -303,11 +331,8 @@ class ClienteDashboardController extends Controller
             ->orderByRaw("CASE WHEN EXISTS (SELECT 1 FROM kanban_colunas kc WHERE kc.id = tarefas.coluna_id AND kc.slug = 'pendente') THEN 0 ELSE 1 END")
             ->orderByDesc('inicio_previsto')
             ->orderByDesc('id')
-            ->paginate(15)
-            ->withQueryString();
-        $agendamentos->setCollection(
-            $this->anexarDetalhesAgendamentos($agendamentos->getCollection())
-        );
+            ->get();
+        $agendamentos = $this->anexarDetalhesAgendamentos($agendamentos);
 
         return view('clientes.portal.index', [
             'activeTab' => 'agendamentos',

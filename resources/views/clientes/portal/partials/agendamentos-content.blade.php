@@ -15,29 +15,33 @@
             </a>
         </div>
 
-        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <header class="bg-slate-900 text-white px-4 py-3 flex items-center justify-between">
-                <span class="text-sm font-semibold">Tarefas solicitadas</span>
+        <div class="rounded-2xl border border-slate-200 bg-white shadow-inner overflow-hidden p-1 md:p-2">
+            <header class="px-4 py-4 border-b border-slate-900 bg-slate-900 rounded-xl flex items-center justify-between">
+                <span class="text-sm font-semibold text-white">Tarefas solicitadas</span>
                 <span class="text-[12px] text-slate-200">Cliente: {{ $cliente->razao_social ?? $cliente->nome_fantasia }}</span>
             </header>
+
+            <div class="p-3 md:p-4">
 
             @if($agendamentos->isEmpty())
                 <div class="p-6 text-sm text-slate-500">
                     Nenhum agendamento encontrado.
                 </div>
             @else
-                <div class="overflow-x-auto">
-                    <table class="w-full min-w-full divide-y divide-slate-200 text-sm">
-                        <thead class="bg-slate-50 text-slate-600">
-                            <tr>
-                                <th class="px-4 py-3 text-left font-semibold">Solicitado em</th>
-                                <th class="px-4 py-3 text-left font-semibold">Serviço</th>
-                                <th class="px-4 py-3 text-left font-semibold">Início previsto</th>
-                                <th class="px-4 py-3 text-left font-semibold">Status</th>
-                                <th class="px-4 py-3 text-right font-semibold">Ação</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
+                <div class="rounded-xl border border-indigo-200/80 bg-white/95 p-3 md:p-4 shadow-sm space-y-4 max-h-[72vh] flex flex-col overflow-hidden">
+                    <div class="flex-1 min-h-0 overflow-y-auto pr-1">
+                        <div class="overflow-x-auto rounded-xl border border-slate-200">
+                            <table class="w-full min-w-full divide-y divide-slate-200 text-sm">
+                            <thead class="sticky top-0 z-10 bg-slate-50 text-slate-600">
+                                <tr>
+                                    <th class="px-4 py-3 text-left font-semibold">Solicitado em</th>
+                                    <th class="px-4 py-3 text-left font-semibold">Serviço</th>
+                                    <th class="px-4 py-3 text-left font-semibold">Início previsto</th>
+                                    <th class="px-4 py-3 text-left font-semibold">Status</th>
+                                    <th class="px-4 py-3 text-right font-semibold">Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
                             @foreach($agendamentos as $tarefa)
                                 @php
                                     $slug = mb_strtolower((string) optional($tarefa->coluna)->slug);
@@ -115,7 +119,7 @@
                                     });
                                     $documentoAsoUrl = $tarefa->documento_link;
                                 @endphp
-                                <tr class="hover:bg-slate-50/60">
+                                <tr class="{{ $loop->even ? 'bg-slate-50/60' : 'bg-white' }} hover:bg-slate-100/70">
                                     <td class="px-4 py-3 text-slate-700">
                                         {{ optional($tarefa->created_at)->format('d/m/Y H:i') ?? 'N/A' }}
                                     </td>
@@ -259,14 +263,14 @@
                                     </td>
                                 </tr>
                             @endforeach
-                        </tbody>
-                    </table>
-                </div>
+                            </tbody>
+                            </table>
+                        </div>
+                    </div>
 
-                <div class="px-4 py-3 border-t border-slate-200">
-                    {{ $agendamentos->links() }}
                 </div>
             @endif
+            </div>
         </div>
     </section>
 

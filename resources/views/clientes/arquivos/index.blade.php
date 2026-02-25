@@ -65,15 +65,15 @@
             </div>
 
             <div class="p-4 md:p-5">
-                <div class="rounded-xl border border-indigo-200/80 bg-white/95 p-3 md:p-4 shadow-sm space-y-4">
+                <div class="rounded-xl border border-indigo-200/80 bg-white/95 p-3 md:p-4 shadow-sm space-y-4 max-h-[72vh] flex flex-col overflow-hidden">
                     <form method="GET" action="{{ route('cliente.arquivos.index') }}" class="flex flex-col gap-3">
                         <div class="grid gap-3 md:grid-cols-4">
                             <div>
-                                <label class="text-[11px] font-semibold text-slate-600">Tipo de servico</label>
+                                <label class="text-[11px] font-semibold text-slate-600">Tipo de serviço</label>
                                 <select
                                     name="servico"
                                     class="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500">
-                                    <option value="">Todos os servicos</option>
+                                    <option value="">Todos os serviços</option>
                                     @foreach($servicos as $servico)
                                         <option value="{{ $servico->id }}" @selected((string) $servico->id === request('servico'))>
                                             {{ $servico->nome }}
@@ -119,11 +119,11 @@
                         <form method="POST" action="{{ route('cliente.arquivos.download-por-funcionario') }}" class="rounded-xl border border-slate-200 bg-slate-50/70 p-3 md:p-4 grid gap-3 md:grid-cols-4 items-end">
                             @csrf
                             <div class="md:col-span-3">
-                                <label class="text-xs font-semibold text-slate-700">Baixar todos por funcionario</label>
+                                <label class="text-xs font-semibold text-slate-700">Baixar todos por funcionário</label>
                                 <select
                                     name="funcionario_id"
                                     class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500">
-                                    <option value="0">Todos os funcionarios</option>
+                                    <option value="0">Todos os funcionários</option>
                                     @foreach($funcionariosComArquivos as $func)
                                         <option value="{{ $func->id }}">{{ $func->nome }}</option>
                                     @endforeach
@@ -139,20 +139,22 @@
                         </form>
                     @endif
 
-                    <form method="POST" action="{{ route('cliente.arquivos.download-selecionados') }}">
+                    <form method="POST" action="{{ route('cliente.arquivos.download-selecionados') }}" class="flex-1 min-h-0 flex flex-col">
                         @csrf
 
                         @if($arquivos->count())
-                            <div class="mb-3 flex items-center justify-between">
-                                <label class="inline-flex items-center gap-2 text-xs text-slate-700">
-                                    <input type="checkbox" class="rounded border-slate-300 js-check-all-arquivos">
-                                    Selecionar todos os cards
-                                </label>
-                                <span class="text-xs text-slate-500">Marque os arquivos para baixar em um unico ZIP</span>
-                            </div>
+                            <div class="pr-1 rounded-xl border border-slate-200 bg-white overflow-y-auto"
+                                 style="height: 52vh; overflow-y: auto; scrollbar-gutter: stable;">
+                                <div class="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-3 py-2">
+                                    <label class="inline-flex items-center gap-2 text-xs text-slate-700">
+                                        <input type="checkbox" class="rounded border-slate-300 js-check-all-arquivos">
+                                        Selecionar todos os cards
+                                    </label>
+                                    <span class="text-xs text-slate-500">Marque os arquivos para baixar em um unico ZIP</span>
+                                </div>
 
-                            <div class="max-h-[62vh] overflow-y-auto pr-1">
-                                <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                                <div class="p-3">
+                                    <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                                     @foreach($arquivos as $tarefa)
                                         @php
                                             $coluna = $tarefa->coluna;
@@ -201,7 +203,7 @@
                                             }
                                         @endphp
 
-                                        <article class="bg-white border border-slate-200 rounded-2xl px-4 py-3 shadow-sm">
+                                        <article class="h-full bg-white border border-slate-200 rounded-2xl px-4 py-3 shadow-sm flex flex-col">
                                             <div class="flex items-start justify-between gap-2 mb-2">
                                                 <label class="inline-flex items-center gap-2 text-xs text-slate-600">
                                                     <input
@@ -217,7 +219,7 @@
                                                 </span>
                                             </div>
 
-                                            <p class="text-sm font-semibold text-slate-900">
+                                            <p class="text-sm font-semibold text-slate-900 leading-snug">
                                                 {{ $tituloCard }}
                                             </p>
                                             @unless($isTreinamentoNr)
@@ -257,7 +259,7 @@
                                                 @endif
                                             </div>
 
-                                            <div class="mt-3 flex flex-wrap gap-2">
+                                            <div class="mt-auto pt-3 flex flex-wrap gap-2">
                                                 @if($tarefa->documento_link && !($servicoLabel === 'ASO' && $totalCertificados > 0))
                                                     <a href="{{ $tarefa->documento_link }}"
                                                        class="inline-flex items-center px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 transition"
@@ -291,6 +293,7 @@
                                             </div>
                                         </article>
                                     @endforeach
+                                    </div>
                                 </div>
                             </div>
 
