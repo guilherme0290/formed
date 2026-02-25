@@ -585,6 +585,21 @@ class ClienteDashboardController extends Controller
         $dadosAso = $this->dadosAsoPorTarefaIds($tarefas, $asoServicoId);
         $dadosPgr = $this->dadosPgrPorTarefaIds($tarefas);
         $itensPorServico = $contratoAtivo->itens->keyBy('servico_id');
+        $servicoTreinamentosNrId = (int) Servico::query()
+            ->where('empresa_id', $contratoAtivo->empresa_id)
+            ->where('nome', 'Treinamentos NRs')
+            ->value('id');
+
+        $tarefaIds = $tarefas->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $treinamentoDetalhes = TreinamentoNrDetalhes::query()
+            ->whereIn('tarefa_id', $tarefaIds)
+            ->get(['tarefa_id', 'treinamentos'])
+            ->keyBy('tarefa_id');
+        $treinamentoQtdParticipantes = TreinamentoNR::query()
+            ->whereIn('tarefa_id', $tarefaIds)
+            ->selectRaw('tarefa_id, COUNT(*) as total')
+            ->groupBy('tarefa_id')
+            ->pluck('total', 'tarefa_id');
         $servicoArtId = (int) Servico::query()
             ->where('empresa_id', $contratoAtivo->empresa_id)
             ->whereRaw('LOWER(nome) = ?', ['art'])
@@ -605,9 +620,18 @@ class ClienteDashboardController extends Controller
                     continue;
                 }
             }
-            $valor = (float) ($itensPorServico->get($tarefa->servico_id)->preco_unitario_snapshot ?? 0);
-            if ($valor > 0) {
-                $total += $valor;
+            if ($servicoTreinamentosNrId > 0 && (int) $tarefa->servico_id === $servicoTreinamentosNrId) {
+                $payload = $treinamentoDetalhes->get((int) $tarefa->id)?->treinamentos ?? [];
+                $qtdParticipantes = (int) ($treinamentoQtdParticipantes[(int) $tarefa->id] ?? 0);
+                $valor = $this->valorTreinamentoNrContrato($contratoAtivo, $servicoTreinamentosNrId, $payload, $qtdParticipantes);
+                if ($valor !== null && $valor > 0) {
+                    $total += $valor;
+                }
+            } else {
+                $valor = (float) ($itensPorServico->get($tarefa->servico_id)->preco_unitario_snapshot ?? 0);
+                if ($valor > 0) {
+                    $total += $valor;
+                }
             }
 
             $pgrComArt = (bool) ($dadosPgr[$tarefa->id]['com_art'] ?? false);
@@ -766,6 +790,20 @@ class ClienteDashboardController extends Controller
         $dadosAso = $this->dadosAsoPorTarefaIds($tarefas, $asoServicoId);
         $dadosPgr = $this->dadosPgrPorTarefaIds($tarefas);
         $itensPorServico = $contratoAtivo->itens->keyBy('servico_id');
+        $servicoTreinamentosNrId = (int) Servico::query()
+            ->where('empresa_id', $contratoAtivo->empresa_id)
+            ->where('nome', 'Treinamentos NRs')
+            ->value('id');
+        $tarefaIds = $tarefas->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $treinamentoDetalhes = TreinamentoNrDetalhes::query()
+            ->whereIn('tarefa_id', $tarefaIds)
+            ->get(['tarefa_id', 'treinamentos'])
+            ->keyBy('tarefa_id');
+        $treinamentoQtdParticipantes = TreinamentoNR::query()
+            ->whereIn('tarefa_id', $tarefaIds)
+            ->selectRaw('tarefa_id, COUNT(*) as total')
+            ->groupBy('tarefa_id')
+            ->pluck('total', 'tarefa_id');
         $servicoArtId = (int) Servico::query()
             ->where('empresa_id', $contratoAtivo->empresa_id)
             ->whereRaw('LOWER(nome) = ?', ['art'])
@@ -775,12 +813,27 @@ class ClienteDashboardController extends Controller
             ->whereRaw('LOWER(nome) = ?', ['pcmso'])
             ->value('id');
 
-        return $tarefas->map(function ($tarefa) use ($asoServicoId, $dadosAso, $dadosPgr, $itensPorServico, $contratoAtivo, $servicoArtId, $servicoPcmsoId) {
+        return $tarefas->map(function ($tarefa) use (
+            $asoServicoId,
+            $dadosAso,
+            $dadosPgr,
+            $itensPorServico,
+            $contratoAtivo,
+            $servicoArtId,
+            $servicoPcmsoId,
+            $servicoTreinamentosNrId,
+            $treinamentoDetalhes,
+            $treinamentoQtdParticipantes
+        ) {
             $valor = null;
             if ($asoServicoId && (int) $tarefa->servico_id === (int) $asoServicoId) {
                 $tipoAso = $dadosAso[$tarefa->id]['tipo_aso'] ?? null;
                 $funcaoId = $dadosAso[$tarefa->id]['funcao_id'] ?? null;
                 $valor = $this->valorAsoContratoPorFuncao($contratoAtivo, $funcaoId, $tipoAso);
+            } elseif ($servicoTreinamentosNrId > 0 && (int) $tarefa->servico_id === $servicoTreinamentosNrId) {
+                $payload = $treinamentoDetalhes->get((int) $tarefa->id)?->treinamentos ?? [];
+                $qtdParticipantes = (int) ($treinamentoQtdParticipantes[(int) $tarefa->id] ?? 0);
+                $valor = $this->valorTreinamentoNrContrato($contratoAtivo, $servicoTreinamentosNrId, $payload, $qtdParticipantes);
             } else {
                 $valor = (float) ($itensPorServico->get($tarefa->servico_id)->preco_unitario_snapshot ?? 0);
             }
@@ -820,6 +873,141 @@ class ClienteDashboardController extends Controller
                 'valor_real' => $valor,
             ];
         })->filter()->values();
+    }
+
+    private function valorTreinamentoNrContrato(
+        ?ClienteContrato $contrato,
+        int $servicoTreinamentosNrId,
+        mixed $payloadRaw,
+        int $qtdParticipantes
+    ): ?float {
+        if (!$contrato || $servicoTreinamentosNrId <= 0) {
+            return null;
+        }
+
+        $qtd = max(1, $qtdParticipantes);
+        $payload = is_array($payloadRaw) ? $payloadRaw : [];
+        $modo = strtolower((string) ($payload['modo'] ?? 'avulso'));
+
+        $contrato->loadMissing('itens', 'parametroOrigem.itens');
+
+        if ($modo === 'pacote') {
+            $contratoItemId = (int) ($payload['pacote']['contrato_item_id'] ?? 0);
+            if ($contratoItemId > 0) {
+                $itemPacote = $contrato->itens
+                    ->first(fn ($it) => (int) $it->id === $contratoItemId && (bool) $it->ativo);
+                if ($itemPacote && (float) $itemPacote->preco_unitario_snapshot > 0) {
+                    return (float) $itemPacote->preco_unitario_snapshot * $qtd;
+                }
+            }
+        }
+
+        $codigos = [];
+        if ($modo === 'pacote') {
+            $codigos = (array) ($payload['pacote']['codigos'] ?? []);
+        } elseif (array_key_exists('codigos', $payload)) {
+            $codigos = (array) ($payload['codigos'] ?? []);
+        } else {
+            $codigos = (array) $payload;
+        }
+
+        $codigos = array_values(array_filter(array_map(
+            fn ($codigo) => $this->normalizarCodigoTreinamento((string) $codigo),
+            $codigos
+        )));
+
+        if (empty($codigos)) {
+            $itemGenerico = $contrato->itens
+                ->first(fn ($it) => (int) $it->servico_id === $servicoTreinamentosNrId && (bool) $it->ativo);
+
+            return $itemGenerico ? (float) $itemGenerico->preco_unitario_snapshot * $qtd : null;
+        }
+
+        $mapa = $this->buildMapaContratoTreinamentos($contrato, $servicoTreinamentosNrId);
+        $soma = 0.0;
+        foreach ($codigos as $codigo) {
+            $item = $mapa[$codigo] ?? null;
+            if ($item && (float) $item->preco_unitario_snapshot > 0) {
+                $soma += (float) $item->preco_unitario_snapshot;
+            }
+        }
+
+        if ($soma <= 0) {
+            return null;
+        }
+
+        return $soma * $qtd;
+    }
+
+    /**
+     * @return array<string, \App\Models\ClienteContratoItem>
+     */
+    private function buildMapaContratoTreinamentos(ClienteContrato $contrato, int $servicoId): array
+    {
+        $contrato->loadMissing('itens', 'parametroOrigem.itens');
+        $itensContrato = $contrato->itens
+            ->where('servico_id', $servicoId)
+            ->where('ativo', true)
+            ->values();
+
+        $mapa = [];
+        $itensOrigem = $contrato->parametroOrigem?->itens ?? collect();
+        if ($itensOrigem->isNotEmpty()) {
+            foreach ($itensOrigem as $origem) {
+                if (strtoupper((string) ($origem->tipo ?? '')) !== 'TREINAMENTO_NR') {
+                    continue;
+                }
+
+                $codigo = $origem->meta['codigo'] ?? null;
+                if (!$codigo) {
+                    $nome = (string) ($origem->nome ?? $origem->descricao ?? '');
+                    if ($nome !== '' && preg_match('/^(NR[-\\s]?\\d+[A-Z]?)/i', $nome, $m)) {
+                        $codigo = str_replace(' ', '-', $m[1]);
+                    }
+                }
+
+                $codigo = $this->normalizarCodigoTreinamento((string) $codigo);
+                if ($codigo === '') {
+                    continue;
+                }
+
+                $descricaoSnapshot = $origem->descricao ?? $origem->nome;
+                $contratoItem = $itensContrato->first(function ($item) use ($descricaoSnapshot) {
+                    return trim((string) ($item->descricao_snapshot ?? '')) === trim((string) $descricaoSnapshot);
+                });
+
+                if ($contratoItem) {
+                    $mapa[$codigo] = $contratoItem;
+                }
+            }
+        }
+
+        foreach ($itensContrato as $item) {
+            $descricao = (string) ($item->descricao_snapshot ?? '');
+            if ($descricao !== '' && preg_match('/(NR[-\\s]?\\d+[A-Z]?)/i', $descricao, $m)) {
+                $codigo = $this->normalizarCodigoTreinamento((string) str_replace(' ', '-', $m[1]));
+                if ($codigo !== '') {
+                    $mapa[$codigo] = $item;
+                }
+            }
+        }
+
+        return $mapa;
+    }
+
+    private function normalizarCodigoTreinamento(string $codigo): string
+    {
+        $codigo = strtoupper(trim($codigo));
+        if ($codigo === '') {
+            return '';
+        }
+
+        if (preg_match('/^NR[-_]?\\d+$/i', $codigo)) {
+            $numero = preg_replace('/\\D/', '', $codigo);
+            $codigo = 'NR-' . str_pad((string) $numero, 2, '0', STR_PAD_LEFT);
+        }
+
+        return $codigo;
     }
 
     private function anexarDetalhesAgendamentos(\Illuminate\Support\Collection $tarefas): \Illuminate\Support\Collection
@@ -1225,4 +1413,3 @@ class ClienteDashboardController extends Controller
         return $bloqueados;
     }
 }
-

@@ -87,6 +87,7 @@
 
     // Origem da tela (cliente ou operacional)
     $origem = request()->query('origem');
+    $allowCreateFuncao = $origem === 'cliente';
     $rotaVoltar = $origem === 'cliente'
         ? route('cliente.dashboard')
         : route('operacional.kanban.servicos', $cliente);
@@ -253,7 +254,7 @@
                                     label="Função"
                                     field-id="campo_funcao"
                                     help-text="Funções listadas por GHE, pré-configuradas pelo vendedor/comercial."
-                                    :allowCreate="false"
+                                    :allowCreate="$allowCreateFuncao"
                                     :funcoes="$funcoes"
                                     :selected="old('funcao_id', $funcionario->funcao_id ?? null)"
                                 />

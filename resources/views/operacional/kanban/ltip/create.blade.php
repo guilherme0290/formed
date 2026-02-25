@@ -6,6 +6,7 @@
 @section('content')
     @php
         $origem = request()->query('origem');
+        $allowCreateFuncao = $origem === 'cliente';
     @endphp
     <div class="w-full px-2 sm:px-3 md:px-4 xl:px-5 py-4 md:py-6">
         <div class="mb-4 flex items-center justify-between">
@@ -71,7 +72,7 @@
                             <x-funcoes.create-button
                                 label="Cadastrar nova função"
                                 variant="red"
-                                :allowCreate="false"
+                                :allowCreate="$allowCreateFuncao"
                             />
 
                             {{-- Botão adicionar linha de função --}}

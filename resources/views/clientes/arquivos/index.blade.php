@@ -1,198 +1,323 @@
-﻿@extends('layouts.cliente')
+@extends('layouts.cliente')
 @section('title', 'Meus Arquivos')
 
 @section('content')
-    <div class="max-w-6xl mx-auto px-4 md:px-0 py-6 space-y-5">
-        <section class="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <div class="absolute inset-0 bg-gradient-to-r from-indigo-50 via-white to-cyan-50"></div>
-            <div class="relative px-5 py-5 md:px-6 md:py-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div>
-                    <h1 class="text-2xl font-semibold text-slate-900">Meus Arquivos</h1>
-                </div>
-                <div class="flex flex-wrap gap-2">
-                    <span class="inline-flex items-center rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
-                        {{ $arquivos->count() }} documento(s)
-                    </span>
-                    <span class="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">
-                        {{ ($funcionariosComArquivos ?? collect())->count() }} funcionário(s)
-                    </span>
+    @php
+        $totalArquivos = $arquivos->count();
+        $totalFuncionarios = ($funcionariosComArquivos ?? collect())->count();
+        $totalComDocumentoPrincipal = $arquivos->filter(fn ($tarefa) => !empty($tarefa->documento_link))->count();
+        $totalComCertificados = $arquivos->filter(function ($tarefa) {
+            return ($tarefa->anexos ?? collect())
+                ->contains(fn ($anexo) => mb_strtolower((string) ($anexo->servico ?? '')) === 'certificado_treinamento');
+        })->count();
+    @endphp
+
+    <div class="space-y-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-lg md:text-xl font-semibold text-slate-900">Meus Arquivos</h1>
+                <p class="text-xs md:text-sm text-slate-500">
+                    Arquivos finalizados e certificados disponiveis para download
+                </p>
+            </div>
+
+            <a href="{{ route('cliente.dashboard') }}"
+               class="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-200 bg-white text-slate-600 hover:bg-slate-50">
+                &larr; Voltar aos servicos
+            </a>
+        </div>
+
+        <div class="rounded-2xl border border-indigo-200 bg-indigo-50/40 shadow-inner overflow-hidden">
+            <div class="px-4 py-3 border-b border-indigo-200 bg-indigo-100/60">
+                <p class="text-xs font-semibold uppercase tracking-wide text-indigo-700">Resumo de Arquivos</p>
+            </div>
+
+            <div class="p-4 md:p-5">
+                <div class="rounded-xl border border-indigo-200/80 bg-white/95 p-3 md:p-4 shadow-sm">
+                    <div class="grid gap-3 md:grid-cols-4">
+                        <div class="rounded-xl border border-indigo-100 bg-indigo-50/70 px-4 py-3">
+                            <p class="text-[11px] uppercase tracking-wide text-indigo-700">Total de Registros</p>
+                            <p class="mt-1 text-2xl font-semibold text-indigo-700">{{ $totalArquivos }}</p>
+                        </div>
+
+                        <div class="rounded-xl border border-cyan-100 bg-cyan-50/80 px-4 py-3">
+                            <p class="text-[11px] uppercase tracking-wide text-cyan-700">Funcionarios com Arquivos</p>
+                            <p class="mt-1 text-2xl font-semibold text-cyan-700">{{ $totalFuncionarios }}</p>
+                        </div>
+
+                        <div class="rounded-xl border border-emerald-100 bg-emerald-50/80 px-4 py-3">
+                            <p class="text-[11px] uppercase tracking-wide text-emerald-700">Doc. Principal</p>
+                            <p class="mt-1 text-2xl font-semibold text-emerald-600">{{ $totalComDocumentoPrincipal }}</p>
+                        </div>
+
+                        <div class="rounded-xl border border-amber-100 bg-amber-50/80 px-4 py-3">
+                            <p class="text-[11px] uppercase tracking-wide text-amber-700">Com Certificados</p>
+                            <p class="mt-1 text-2xl font-semibold text-amber-600">{{ $totalComCertificados }}</p>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </section>
+        </div>
 
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-            <div class="px-5 py-4 border-b border-slate-200 bg-slate-50/70 space-y-4">
-                @if(($funcionariosComArquivos ?? collect())->isNotEmpty())
-                    <div class="rounded-xl border border-slate-200 bg-white px-4 py-4">
-                        <p class="text-xs font-semibold text-slate-700 mb-2">Baixar todos por funcionário</p>
-                        <form method="POST" action="{{ route('cliente.arquivos.download-por-funcionario') }}" class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+        <div class="rounded-2xl border border-indigo-200 bg-indigo-50/40 shadow-inner overflow-hidden">
+            <div class="px-4 py-3 border-b border-indigo-200 bg-indigo-100/60">
+                <p class="text-xs font-semibold uppercase tracking-wide text-indigo-700">Arquivos</p>
+            </div>
+
+            <div class="p-4 md:p-5">
+                <div class="rounded-xl border border-indigo-200/80 bg-white/95 p-3 md:p-4 shadow-sm space-y-4">
+                    <form method="GET" action="{{ route('cliente.arquivos.index') }}" class="flex flex-col gap-3">
+                        <div class="grid gap-3 md:grid-cols-4">
+                            <div>
+                                <label class="text-[11px] font-semibold text-slate-600">Tipo de servico</label>
+                                <select
+                                    name="servico"
+                                    class="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500">
+                                    <option value="">Todos os servicos</option>
+                                    @foreach($servicos as $servico)
+                                        <option value="{{ $servico->id }}" @selected((string) $servico->id === request('servico'))>
+                                            {{ $servico->nome }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="text-[11px] font-semibold text-slate-600">Data inicio</label>
+                                <input
+                                    type="date"
+                                    name="data_inicio"
+                                    value="{{ request('data_inicio') }}"
+                                    class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500">
+                            </div>
+
+                            <div>
+                                <label class="text-[11px] font-semibold text-slate-600">Data fim</label>
+                                <input
+                                    type="date"
+                                    name="data_fim"
+                                    value="{{ request('data_fim') }}"
+                                    class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500">
+                            </div>
+
+                            <div class="flex items-end gap-2 md:justify-end">
+                                <button
+                                    type="submit"
+                                    class="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition">
+                                    Filtrar
+                                </button>
+                                <a
+                                    href="{{ route('cliente.arquivos.index') }}"
+                                    class="inline-flex items-center justify-center px-4 py-2 rounded-xl border border-slate-300 text-slate-700 text-sm font-semibold hover:bg-slate-50 transition">
+                                    Limpar
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+
+                    @if(($funcionariosComArquivos ?? collect())->isNotEmpty())
+                        <form method="POST" action="{{ route('cliente.arquivos.download-por-funcionario') }}" class="rounded-xl border border-slate-200 bg-slate-50/70 p-3 md:p-4 grid gap-3 md:grid-cols-4 items-end">
                             @csrf
                             <div class="md:col-span-3">
-                                <label class="text-xs font-semibold text-slate-600">Funcionário</label>
+                                <label class="text-xs font-semibold text-slate-700">Baixar todos por funcionario</label>
                                 <select
                                     name="funcionario_id"
-                                    class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400"
-                                >
-                                    <option value="0">Todos os funcionários</option>
+                                    class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500">
+                                    <option value="0">Todos os funcionarios</option>
                                     @foreach($funcionariosComArquivos as $func)
                                         <option value="{{ $func->id }}">{{ $func->nome }}</option>
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="flex md:justify-end">
+                            <div class="md:justify-self-end">
                                 <button
                                     type="submit"
-                                    class="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition"
-                                >
+                                    class="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition">
                                     Baixar ZIP
                                 </button>
                             </div>
                         </form>
-                    </div>
-                @endif
+                    @endif
 
-                <div class="rounded-xl border border-slate-200 bg-white px-4 py-4">
-                    <p class="text-xs font-semibold text-slate-700 mb-2">Filtrar listagem</p>
-                    <form method="GET" action="{{ route('cliente.arquivos.index') }}" class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
-                        <div>
-                            <label class="text-xs font-semibold text-slate-600">Data início</label>
-                            <input
-                                type="date"
-                                name="data_inicio"
-                                value="{{ request('data_inicio') }}"
-                                class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400"
-                            >
-                        </div>
+                    <form method="POST" action="{{ route('cliente.arquivos.download-selecionados') }}">
+                        @csrf
 
-                        <div>
-                            <label class="text-xs font-semibold text-slate-600">Data fim</label>
-                            <input
-                                type="date"
-                                name="data_fim"
-                                value="{{ request('data_fim') }}"
-                                class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400"
-                            >
-                        </div>
+                        @if($arquivos->count())
+                            <div class="mb-3 flex items-center justify-between">
+                                <label class="inline-flex items-center gap-2 text-xs text-slate-700">
+                                    <input type="checkbox" class="rounded border-slate-300 js-check-all-arquivos">
+                                    Selecionar todos os cards
+                                </label>
+                                <span class="text-xs text-slate-500">Marque os arquivos para baixar em um unico ZIP</span>
+                            </div>
 
-                        <div>
-                            <label class="text-xs font-semibold text-slate-600">Tipo de serviço</label>
-                            <select
-                                name="servico"
-                                class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400"
-                            >
-                                <option value="">Todos</option>
-                                @foreach($servicos as $servico)
-                                    <option value="{{ $servico->id }}" @selected((string) $servico->id === request('servico'))>
-                                        {{ $servico->nome }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
+                            <div class="max-h-[62vh] overflow-y-auto pr-1">
+                                <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                                    @foreach($arquivos as $tarefa)
+                                        @php
+                                            $coluna = $tarefa->coluna;
+                                            $servicoLabel = $tarefa->servico->nome ?? 'Servico';
+                                            $isTreinamentoNr = $servicoLabel === 'Treinamentos NRs';
+                                            $statusLabel = $coluna?->nome ?? 'Finalizado';
+                                            $badge = ($coluna && $coluna->finaliza)
+                                                ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                                                : 'bg-slate-100 text-slate-700 border-slate-200';
+                                            $certificadosTreinamento = ($tarefa->anexos ?? collect())->filter(function ($anexo) {
+                                                return mb_strtolower((string) ($anexo->servico ?? '')) === 'certificado_treinamento';
+                                            });
+                                            $totalCertificados = $certificadosTreinamento->count();
+                                            $treinamentoPayload = (array) ($tarefa->treinamentoNrDetalhes->treinamentos ?? []);
+                                            $treinamentoModo = (string) ($treinamentoPayload['modo'] ?? '');
+                                            $treinamentoCodigos = [];
+                                            if ($treinamentoModo === 'pacote') {
+                                                $treinamentoCodigos = array_values((array) data_get($treinamentoPayload, 'pacote.codigos', []));
+                                            } else {
+                                                $treinamentoCodigos = array_values((array) ($treinamentoPayload['codigos'] ?? $treinamentoPayload));
+                                            }
+                                            $treinamentoCodigos = array_values(array_filter(array_map('strval', $treinamentoCodigos)));
+                                            $treinamentoPacoteNome = (string) data_get($treinamentoPayload, 'pacote.nome', '');
+                                            $treinamentoParticipantes = $tarefa->treinamentoNr
+                                                ->pluck('funcionario.nome')
+                                                ->filter()
+                                                ->values()
+                                                ->all();
+                                            $tituloCard = $tarefa->titulo ?? 'Tarefa';
+                                            if ($isTreinamentoNr && !empty($treinamentoParticipantes)) {
+                                                $primeiroParticipante = (string) ($treinamentoParticipantes[0] ?? '');
+                                                $participantesExtras = max(count($treinamentoParticipantes) - 1, 0);
+                                                if ($primeiroParticipante !== '') {
+                                                    $tituloCard = 'Treinamento NR - ' . $primeiroParticipante;
+                                                    if ($participantesExtras > 0) {
+                                                        $tituloCard .= ' +' . $participantesExtras;
+                                                    }
+                                                }
+                                            }
+                                            $mostrarParticipantesTreinamento = !empty($treinamentoParticipantes);
+                                            if ($mostrarParticipantesTreinamento && count($treinamentoParticipantes) === 1) {
+                                                $participanteUnico = (string) ($treinamentoParticipantes[0] ?? '');
+                                                $tituloAtual = mb_strtolower((string) ($tarefa->titulo ?? ''));
+                                                $mostrarParticipantesTreinamento = $participanteUnico === ''
+                                                    || !str_contains($tituloAtual, mb_strtolower($participanteUnico));
+                                            }
+                                        @endphp
 
-                        <div class="md:col-span-3 flex gap-2 md:justify-end">
-                            <button
-                                type="submit"
-                                class="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition"
-                            >
-                                Filtrar
-                            </button>
-                            <a
-                                href="{{ route('cliente.arquivos.index') }}"
-                                class="inline-flex items-center justify-center px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-sm font-semibold hover:bg-slate-100 transition"
-                            >
-                                Limpar
-                            </a>
-                        </div>
+                                        <article class="bg-white border border-slate-200 rounded-2xl px-4 py-3 shadow-sm">
+                                            <div class="flex items-start justify-between gap-2 mb-2">
+                                                <label class="inline-flex items-center gap-2 text-xs text-slate-600">
+                                                    <input
+                                                        type="checkbox"
+                                                        name="tarefa_ids[]"
+                                                        value="{{ $tarefa->id }}"
+                                                        class="rounded border-slate-300 js-check-item-arquivo">
+                                                    Selecionar
+                                                </label>
+
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full border text-[11px] font-semibold {{ $badge }}">
+                                                    {{ $statusLabel }}
+                                                </span>
+                                            </div>
+
+                                            <p class="text-sm font-semibold text-slate-900">
+                                                {{ $tituloCard }}
+                                            </p>
+                                            @unless($isTreinamentoNr)
+                                                <p class="text-[11px] text-slate-500 mt-0.5">
+                                                    {{ $servicoLabel }}
+                                                </p>
+                                            @endunless
+
+                                            <div class="mt-2 space-y-1 text-[11px] text-slate-600">
+                                                <p>
+                                                    <span class="font-medium text-slate-700">Finalizado em:</span>
+                                                    {{ optional($tarefa->finalizado_em)->format('d/m/Y H:i') ?? '-' }}
+                                                </p>
+                                                @if($isTreinamentoNr)
+                                                    <p>
+                                                        <span class="font-medium text-slate-700">Treinamento:</span>
+                                                        {{ $treinamentoModo === 'pacote' ? 'Pacote' : 'Avulso' }}
+                                                    </p>
+                                                    @if(!empty($treinamentoPacoteNome))
+                                                        <p>
+                                                            <span class="font-medium text-slate-700">Pacote:</span>
+                                                            {{ $treinamentoPacoteNome }}
+                                                        </p>
+                                                    @endif
+                                                    @if(!empty($treinamentoCodigos))
+                                                        <p>
+                                                            <span class="font-medium text-slate-700">NRs:</span>
+                                                            {{ implode(', ', $treinamentoCodigos) }}
+                                                        </p>
+                                                    @endif
+                                                    @if($mostrarParticipantesTreinamento)
+                                                        <p>
+                                                            <span class="font-medium text-slate-700">Participantes:</span>
+                                                            {{ implode(', ', $treinamentoParticipantes) }}
+                                                        </p>
+                                                    @endif
+                                                @endif
+                                            </div>
+
+                                            <div class="mt-3 flex flex-wrap gap-2">
+                                                @if($tarefa->documento_link && !($servicoLabel === 'ASO' && $totalCertificados > 0))
+                                                    <a href="{{ $tarefa->documento_link }}"
+                                                       class="inline-flex items-center px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 transition"
+                                                       target="_blank" rel="noopener">
+                                                        {{ $servicoLabel }}
+                                                    </a>
+                                                @endif
+
+                                                @if($totalCertificados > 0 && $servicoLabel === 'ASO')
+                                                    <button
+                                                        type="submit"
+                                                        name="tarefa_ids[]"
+                                                        value="{{ $tarefa->id }}"
+                                                        formaction="{{ route('cliente.arquivos.download-selecionados') }}?include_anexos=1"
+                                                        class="inline-flex items-center px-3 py-1.5 rounded-lg border border-indigo-200 text-indigo-700 text-xs font-semibold hover:bg-indigo-50">
+                                                        ASO+CERTIFICADOS
+                                                    </button>
+                                                @else
+                                                    @foreach($certificadosTreinamento as $certificado)
+                                                        <a href="{{ $certificado->url }}"
+                                                           class="inline-flex items-center px-3 py-1.5 rounded-lg border border-indigo-200 text-indigo-700 text-xs font-semibold hover:bg-indigo-50"
+                                                           target="_blank" rel="noopener">
+                                                            {{ $servicoLabel }} + Certificado
+                                                        </a>
+                                                    @endforeach
+                                                @endif
+
+                                                @if(!$tarefa->documento_link && $certificadosTreinamento->isEmpty())
+                                                    <span class="text-xs text-slate-400">Sem documento disponivel</span>
+                                                @endif
+                                            </div>
+                                        </article>
+                                    @endforeach
+                                </div>
+                            </div>
+
+                            <div class="mt-4 flex items-center justify-end gap-2">
+                                <button
+                                    type="submit"
+                                    formaction="{{ route('cliente.arquivos.download-por-funcionario') }}"
+                                    name="funcionario_id"
+                                    value="0"
+                                    class="inline-flex items-center justify-center px-4 py-2 rounded-xl border border-indigo-300 bg-white text-indigo-700 text-sm font-semibold hover:bg-indigo-50 transition">
+                                    Baixar tudo em ZIP
+                                </button>
+                                <button
+                                    type="submit"
+                                    class="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition">
+                                    Baixar selecionados
+                                </button>
+                            </div>
+                        @else
+                            <div class="mt-2 rounded-2xl border border-dashed border-slate-300 bg-slate-50/60 px-4 py-6 text-center">
+                                <p class="text-xs md:text-sm text-slate-500">
+                                    Nenhum documento disponivel ate o momento.
+                                </p>
+                            </div>
+                        @endif
                     </form>
                 </div>
-            </div>
-
-            <div class="overflow-x-auto bg-white">
-                <form method="POST" action="{{ route('cliente.arquivos.download-selecionados') }}">
-                    @csrf
-                    <table class="min-w-full text-sm">
-                        <thead class="bg-slate-100/80 text-slate-700">
-                            <tr>
-                                <th class="px-5 py-3 text-left font-semibold w-10">
-                                    <input type="checkbox" class="rounded border-slate-300 js-check-all-arquivos">
-                                </th>
-                            <th class="px-5 py-3 text-left font-semibold">Serviço</th>
-                            <th class="px-5 py-3 text-left font-semibold">Tarefa</th>
-                            <th class="px-5 py-3 text-left font-semibold">Finalizado em</th>
-                            <th class="px-5 py-3 text-left font-semibold">Status</th>
-                            <th class="px-5 py-3 text-center font-semibold">Documento</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        @forelse($arquivos as $tarefa)
-                            @php
-                                $coluna = $tarefa->coluna;
-                                $statusLabel = $coluna?->nome ?? 'Finalizado';
-                                $badge = ($coluna && $coluna->finaliza)
-                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
-                                    : 'bg-slate-100 text-slate-700 border-slate-200';
-                                $certificadosTreinamento = ($tarefa->anexos ?? collect())->filter(function ($anexo) {
-                                    return mb_strtolower((string) ($anexo->servico ?? '')) === 'certificado_treinamento';
-                                });
-                            @endphp
-                            <tr class="hover:bg-slate-50/80 transition">
-                                    <td class="px-5 py-3">
-                                        <input type="checkbox" name="tarefa_ids[]" value="{{ $tarefa->id }}" class="rounded border-slate-300 js-check-item-arquivo">
-                                    </td>
-                                <td class="px-5 py-3 text-slate-800">
-                                    {{ $tarefa->servico->nome ?? 'Serviço' }}
-                                </td>
-                                <td class="px-5 py-3 text-slate-700">
-                                    {{ $tarefa->titulo ?? 'Tarefa' }}
-                                </td>
-                                <td class="px-5 py-3 text-slate-700">
-                                    {{ optional($tarefa->finalizado_em)->format('d/m/Y H:i') ?? '-' }}
-                                </td>
-                                <td class="px-5 py-3">
-                                    <span class="inline-flex items-center px-3 py-1 rounded-full border text-xs font-semibold {{ $badge }}">
-                                        {{ $statusLabel }}
-                                    </span>
-                                </td>
-                                <td class="px-5 py-3 text-center">
-                                    @if(!$tarefa->documento_link && $certificadosTreinamento->isEmpty())
-                                        <span class="text-xs text-slate-400">Indisponível</span>
-                                    @else
-                                        <div class="flex flex-col items-center gap-1">
-                                            @if($tarefa->documento_link)
-                                                <a href="{{ $tarefa->documento_link }}"
-                                                   class="inline-flex items-center px-3 py-2 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 transition"
-                                                   target="_blank" rel="noopener">
-                                                    ASO
-                                                </a>
-                                            @endif
-                                            @foreach($certificadosTreinamento as $certificado)
-                                                <a href="{{ $certificado->url }}"
-                                                   class="px-3 py-1.5 rounded-lg border border-indigo-200 text-indigo-700 text-xs font-semibold hover:bg-indigo-50"
-                                                   target="_blank" rel="noopener">
-                                                    Certificado {{ $loop->iteration }}
-                                                </a>
-                                            @endforeach
-                                        </div>
-                                        @endif
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="6" class="px-5 py-6 text-center text-slate-500">
-                                        Nenhum documento disponível até o momento.
-                                    </td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                    <div class="px-5 py-4 border-t border-slate-200 bg-slate-50/60 flex items-center justify-between gap-3">
-                        <span class="text-xs text-slate-600">Marque os arquivos desejados para baixar em um único ZIP</span>
-                        <button type="submit"
-                                class="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition">
-                            Baixar selecionados
-                        </button>
-                    </div>
-                </form>
             </div>
         </div>
     </div>

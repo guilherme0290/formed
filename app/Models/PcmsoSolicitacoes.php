@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Helpers\S3Helper;
 use Illuminate\Database\Eloquent\Model;
 
 class PcmsoSolicitacoes extends Model
@@ -59,5 +60,14 @@ class PcmsoSolicitacoes extends Model
         $this->attributes['obra_cnpj_contratante'] = $value
             ? preg_replace('/\D+/', '', $value)
             : null;
+    }
+
+    public function getPgrArquivoUrlAttribute(): ?string
+    {
+        if (!$this->pgr_arquivo_path) {
+            return null;
+        }
+
+        return S3Helper::temporaryUrl($this->pgr_arquivo_path, 10);
     }
 }

@@ -123,7 +123,13 @@ class ArquivoController extends Controller
                         $aq->whereRaw('LOWER(COALESCE(servico, "")) = ?', ['certificado_treinamento']);
                     });
             })
-            ->with(['servico', 'coluna', 'anexos']);
+            ->with([
+                'servico',
+                'coluna',
+                'anexos',
+                'treinamentoNrDetalhes',
+                'treinamentoNr.funcionario:id,nome',
+            ]);
 
         if ($request->filled('q')) {
             $q = trim((string) $request->input('q'));
@@ -140,6 +146,10 @@ class ArquivoController extends Controller
 
         if ($request->filled('servico')) {
             $arquivosQuery->where('servico_id', (int) $request->input('servico'));
+        }
+
+        if ($request->filled('funcionario_id')) {
+            $arquivosQuery->where('funcionario_id', (int) $request->input('funcionario_id'));
         }
 
         $arquivos = $arquivosQuery
@@ -210,9 +220,10 @@ class ArquivoController extends Controller
 
         $cliente = Cliente::findOrFail($clienteId);
         $tarefaIds = (array) $request->input('tarefa_ids', []);
+        $includeAnexos = $request->boolean('include_anexos');
 
         try {
-            $zipPath = $zipService->gerarZipPorIds($cliente, $tarefaIds, null, false);
+            $zipPath = $zipService->gerarZipPorIds($cliente, $tarefaIds, null, $includeAnexos);
         } catch (\RuntimeException $e) {
             return back()->with('error', $e->getMessage());
         }
@@ -253,8 +264,5 @@ class ArquivoController extends Controller
         return response()->download($zipPath, $zipName)->deleteFileAfterSend(true);
     }
 }
-
-
-
 
 

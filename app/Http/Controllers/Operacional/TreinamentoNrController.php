@@ -21,6 +21,7 @@ use App\Services\TempoTarefaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
 class TreinamentoNrController extends Controller
@@ -69,12 +70,12 @@ class TreinamentoNrController extends Controller
         $usuario   = Auth::user();
         $empresaId = $usuario->empresa_id;
 
-        // Validação única
         $treinamentosDisponiveis = $this->getTreinamentosDisponiveis($empresaId, $cliente);
         $pacotesTreinamentos = $this->getPacotesTreinamentos($empresaId, $cliente, $this->contratoAtivo($cliente));
         $pacotesIds = collect($pacotesTreinamentos)->pluck('contrato_item_id')->filter()->values()->all();
         $treinamentosCodigos = $treinamentosDisponiveis->pluck('codigo')->filter()->values()->all();
         $unidadesPermitidasIds = $this->unidadesPermitidasIds($empresaId, $cliente->id);
+
         if (empty($treinamentosCodigos) && empty($pacotesIds)) {
             return back()
                 ->withErrors(['treinamentos' => 'Nenhum treinamento contratado para este cliente.'])
@@ -88,25 +89,44 @@ class TreinamentoNrController extends Controller
             'treinamentos'   => ['required_if:treinamento_modo,avulso', 'array', 'min:1'],
             'treinamentos.*' => ['string', Rule::in($treinamentosCodigos)],
             'pacote_id' => ['required_if:treinamento_modo,pacote', 'nullable', 'integer', Rule::in($pacotesIds)],
-
             'local_tipo' => ['required', 'in:clinica,empresa'],
             'unidade_id' => ['required_if:local_tipo,clinica', 'nullable', 'integer', Rule::in($unidadesPermitidasIds)],
         ], [
             'funcionarios.required' => 'Selecione pelo menos um participante.',
+            'funcionarios.min' => 'Selecione pelo menos um participante.',
+            'funcionarios.array' => 'Selecione pelo menos um participante.',
             'treinamentos.required' => 'Selecione pelo menos um treinamento.',
+            'treinamentos.min' => 'Selecione pelo menos um treinamento.',
+            'treinamentos.array' => 'Selecione pelo menos um treinamento.',
+            'treinamento_modo.required' => 'Selecione o tipo de treinamento: avulso ou pacote.',
+            'treinamento_modo.in' => 'Selecione um tipo de treinamento válido.',
+            'pacote_id.required_if' => 'Selecione um pacote de treinamentos.',
+            'pacote_id.in' => 'Selecione um pacote de treinamentos válido.',
+            'local_tipo.required' => 'Selecione onde o treinamento será realizado.',
+            'local_tipo.in' => 'Selecione um local válido para o treinamento.',
+            'unidade_id.required_if' => 'Selecione a unidade credenciada quando o local for Na Clínica.',
+            'unidade_id.in' => 'Selecione uma unidade credenciada válida.',
+            'unidade_id.integer' => 'Selecione uma unidade credenciada válida.',
         ]);
 
-        // Coluna inicial do Kanban (igual você usa em outros serviços)
         $colunaInicial = KanbanColuna::where('empresa_id', $empresaId)
             ->where('slug', 'pendente')
             ->first()
             ?? KanbanColuna::where('empresa_id', $empresaId)->orderBy('ordem')->first();
 
-        // Serviço Treinamentos NR
         $servicoTreinamentosNr = Servico::where('empresa_id', $empresaId)
             ->where('nome', 'Treinamentos NRs')
             ->first();
-        $tipoLabel             = 'Treinamentos de NRs';
+        $tipoLabel = 'Treinamentos de NRs';
+        $tarefasCriadas = 0;
+
+        Log::info('treinamentos_nr.store.payload', [
+            'cliente_id' => (int) $cliente->id,
+            'modo' => $data['treinamento_modo'] ?? null,
+            'funcionarios' => array_values((array) ($data['funcionarios'] ?? [])),
+            'pacote_id' => $data['pacote_id'] ?? null,
+            'treinamentos' => array_values((array) ($data['treinamentos'] ?? [])),
+        ]);
 
         DB::transaction(function () use (
             $data,
@@ -116,14 +136,78 @@ class TreinamentoNrController extends Controller
             $colunaInicial,
             $servicoTreinamentosNr,
             $tipoLabel,
-            $pacotesTreinamentos
+            $pacotesTreinamentos,
+            &$tarefasCriadas
         ) {
             $unidadeNome = null;
             if ($data['local_tipo'] === 'clinica' && !empty($data['unidade_id'])) {
-                $unidadeNome = UnidadeClinica::query()->where('empresa_id', $empresaId)->find($data['unidade_id'])?->nome;
+                $unidadeNome = UnidadeClinica::query()
+                    ->where('empresa_id', $empresaId)
+                    ->find($data['unidade_id'])?->nome;
             }
 
-            // Cria a tarefa no padrão das demais
+            $treinamentosPayload = $this->buildTreinamentosPayload($data, $pacotesTreinamentos);
+            $funcionariosIds = array_values(array_unique(array_map('intval', (array) ($data['funcionarios'] ?? []))));
+            $isPacote = ($data['treinamento_modo'] ?? null) === 'pacote';
+
+            Log::info('treinamentos_nr.store.resolved', [
+                'cliente_id' => (int) $cliente->id,
+                'is_pacote' => $isPacote,
+                'funcionarios_count' => count($funcionariosIds),
+                'funcionarios_ids' => $funcionariosIds,
+            ]);
+
+            // Regra solicitada: pacote com vários participantes gera 1 tarefa por participante.
+            if ($isPacote && count($funcionariosIds) > 1) {
+                $funcionariosMap = Funcionario::query()
+                    ->whereIn('id', $funcionariosIds)
+                    ->get()
+                    ->keyBy('id');
+
+                foreach ($funcionariosIds as $funcionarioId) {
+                    $inicioPrevisto = now();
+                    $fimPrevisto = app(TempoTarefaService::class)
+                        ->calcularFimPrevisto($inicioPrevisto, $empresaId, optional($servicoTreinamentosNr)->id);
+
+                    $funcionarioNome = $funcionariosMap->get($funcionarioId)?->nome;
+
+                    $tarefa = Tarefa::create([
+                        'empresa_id'      => $empresaId,
+                        'cliente_id'      => $cliente->id,
+                        'responsavel_id'  => $usuario->id,
+                        'coluna_id'       => optional($colunaInicial)->id,
+                        'servico_id'      => optional($servicoTreinamentosNr)->id,
+                        'funcionario_id'  => $funcionarioId ?: null,
+                        'titulo'          => $funcionarioNome
+                            ? "Treinamento NR - {$funcionarioNome}"
+                            : "Treinamento NR",
+                        'descricao'       => "Treinamento NR - {$tipoLabel} · Local: {$data['local_tipo']}"
+                            . ($data['local_tipo'] === 'clinica'
+                                ? " · Unidade: " . ($unidadeNome ?: '—')
+                                : ' · In Company'),
+                        'inicio_previsto' => $inicioPrevisto,
+                        'fim_previsto'    => $fimPrevisto,
+                    ]);
+
+                    TreinamentoNR::create([
+                        'tarefa_id'      => $tarefa->id,
+                        'funcionario_id' => $funcionarioId,
+                    ]);
+
+                    TreinamentoNrDetalhes::create([
+                        'tarefa_id'  => $tarefa->id,
+                        'local_tipo' => $data['local_tipo'],
+                        'unidade_id' => $data['unidade_id'] ?? null,
+                        'treinamentos' => $treinamentosPayload,
+                    ]);
+
+                    $tarefasCriadas++;
+                }
+
+                return;
+            }
+
+            // Fluxo atual para avulso (ou pacote com 1 participante): 1 tarefa com os participantes.
             $inicioPrevisto = now();
             $fimPrevisto = app(TempoTarefaService::class)
                 ->calcularFimPrevisto($inicioPrevisto, $empresaId, optional($servicoTreinamentosNr)->id);
@@ -143,16 +227,12 @@ class TreinamentoNrController extends Controller
                 'fim_previsto'    => $fimPrevisto,
             ]);
 
-            // Participantes
-            foreach ($data['funcionarios'] as $funcionarioId) {
+            foreach ($funcionariosIds as $funcionarioId) {
                 TreinamentoNR::create([
                     'tarefa_id'      => $tarefa->id,
                     'funcionario_id' => $funcionarioId,
                 ]);
             }
-
-            // Detalhes de local/unidade
-            $treinamentosPayload = $this->buildTreinamentosPayload($data, $pacotesTreinamentos);
 
             TreinamentoNrDetalhes::create([
                 'tarefa_id'  => $tarefa->id,
@@ -160,17 +240,36 @@ class TreinamentoNrController extends Controller
                 'unidade_id' => $data['unidade_id'] ?? null,
                 'treinamentos' => $treinamentosPayload,
             ]);
+
+            $tarefasCriadas = 1;
         });
 
         if (method_exists($usuario, 'isCliente') && $usuario->isCliente()) {
+            Log::info('treinamentos_nr.store.result', [
+                'cliente_id' => (int) $cliente->id,
+                'tarefas_criadas' => (int) $tarefasCriadas,
+            ]);
+            $mensagem = $tarefasCriadas > 1
+                ? "Solicitações de Treinamento de NRs criadas com sucesso ({$tarefasCriadas} tarefas) e enviadas para análise."
+                : 'Solicitação de Treinamento de NRs criada com sucesso e enviada para análise.';
+
             return redirect()
                 ->route('cliente.agendamentos')
-                ->with('ok', 'Solicitação de Treinamento de NRs criada com sucesso e enviada para análise.');
+                ->with('ok', $mensagem);
         }
+
+        $mensagem = $tarefasCriadas > 1
+            ? "Tarefas de Treinamento de NRs criadas com sucesso ({$tarefasCriadas} tarefas)."
+            : 'Tarefa de Treinamento de NRs criada com sucesso.';
+
+        Log::info('treinamentos_nr.store.result', [
+            'cliente_id' => (int) $cliente->id,
+            'tarefas_criadas' => (int) $tarefasCriadas,
+        ]);
 
         return redirect()
             ->route('operacional.painel')
-            ->with('ok', 'Tarefa de Treinamento de NRs criada com sucesso.');
+            ->with('ok', $mensagem);
     }
 
     public function storeFuncionario(Cliente $cliente, Request $request)
@@ -300,7 +399,20 @@ class TreinamentoNrController extends Controller
             'unidade_id' => ['required_if:local_tipo,clinica', 'nullable', 'integer', Rule::in($unidadesPermitidasIds)],
         ], [
             'funcionarios.required' => 'Selecione pelo menos um participante.',
+            'funcionarios.min' => 'Selecione pelo menos um participante.',
+            'funcionarios.array' => 'Selecione pelo menos um participante.',
             'treinamentos.required' => 'Selecione pelo menos um treinamento.',
+            'treinamentos.min' => 'Selecione pelo menos um treinamento.',
+            'treinamentos.array' => 'Selecione pelo menos um treinamento.',
+            'treinamento_modo.required' => 'Selecione o tipo de treinamento: avulso ou pacote.',
+            'treinamento_modo.in' => 'Selecione um tipo de treinamento válido.',
+            'pacote_id.required_if' => 'Selecione um pacote de treinamentos.',
+            'pacote_id.in' => 'Selecione um pacote de treinamentos válido.',
+            'local_tipo.required' => 'Selecione onde o treinamento será realizado.',
+            'local_tipo.in' => 'Selecione um local válido para o treinamento.',
+            'unidade_id.required_if' => 'Selecione a unidade credenciada quando o local for Na Clínica.',
+            'unidade_id.in' => 'Selecione uma unidade credenciada válida.',
+            'unidade_id.integer' => 'Selecione uma unidade credenciada válida.',
         ]);
 
         DB::transaction(function () use ($data, $tarefa, $usuario, $pacotesTreinamentos) {
@@ -309,6 +421,106 @@ class TreinamentoNrController extends Controller
                 $unidadeNome = UnidadeClinica::query()
                     ->where('empresa_id', $tarefa->empresa_id)
                     ->find($data['unidade_id'])?->nome;
+            }
+
+            $funcionariosIds = array_values(array_unique(array_map('intval', (array) ($data['funcionarios'] ?? []))));
+            $isPacote = ($data['treinamento_modo'] ?? null) === 'pacote';
+            $treinamentosPayload = $this->buildTreinamentosPayload($data, $pacotesTreinamentos);
+
+            // Se editar para pacote com múltiplos participantes:
+            // mantém a tarefa atual para o primeiro e cria novas para os demais.
+            if ($isPacote && count($funcionariosIds) > 1) {
+                $funcionariosMap = Funcionario::query()
+                    ->whereIn('id', $funcionariosIds)
+                    ->get()
+                    ->keyBy('id');
+
+                $primeiroFuncionarioId = (int) array_shift($funcionariosIds);
+                $primeiroNome = $funcionariosMap->get($primeiroFuncionarioId)?->nome;
+
+                $tarefa->update([
+                    'funcionario_id' => $primeiroFuncionarioId ?: null,
+                    'titulo' => $primeiroNome
+                        ? "Treinamento NR - {$primeiroNome}"
+                        : "Treinamento NR",
+                    'descricao' => "Treinamento NR · Local: {$data['local_tipo']}" .
+                        ($data['local_tipo'] === 'clinica'
+                            ? " · Unidade: " . ($unidadeNome ?: '—')
+                            : ' · In Company'),
+                ]);
+
+                $detalhesAtual = TreinamentoNrDetalhes::firstOrNew([
+                    'tarefa_id' => $tarefa->id,
+                ]);
+                $detalhesAtual->local_tipo = $data['local_tipo'];
+                $detalhesAtual->unidade_id = $data['local_tipo'] === 'clinica'
+                    ? ($data['unidade_id'] ?? null)
+                    : null;
+                $detalhesAtual->treinamentos = $treinamentosPayload;
+                $detalhesAtual->save();
+
+                TreinamentoNR::where('tarefa_id', $tarefa->id)->delete();
+                TreinamentoNR::create([
+                    'tarefa_id' => $tarefa->id,
+                    'funcionario_id' => $primeiroFuncionarioId,
+                ]);
+
+                foreach ($funcionariosIds as $funcionarioId) {
+                    $inicioPrevisto = $tarefa->inicio_previsto ?? now();
+                    $fimPrevisto = app(TempoTarefaService::class)
+                        ->calcularFimPrevisto($inicioPrevisto, $tarefa->empresa_id, $tarefa->servico_id);
+                    $nome = $funcionariosMap->get($funcionarioId)?->nome;
+
+                    $novaTarefa = Tarefa::create([
+                        'empresa_id' => $tarefa->empresa_id,
+                        'cliente_id' => $tarefa->cliente_id,
+                        'responsavel_id' => $tarefa->responsavel_id,
+                        'coluna_id' => $tarefa->coluna_id,
+                        'servico_id' => $tarefa->servico_id,
+                        'funcionario_id' => $funcionarioId ?: null,
+                        'titulo' => $nome ? "Treinamento NR - {$nome}" : ($tarefa->titulo ?: 'Treinamento NR'),
+                        'descricao' => "Treinamento NR · Local: {$data['local_tipo']}" .
+                            ($data['local_tipo'] === 'clinica'
+                                ? " · Unidade: " . ($unidadeNome ?: '—')
+                                : ' · In Company'),
+                        'inicio_previsto' => $inicioPrevisto,
+                        'fim_previsto' => $fimPrevisto,
+                    ]);
+
+                    TreinamentoNR::create([
+                        'tarefa_id' => $novaTarefa->id,
+                        'funcionario_id' => $funcionarioId,
+                    ]);
+
+                    TreinamentoNrDetalhes::create([
+                        'tarefa_id' => $novaTarefa->id,
+                        'local_tipo' => $data['local_tipo'],
+                        'unidade_id' => $data['local_tipo'] === 'clinica'
+                            ? ($data['unidade_id'] ?? null)
+                            : null,
+                        'treinamentos' => $treinamentosPayload,
+                    ]);
+
+                    TarefaLog::create([
+                        'tarefa_id' => $novaTarefa->id,
+                        'user_id' => $usuario->id,
+                        'de_coluna_id' => null,
+                        'para_coluna_id' => $novaTarefa->coluna_id,
+                        'acao' => 'criado',
+                        'observacao' => 'Treinamento NRs criado por desmembramento de pacote com múltiplos participantes.',
+                    ]);
+                }
+
+                TarefaLog::create([
+                    'tarefa_id'      => $tarefa->id,
+                    'user_id'        => $usuario->id,
+                    'de_coluna_id'   => $tarefa->coluna_id,
+                    'para_coluna_id' => $tarefa->coluna_id,
+                    'acao'           => 'atualizado',
+                    'observacao'     => 'Treinamento NRs desmembrado em tarefas por participante (modo pacote).',
+                ]);
+
+                return;
             }
 
             // Atualiza / cria detalhes de local
@@ -320,7 +532,7 @@ class TreinamentoNrController extends Controller
             $detalhes->unidade_id = $data['local_tipo'] === 'clinica'
                 ? ($data['unidade_id'] ?? null)
                 : null;
-            $detalhes->treinamentos = $this->buildTreinamentosPayload($data, $pacotesTreinamentos);
+            $detalhes->treinamentos = $treinamentosPayload;
             $detalhes->save();
 
             // Atualiza descrição da tarefa (opcional, mas útil)
@@ -334,7 +546,7 @@ class TreinamentoNrController extends Controller
             // Atualiza participantes (remove todos e cria de novo)
             TreinamentoNR::where('tarefa_id', $tarefa->id)->delete();
 
-            foreach ($data['funcionarios'] as $funcionarioId) {
+            foreach ($funcionariosIds as $funcionarioId) {
                 TreinamentoNR::create([
                     'tarefa_id'      => $tarefa->id,
                     'funcionario_id' => $funcionarioId,
@@ -679,4 +891,3 @@ class TreinamentoNrController extends Controller
             ->all();
     }
 }
-

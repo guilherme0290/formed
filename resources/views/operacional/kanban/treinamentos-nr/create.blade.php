@@ -6,6 +6,7 @@
 @section('content')
     @php
         $origem = request()->query('origem');
+        $allowCreateFuncao = $origem === 'cliente';
     @endphp
 
     <div class="w-full px-2 sm:px-3 md:px-4 xl:px-5 py-4 md:py-6">
@@ -40,21 +41,11 @@
                 @endif
                 <input type="hidden" name="origem" value="{{ $origem }}">
 
-                {{-- Erros --}}
-                @if ($errors->any())
-                    <div class="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-700">
-                        <ul class="list-disc ms-4">
-                            @foreach($errors->all() as $err)
-                                <li>{{ $err }}</li>
-                            @endforeach
-                        </ul>
-                    </div>
-                @endif
-
                 {{-- 1. Selecione os participantes --}}
                 <section class="space-y-3">
-                    <div class="flex items-center justify-between">
-                        <h2 class="text-sm font-semibold text-slate-800">1. Selecione os Participantes</h2>
+                    <div class="rounded-2xl border border-indigo-200 bg-indigo-50/40 shadow-inner overflow-hidden">
+                    <div class="px-4 py-3 border-b border-indigo-200 bg-indigo-100/60 flex items-center justify-between gap-3">
+                        <h2 class="text-sm font-semibold text-indigo-900">1. Selecione os Participantes</h2>
 
                         <button type="button"
                                 id="btn-novo-funcionario-toggle"
@@ -62,10 +53,11 @@
                             + Cadastrar Novo
                         </button>
                     </div>
+                    <div class="p-4 md:p-5 space-y-4">
 
                     {{-- Card de novo funcionário --}}
                     <div id="card-novo-funcionario"
-                         class="hidden rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-3 mb-3">
+                         class="hidden rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-3">
                         <div class="flex items-center justify-between mb-3">
                             <h3 class="text-xs font-semibold text-emerald-800">
                                 Cadastrar Novo Colaborador
@@ -127,7 +119,7 @@
                                     field-id="nf_funcao_id"
                                     label="Função"
                                     help-text="Funções listadas por GHE, pré-configuradas pelo vendedor/comercial."
-                                    :allowCreate="false"
+                                    :allowCreate="$allowCreateFuncao"
                                     :funcoes="$funcoes"
                                     :selected="null"
                                 />
@@ -153,10 +145,11 @@
                         $selecionados = old('funcionarios', $selecionados ?? []);
                     @endphp
 
+                    <div class="rounded-xl border border-indigo-200/80 bg-white/95 p-3 md:p-4 shadow-sm">
                     <div id="lista-funcionarios"
                          class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-80 overflow-y-auto pr-1">
                         @foreach($funcionarios as $func)
-                            <label class="block border rounded-xl px-3 py-3 text-xs cursor-pointer bg-slate-50 hover:bg-slate-100">
+                            <label class="block border border-slate-200 rounded-xl px-3 py-3 text-xs cursor-pointer bg-white hover:bg-indigo-50/40">
                                 <div class="flex items-start gap-2">
                                     <input type="checkbox"
                                            name="funcionarios[]"
@@ -178,10 +171,25 @@
                             </label>
                         @endforeach
                     </div>
+                    </div>
 
-                    <p id="contador-selecionados" class="text-[11px] text-slate-500 mt-1">
-                        Nenhum participante selecionado.
-                    </p>
+                    <div class="rounded-2xl border border-indigo-200 bg-gradient-to-r from-indigo-50 to-white px-4 py-3 shadow-sm">
+                        <p class="text-[11px] uppercase tracking-wide text-indigo-700 font-semibold">Resumo da seleção</p>
+                        <div class="mt-1 flex flex-wrap items-center gap-3">
+                            <span class="inline-flex items-center gap-2 rounded-xl bg-white border border-indigo-100 px-3 py-1.5 text-sm text-slate-700">
+                                <span id="contador-selecionados-badge" class="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-indigo-600 px-1.5 text-[11px] font-bold text-white">0</span>
+                                participantes selecionados
+                            </span>
+                            <span id="contador-selecionados" class="hidden"></span>
+                        </div>
+                    </div>
+                    @error('funcionarios')
+                        <p class="mt-1 text-xs text-red-600">
+                            {{ $message }}
+                        </p>
+                    @enderror
+                    </div>
+                    </div>
                 </section>
 
                 {{-- 2. Selecione os Treinamentos --}}
@@ -272,15 +280,13 @@
                                 @php
                                     $codigoTreinamento = (string) $treinamento->codigo;
                                     $isSelecionado = in_array($codigoTreinamento, $treinamentosSelecionados, true);
-                                    $isFinalizado = in_array(strtoupper(trim($codigoTreinamento)), $treinamentosFinalizados, true);
                                 @endphp
                                 <label class="block border rounded-xl px-3 py-3 text-xs cursor-pointer bg-slate-50 hover:bg-slate-100">
-                                    <div class="flex items-start gap-2 {{ $isFinalizado && !$isSelecionado ? 'opacity-60' : '' }}">
+                                    <div class="flex items-start gap-2">
                                         <input type="checkbox"
                                                name="treinamentos[]"
                                                value="{{ $treinamento->codigo }}"
                                                class="mt-1 h-3 w-3 text-indigo-600 border-slate-300 rounded"
-                                               @disabled($isFinalizado && !$isSelecionado)
                                             @checked(in_array($treinamento->codigo, $treinamentosSelecionados))>
                                         <div>
                                             <p class="font-semibold text-slate-800 text-sm">
@@ -289,11 +295,6 @@
                                             <p class="text-[11px] text-slate-500">
                                                 {{ $treinamento->descricao ?? 'Treinamento NR' }}
                                             </p>
-                                            @if($isFinalizado && !$isSelecionado)
-                                                <p class="mt-1 text-[11px] font-semibold text-amber-700">
-                                                    Serviço finalizado
-                                                </p>
-                                            @endif
                                         </div>
                                     </div>
                                 </label>
@@ -337,6 +338,11 @@
                             </div>
                         </label>
                     </div>
+                    @error('local_tipo')
+                        <p class="mt-1 text-xs text-red-600">
+                            {{ $message }}
+                        </p>
+                    @enderror
 
                     {{-- Na Clínica: select unidade --}}
                     <div id="bloco-clinica" class="space-y-2">
@@ -344,7 +350,7 @@
                             Unidade Credenciada
                         </label>
                         <select name="unidade_id"
-                                class="w-full rounded-xl border-slate-200 text-sm px-3 py-2">
+                                class="w-full rounded-xl text-sm px-3 py-2 {{ $errors->has('unidade_id') ? 'border-red-300 focus:border-red-400 focus:ring-red-200' : 'border-slate-200' }}">
                             <option value="">Escolha uma unidade</option>
                             @foreach($unidades as $unidade)
                                 <option value="{{ $unidade->id }}"
@@ -353,6 +359,11 @@
                                 </option>
                             @endforeach
                         </select>
+                        @error('unidade_id')
+                            <p class="mt-1 text-xs text-red-600">
+                                {{ $message }}
+                            </p>
+                        @enderror
                     </div>
 
                     {{-- In Company: CTA WhatsApp --}}
@@ -472,10 +483,11 @@
                 // ----- Lista de funcionários / contador -----
                 const lista       = document.getElementById('lista-funcionarios');
                 const contadorEl  = document.getElementById('contador-selecionados');
+                const contadorBadgeEl = document.getElementById('contador-selecionados-badge');
 
                 function adicionarFuncionarioNaLista(func) {
                     const label = document.createElement('label');
-                    label.className = 'block border rounded-xl px-3 py-3 text-xs cursor-pointer bg-slate-50 hover:bg-slate-100';
+                    label.className = 'block border border-slate-200 rounded-xl px-3 py-3 text-xs cursor-pointer bg-white hover:bg-indigo-50/40';
                     label.innerHTML = `
                     <div class="flex items-start gap-2">
                         <input type="checkbox"
@@ -501,6 +513,7 @@
 
                 function atualizarContador() {
                     const selecionados = lista.querySelectorAll('input[type="checkbox"]:checked').length;
+                    if (contadorBadgeEl) contadorBadgeEl.textContent = String(selecionados);
                     if (!selecionados) {
                         contadorEl.textContent = 'Nenhum participante selecionado.';
                     } else if (selecionados === 1) {
@@ -583,10 +596,8 @@
                 atualizarLocalUI();
 
                 // Máscara e validação CPF do modal
-                document.addEventListener('DOMContentLoaded', function () {
-                    var cpfInput = document.querySelector('input[name="cpf"]');
-                    if (!cpfInput) return;
-
+                var cpfInput = document.querySelector('input[name="cpf"]');
+                if (cpfInput) {
                     cpfInput.addEventListener('input', function () {
                         var v = cpfInput.value.replace(/\D/g, '');
                         v = v.slice(0, 11);
@@ -616,7 +627,7 @@
                             limparErroCPF(cpfInput);
                         }
                     });
-                });
+                }
 
                 function cpfValido(cpf) {
                     if (!cpf || cpf.length !== 11) return false;
@@ -664,8 +675,6 @@
                     if (erro) erro.remove();
                 }
 
-                });
-                });
             });
         </script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
@@ -743,4 +752,3 @@
 </script>
 @endpush
 @endsection
-

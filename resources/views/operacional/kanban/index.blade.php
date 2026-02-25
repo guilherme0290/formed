@@ -715,9 +715,9 @@
                                         } elseif ($servicoNome === 'PGR') {
                                             $temPgrPcmso = $pgr && !empty($pgr->com_pcms0);
                                             if ($temPgrPcmso) {
-                                                $tituloCard = 'PGR + PCMSO - ' . $clienteNome;
+                                                $tituloCard = 'PCMSO + PGR - ' . $clienteNome;
                                                 $subtituloCard = $pgr->obra_nome ?: 'Obra não informada';
-                                                $badgeLabel = 'PGR + PCMSO';
+                                                $badgeLabel = 'PCMSO + PGR';
                                             } elseif ($pgr && $pgr->obra_nome) {
                                                 $tituloCard    = 'PGR - ' . $pgr->obra_nome;
                                                 $subtituloCard = $clienteNome;
@@ -1780,23 +1780,7 @@
                 if (!telefone) return null;
 
                 const servico = card?.dataset?.servico || 'documento';
-                let links = [];
-                if (arquivoUrl) {
-                    links.push(arquivoUrl);
-                }
-
-                try {
-                    const anexos = JSON.parse(card?.dataset?.anexos || '[]');
-                    anexos.forEach((anexo) => {
-                        if (anexo && anexo.url) {
-                            links.push(anexo.url);
-                        }
-                    });
-                } catch (e) {
-                    // ignora erro de parse
-                }
-
-                links = Array.from(new Set(links));
+                const links = arquivoUrl ? [arquivoUrl] : [];
                 const linksTexto = links.length ? `\n\nLinks:\n${links.join('\n')}` : '';
                 const mensagem = `Olá! Segue abaixo o anexo do ${servico}.\n\nEnviado pela Formed.${linksTexto}`;
 
@@ -1908,13 +1892,21 @@
                 spanCnpj.textContent = card.dataset.cnpj || '—';
                 spanTelefone.textContent = card.dataset.telefone || '—';
                 spanResp.textContent = card.dataset.responsavel ?? '';
-                spanServico.textContent = card.dataset.servico ?? '';
-                spanTipoServ.textContent = card.dataset.servico ?? '';
+                const servicoOriginal = card.dataset.servico ?? '';
+                const isPgrComPcmso = servicoOriginal === 'PGR' && card.dataset.pgrComPcmso === '1';
+                const servicoModal = isPgrComPcmso ? 'PCMSO + PGR' : servicoOriginal;
+                const tipoServicoModal = isPgrComPcmso ? 'PCMSO' : servicoOriginal;
+                spanServico.textContent = servicoModal;
+                spanTipoServ.textContent = tipoServicoModal;
                 spanDataHora.textContent = card.dataset.datahora ?? '';
                 spanSla.textContent = card.dataset.sla ?? '-';
                 spanPrioridade.textContent = card.dataset.prioridade ?? '';
                 spanStatusText.textContent = card.dataset.status ?? '';
-                spanObs.textContent = card.dataset.observacoes ?? '';
+                let observacoesModal = card.dataset.observacoes ?? '';
+                if (isPgrComPcmso && observacoesModal.startsWith('PGR - ')) {
+                    observacoesModal = observacoesModal.replace('PGR - ', 'PCMSO + PGR - ');
+                }
+                spanObs.textContent = observacoesModal;
                 updateModalTempo(card, Date.now());
 
                 spanFuncionario.textContent = card.dataset.funcionario || '—';
@@ -2185,7 +2177,7 @@
                         spanPgrTotal.textContent = card.dataset.pgrTotalTrabalhadores || '0';
 
                         spanPgrComPcmso.textContent = card.dataset.pgrComPcmso === '1'
-                            ? 'Sim, PGR + PCMSO'
+                            ? 'Sim, PCMSO + PGR'
                             : (card.dataset.pgrComPcmso === '0' ? 'Não, apenas PGR' : '—');
 
                         spanPgrContr.textContent = card.dataset.pgrContratante || '—';

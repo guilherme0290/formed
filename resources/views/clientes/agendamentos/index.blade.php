@@ -68,8 +68,19 @@
                                     $apr = $tarefa->aprSolicitacao;
                                     $servicoNome = $tarefa->servico->nome ?? 'Serviço';
                                     $servicoDisplay = $tarefa->servico_detalhe ?? $servicoNome;
+                                    if (($tarefa->treinamento_modo ?? null) === 'pacote' && !empty($tarefa->treinamento_pacote)) {
+                                        $servicoDisplay = 'Treinamentos NRs - ' . $tarefa->treinamento_pacote;
+                                    } elseif (($tarefa->treinamento_modo ?? null) === 'avulso' && !empty($tarefa->treinamento_codigos)) {
+                                        $codigosTitulo = is_array($tarefa->treinamento_codigos)
+                                            ? array_values(array_filter($tarefa->treinamento_codigos))
+                                            : array_values(array_filter(array_map('trim', explode(',', (string) $tarefa->treinamento_codigos))));
+                                        if (count($codigosTitulo) === 1) {
+                                            $servicoDisplay = 'Treinamentos NRs - ' . $codigosTitulo[0];
+                                        }
+                                    }
                                     $temDetalheAso = !empty($tarefa->aso_colaborador) || !empty($tarefa->aso_tipo) || !empty($tarefa->aso_data) || !empty($tarefa->aso_unidade) || !empty($tarefa->aso_email);
                                     $temDetalhePgr = !empty($tarefa->pgr_tipo) || !empty($tarefa->pgr_obra) || !empty($tarefa->pgr_contratante) || !empty($tarefa->pgr_total);
+                                    $temDetalheTrein = !empty($tarefa->treinamento_modo) || !empty($tarefa->treinamento_codigos) || !empty($tarefa->treinamento_pacote) || !empty($tarefa->treinamento_participantes);
                                     $temDetalheApr = $apr && (
                                         !empty($apr->obra_nome)
                                         || !empty($apr->obra_endereco)
@@ -78,7 +89,7 @@
                                         || !empty($apr->funcoes_envolvidas)
                                         || !empty($apr->etapas_atividade)
                                     );
-                                    $temDetalhe = $temDetalheAso || $temDetalhePgr || $temDetalheApr;
+                                    $temDetalhe = $temDetalheAso || $temDetalhePgr || $temDetalheTrein || $temDetalheApr;
                                     $badge = $isCancelado
                                         ? 'bg-slate-100 text-slate-700 border-slate-200'
                                         : ($isPendente
@@ -152,6 +163,29 @@
                                                         @endif
                                                         @if(!empty($apr->etapas_atividade))
                                                             <div>Etapas da atividade: {{ $apr->etapas_atividade }}</div>
+                                                        @endif
+                                                    @endif
+                                                    @if($temDetalheTrein)
+                                                        <div class="pt-1"></div>
+                                                        <div><span class="font-semibold">Treinamento:</span> {{ $tarefa->treinamento_modo === 'pacote' ? 'Pacote' : 'Avulso' }}</div>
+                                                        @if(!empty($tarefa->treinamento_pacote))
+                                                            <div><span class="font-semibold">Pacote:</span> {{ $tarefa->treinamento_pacote }}</div>
+                                                        @endif
+                                                        @if(!empty($tarefa->treinamento_codigos))
+                                                            <div><span class="font-semibold">NRs:</span> {{ is_array($tarefa->treinamento_codigos) ? implode(', ', $tarefa->treinamento_codigos) : $tarefa->treinamento_codigos }}</div>
+                                                        @endif
+                                                        @if(!empty($tarefa->treinamento_local))
+                                                            <div><span class="font-semibold">Local:</span> {{ $tarefa->treinamento_local === 'clinica' ? 'Clínica' : 'In Company' }}</div>
+                                                        @endif
+                                                        @if(!empty($tarefa->treinamento_unidade))
+                                                            <div><span class="font-semibold">Unidade:</span> {{ $tarefa->treinamento_unidade }}</div>
+                                                        @endif
+                                                        @if(!empty($tarefa->treinamento_participantes))
+                                                            <div><span class="font-semibold">Participantes:</span>
+                                                                <div class="mt-1">
+                                                                    {!! implode('<br>', array_map('e', (array) $tarefa->treinamento_participantes)) !!}
+                                                                </div>
+                                                            </div>
                                                         @endif
                                                     @endif
                                                 </div>
@@ -296,7 +330,5 @@
         });
     </script>
 @endpush
-
-
 
 

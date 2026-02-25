@@ -7,6 +7,7 @@
 
     @php
         $origem = $origem ?? request()->query('origem');
+        $allowCreateFuncao = $origem === 'cliente';
 
         $rotaVoltar = $origem === 'cliente'
             ? route('cliente.dashboard')
@@ -162,7 +163,7 @@
                         <x-funcoes.create-button
                             label="Cadastrar nova função"
                             variant="orange"
-                            :allowCreate="false"
+                            :allowCreate="$allowCreateFuncao"
                         />
                     </div>
 

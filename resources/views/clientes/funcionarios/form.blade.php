@@ -90,7 +90,7 @@
                             label="Função *"
                             field-id="campo_funcao"
                             help-text="Funções listadas por GHE, pré-configuradas pelo vendedor/comercial."
-                            :allowCreate="false"
+                            :allowCreate="true"
                             :funcoes="$funcoes"
                             :selected="old('funcao_id', $funcionario->funcao_id ?? null)"
                         />
@@ -338,3 +338,4 @@
     });
 </script>
 @endpush
+
