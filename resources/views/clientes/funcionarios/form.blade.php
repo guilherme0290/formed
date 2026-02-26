@@ -16,7 +16,7 @@
 
         <div class="mb-3">
             <a href="{{ route('cliente.funcionarios.index') }}"
-               class="px-4 py-2 text-xs rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50">
+               class="inline-flex w-full sm:w-auto items-center justify-center px-4 py-2 text-xs rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50">
                 &larr; Voltar para funcion&aacute;rios
             </a>
         </div>
@@ -25,7 +25,7 @@
         <div class="bg-white rounded-2xl shadow border border-slate-200 overflow-hidden">
 
             {{-- FAIXA AZUL COM TÍTULO --}}
-            <div class="bg-blue-700 px-6 py-3">
+            <div class="bg-blue-700 px-4 md:px-6 py-3">
                 <h1 class="text-white font-semibold text-base">
                     {{ $modo === 'edit' ? 'Editar Funcionário' : 'Novo Funcionário' }}
                 </h1>
@@ -34,7 +34,7 @@
             {{-- FORM --}}
             <form method="post"
                   action="{{ $modo === 'edit' ? route('cliente.funcionarios.update', $funcionario) : route('cliente.funcionarios.store') }}"
-                  class="p-6 space-y-6">
+                  class="p-4 md:p-6 space-y-6">
                 @csrf
                 @if($modo === 'edit')
                     @method('PUT')
@@ -189,15 +189,15 @@
                 </div>--}}
 
                 {{-- BOTOES --}}
-                <div class="flex justify-end gap-2 pt-4">
+                <div class="flex flex-wrap justify-end gap-2 pt-4">
                     <a href="{{ route('cliente.funcionarios.index') }}"
-                       class="px-4 py-2 text-xs rounded-lg border border-slate-300 text-slate-700">
+                       class="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 text-xs rounded-lg border border-slate-300 text-slate-700">
                         Cancelar
                     </a>
 
                     <button type="submit"
                             @if(!$canSave) disabled title="Usuario sem permissao." @endif
-                            class="px-4 py-2 text-xs rounded-lg {{ $canSave ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}">
+                            class="w-full sm:w-auto px-4 py-2 text-xs rounded-lg {{ $canSave ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}">
                         {{ $modo === 'edit' ? 'Salvar alterações' : 'Cadastrar' }}
                     </button>
                 </div>
@@ -338,4 +338,5 @@
     });
 </script>
 @endpush
+
 

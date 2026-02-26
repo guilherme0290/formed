@@ -143,17 +143,48 @@
                     {{-- Lista de funcionários --}}
                     @php
                         $selecionados = old('funcionarios', $selecionados ?? []);
+                        $funcoesFiltroParticipantes = collect($funcionarios ?? [])
+                            ->map(fn ($f) => trim((string) optional($f->funcao)->nome))
+                            ->filter()
+                            ->unique()
+                            ->sort()
+                            ->values();
                     @endphp
 
                     <div class="rounded-xl border border-indigo-200/80 bg-white/95 p-3 md:p-4 shadow-sm">
+                    <div class="mb-3 grid grid-cols-1 md:grid-cols-[1fr,auto] gap-2 items-end">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1">Filtrar por fun&ccedil;&atilde;o</label>
+                            <select id="filtro-funcao-participante"
+                                    class="w-full rounded-lg border-slate-200 text-sm px-3 py-2">
+                                <option value="">Selecione a fun&ccedil;&atilde;o...</option>
+                                @foreach($funcoesFiltroParticipantes as $funcaoFiltro)
+                                    <option value="{{ $funcaoFiltro }}">{{ $funcaoFiltro }}</option>
+                                @endforeach
+                            </select>
+                            <p class="mt-1 text-[11px] text-slate-500">Filtre os participantes pela fun&ccedil;&atilde;o.</p>
+                        </div>
+                        <label class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700">
+                            <input type="checkbox"
+                                   id="check-selecionar-todos-participantes"
+                                   class="h-4 w-4 rounded border-slate-300 text-indigo-600">
+                            Selecionar todos
+                        </label>
+                    </div>
                     <div id="lista-funcionarios"
                          class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-80 overflow-y-auto pr-1">
                         @foreach($funcionarios as $func)
-                            <label class="block border border-slate-200 rounded-xl px-3 py-3 text-xs cursor-pointer bg-white hover:bg-indigo-50/40">
+                            @php
+                                $funcaoNome = trim((string) optional($func->funcao)->nome);
+                            @endphp
+                            <label class="block border border-slate-200 rounded-xl px-3 py-3 text-xs cursor-pointer bg-white hover:bg-indigo-50/40"
+                                   data-funcao="{{ $funcaoNome }}">
                                 <div class="flex items-start gap-2">
                                     <input type="checkbox"
                                            name="funcionarios[]"
                                            value="{{ $func->id }}"
+                                           data-funcao="{{ $funcaoNome }}"
+                                           data-nome="{{ $func->nome }}"
                                            class="mt-1 h-3 w-3 text-indigo-600 border-slate-300 rounded"
                                         @checked(in_array($func->id, $selecionados))>
                                     <div>
@@ -182,6 +213,7 @@
                             </span>
                             <span id="contador-selecionados" class="hidden"></span>
                         </div>
+                        <div id="resumo-funcoes-cards" class="mt-3 space-y-3"></div>
                     </div>
                     @error('funcionarios')
                         <p class="mt-1 text-xs text-red-600">
@@ -484,15 +516,194 @@
                 const lista       = document.getElementById('lista-funcionarios');
                 const contadorEl  = document.getElementById('contador-selecionados');
                 const contadorBadgeEl = document.getElementById('contador-selecionados-badge');
+                const filtroFuncaoEl = document.getElementById('filtro-funcao-participante');
+                const checkSelecionarTodosEl = document.getElementById('check-selecionar-todos-participantes');
+                const resumoFuncoesCardsEl = document.getElementById('resumo-funcoes-cards');
+                const paletaFuncoes = [
+                    {
+                        card: ['bg-blue-50', 'border-blue-200'],
+                        chip: 'bg-blue-100 border-blue-200 text-blue-800'
+                    },
+                    {
+                        card: ['bg-emerald-50', 'border-emerald-200'],
+                        chip: 'bg-emerald-100 border-emerald-200 text-emerald-800'
+                    },
+                    {
+                        card: ['bg-amber-50', 'border-amber-200'],
+                        chip: 'bg-amber-100 border-amber-200 text-amber-800'
+                    },
+                    {
+                        card: ['bg-cyan-50', 'border-cyan-200'],
+                        chip: 'bg-cyan-100 border-cyan-200 text-cyan-800'
+                    },
+                ];
+
+                function normalizarTexto(valor) {
+                    return String(valor || '')
+                        .toLowerCase()
+                        .normalize('NFD')
+                        .replace(/[\u0300-\u036f]/g, '')
+                        .trim();
+                }
+
+                function checkboxesDaFuncao(chaveFuncao) {
+                    if (!chaveFuncao || !lista) return [];
+                    return Array.from(lista.querySelectorAll('input[type="checkbox"][name="funcionarios[]"]'))
+                        .filter((checkbox) => normalizarTexto(checkbox.dataset.funcao) === chaveFuncao);
+                }
+
+                function chaveFuncaoSelecionadaAtual() {
+                    if (!filtroFuncaoEl) return '';
+                    return normalizarTexto(String(filtroFuncaoEl.value || '').trim());
+                }
+
+                function aplicarDestaqueFuncoes() {
+                    if (!lista) return;
+
+                    const cards = Array.from(lista.querySelectorAll('label[data-funcao]'));
+                    const classesCardPaleta = paletaFuncoes.flatMap((item) => item.card);
+                    const chaveSelecionada = chaveFuncaoSelecionadaAtual();
+
+                    cards.forEach((card) => {
+                        card.classList.remove(...classesCardPaleta);
+                    });
+                    if (!chaveSelecionada) return;
+
+                    const estilo = paletaFuncoes[0];
+                    cards
+                        .filter((card) => normalizarTexto(card.dataset.funcao) === chaveSelecionada)
+                        .forEach((card) => card.classList.add(...estilo.card));
+                }
+
+                function renderizarResumoFuncoes() {
+                    if (!resumoFuncoesCardsEl) return;
+                    const selecionadosPorFuncao = new Map();
+                    const checkboxesSelecionados = Array.from(
+                        lista.querySelectorAll('input[type="checkbox"][name="funcionarios[]"]:checked')
+                    );
+
+                    checkboxesSelecionados.forEach((checkbox) => {
+                        const chave = normalizarTexto(checkbox.dataset.funcao);
+                        if (!chave) return;
+
+                        const label = String(checkbox.dataset.funcao || '').trim() || chave;
+
+                        if (!selecionadosPorFuncao.has(chave)) {
+                            selecionadosPorFuncao.set(chave, { label, total: 0 });
+                        }
+                        const item = selecionadosPorFuncao.get(chave);
+                        item.total += 1;
+                        selecionadosPorFuncao.set(chave, item);
+                    });
+
+                    if (!selecionadosPorFuncao.size) {
+                        resumoFuncoesCardsEl.innerHTML = '';
+                        return;
+                    }
+
+                    const ordem = Array.from(selecionadosPorFuncao.keys());
+
+                    resumoFuncoesCardsEl.innerHTML = ordem
+                        .map((chave, idx) => {
+                            const estilo = paletaFuncoes[idx % paletaFuncoes.length];
+                            const dados = selecionadosPorFuncao.get(chave) || {};
+                            const label = dados.label || chave;
+                            const participantes = checkboxesDaFuncao(chave)
+                                .filter((checkbox) => checkbox.checked)
+                                .map((checkbox) => ({
+                                    id: String(checkbox.value || ''),
+                                    nome: String(checkbox.dataset.nome || '').trim() || 'Colaborador',
+                                    funcao: String(checkbox.dataset.funcao || '').trim() || label,
+                                }));
+
+                            const linhasParticipantes = participantes
+                                .map((item, indexParticipante) => `
+                                    <div class="rounded-xl border border-slate-200 bg-white px-3 py-2">
+                                        <div class="flex items-center justify-between gap-2">
+                                            <p class="text-[11px] font-semibold text-slate-600">Trabalhador ${indexParticipante + 1}</p>
+                                            <button type="button"
+                                                    data-remove-funcionario="${item.id}"
+                                                    class="text-[11px] font-semibold text-rose-500 hover:text-rose-600">
+                                                Remover
+                                            </button>
+                                        </div>
+                                        <div class="mt-1 grid grid-cols-1 md:grid-cols-2 gap-2">
+                                            <div>
+                                                <p class="text-[11px] text-slate-500">Nome</p>
+                                                <div class="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-sm text-slate-700">${item.nome}</div>
+                                            </div>
+                                            <div>
+                                                <p class="text-[11px] text-slate-500">Fun&ccedil;&atilde;o</p>
+                                                <div class="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-sm text-slate-700">${item.funcao}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `)
+                                .join('');
+
+                            return `
+                                <div class="rounded-2xl border p-3 ${estilo.chip}">
+                                    <div class="flex items-center justify-between gap-2">
+                                        <span class="inline-flex items-center rounded-lg border px-2 py-1 text-[11px] font-semibold ${estilo.chip}">
+                                            Fun&ccedil;&atilde;o: ${label}
+                                        </span>
+                                        <button type="button"
+                                                data-remove-grupo-funcao="${chave}"
+                                                class="text-[11px] font-semibold text-rose-500 hover:text-rose-600">
+                                            Remover grupo
+                                        </button>
+                                    </div>
+                                    <div class="mt-2 space-y-2">${linhasParticipantes}</div>
+                                </div>
+                            `;
+                        })
+                        .join('');
+                }
+
+                function aplicarVisibilidadePorFiltroAtual() {
+                    if (!lista) return;
+                    const chaveSelecionada = chaveFuncaoSelecionadaAtual();
+                    const cards = Array.from(lista.querySelectorAll('label[data-funcao]'));
+
+                    cards.forEach((card) => {
+                        const chaveCard = normalizarTexto(card.dataset.funcao);
+                        const mostrar = !chaveSelecionada || chaveCard === chaveSelecionada;
+                        card.classList.toggle('hidden', !mostrar);
+                    });
+                }
+
+                function checkboxesDoFiltroAtual() {
+                    const chaveSelecionada = chaveFuncaoSelecionadaAtual();
+                    const todos = Array.from(lista.querySelectorAll('input[type="checkbox"][name="funcionarios[]"]'));
+                    if (!chaveSelecionada) return todos;
+                    return todos.filter((checkbox) => normalizarTexto(checkbox.dataset.funcao) === chaveSelecionada);
+                }
+
+                function sincronizarCheckSelecionarTodos() {
+                    if (!checkSelecionarTodosEl) return;
+                    const grupoAtual = checkboxesDoFiltroAtual();
+                    if (!grupoAtual.length) {
+                        checkSelecionarTodosEl.checked = false;
+                        checkSelecionarTodosEl.indeterminate = false;
+                        return;
+                    }
+                    const marcados = grupoAtual.filter((checkbox) => checkbox.checked).length;
+                    checkSelecionarTodosEl.checked = marcados === grupoAtual.length;
+                    checkSelecionarTodosEl.indeterminate = marcados > 0 && marcados < grupoAtual.length;
+                }
 
                 function adicionarFuncionarioNaLista(func) {
+                    const funcaoNome = func.funcao_nome || '';
                     const label = document.createElement('label');
                     label.className = 'block border border-slate-200 rounded-xl px-3 py-3 text-xs cursor-pointer bg-white hover:bg-indigo-50/40';
+                    label.dataset.funcao = funcaoNome;
                     label.innerHTML = `
                     <div class="flex items-start gap-2">
                         <input type="checkbox"
                                name="funcionarios[]"
                                value="${func.id}"
+                               data-funcao="${funcaoNome}"
+                               data-nome="${func.nome}"
                                class="mt-1 h-3 w-3 text-indigo-600 border-slate-300 rounded"
                                checked>
                         <div>
@@ -507,8 +718,12 @@
                             </p>
                         </div>
                     </div>
-                `;
+                    `;
                     lista.prepend(label);
+                    aplicarDestaqueFuncoes();
+                    renderizarResumoFuncoes();
+                    aplicarVisibilidadePorFiltroAtual();
+                    sincronizarCheckSelecionarTodos();
                 }
 
                 function atualizarContador() {
@@ -526,10 +741,72 @@
                 lista.addEventListener('change', function (e) {
                     if (e.target.matches('input[type="checkbox"]')) {
                         atualizarContador();
+                        renderizarResumoFuncoes();
+                        sincronizarCheckSelecionarTodos();
                     }
                 });
 
                 atualizarContador();
+                aplicarDestaqueFuncoes();
+                renderizarResumoFuncoes();
+                aplicarVisibilidadePorFiltroAtual();
+                sincronizarCheckSelecionarTodos();
+
+                if (filtroFuncaoEl) {
+                    filtroFuncaoEl.addEventListener('change', function () {
+                        aplicarVisibilidadePorFiltroAtual();
+                        aplicarDestaqueFuncoes();
+                        sincronizarCheckSelecionarTodos();
+                    });
+                }
+
+                if (checkSelecionarTodosEl) {
+                    checkSelecionarTodosEl.addEventListener('change', function () {
+                        const checked = !!checkSelecionarTodosEl.checked;
+                        checkboxesDoFiltroAtual()
+                            .forEach((checkbox) => {
+                                checkbox.checked = checked;
+                            });
+
+                        atualizarContador();
+                        renderizarResumoFuncoes();
+                        aplicarDestaqueFuncoes();
+                        aplicarVisibilidadePorFiltroAtual();
+                        sincronizarCheckSelecionarTodos();
+                    });
+                }
+
+                if (resumoFuncoesCardsEl) {
+                    resumoFuncoesCardsEl.addEventListener('click', function (event) {
+                        const btnGrupo = event.target.closest('[data-remove-grupo-funcao]');
+                        if (btnGrupo) {
+                            const chave = normalizarTexto(btnGrupo.getAttribute('data-remove-grupo-funcao'));
+                            if (chave) {
+                                checkboxesDaFuncao(chave).forEach((checkbox) => { checkbox.checked = false; });
+                                atualizarContador();
+                                aplicarDestaqueFuncoes();
+                                renderizarResumoFuncoes();
+                                aplicarVisibilidadePorFiltroAtual();
+                                sincronizarCheckSelecionarTodos();
+                            }
+                            return;
+                        }
+
+                        const btnFuncionario = event.target.closest('[data-remove-funcionario]');
+                        if (btnFuncionario) {
+                            const id = String(btnFuncionario.getAttribute('data-remove-funcionario') || '').trim();
+                            if (!id) return;
+
+                            const checkbox = lista.querySelector(`input[type="checkbox"][name="funcionarios[]"][value="${id}"]`);
+                            if (checkbox) {
+                                checkbox.checked = false;
+                                atualizarContador();
+                                renderizarResumoFuncoes();
+                                sincronizarCheckSelecionarTodos();
+                            }
+                        }
+                    });
+                }
 
                 // ----- Modo: pacote x avulso -----
                 const modoRadios = document.querySelectorAll('input[name="treinamento_modo"]');

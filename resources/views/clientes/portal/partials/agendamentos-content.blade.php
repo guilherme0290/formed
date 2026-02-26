@@ -1,24 +1,24 @@
 ﻿<section class="w-full px-3 md:px-5 py-4 md:py-5">
-        <div class="flex items-center justify-between mb-6">
+        <div class="flex flex-wrap items-center justify-between mb-6 gap-3">
             <div>
                 <h2 class="text-xl md:text-2xl font-semibold text-slate-900">
                     Meus agendamentos
                 </h2>
                 <p class="text-xs md:text-sm text-slate-500">
-                    Aqui você acompanha todos os serviços solicitados.
+                    Aqui voc&ecirc; acompanha todos os servi&ccedil;os solicitados.
                 </p>
             </div>
 
             <a href="{{ route('cliente.dashboard') }}"
-               class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-900 text-white text-xs md:text-sm font-semibold shadow">
+               class="inline-flex w-full sm:w-auto items-center justify-center gap-2 px-3 py-2 rounded-lg bg-blue-700 text-white text-xs md:text-sm font-semibold shadow hover:bg-blue-800">
                 Voltar ao painel
             </a>
         </div>
 
-        <div class="rounded-2xl border border-slate-200 bg-white shadow-inner overflow-hidden p-1 md:p-2">
-            <header class="px-4 py-4 border-b border-slate-900 bg-slate-900 rounded-xl flex items-center justify-between">
-                <span class="text-sm font-semibold text-white">Tarefas solicitadas</span>
-                <span class="text-[12px] text-slate-200">Cliente: {{ $cliente->razao_social ?? $cliente->nome_fantasia }}</span>
+        <div class="rounded-2xl border border-blue-200 bg-blue-50/40 shadow-inner overflow-hidden p-1 md:p-2">
+            <header class="px-4 py-4 border-b border-blue-200 bg-blue-100/60 rounded-xl flex flex-wrap items-center justify-between gap-2">
+                <span class="text-sm font-semibold text-blue-800">Tarefas solicitadas</span>
+                <span class="text-[12px] text-blue-700">Cliente: {{ $cliente->razao_social ?? $cliente->nome_fantasia }}</span>
             </header>
 
             <div class="p-3 md:p-4">
@@ -28,17 +28,17 @@
                     Nenhum agendamento encontrado.
                 </div>
             @else
-                <div class="rounded-xl border border-indigo-200/80 bg-white/95 p-3 md:p-4 shadow-sm space-y-4 max-h-[72vh] flex flex-col overflow-hidden">
+                <div class="rounded-xl border border-blue-200 bg-white p-3 md:p-4 shadow-sm space-y-4 max-h-[65vh] md:max-h-[72vh] flex flex-col overflow-hidden">
                     <div class="flex-1 min-h-0 overflow-y-auto pr-1">
-                        <div class="overflow-x-auto rounded-xl border border-slate-200">
-                            <table class="w-full min-w-full divide-y divide-slate-200 text-sm">
-                            <thead class="sticky top-0 z-10 bg-slate-50 text-slate-600">
+                        <div class="overflow-x-auto rounded-xl border border-blue-200">
+                            <table class="w-full min-w-[980px] divide-y divide-slate-200 text-sm">
+                            <thead class="sticky top-0 z-10 bg-blue-50 text-blue-700">
                                 <tr>
                                     <th class="px-4 py-3 text-left font-semibold">Solicitado em</th>
-                                    <th class="px-4 py-3 text-left font-semibold">Serviço</th>
-                                    <th class="px-4 py-3 text-left font-semibold">Início previsto</th>
+                                    <th class="px-4 py-3 text-left font-semibold">Servi&ccedil;o</th>
+                                    <th class="px-4 py-3 text-left font-semibold">In&iacute;cio previsto</th>
                                     <th class="px-4 py-3 text-left font-semibold">Status</th>
-                                    <th class="px-4 py-3 text-right font-semibold">Ação</th>
+                                    <th class="px-4 py-3 text-right font-semibold">A&ccedil;&atilde;o</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-100">
@@ -77,6 +77,10 @@
                                         }
                                     }
                                     $temDetalheAso = !empty($tarefa->aso_colaborador) || !empty($tarefa->aso_tipo) || !empty($tarefa->aso_data) || !empty($tarefa->aso_unidade) || !empty($tarefa->aso_email);
+                                    $nomeFuncionarioDetalhe = trim((string) (
+                                        optional(optional($tarefa->asoSolicitacao)->funcionario)->nome
+                                        ?: ($tarefa->aso_colaborador ?? '')
+                                    ));
                                     $temDetalhePgr = !empty($tarefa->pgr_tipo) || !empty($tarefa->pgr_obra) || !empty($tarefa->pgr_contratante) || !empty($tarefa->pgr_total);
                                     $temDetalheTrein = !empty($tarefa->treinamento_modo) || !empty($tarefa->treinamento_codigos) || !empty($tarefa->treinamento_pacote) || !empty($tarefa->treinamento_participantes);
                                     $temDetalheApr = $apr && (
@@ -114,10 +118,6 @@
                                             : ($isFinalizada
                                                 ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
                                                 : 'bg-sky-50 text-sky-700 border-sky-100'));
-                                    $certificadosTreinamento = ($tarefa->anexos ?? collect())->filter(function ($anexo) {
-                                        return mb_strtolower((string) ($anexo->servico ?? '')) === 'certificado_treinamento';
-                                    });
-                                    $documentoAsoUrl = $tarefa->documento_link;
                                 @endphp
                                 <tr class="{{ $loop->even ? 'bg-slate-50/60' : 'bg-white' }} hover:bg-slate-100/70">
                                     <td class="px-4 py-3 text-slate-700">
@@ -131,8 +131,8 @@
                                             <details class="mt-1">
                                                 <summary class="text-xs text-slate-500 cursor-pointer select-none">Detalhar</summary>
                                                 <div class="mt-2 text-xs text-slate-600 space-y-1">
-                                                    @if(!empty($tarefa->aso_colaborador))
-                                                        <div><span class="font-semibold">Colaborador:</span> {{ $tarefa->aso_colaborador }}</div>
+                                                    @if($nomeFuncionarioDetalhe !== '')
+                                                        <div><span class="font-semibold">Funcionário:</span> {{ $nomeFuncionarioDetalhe }}</div>
                                                     @endif
                                                     @if(!empty($tarefa->aso_tipo))
                                                         <div><span class="font-semibold">Tipo:</span> {{ $tarefa->aso_tipo }}</div>
@@ -223,20 +223,6 @@
                                     </td>
                                     <td class="px-4 py-3 text-right">
                                         <div class="inline-flex items-center gap-2 flex-wrap justify-end">
-                                            @if($documentoAsoUrl)
-                                                <a href="{{ $documentoAsoUrl }}"
-                                                   target="_blank" rel="noopener"
-                                                   class="inline-flex items-center px-3 py-1.5 rounded-lg border border-indigo-300 bg-indigo-50 text-indigo-700 text-xs font-semibold hover:bg-indigo-100">
-                                                    ASO
-                                                </a>
-                                            @endif
-                                            @foreach($certificadosTreinamento as $certificado)
-                                                <a href="{{ $certificado->url }}"
-                                                   target="_blank" rel="noopener"
-                                                   class="inline-flex items-center px-3 py-1.5 rounded-lg border border-indigo-200 bg-white text-indigo-700 text-xs font-semibold hover:bg-indigo-50">
-                                                    Certificado {{ $loop->iteration }}
-                                                </a>
-                                            @endforeach
                                             @if($podeExcluir)
                                                 @if($editUrl)
                                                     <a href="{{ $editUrl }}"
@@ -278,14 +264,14 @@
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
             <div class="flex items-center justify-between px-5 py-4 bg-red-600 text-white">
                 <h3 class="text-sm font-semibold">Excluir Agendamento</h3>
-                <button type="button" id="delete-modal-close" class="text-white/90 hover:text-white">✕</button>
+                <button type="button" id="delete-modal-close" class="text-white/90 hover:text-white">&times;</button>
             </div>
             <div class="p-5 space-y-4 text-sm text-slate-700">
                 <div class="text-sm text-slate-600 font-bold">
                     Confirme a exclusão do agendamento selecionado.
                 </div>
                 <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                    <div class="text-[11px] text-slate-500 font-bold">Serviço</div>
+                    <div class="text-[11px] text-slate-500 font-bold">Servi&ccedil;o</div>
                     <div id="delete-modal-servico" class="text-sm font-medium text-slate-800">—</div>
                 </div>
                 <div class="text-sm text-red-600 font-medium">
@@ -374,3 +360,6 @@
         });
     </script>
 @endpush
+
+
+

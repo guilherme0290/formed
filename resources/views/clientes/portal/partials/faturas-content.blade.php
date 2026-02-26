@@ -20,29 +20,29 @@
     </div>
 
     <div class="mb-6 grid gap-3 md:grid-cols-2">
-        <div class="rounded-xl border border-emerald-100 bg-emerald-50/80 px-4 py-3">
-            <p class="text-[11px] uppercase tracking-wide text-emerald-700">Faturas em Aberto</p>
-            <p class="mt-1 text-2xl font-semibold text-emerald-600">R$ {{ number_format($totalFaturaAberto ?? 0, 2, ',', '.') }}</p>
+        <div class="rounded-xl border border-blue-200 bg-blue-50/80 px-4 py-3">
+            <p class="text-[11px] uppercase tracking-wide text-blue-700">Faturas em Aberto</p>
+            <p class="mt-1 text-2xl font-semibold text-blue-800">R$ {{ number_format($totalFaturaAberto ?? 0, 2, ',', '.') }}</p>
         </div>
 
-        <div class="rounded-xl border border-amber-100 bg-amber-50/80 px-4 py-3">
-            <p class="text-[11px] uppercase tracking-wide text-amber-700">Vencidos</p>
-            <p class="mt-1 text-2xl font-semibold text-amber-600">R$ {{ number_format($totalVencido ?? 0, 2, ',', '.') }}</p>
+        <div class="rounded-xl border border-blue-200 bg-blue-50/80 px-4 py-3">
+            <p class="text-[11px] uppercase tracking-wide text-blue-700">Vencidos</p>
+            <p class="mt-1 text-2xl font-semibold text-blue-800">R$ {{ number_format($totalVencido ?? 0, 2, ',', '.') }}</p>
         </div>
     </div>
 
-    <div class="rounded-2xl border border-slate-200 bg-white shadow-inner overflow-hidden p-1 md:p-2">
-        <div class="px-4 py-3 border-b border-slate-900 bg-slate-900 rounded-xl">
-            <p class="text-xs font-semibold uppercase tracking-wide text-white">Faturas</p>
+    <div class="rounded-2xl border border-blue-200 bg-blue-50/40 shadow-inner overflow-hidden p-1 md:p-2">
+        <div class="px-4 py-3 border-b border-blue-200 bg-blue-100/60 rounded-xl">
+            <p class="text-xs font-semibold uppercase tracking-wide text-blue-700">Faturas</p>
         </div>
 
         <div class="p-3 md:p-4">
-            <div class="rounded-xl border border-indigo-200/80 bg-white/95 p-3 md:p-4 shadow-sm space-y-4 max-h-[72vh] flex flex-col overflow-hidden">
+            <div class="rounded-xl border border-blue-200 bg-white p-3 md:p-4 shadow-sm space-y-4 max-h-[65vh] md:max-h-[72vh] flex flex-col overflow-hidden">
                 <form method="GET" action="{{ route('cliente.faturas') }}" class="flex flex-col gap-3 shrink-0">
                     <div class="grid gap-3 md:grid-cols-4">
                         <div class="md:col-span-2">
                             <label class="text-[11px] font-bold text-slate-600">Período</label>
-                            <div class="mt-1 flex items-center gap-2">
+                            <div class="mt-1 flex flex-col sm:flex-row sm:items-center gap-2">
                                 <div class="relative w-full">
                                     <input type="text"
                                            inputmode="numeric"
@@ -89,11 +89,11 @@
                             </select>
                         </div>
 
-                        <div class="flex items-end gap-2 md:justify-end">
-                            <button type="submit" class="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition">
+                        <div class="flex flex-wrap items-end gap-2 md:justify-end">
+                            <button type="submit" class="inline-flex w-full sm:w-auto items-center justify-center px-4 py-2 rounded-xl bg-blue-700 text-white text-sm font-semibold hover:bg-blue-800 transition">
                                 Filtrar
                             </button>
-                            <a href="{{ route('cliente.faturas') }}" class="inline-flex items-center justify-center px-4 py-2 rounded-xl border border-slate-300 text-slate-700 text-sm font-semibold hover:bg-slate-50 transition">
+                            <a href="{{ route('cliente.faturas') }}" class="inline-flex w-full sm:w-auto items-center justify-center px-4 py-2 rounded-xl border border-slate-300 text-slate-700 text-sm font-semibold hover:bg-slate-50 transition">
                                 Limpar
                             </a>
                         </div>
@@ -102,8 +102,8 @@
 
                 @if($listaFaturas->isNotEmpty())
                     <div class="flex-1 min-h-0 overflow-y-auto pr-1">
-                        <div class="overflow-x-auto rounded-xl border border-slate-200">
-                            <div class="min-w-[760px]">
+                        <div class="overflow-x-auto rounded-xl border border-blue-200">
+                            <div class="min-w-[880px]">
                                 <div class="sticky top-0 z-10 grid grid-cols-12 gap-3 bg-blue-50 border-b border-blue-200 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-blue-700">
                                     <div class="col-span-2">Data</div>
                                     <div class="col-span-5">Serviços</div>
@@ -266,3 +266,4 @@
         });
     </script>
 @endpush
+

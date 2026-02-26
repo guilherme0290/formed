@@ -28,7 +28,7 @@
     @endphp
 
     {{-- TITULO DO PAINEL --}}
-    <section class="w-full px-4 sm:px-6 lg:px-8">
+    <section class="w-full px-2 sm:px-6 lg:px-8">
         <div class="mb-6">
             <h2 class="text-xl md:text-2xl font-semibold text-slate-900">
                 Painel do Cliente
@@ -42,7 +42,7 @@
         <div class="grid gap-4 md:gap-6 sm:grid-cols-2 lg:grid-cols-2 mb-8">
 
             {{-- Card: Seu Comercial (azul) --}}
-            <div class="rounded-3xl bg-[#1554d9] text-white shadow-lg shadow-blue-900/20 p-5 md:p-6 flex flex-col justify-between">
+            <div class="rounded-3xl bg-[#1554d9] text-white shadow-lg shadow-blue-900/20 p-4 md:p-6 flex flex-col justify-between">
                 <div class="flex items-start gap-3 mb-4">
                     <div class="h-9 w-9 rounded-2xl bg-white/15 flex items-center justify-center text-[10px] font-semibold">
                         📞
@@ -75,7 +75,7 @@
             </div>
 
             {{-- Card: Fatura Atual (verde) --}}
-            <div class="rounded-3xl bg-[#059669] text-white shadow-lg shadow-emerald-900/25 p-5 md:p-6 flex flex-col justify-between">
+            <div class="rounded-3xl bg-[#059669] text-white shadow-lg shadow-emerald-900/25 p-4 md:p-6 flex flex-col justify-between">
                 <div>
                     <div class="flex items-start gap-3 mb-4">
                         <div class="h-9 w-9 rounded-2xl bg-white/15 flex items-center justify-center text-base font-semibold">

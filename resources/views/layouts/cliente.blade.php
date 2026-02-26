@@ -183,18 +183,79 @@
             </form>
         </div>
     </aside>
+    {{-- SIDEBAR MOBILE --}}
+    <div id="cliente-mobile-sidebar-backdrop"
+         class="fixed inset-0 z-[60] bg-black/50 hidden md:hidden"
+         aria-hidden="true"></div>
+
+    <aside id="cliente-mobile-sidebar"
+           class="fixed inset-y-0 left-0 z-[70] w-72 max-w-[88vw] bg-slate-950 text-slate-100 shadow-2xl transform -translate-x-full transition-transform duration-200 ease-out md:hidden"
+           aria-hidden="true">
+        <div class="h-full flex flex-col relative overflow-hidden">
+            <div class="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.06]">
+                <img src="{{ asset('storage/logo.svg') }}" alt="FORMED" class="w-36">
+            </div>
+
+            <div class="relative z-10 h-16 flex items-center justify-between px-4 border-b border-slate-800">
+                <span class="text-sm font-semibold">Portal do Cliente</span>
+                <button type="button"
+                        id="cliente-mobile-sidebar-close"
+                        class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 text-slate-200 hover:bg-slate-800"
+                        aria-label="Fechar menu">
+                    &times;
+                </button>
+            </div>
+
+            <nav class="relative z-10 flex-1 px-3 py-3 space-y-1 overflow-y-auto">
+                @foreach($linksRapidos as $link)
+                    @php
+                        $disabled = $link['disabled'] ?? false;
+                        $classes = $link['principal'] ?? false
+                            ? 'bg-slate-800 text-slate-50 font-medium'
+                            : 'text-slate-100 hover:bg-slate-800/80';
+                        $opacity = $disabled ? 'opacity-60' : '';
+                        $hint = $disabled ? 'Servico nao disponivel no contrato ativo.' : null;
+                    @endphp
+                    <a href="{{ $link['rota'] }}"
+                       @if($hint) title="{{ $hint }}" @endif
+                       class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition {{ $classes }} {{ $opacity }}">
+                        <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800">
+                            {!! $link['icone'] !!}
+                        </span>
+                        <span>{{ $link['titulo'] }}</span>
+                    </a>
+                @endforeach
+            </nav>
+
+            <div class="relative z-10 px-4 py-4 border-t border-slate-800">
+                <form method="POST" action="{{ route('logout') }}">
+                    @csrf
+                    <button class="flex items-center gap-2 text-rose-400 hover:text-rose-300">
+                        <span>&#128682;</span>
+                        Sair
+                    </button>
+                </form>
+            </div>
+        </div>
+    </aside>
 
     {{-- COLUNA DA DIREITA (Header + Faixa + Conteúdo) --}}
     <div class="flex-1 flex flex-col min-w-0">
 
         {{-- TOP BAR IGUAL AO OPERACIONAL (mesmo azul) --}}
         <header class="bg-blue-900 text-white shadow-sm">
-            <div class="w-full px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
+            <div class="w-full px-3 sm:px-6 lg:px-8 min-h-14 py-2 flex items-center justify-between gap-2">
 
                 {{-- Lado esquerdo: FORMED + subtítulo --}}
-                <div class="flex items-baseline gap-3">
-                    <span class="font-semibold text-lg tracking-tight">FORMED</span>
-                    <span class="text-xs md:text-sm text-blue-100">
+                <div class="flex items-center gap-2 min-w-0">
+                    <button type="button"
+                            id="cliente-mobile-sidebar-open"
+                            class="md:hidden inline-flex h-8 w-8 items-center justify-center rounded-lg border border-blue-300/60 text-blue-50 hover:bg-white/10 transition"
+                            aria-label="Abrir menu">
+                        &#9776;
+                    </button>
+                    <span class="font-semibold text-base sm:text-lg tracking-tight shrink-0">FORMED</span>
+                    <span class="hidden sm:block text-xs md:text-sm text-blue-100 truncate">
                         Medicina e Segurança do Trabalho
                     </span>
                 </div>
@@ -204,9 +265,7 @@
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf
                         <button type="submit"
-                                class="inline-flex items-center gap-1 rounded-full border border-blue-300/60
-                                       px-3 py-1 text-[11px] font-medium text-blue-50
-                                       hover:bg-white/10 hover:text-white transition">
+                                class="inline-flex items-center gap-1 rounded-full border border-blue-300/60 px-2.5 sm:px-3 py-1 text-[10px] sm:text-[11px] font-medium text-blue-50 hover:bg-white/10 hover:text-white transition shrink-0">
                             Trocar usuário
                         </button>
                     </form>
@@ -225,16 +284,16 @@
                 $contatoEmail    = optional($cliente->vendedor)->email ?? 'email@dominio.com';
             @endphp
 
-            <section class="w-full bg-[#1450d2] text-white shadow-lg shadow-slate-900/20 py-5 md:py-6">
-                <div class="w-full px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+            <section class="w-full bg-[#1450d2] text-white shadow-lg shadow-slate-900/20 py-4 md:py-6">
+                <div class="w-full px-3 sm:px-6 lg:px-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4 md:gap-6">
 
                     {{-- Nome do cliente + CNPJ --}}
                     <div class="flex items-start gap-3">
-                        <div class="h-12 w-12 rounded-2xl bg-white/10 flex items-center justify-center text-2xl">
+                        <div class="h-10 w-10 rounded-xl bg-white/10 flex items-center justify-center text-xl">
                             <span>&#127970;</span>
                         </div>
                         <div>
-                            <h1 class="text-lg md:text-xl font-semibold leading-tight">
+                            <h1 class="text-base sm:text-lg md:text-xl font-semibold leading-tight">
                                 {{ $razaoOuFantasia }}
                             </h1>
 
@@ -247,8 +306,8 @@
                     </div>
 
                     {{-- Dados de contato --}}
-                    <div class="flex flex-col text-xs md:text-sm text-blue-50 md:text-right">
-                        <div class="flex flex-col md:flex-row md:items-center md:justify-end gap-6 lg:gap-12">
+                    <div class="text-xs md:text-sm text-blue-50">
+                        <div class="grid grid-cols-2 gap-3 sm:gap-4 md:flex md:items-center md:justify-end md:gap-6 lg:gap-12">
 
                             <div class="md:mr-10 lg:mr-16">
                                 <span class="uppercase text-[10px] tracking-[0.18em] text-blue-100/70 block">
@@ -257,14 +316,14 @@
                                 <span class="font-medium">{{ $contatoNome }}</span>
                             </div>
 
-                            <div class="md:mr-10 lg:mr-16 md:mt-0 mt-2">
+                            <div class="md:mr-10 lg:mr-16">
                                 <span class="uppercase text-[10px] tracking-[0.18em] text-blue-100/70 block">
                                     Telefone
                                 </span>
                                 <span class="font-medium">{{ $contatoTelefone }}</span>
                             </div>
 
-                            <div class="md:mt-0 mt-2">
+                            <div class="col-span-2 md:col-span-1">
                                 <span class="uppercase text-[10px] tracking-[0.18em] text-blue-100/70 block">
                                     E-mail
                                 </span>
@@ -313,7 +372,7 @@
             </div>
 
             <div class="relative z-10">
-                <div class="@yield('page-container', 'w-full px-4 sm:px-6 lg:px-8 py-6')">
+                <div class="@yield('page-container', 'w-full px-2 sm:px-6 lg:px-8 py-4 sm:py-6')">
                     @yield('content')
                 </div>
             </div>
@@ -323,5 +382,46 @@
 </div>
 
 @stack('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const openBtn = document.getElementById('cliente-mobile-sidebar-open');
+    const closeBtn = document.getElementById('cliente-mobile-sidebar-close');
+    const sidebar = document.getElementById('cliente-mobile-sidebar');
+    const backdrop = document.getElementById('cliente-mobile-sidebar-backdrop');
+
+    function openSidebar() {
+        if (!sidebar || !backdrop) return;
+        sidebar.classList.remove('-translate-x-full');
+        sidebar.setAttribute('aria-hidden', 'false');
+        backdrop.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+    }
+
+    function closeSidebar() {
+        if (!sidebar || !backdrop) return;
+        sidebar.classList.add('-translate-x-full');
+        sidebar.setAttribute('aria-hidden', 'true');
+        backdrop.classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
+    }
+
+    openBtn?.addEventListener('click', openSidebar);
+    closeBtn?.addEventListener('click', closeSidebar);
+    backdrop?.addEventListener('click', closeSidebar);
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') {
+            closeSidebar();
+        }
+    });
+
+    sidebar?.querySelectorAll('a').forEach((link) => {
+        link.addEventListener('click', closeSidebar);
+    });
+});
+</script>
 </body>
 </html>
+
+
+
+

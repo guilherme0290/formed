@@ -66,7 +66,7 @@
 
         {{-- FILTRO --}}
         <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
-            <form method="GET" class="grid md:grid-cols-4 gap-4 items-end">
+            <form method="GET" class="grid md:grid-cols-6 gap-4 items-end">
 
                 <div class="md:col-span-2">
                     <label class="block text-sm font-medium mb-1 text-slate-700">Busca (raz&atilde;o social, nome fantasia ou CNPJ)</label>
@@ -79,6 +79,24 @@
                              class="absolute z-20 mt-1 w-full max-h-64 overflow-auto rounded-lg border border-slate-200 bg-white shadow-lg hidden">
                         </div>
                     </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium mb-1 text-slate-700">Data inicial</label>
+                    <input
+                        type="date"
+                        name="data_inicio"
+                        value="{{ $dataInicioNormalizada ?? '' }}"
+                        class="w-full rounded-lg border-slate-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium mb-1 text-slate-700">Data final</label>
+                    <input
+                        type="date"
+                        name="data_fim"
+                        value="{{ $dataFimNormalizada ?? '' }}"
+                        class="w-full rounded-lg border-slate-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                 </div>
 
                 <div>
@@ -368,6 +386,4 @@
         })();
     </script>
 @endpush
-
-
 

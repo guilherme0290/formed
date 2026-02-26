@@ -941,10 +941,10 @@ class ClienteDashboardController extends Controller
             $codigos
         )));
 
-        if (empty($codigos)) {
-            $itemGenerico = $contrato->itens
-                ->first(fn ($it) => (int) $it->servico_id === $servicoTreinamentosNrId && (bool) $it->ativo);
+        $itemGenerico = $contrato->itens
+            ->first(fn ($it) => (int) $it->servico_id === $servicoTreinamentosNrId && (bool) $it->ativo);
 
+        if (empty($codigos)) {
             return $itemGenerico ? (float) $itemGenerico->preco_unitario_snapshot * $qtd : null;
         }
 
@@ -954,10 +954,16 @@ class ClienteDashboardController extends Controller
             $item = $mapa[$codigo] ?? null;
             if ($item && (float) $item->preco_unitario_snapshot > 0) {
                 $soma += (float) $item->preco_unitario_snapshot;
+            } elseif ($itemGenerico && (float) $itemGenerico->preco_unitario_snapshot > 0) {
+                // Regra comercial: cada NR selecionada soma 1x o valor unitário do treinamento.
+                $soma += (float) $itemGenerico->preco_unitario_snapshot;
             }
         }
 
         if ($soma <= 0) {
+            if ($itemGenerico && (float) $itemGenerico->preco_unitario_snapshot > 0) {
+                return (float) $itemGenerico->preco_unitario_snapshot * count($codigos) * $qtd;
+            }
             return null;
         }
 

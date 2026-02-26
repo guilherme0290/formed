@@ -87,7 +87,7 @@
 
     // Origem da tela (cliente ou operacional)
     $origem = request()->query('origem');
-    $allowCreateFuncao = $origem === 'cliente';
+    $allowCreateFuncao = $origem !== 'cliente';
     $rotaVoltar = $origem === 'cliente'
         ? route('cliente.dashboard')
         : route('operacional.kanban.servicos', $cliente);

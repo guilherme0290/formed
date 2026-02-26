@@ -16,6 +16,7 @@ use App\Models\Tarefa;
 use App\Models\UnidadeClinica;
 use App\Models\User;
 use App\Services\FuncionarioArquivosZipService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -32,6 +33,26 @@ class ClienteController extends Controller
 
         $q      = trim((string) $r->query('q', ''));
         $status = $r->query('status', 'todos'); // todos|ativo|inativo
+        $dataInicio = $r->query('data_inicio');
+        $dataFim = $r->query('data_fim');
+        $dataInicioNormalizada = null;
+        $dataFimNormalizada = null;
+
+        try {
+            if (!empty($dataInicio)) {
+                $dataInicioNormalizada = Carbon::parse($dataInicio)->toDateString();
+            }
+            if (!empty($dataFim)) {
+                $dataFimNormalizada = Carbon::parse($dataFim)->toDateString();
+            }
+        } catch (\Throwable $e) {
+            $dataInicioNormalizada = null;
+            $dataFimNormalizada = null;
+        }
+
+        if (!empty($dataInicioNormalizada) && !empty($dataFimNormalizada) && $dataInicioNormalizada > $dataFimNormalizada) {
+            [$dataInicioNormalizada, $dataFimNormalizada] = [$dataFimNormalizada, $dataInicioNormalizada];
+        }
         $qText  = trim(preg_replace('/\d+/', ' ', $q));
         $qText  = preg_replace('/\s+/', ' ', $qText);
         $doc    = preg_replace('/\D+/', '', $q);
@@ -61,6 +82,8 @@ class ClienteController extends Controller
                 });
             })
             ->when($status !== 'todos', fn($w) => $w->where('ativo', $status === 'ativo'))
+            ->when(!empty($dataInicioNormalizada), fn($w) => $w->whereDate('clientes.created_at', '>=', $dataInicioNormalizada))
+            ->when(!empty($dataFimNormalizada), fn($w) => $w->whereDate('clientes.created_at', '<=', $dataFimNormalizada))
             ->orderByDesc('id')
             ->paginate(15)
             ->withQueryString();
@@ -73,7 +96,15 @@ class ClienteController extends Controller
             ->unique()
             ->values();
 
-        return view('clientes.index', compact('clientes', 'q', 'status', 'routePrefix', 'autocompleteOptions'));
+        return view('clientes.index', compact(
+            'clientes',
+            'q',
+            'status',
+            'dataInicioNormalizada',
+            'dataFimNormalizada',
+            'routePrefix',
+            'autocompleteOptions'
+        ));
     }
 
     /**

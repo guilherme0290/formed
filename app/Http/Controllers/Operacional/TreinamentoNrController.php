@@ -157,8 +157,8 @@ class TreinamentoNrController extends Controller
                 'funcionarios_ids' => $funcionariosIds,
             ]);
 
-            // Regra solicitada: pacote com vários participantes gera 1 tarefa por participante.
-            if ($isPacote && count($funcionariosIds) > 1) {
+            // Regra atual: sempre gerar 1 tarefa por participante (avulso ou pacote).
+            if (count($funcionariosIds) >= 1) {
                 $funcionariosMap = Funcionario::query()
                     ->whereIn('id', $funcionariosIds)
                     ->get()
@@ -429,7 +429,7 @@ class TreinamentoNrController extends Controller
 
             // Se editar para pacote com múltiplos participantes:
             // mantém a tarefa atual para o primeiro e cria novas para os demais.
-            if ($isPacote && count($funcionariosIds) > 1) {
+            if (count($funcionariosIds) > 1) {
                 $funcionariosMap = Funcionario::query()
                     ->whereIn('id', $funcionariosIds)
                     ->get()
@@ -507,7 +507,7 @@ class TreinamentoNrController extends Controller
                         'de_coluna_id' => null,
                         'para_coluna_id' => $novaTarefa->coluna_id,
                         'acao' => 'criado',
-                        'observacao' => 'Treinamento NRs criado por desmembramento de pacote com múltiplos participantes.',
+                        'observacao' => 'Treinamento NRs criado por desmembramento em tarefas por participante.',
                     ]);
                 }
 
@@ -517,7 +517,7 @@ class TreinamentoNrController extends Controller
                     'de_coluna_id'   => $tarefa->coluna_id,
                     'para_coluna_id' => $tarefa->coluna_id,
                     'acao'           => 'atualizado',
-                    'observacao'     => 'Treinamento NRs desmembrado em tarefas por participante (modo pacote).',
+                    'observacao'     => 'Treinamento NRs desmembrado em tarefas por participante.',
                 ]);
 
                 return;
@@ -891,3 +891,8 @@ class TreinamentoNrController extends Controller
             ->all();
     }
 }
+
+
+
+
+

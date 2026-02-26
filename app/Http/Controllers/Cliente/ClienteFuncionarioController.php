@@ -68,9 +68,15 @@ class ClienteFuncionarioController extends Controller
         $funcoes = app(AsoGheService::class)
             ->funcoesDisponiveisParaCliente($cliente->empresa_id, $cliente->id);
 
+        $funcionariosBusca = Funcionario::query()
+            ->where('cliente_id', $cliente->id)
+            ->orderBy('nome')
+            ->pluck('nome');
+
         return view('clientes.funcionarios.index', [
             'cliente'           => $cliente,
             'funcionarios'      => $funcionarios,
+            'funcionariosBusca' => $funcionariosBusca,
             'q'                 => $q,
             'status'            => $status,
             'funcaoId'          => $funcaoId,
@@ -279,10 +285,21 @@ class ClienteFuncionarioController extends Controller
 
         $arquivosAso = Tarefa::query()
             ->where('cliente_id', $cliente->id)
-            ->where('funcionario_id', $funcionario->id)
-            ->whereHas('asoSolicitacao')
-            ->whereNotNull('path_documento_cliente')
-            ->with(['coluna', 'servico'])
+            ->where(function ($q) use ($funcionario) {
+                $q->where(function ($asoQ) use ($funcionario) {
+                    $asoQ->where('funcionario_id', $funcionario->id)
+                        ->whereHas('asoSolicitacao');
+                })->orWhereHas('treinamentoNr', function ($trQ) use ($funcionario) {
+                    $trQ->where('funcionario_id', $funcionario->id);
+                });
+            })
+            ->where(function ($q) {
+                $q->whereNotNull('path_documento_cliente')
+                    ->orWhereHas('anexos', function ($aq) {
+                        $aq->whereRaw('LOWER(COALESCE(servico, "")) = ?', ['certificado_treinamento']);
+                    });
+            })
+            ->with(['coluna', 'servico', 'asoSolicitacao', 'anexos'])
             ->orderByDesc('finalizado_em')
             ->orderByDesc('updated_at')
             ->get();

@@ -1,4 +1,4 @@
-﻿@php
+@php
     $user = auth()->user();
     $vendedores = $vendedores ?? collect();
 
@@ -231,7 +231,7 @@
                 </div>
             </div>
 
-            {{-- BLOCO ENDEREÃ‡O --}}
+            {{-- BLOCO ENDEREÇO --}}
             <div class="border rounded-xl p-4 bg-gray-50">
                 <h2 class="font-medium mb-4 text-gray-800">Endere&ccedil;o</h2>
 
@@ -319,7 +319,7 @@
                 </div>
             </div>
 
-            {{-- BOTÃ•ES --}}
+            {{-- BOTÕES --}}
             <div class="flex flex-wrap justify-end gap-3"><button @if(!$canSave) disabled title="Usuário sem permissão" @endif class="w-full px-6 py-3 rounded-2xl text-base font-semibold shadow-md {{ $canSave ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}">
                     {{ $cliente->exists ? 'Salvar Alterações' : 'Cadastrar' }}
                 </button>

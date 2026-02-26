@@ -5,24 +5,24 @@
 
 @section('content')
     <section class="w-full px-3 md:px-5 py-4 md:py-5">
-        <div class="flex items-center justify-between mb-6">
+        <div class="flex flex-wrap items-center justify-between mb-6 gap-3">
             <div>
                 <h2 class="text-xl md:text-2xl font-semibold text-slate-900">
                     Meus agendamentos
                 </h2>
                 <p class="text-xs md:text-sm text-slate-500">
-                    Aqui você acompanha todos os serviços solicitados.
+                    Aqui voc&ecirc; acompanha todos os servi&ccedil;os solicitados.
                 </p>
             </div>
 
             <a href="{{ route('cliente.dashboard') }}"
-               class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-900 text-white text-xs md:text-sm font-semibold shadow">
+               class="inline-flex w-full sm:w-auto items-center justify-center gap-2 px-3 py-2 rounded-lg bg-slate-900 text-white text-xs md:text-sm font-semibold shadow">
                 Voltar ao painel
             </a>
         </div>
 
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <header class="bg-slate-900 text-white px-4 py-3 flex items-center justify-between">
+            <header class="bg-slate-900 text-white px-4 py-3 flex flex-wrap items-center justify-between gap-2">
                 <span class="text-sm font-semibold">Tarefas solicitadas</span>
                 <span class="text-[12px] text-slate-200">Cliente: {{ $cliente->razao_social ?? $cliente->nome_fantasia }}</span>
             </header>
@@ -32,15 +32,15 @@
                     Nenhum agendamento encontrado.
                 </div>
             @else
-                <div class="overflow-x-auto">
-                    <table class="w-full min-w-full divide-y divide-slate-200 text-sm">
+                <div class="max-h-[65vh] overflow-auto">
+                    <table class="w-full min-w-[980px] divide-y divide-slate-200 text-sm">
                         <thead class="bg-slate-50 text-slate-600">
                             <tr>
                                 <th class="px-4 py-3 text-left font-semibold">Solicitado em</th>
-                                <th class="px-4 py-3 text-left font-semibold">Serviço</th>
-                                <th class="px-4 py-3 text-left font-semibold">Início previsto</th>
+                                <th class="px-4 py-3 text-left font-semibold">Servi&ccedil;o</th>
+                                <th class="px-4 py-3 text-left font-semibold">In&iacute;cio previsto</th>
                                 <th class="px-4 py-3 text-left font-semibold">Status</th>
-                                <th class="px-4 py-3 text-right font-semibold">Ação</th>
+                                <th class="px-4 py-3 text-right font-semibold">A&ccedil;&atilde;o</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100">
@@ -330,5 +330,3 @@
         });
     </script>
 @endpush
-
-

@@ -20,21 +20,21 @@
 
 @section('content')
     <section class="w-full px-3 md:px-5 pt-4 md:pt-5">
-        <div class="mb-3 flex items-center justify-between gap-3">
-            <div class="inline-flex rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
+        <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <div class="inline-flex w-full sm:w-auto flex-wrap rounded-xl border border-blue-200 bg-white p-1 shadow-sm">
                 <a href="{{ route('cliente.faturas') }}"
-                   class="px-4 py-2 rounded-lg text-sm font-semibold transition {{ $activeTab === 'faturas' ? 'bg-slate-900 text-white' : 'text-slate-700 hover:bg-slate-100' }}">
+                   class="flex-1 sm:flex-none text-center px-4 py-2 rounded-lg text-sm font-semibold transition {{ $activeTab === 'faturas' ? 'bg-blue-700 text-white' : 'text-slate-700 hover:bg-blue-50' }}">
                     Faturas
                 </a>
                 <a href="{{ route('cliente.agendamentos') }}"
-                   class="px-4 py-2 rounded-lg text-sm font-semibold transition {{ $activeTab === 'agendamentos' ? 'bg-slate-900 text-white' : 'text-slate-700 hover:bg-slate-100' }}">
+                   class="flex-1 sm:flex-none text-center px-4 py-2 rounded-lg text-sm font-semibold transition {{ $activeTab === 'agendamentos' ? 'bg-blue-700 text-white' : 'text-slate-700 hover:bg-blue-50' }}">
                     Agendamentos
                 </a>
             </div>
 
             <a href="{{ route('cliente.dashboard') }}"
-               class="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-slate-300 bg-white text-slate-700 shadow-sm hover:bg-slate-50">
-                &larr; Voltar aos Serviços
+               class="inline-flex w-full sm:w-auto items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-slate-300 bg-white text-slate-700 shadow-sm hover:bg-slate-50">
+                &larr; Voltar aos servi&ccedil;os
             </a>
         </div>
     </section>
@@ -81,3 +81,5 @@
         </script>
     @endpush
 @endif
+
+

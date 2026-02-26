@@ -6,7 +6,7 @@
 
 @section('content')
     <section class="w-full px-3 md:px-5 py-4 md:py-5">
-        <div class="flex items-center justify-between mb-6">
+        <div class="flex flex-wrap items-center justify-between mb-6 gap-3">
             <div>
                 <h2 class="text-xl md:text-2xl font-semibold text-slate-900">
                     Faturas e serviços realizados
@@ -17,7 +17,7 @@
             </div>
 
             <a href="{{ route('cliente.dashboard') }}"
-               class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-900 text-white text-xs md:text-sm font-semibold shadow">
+               class="inline-flex w-full sm:w-auto items-center justify-center gap-2 px-3 py-2 rounded-lg bg-slate-900 text-white text-xs md:text-sm font-semibold shadow">
                 Voltar ao painel
             </a>
         </div>
@@ -26,7 +26,7 @@
             <form method="GET" class="grid gap-4 md:grid-cols-5 items-end">
                 <div class="md:col-span-2">
                     <label class="text-xs font-semibold text-slate-600">Período</label>
-                    <div class="flex items-center gap-2">
+                    <div class="flex flex-col sm:flex-row sm:items-center gap-2">
                         <div class="relative w-full">
                             <input type="text"
                                    inputmode="numeric"
@@ -63,7 +63,7 @@
                     </div>
                 </div>
                 <div>
-                    <label class="text-xs font-semibold text-slate-600">Período</label>
+                    <label class="text-xs font-semibold text-slate-600">Status</label>
                     <select name="status" class="w-full rounded-lg border-slate-200 bg-white text-slate-900 text-sm">
                         <option value="" class="text-slate-900">Todos</option>
                         <option value="ABERTO" class="text-slate-900" @selected(($filtros['status'] ?? '') === 'ABERTO')>Em aberto</option>
@@ -71,11 +71,11 @@
                         <option value="BAIXADO" class="text-slate-900" @selected(($filtros['status'] ?? '') === 'BAIXADO')>Pago</option>
                     </select>
                 </div>
-                <div class="flex items-end gap-3 md:col-span-2">
-                    <button class="px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700">
+                <div class="flex flex-wrap items-end gap-3 md:col-span-2">
+                    <button class="w-full sm:w-auto px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700">
                         Filtrar
                     </button>
-                    <a href="{{ route('cliente.faturas') }}" class="text-sm text-slate-500 hover:text-slate-700">Limpar</a>
+                    <a href="{{ route('cliente.faturas') }}" class="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 rounded-xl border border-slate-300 text-sm text-slate-600 hover:bg-slate-50">Limpar</a>
                 </div>
             </form>
         </div>
@@ -111,7 +111,7 @@
         </div>
 
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <header class="bg-slate-900 text-white px-4 py-3 flex items-center justify-between">
+            <header class="bg-slate-900 text-white px-4 py-3 flex flex-wrap items-center justify-between gap-2">
                 <div class="flex items-center gap-2 text-sm font-semibold">
                     <span>Detalhes da fatura</span>
                 </div>
@@ -125,8 +125,8 @@
                     Nenhuma cobrança encontrada. Assim que houver contas geradas, elas aparecerão aqui.
                 </div>
             @else
-                <div class="overflow-x-auto">
-                    <table class="w-full min-w-full divide-y divide-slate-200 text-sm">
+                <div class="max-h-[65vh] overflow-auto">
+                    <table class="w-full min-w-[880px] divide-y divide-slate-200 text-sm">
                         <thead class="bg-slate-50 text-slate-600">
                             <tr>
                                 <th class="px-4 py-3 text-left font-semibold">Data</th>
