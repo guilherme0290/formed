@@ -238,8 +238,8 @@
                         </div>
 
                         <div class="col-span-3 text-right">
-                          <button type="button" class="text-blue-600 hover:underline text-sm" data-act="edit">Editar</button>
-                          <button type="button" class="text-red-600 hover:underline text-sm ml-2" data-act="del">Excluir</button>
+                          <button type="button" class="text-slate-400 text-sm cursor-not-allowed" data-act="edit" disabled title="Desabilitado">Editar</button>
+                          <button type="button" class="text-slate-400 text-sm ml-2 cursor-not-allowed" data-act="del" disabled title="Desabilitado">Excluir</button>
                         </div>
                     `;
 

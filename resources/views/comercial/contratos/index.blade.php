@@ -1,25 +1,25 @@
-@extends('layouts.comercial')
+﻿@extends('layouts.comercial')
 @section('title', 'Contratos')
+@section('page-container', 'w-full p-0')
 
 @section('content')
-    <div class="max-w-[1800px] mx-auto px-3 sm:px-4 lg:px-8 py-6 space-y-6">
+    <div class="w-full max-w-full overflow-x-hidden px-2 sm:px-3 md:px-4 py-2 md:py-3 space-y-4 md:space-y-6">
 
         <div>
             <a href="{{ route('comercial.dashboard') }}"
                class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900">
-                Voltar ao Painel
+                &larr; Voltar ao Painel
             </a>
         </div>
 
-        <header class="flex items-center justify-between gap-3">
+        <header class="flex flex-wrap items-center justify-between gap-3">
             <div>
                 <h1 class="text-2xl font-semibold text-slate-900">Contratos</h1>
                 <p class="text-slate-500 text-sm mt-1">Gestão de contratos derivados das propostas fechadas.</p>
             </div>
         </header>
 
-        {{-- Cards de resumo (não filtram) --}}
-        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div class="grid gap-3 md:gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div class="bg-white border border-emerald-100 rounded-2xl shadow-sm p-4 flex items-center justify-between">
                 <div>
                     <p class="text-xs font-semibold text-emerald-600">Contratos Ativos</p>
@@ -27,7 +27,7 @@
                     <p class="text-[11px] text-emerald-500">Total geral do sistema</p>
                 </div>
                 <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 font-semibold">
-                    ✔
+                    &#10004;
                 </span>
             </div>
 
@@ -38,7 +38,7 @@
                     <p class="text-[11px] text-amber-500">Total geral do sistema</p>
                 </div>
                 <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-amber-700 font-semibold">
-                    ⏳
+                    &#9203;
                 </span>
             </div>
 
@@ -54,7 +54,6 @@
             </div>
         </div>
 
-        {{-- Filtros --}}
         <section class="bg-white rounded-2xl shadow border border-slate-100 p-4 md:p-5">
             <div class="flex items-center justify-between mb-4">
                 <h2 class="text-sm font-semibold text-slate-800">Filtros</h2>
@@ -123,17 +122,72 @@
             </form>
         </section>
 
-        {{-- Lista de contratos --}}
         <section class="bg-white rounded-2xl shadow border border-slate-100 overflow-hidden">
-            <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+            <div class="px-4 md:px-5 py-4 border-b border-slate-100 flex items-center justify-between">
                 <div>
                     <h2 class="text-sm font-semibold text-slate-800">Lista de Contratos</h2>
                     <p class="text-xs text-slate-500">Mostrando {{ $usandoFiltroCustom ? 'contratos conforme filtros' : 'somente Ativos e Pendentes' }}.</p>
                 </div>
             </div>
 
-            <div class="overflow-x-auto">
-                <table class="min-w-full text-sm">
+            <div class="md:hidden p-3 space-y-3">
+                @forelse($contratos as $contrato)
+                    @php
+                        $status = strtoupper((string) $contrato->status);
+                        $badge = match($status) {
+                            'ATIVO' => 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                            'PENDENTE' => 'bg-amber-50 text-amber-800 border-amber-200',
+                            'EM_ABERTO' => 'bg-blue-50 text-blue-700 border-blue-200',
+                            'FECHADO' => 'bg-blue-100 text-blue-900 border-blue-200',
+                            'CANCELADO' => 'bg-slate-100 text-red-700 border-slate-200',
+                            'SUBSTITUIDO' => 'bg-slate-50 text-slate-600 border-slate-200',
+                            default => 'bg-slate-100 text-slate-700 border-slate-200',
+                        };
+                    @endphp
+                    <article class="rounded-xl border border-slate-200 p-3 space-y-2">
+                        <div class="flex items-start justify-between gap-2">
+                            <div>
+                                <p class="font-semibold text-slate-800 leading-tight break-words">{{ $contrato->cliente->razao_social ?? '—' }}</p>
+                                <p class="text-xs text-slate-500">Contrato #{{ $contrato->id }}</p>
+                            </div>
+                            <span class="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-semibold border {{ $badge }} whitespace-nowrap">
+                                {{ str_replace('_',' ', $status) }}
+                            </span>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                            <div>
+                                <p class="text-slate-500">Valor</p>
+                                <p class="font-semibold text-slate-800">R$ {{ number_format((float) $contrato->valor_mensal, 2, ',', '.') }}</p>
+                            </div>
+                            <div>
+                                <p class="text-slate-500">Vencimento</p>
+                                <p class="font-semibold text-slate-800">{{ $contrato->vencimento_servicos ? sprintf('Dia %02d', $contrato->vencimento_servicos) : '—' }}</p>
+                            </div>
+                            <div>
+                                <p class="text-slate-500">Início</p>
+                                <p class="text-slate-700">{{ optional($contrato->vigencia_inicio)->format('d/m/Y') ?? '—' }}</p>
+                            </div>
+                            <div>
+                                <p class="text-slate-500">Fim</p>
+                                <p class="text-slate-700">{{ optional($contrato->vigencia_fim)->format('d/m/Y') ?? '—' }}</p>
+                            </div>
+                        </div>
+
+                        <a href="{{ route('comercial.contratos.show', $contrato) }}"
+                           class="inline-flex items-center justify-center w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold">
+                            Ver Contrato
+                        </a>
+                    </article>
+                @empty
+                    <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+                        Nenhum contrato encontrado.
+                    </div>
+                @endforelse
+            </div>
+
+            <div class="hidden md:block overflow-x-auto">
+                <table class="comercial-table min-w-full text-sm">
                     <thead class="bg-slate-50">
                     <tr class="text-left text-slate-600">
                         <th class="px-5 py-3 font-semibold">Cliente</th>

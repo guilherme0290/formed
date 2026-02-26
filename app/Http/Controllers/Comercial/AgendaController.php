@@ -7,7 +7,6 @@ use App\Models\AgendaTarefa;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
 
 class AgendaController extends Controller
 {
@@ -25,126 +24,14 @@ class AgendaController extends Controller
         });
     }
 
-    public function index(Request $request): View
+    public function index(Request $request): RedirectResponse
     {
-        $user = $request->user();
-        $dataSelecionada = $this->dataSelecionada($request);
-        $periodo = $this->periodoSelecionado($request);
-        [$inicio, $fim] = $this->intervaloDoPeriodo($dataSelecionada, $periodo);
+        $data = $request->query('data', now()->toDateString());
 
-        $tarefas = AgendaTarefa::query()
-            ->where('user_id', $user->id)
-            ->when(
-                $periodo === 'dia',
-                fn ($q) => $q->whereDate('data', $dataSelecionada->toDateString()),
-                fn ($q) => $q->whereBetween('data', [$inicio->toDateString(), $fim->toDateString()])
-            )
-            ->orderBy('hora')
-            ->orderBy('id')
-            ->get();
-
-        $pendentes = $tarefas->where('status', 'PENDENTE');
-        $concluidas = $tarefas->where('status', 'CONCLUIDA');
-
-        $kpis = [
-            'aberto_total' => AgendaTarefa::query()
-                ->where('user_id', $user->id)
-                ->where('status', 'PENDENTE')
-                ->count(),
-            'pendentes_periodo' => $pendentes->count(),
-            'concluidas_periodo' => $concluidas->count(),
-        ];
-
-        $inicioMes = $dataSelecionada->copy()->startOfMonth();
-        $fimMes = $dataSelecionada->copy()->endOfMonth();
-
-        $tarefasPorData = collect();
-        $contagensPorData = [];
-        $datasCalendario = [];
-        $calendariosAno = [];
-
-        if ($periodo === 'ano') {
-            $inicioAno = $dataSelecionada->copy()->startOfYear();
-            $fimAno = $dataSelecionada->copy()->endOfYear();
-
-            $tarefasAno = AgendaTarefa::query()
-                ->where('user_id', $user->id)
-                ->whereBetween('data', [$inicioAno->toDateString(), $fimAno->toDateString()])
-                ->orderBy('data')
-                ->orderBy('hora')
-                ->orderBy('id')
-                ->get();
-
-            $tarefasPorData = $tarefasAno->groupBy(fn ($tarefa) => $tarefa->data->toDateString());
-            foreach ($tarefasPorData as $data => $itens) {
-                $contagensPorData[$data] = [
-                    'pendentes' => $itens->where('status', 'PENDENTE')->count(),
-                    'concluidas' => $itens->where('status', 'CONCLUIDA')->count(),
-                ];
-            }
-
-            for ($mes = 1; $mes <= 12; $mes++) {
-                $inicio = $dataSelecionada->copy()->month($mes)->startOfMonth();
-                $fim = $inicio->copy()->endOfMonth();
-                $datas = [];
-                $offset = $inicio->dayOfWeek;
-                for ($i = 0; $i < $offset; $i++) {
-                    $datas[] = null;
-                }
-                for ($dia = $inicio->copy(); $dia->lte($fim); $dia->addDay()) {
-                    $datas[] = $dia->copy();
-                }
-                while (count($datas) % 7 !== 0) {
-                    $datas[] = null;
-                }
-                $calendariosAno[] = [
-                    'titulo' => $inicio->locale('pt_BR')->translatedFormat('F'),
-                    'datas' => $datas,
-                ];
-            }
-        } else {
-            $tarefasMes = AgendaTarefa::query()
-                ->where('user_id', $user->id)
-                ->whereBetween('data', [$inicioMes->toDateString(), $fimMes->toDateString()])
-                ->orderBy('data')
-                ->orderBy('hora')
-                ->orderBy('id')
-                ->get();
-
-            $tarefasPorData = $tarefasMes->groupBy(fn ($tarefa) => $tarefa->data->toDateString());
-            foreach ($tarefasPorData as $data => $itens) {
-                $contagensPorData[$data] = [
-                    'pendentes' => $itens->where('status', 'PENDENTE')->count(),
-                    'concluidas' => $itens->where('status', 'CONCLUIDA')->count(),
-                ];
-            }
-
-            $primeiroDiaSemana = $inicioMes->dayOfWeek;
-            for ($i = 0; $i < $primeiroDiaSemana; $i++) {
-                $datasCalendario[] = null;
-            }
-            for ($dia = $inicioMes->copy(); $dia->lte($fimMes); $dia->addDay()) {
-                $datasCalendario[] = $dia->copy();
-            }
-            while (count($datasCalendario) % 7 !== 0) {
-                $datasCalendario[] = null;
-            }
-        }
-
-        return view('comercial.agenda.index', compact(
-            'tarefas',
-            'pendentes',
-            'concluidas',
-            'kpis',
-            'dataSelecionada',
-            'periodo',
-            'inicio',
-            'fim',
-            'tarefasPorData',
-            'contagensPorData',
-            'datasCalendario',
-            'calendariosAno'
-        ));
+        return redirect()->route('comercial.dashboard', [
+            'agenda_data' => $data,
+            'agenda_dia' => $data,
+        ]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -165,8 +52,20 @@ class AgendaController extends Controller
             'status' => 'PENDENTE',
         ]);
 
+        if ($request->input('origem') === 'dashboard') {
+            return redirect()
+                ->route('comercial.dashboard', [
+                    'agenda_data' => $request->input('agenda_data', $data['data']),
+                    'agenda_dia' => $data['data'],
+                ])
+                ->with('ok', 'Tarefa criada.');
+        }
+
         return redirect()
-            ->route('comercial.agenda.index', ['data' => $data['data']])
+            ->route('comercial.dashboard', [
+                'agenda_data' => $data['data'],
+                'agenda_dia' => $data['data'],
+            ])
             ->with('ok', 'Tarefa criada.');
     }
 
@@ -189,8 +88,20 @@ class AgendaController extends Controller
             'cliente' => $data['cliente'] ?? null,
         ]);
 
+        if ($request->input('origem') === 'dashboard') {
+            return redirect()
+                ->route('comercial.dashboard', [
+                    'agenda_data' => $request->input('agenda_data', $data['data']),
+                    'agenda_dia' => $data['data'],
+                ])
+                ->with('ok', 'Tarefa atualizada.');
+        }
+
         return redirect()
-            ->route('comercial.agenda.index', ['data' => $data['data'], 'periodo' => $request->query('periodo', 'dia')])
+            ->route('comercial.dashboard', [
+                'agenda_data' => $data['data'],
+                'agenda_dia' => $data['data'],
+            ])
             ->with('ok', 'Tarefa atualizada.');
     }
 
@@ -203,8 +114,17 @@ class AgendaController extends Controller
             'concluida_em' => now(),
         ]);
 
+        if ($request->input('origem') === 'dashboard') {
+            return redirect()
+                ->route('comercial.dashboard', [
+                    'agenda_data' => $request->input('agenda_data', $tarefa->data->toDateString()),
+                    'agenda_dia' => $tarefa->data->toDateString(),
+                ])
+                ->with('ok', 'Tarefa concluida.');
+        }
+
         return redirect()
-            ->route('comercial.agenda.index', ['data' => $tarefa->data->toDateString()])
+            ->route('comercial.dashboard', ['agenda_data' => $tarefa->data->toDateString(), 'agenda_dia' => $tarefa->data->toDateString()])
             ->with('ok', 'Tarefa concluída.');
     }
 
@@ -218,8 +138,17 @@ class AgendaController extends Controller
         $data = $tarefa->data->toDateString();
         $tarefa->delete();
 
+        if ($request->input('origem') === 'dashboard') {
+            return redirect()
+                ->route('comercial.dashboard', [
+                    'agenda_data' => $request->input('agenda_data', $data),
+                    'agenda_dia' => $data,
+                ])
+                ->with('ok', 'Tarefa removida.');
+        }
+
         return redirect()
-            ->route('comercial.agenda.index', ['data' => $data])
+            ->route('comercial.dashboard', ['agenda_data' => $data, 'agenda_dia' => $data])
             ->with('ok', 'Tarefa removida.');
     }
 
@@ -283,3 +212,4 @@ class AgendaController extends Controller
         }
     }
 }
+

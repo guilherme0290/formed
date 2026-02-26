@@ -1,20 +1,41 @@
-@extends('layouts.comercial')
+﻿@extends('layouts.comercial')
 @section('title', 'Acompanhamento de Propostas')
 @section('page-container', 'w-full p-0')
 
 @section('content')
-    <div class="min-h-screen bg-slate-50">
-        <div class="w-full px-2 sm:px-3 md:px-4 py-2 md:py-3 space-y-6">
+    <div class="min-h-screen bg-slate-50 overflow-x-hidden">
+        <div class="w-full max-w-full px-2 sm:px-3 md:px-4 py-2 md:py-3 space-y-4 md:space-y-6">
 
             <div>
                 <a href="{{ route('comercial.dashboard') }}"
                    class="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900">
-                    ← Voltar ao Painel
+                    &larr; Voltar ao Painel
                 </a>
             </div>
 
             {{-- KPIs --}}
-            <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <section class="md:hidden bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+                @php
+                    $kpiCardsMobile = [
+                        ['label' => 'Total de Propostas', 'value' => $kpi['total'] ?? 0, 'color' => 'text-slate-800'],
+                        ['label' => 'Em Aberto', 'value' => $kpi['emAberto'] ?? 0, 'color' => 'text-amber-700'],
+                        ['label' => 'Fechadas', 'value' => $kpi['fechadas'] ?? 0, 'color' => 'text-emerald-700'],
+                        ['label' => 'Taxa de Conversão', 'value' => ($kpi['taxaConversao'] ?? 0) . '%', 'color' => 'text-blue-700'],
+                        ['label' => 'Em Negociação (R$)', 'value' => 'R$ ' . number_format($kpi['emNegociacaoValor'] ?? 0, 2, ',', '.'), 'color' => 'text-indigo-700'],
+                    ];
+                @endphp
+                <h2 class="text-sm font-semibold text-slate-800 mb-3">Resumo</h2>
+                <div class="rounded-xl border border-slate-100 divide-y divide-slate-100">
+                    @foreach($kpiCardsMobile as $card)
+                        <div class="px-3 py-2.5 flex items-center justify-between gap-3">
+                            <p class="text-[11px] font-semibold text-slate-500">{{ $card['label'] }}</p>
+                            <p class="text-base font-bold {{ $card['color'] }} text-right">{{ $card['value'] }}</p>
+                        </div>
+                    @endforeach
+                </div>
+            </section>
+
+            <div class="hidden md:grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
                 @php
                     $kpiCards = [
                         ['label' => 'Total de Propostas', 'value' => $kpi['total'] ?? 0, 'icon' => 'doc', 'color' => 'text-slate-800', 'bg' => 'bg-white'],
@@ -33,19 +54,19 @@
                         <div class="h-10 w-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600">
                             @switch($card['icon'])
                                 @case('doc')
-                                    📄
+                                    <i class="fa-regular fa-file-lines"></i>
                                     @break
                                 @case('clock')
-                                    ⏱️
+                                    <i class="fa-regular fa-clock"></i>
                                     @break
                                 @case('check')
-                                    ✔
+                                    <i class="fa-solid fa-check"></i>
                                     @break
                                 @case('chart')
-                                    📈
+                                    <i class="fa-solid fa-chart-line"></i>
                                     @break
                                 @case('bars')
-                                    📊
+                                    <i class="fa-solid fa-chart-column"></i>
                                     @break
                             @endswitch
                         </div>
@@ -62,11 +83,11 @@
                     <div class="col-span-2 md:col-span-1">
                         <label class="text-xs font-semibold text-slate-600">Busca</label>
                         <div class="mt-1 relative">
-                            <span class="absolute inset-y-0 left-3 flex items-center text-slate-400">🔍</span>
+                            <span class="absolute inset-y-0 left-3 flex items-center text-slate-400">&#128269;</span>
                             <input type="text" name="q" id="pipeline-autocomplete-input" value="{{ $busca }}"
                                    autocomplete="off"
                                    class="w-full rounded-xl border border-slate-200 text-sm px-9 py-2"
-                                   placeholder="Buscar por cliente ou nº proposta…">
+                                   placeholder="Buscar por cliente ou nº proposta...">
                             <div id="pipeline-autocomplete-list"
                                  class="absolute z-20 mt-1 w-full max-h-64 overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg hidden"></div>
                         </div>
@@ -109,8 +130,8 @@
             </section>
 
             {{-- Kanban --}}
-            <div class="overflow-x-auto pb-6 xl:overflow-x-visible">
-                <div class="flex gap-3 md:gap-4 min-w-max">
+            <div class="pb-6">
+                <div class="flex flex-col md:flex-row gap-3 md:gap-4 md:min-w-max">
                     @php
                         $cores = [
                             'CONTATO_INICIAL' => 'from-sky-400 to-cyan-400',
@@ -157,7 +178,7 @@
                             $borderClass = $borderClasses[$slug] ?? 'border-slate-200';
                             $badgeClass = $badgeClasses[$slug] ?? 'bg-blue-100 text-blue-700 border border-blue-200';
                         @endphp
-                        <section class="flex flex-col w-56 md:w-60 lg:w-64 flex-shrink-0 gap-3">
+                        <section class="flex flex-col w-full md:w-60 lg:w-64 flex-shrink-0 gap-3">
 
                             <article class="rounded-2xl px-4 py-3 bg-gradient-to-r {{ $grad }} text-white shadow-md flex items-center justify-between">
                                 <div>
@@ -169,7 +190,7 @@
                                     </p>
                                 </div>
                                 <div class="text-2xl md:text-3xl opacity-70">
-                                    📌
+                                    <i class="fa-solid fa-thumbtack"></i>
                                 </div>
                             </article>
 
@@ -241,7 +262,7 @@
 
                                             <div class="flex items-center justify-between">
                                                 <div class="text-sm font-bold text-emerald-700">R$ {{ $valor }}</div>
-                                                <div class="text-[11px] text-slate-500">{{ $servicesCount }} serviço(s)</div>
+                                                <div class="text-[11px] text-slate-500">{{ $servicesCount }} servi&ccedil;o(s)</div>
                                             </div>
                                             <div class="text-[11px] text-slate-500">Atualizada: {{ $dataEnvio }}</div>
 
@@ -278,7 +299,7 @@
     <div class="relative min-h-screen flex items-center justify-center px-4 py-6">
         <div class="bg-white w-full max-w-6xl h-[90vh] rounded-3xl shadow-2xl overflow-hidden">
             <div class="bg-blue-700 px-6 py-4 flex items-start justify-between text-white">
-                <div class="space-y-2">
+                <div class="rounded-xl border border-slate-100 divide-y divide-slate-100">
                     <h2 class="text-2xl font-semibold">Detalhes da Proposta</h2>
                     <div class="flex items-center gap-2 text-xs">
                         <span id="modalCodigo" class="px-2.5 py-1 rounded-full bg-slate-900/60 border border-white/10 font-semibold">PROP-2025-001</span>
@@ -289,7 +310,7 @@
                         class="h-10 w-10 rounded-full bg-white/20 hover:bg-white/30 text-white text-lg font-semibold"
                         aria-label="Fechar"
                         onclick="closeModalProposta()">
-                    ✕
+                    <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
 
@@ -298,29 +319,29 @@
                     <div class="lg:col-span-2 space-y-5">
                         <div class="bg-white border border-blue-100 rounded-2xl shadow-sm">
                             <div class="px-4 py-3 border-b border-blue-100 flex items-center gap-2">
-                                <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 text-sm">👤</span>
-                                <h3 class="text-sm font-semibold text-slate-800">Informações do Cliente</h3>
+                                <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 text-sm"><i class="fa-regular fa-user"></i></span>
+                                <h3 class="text-sm font-semibold text-slate-800">Informa&ccedil;&otilde;es do Cliente</h3>
                             </div>
                             <div class="px-4 py-4 grid md:grid-cols-3 gap-4 text-sm">
                                 <div>
-                                    <div class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Razão Social</div>
-                                    <div id="modalCliente" class="text-slate-900 font-semibold">—</div>
+                                    <div class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Raz&atilde;o Social</div>
+                                    <div id="modalCliente" class="text-slate-900 font-semibold">&mdash;</div>
                                 </div>
                                 <div>
                                     <div class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Telefone</div>
-                                    <div id="modalTelefone" class="text-slate-900 font-semibold">—</div>
+                                    <div id="modalTelefone" class="text-slate-900 font-semibold">&mdash;</div>
                                 </div>
                                 <div>
                                     <div class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">E-mail</div>
-                                    <div id="modalEmail" class="text-slate-700 font-semibold">—</div>
+                                    <div id="modalEmail" class="text-slate-700 font-semibold">&mdash;</div>
                                 </div>
                             </div>
                         </div>
 
                         <div class="bg-emerald-50 border border-emerald-100 rounded-2xl shadow-sm">
                             <div class="px-4 py-3 border-b border-emerald-100 flex items-center gap-2">
-                                <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 text-sm">📝</span>
-                                <h3 class="text-sm font-semibold text-slate-800">Serviços Contratados</h3>
+                                <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 text-sm"><i class="fa-regular fa-note-sticky"></i></span>
+                                <h3 class="text-sm font-semibold text-slate-800">Servi&ccedil;os Contratados</h3>
                             </div>
                             <div class="px-4 py-4 space-y-3 text-sm" id="modalServicos">
                                 <div class="flex items-center justify-between">
@@ -336,13 +357,13 @@
                             </div>
                             <div class="px-4 py-3 border-t border-emerald-100 flex items-center justify-between">
                                 <div class="text-sm font-semibold text-slate-700">Valor Total</div>
-                                <div id="modalValorTotal" class="text-lg font-bold text-emerald-700">R$ —</div>
+                                <div id="modalValorTotal" class="text-lg font-bold text-emerald-700">R$ &mdash;</div>
                             </div>
                         </div>
 
                         <div class="bg-white border border-purple-100 rounded-2xl shadow-sm">
                             <div class="px-4 py-3 border-b border-purple-100 flex items-center gap-2">
-                                <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-purple-100 text-purple-700 text-sm">🕑</span>
+                                <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-purple-100 text-purple-700 text-sm"><i class="fa-regular fa-clock"></i></span>
                                 <h3 class="text-sm font-semibold text-slate-800">Linha do Tempo</h3>
                             </div>
                             <div class="px-4 py-4 space-y-4" id="modalTimeline">
@@ -350,14 +371,14 @@
                                     <div class="mt-1 h-3 w-3 rounded-full bg-purple-400"></div>
                                     <div class="bg-slate-50 border border-slate-100 rounded-xl px-3 py-2 w-full">
                                         <div class="text-sm font-semibold text-slate-800">Proposta criada</div>
-                                        <div class="text-xs text-slate-500">15/01/2025 às 10:00 · Por Carlos Santos</div>
+                                        <div class="text-xs text-slate-500">15/01/2025 &agrave;s 10:00 &middot; Por Carlos Santos</div>
                                     </div>
                                 </div>
                                 <div class="flex items-start gap-3">
                                     <div class="mt-1 h-3 w-3 rounded-full bg-purple-400"></div>
                                     <div class="bg-slate-50 border border-slate-100 rounded-xl px-3 py-2 w-full">
                                         <div class="text-sm font-semibold text-slate-800">Proposta enviada por e-mail</div>
-                                        <div class="text-xs text-slate-500">15/01/2025 às 10:30 · Por Carlos Santos</div>
+                                        <div class="text-xs text-slate-500">15/01/2025 &agrave;s 10:30 &middot; Por Carlos Santos</div>
                                     </div>
                                 </div>
                             </div>
@@ -367,25 +388,25 @@
                     <div class="space-y-4">
                         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm">
                             <div class="px-4 py-3 border-b border-slate-100">
-                                <h3 class="text-sm font-semibold text-slate-800">Ações Rápidas</h3>
+                                <h3 class="text-sm font-semibold text-slate-800">A&ccedil;&otilde;es R&aacute;pidas</h3>
                             </div>
                             <div class="p-4 space-y-2">
-                                <button class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold">📱 Enviar WhatsApp</button>
-                                <button class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold">📞 Ligar</button>
-                                <button class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold">✉️ Enviar E-mail</button>
-                                <button class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold">🖨️ Imprimir Proposta</button>
+                                <button class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold"><i class="fa-brands fa-whatsapp"></i> Enviar WhatsApp</button>
+                                <button class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold"><i class="fa-solid fa-phone"></i> Ligar</button>
+                                <button class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold"><i class="fa-regular fa-envelope"></i> Enviar E-mail</button>
+                                <button class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold"><i class="fa-solid fa-print"></i> Imprimir Proposta</button>
                             </div>
                         </div>
 
                         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm">
                             <div class="px-4 py-3 border-b border-slate-100">
-                                <h3 class="text-sm font-semibold text-slate-800">Informações</h3>
+                                <h3 class="text-sm font-semibold text-slate-800">Informa&ccedil;&otilde;es</h3>
                             </div>
                             <div class="p-4 space-y-2 text-sm text-slate-700">
-                                <div class="flex items-center gap-2"><span class="text-blue-500">👤</span><span class="font-semibold">Vendedor:</span><span id="modalVendedor">—</span></div>
-                                <div class="flex items-center gap-2"><span class="text-blue-500">📤</span><span class="font-semibold">Data de Envio:</span><span id="modalEnvio">—</span></div>
-                                <div class="flex items-center gap-2"><span class="text-blue-500">⏳</span><span class="font-semibold">Validade:</span><span id="modalValidade">—</span></div>
-                                <div class="flex items-center gap-2"><span class="text-blue-500">📅</span><span class="font-semibold">Último Contato:</span><span id="modalUltimoContato">—</span></div>
+                                <div class="flex items-center gap-2"><span class="text-blue-500"><i class="fa-regular fa-user"></i></span><span class="font-semibold">Vendedor:</span><span id="modalVendedor">&mdash;</span></div>
+                                <div class="flex items-center gap-2"><span class="text-blue-500"><i class="fa-regular fa-paper-plane"></i></span><span class="font-semibold">Data de Envio:</span><span id="modalEnvio">&mdash;</span></div>
+                                <div class="flex items-center gap-2"><span class="text-blue-500"><i class="fa-regular fa-hourglass-half"></i></span><span class="font-semibold">Validade:</span><span id="modalValidade">&mdash;</span></div>
+                                <div class="flex items-center gap-2"><span class="text-blue-500"><i class="fa-regular fa-calendar"></i></span><span class="font-semibold">&Uacute;ltimo Contato:</span><span id="modalUltimoContato">&mdash;</span></div>
                             </div>
                         </div>
 
@@ -412,7 +433,7 @@
                                 <h3 class="text-sm font-semibold text-slate-800">Agendar Contato</h3>
                             </div>
                             <div class="p-4 space-y-3">
-                                <div class="text-xs font-semibold text-slate-600">Data do Próximo Contato</div>
+                                <div class="text-xs font-semibold text-slate-600">Data do Pr&oacute;ximo Contato</div>
                                 <input type="date" value="2025-01-22" class="w-full rounded-xl border border-orange-200 bg-white px-3 py-2 text-sm">
                                 <button class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold">Agendar</button>
                             </div>
@@ -420,11 +441,11 @@
 
                         <div class="bg-emerald-50 border border-emerald-100 rounded-2xl shadow-sm">
                             <div class="px-4 py-3 border-b border-emerald-100">
-                                <h3 class="text-sm font-semibold text-slate-800">Nova Observação</h3>
+                                <h3 class="text-sm font-semibold text-slate-800">Nova Observa&ccedil;&atilde;o</h3>
                             </div>
                             <div class="p-4 space-y-3">
-                                <textarea rows="3" class="w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm" placeholder="Digite suas observações…"></textarea>
-                                <button class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold">Adicionar Observação</button>
+                                <textarea rows="3" class="w-full rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm" placeholder="Digite suas observa&ccedil;&otilde;es..."></textarea>
+                                <button class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold">Adicionar Observa&ccedil;&atilde;o</button>
                             </div>
                         </div>
                     </div>
@@ -564,7 +585,7 @@
                         <div class="mt-1 h-3 w-3 rounded-full bg-purple-400"></div>
                         <div class="bg-slate-50 border border-slate-100 rounded-xl px-3 py-2 w-full">
                             <div class="text-sm font-semibold text-slate-800">${ev.titulo || ''}</div>
-                            <div class="text-xs text-slate-500">${ev.data || ''} ${ev.por ? '· ' + ev.por : ''}</div>
+                            <div class="text-xs text-slate-500">${ev.data || ''} ${ev.por ? '&middot; ' + ev.por : ''}</div>
                         </div>
                     `;
                     fields.timeline.appendChild(row);
@@ -622,16 +643,16 @@
             function openModalFromCard(card) {
                 if (!card || !modal) return;
                 currentCard = card;
-                fields.codigo.textContent = card.dataset.codigo || '—';
-                fields.cliente.textContent = card.dataset.cliente || '—';
-                fields.telefone.textContent = card.dataset.telefone || '—';
-                fields.email.textContent = card.dataset.email || '—';
+                fields.codigo.textContent = card.dataset.codigo || '&mdash;';
+                fields.cliente.textContent = card.dataset.cliente || '&mdash;';
+                fields.telefone.textContent = card.dataset.telefone || '&mdash;';
+                fields.email.textContent = card.dataset.email || '&mdash;';
                 fields.valor.textContent = 'R$ ' + (card.dataset.valor || '0,00');
-                fields.vendedor.textContent = card.dataset.vendedor || '—';
-                fields.envio.textContent = card.dataset.envio || '—';
-                fields.validade.textContent = card.dataset.validade || '—';
-                fields.ultimo.textContent = card.dataset.ultimoContato || '—';
-                fields.status.textContent = card.dataset.statusLabel || '—';
+                fields.vendedor.textContent = card.dataset.vendedor || '&mdash;';
+                fields.envio.textContent = card.dataset.envio || '&mdash;';
+                fields.validade.textContent = card.dataset.validade || '&mdash;';
+                fields.ultimo.textContent = card.dataset.ultimoContato || '&mdash;';
+                fields.status.textContent = card.dataset.statusLabel || '&mdash;';
                 if (statusSelect) {
                     statusSelect.value = card.dataset.pipelineStatus || 'CONTATO_INICIAL';
                 }
@@ -743,3 +764,6 @@
         });
     </script>
 @endpush
+
+
+

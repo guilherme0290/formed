@@ -3,7 +3,7 @@
 
 @section('content')
     <div class="max-w-[1800px] mx-auto px-3 sm:px-4 lg:px-8 py-6 space-y-6">
-        <div class="flex items-center justify-between">
+        <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
                 <a href="{{ route('comercial.contratos.show', $contrato) }}"
                    class="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900">
@@ -87,7 +87,7 @@
                 </div>
 
                 <div class="overflow-x-auto">
-                    <table class="min-w-full text-sm">
+                    <table class="comercial-table min-w-full text-sm">
                         <thead class="bg-slate-50">
                         <tr class="text-left text-slate-600">
                             <th class="px-5 py-3 font-semibold">Serviço</th>
@@ -119,7 +119,7 @@
                 </div>
             </div>
 
-            <div class="flex items-center justify-end gap-3">
+            <div class="flex flex-wrap items-center justify-end gap-3">
                 <a href="{{ route('comercial.contratos.show', $contrato) }}"
                    class="px-4 py-2 rounded-lg bg-slate-100 text-slate-700">Cancelar</a>
                 <button type="submit"

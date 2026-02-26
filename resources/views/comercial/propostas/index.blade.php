@@ -19,7 +19,7 @@
             </a>
         </div>
 
-        <header class="flex items-center justify-between gap-3">
+        <header class="flex flex-wrap items-center justify-between gap-3">
             <div>
                 <h1 class="text-2xl font-semibold text-slate-900">Propostas</h1>
                 <p class="text-slate-500 text-sm mt-1">Listagem de propostas comerciais.</p>
@@ -27,7 +27,7 @@
 
             <a href="{{ $canCreate ? route('comercial.propostas.create') : 'javascript:void(0)' }}"
                @if(!$canCreate) title="Usuário sem permissão" aria-disabled="true" @endif
-               class="inline-flex items-center justify-center gap-2 rounded-2xl
+               class="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-2xl
                       {{ $canCreate ? 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white ring-1 ring-blue-600/20 hover:ring-blue-700/30' : 'bg-slate-200 text-slate-500 cursor-not-allowed ring-1 ring-slate-300' }}
                       px-5 py-2.5 text-sm font-semibold shadow-sm transition">
                 <span class="text-base leading-none">＋</span>
@@ -87,8 +87,109 @@
                 </form>
             </div>
 
-            <div class="overflow-x-auto">
-                <table class="min-w-full text-sm">
+            <div class="md:hidden divide-y divide-slate-100">
+                @forelse($propostas as $proposta)
+                    @php
+                        $cliente = $proposta->cliente;
+                        $clienteTxt = $cliente?->razao_social ?? 'â€”';
+                        $cnpjRaw = $cliente?->cnpj ?? '';
+                        $cnpjDigits = preg_replace('/\D+/', '', (string) $cnpjRaw);
+                        if (strlen($cnpjDigits) === 14) {
+                            $cnpjClienteTxt = substr($cnpjDigits, 0, 2) . '.' . substr($cnpjDigits, 2, 3) . '.' . substr($cnpjDigits, 5, 3) . '/' . substr($cnpjDigits, 8, 4) . '-' . substr($cnpjDigits, 12, 2);
+                        } else {
+                            $cnpjClienteTxt = $cnpjRaw !== '' ? $cnpjRaw : 'â€”';
+                        }
+                        $ref = str_pad((int) $proposta->id, 2, '0', STR_PAD_LEFT);
+                        $status = strtoupper((string) ($proposta->status ?? ''));
+                        $badgeByStatus = [
+                            'PENDENTE' => 'bg-amber-50 text-amber-800 border-amber-200',
+                            'ENVIADA'  => 'bg-blue-50 text-blue-700 border-blue-200',
+                            'FECHADA'  => 'bg-emerald-50 text-emerald-800 border-emerald-200',
+                            'CANCELADA' => 'bg-red-50 text-red-700 border-red-200',
+                        ];
+                        $badge = $badgeByStatus[$status] ?? 'bg-slate-100 text-slate-700 border-slate-200';
+                    @endphp
+
+                    <article class="p-4 space-y-3">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="min-w-0">
+                                <div class="text-sm font-semibold text-slate-900 truncate">{{ $clienteTxt }}</div>
+                                <div class="text-xs text-slate-500">{{ $cnpjClienteTxt }}</div>
+                            </div>
+                            <button type="button"
+                                    class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold border {{ $badge }} {{ $canUpdate ? 'hover:shadow-sm transition' : 'opacity-60 cursor-not-allowed' }}"
+                                    data-act="status"
+                                    data-action="{{ route('comercial.propostas.status', $proposta) }}"
+                                    data-id="{{ $proposta->id }}"
+                                    data-cliente="{{ e($clienteTxt) }}"
+                                    data-status="{{ $status ?: 'â€”' }}"
+                                    @if(!$canUpdate) disabled @endif>
+                                {{ $status ?: 'â€”' }}
+                            </button>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                            <div>
+                                <div class="text-slate-500">ID/Ref</div>
+                                <div class="font-semibold text-slate-800">#{{ $proposta->id }} / {{ $ref }}</div>
+                            </div>
+                            <div>
+                                <div class="text-slate-500">Valor</div>
+                                <div class="font-semibold text-slate-800">R$ {{ number_format((float) $proposta->valor_total, 2, ',', '.') }}</div>
+                            </div>
+                            <div class="col-span-2">
+                                <div class="text-slate-500">Criada em</div>
+                                <div class="font-medium text-slate-700">{{ optional($proposta->created_at)->format('d/m/Y H:i') ?? 'â€”' }}</div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-4 gap-2 pt-1">
+                            <button type="button"
+                                    class="inline-flex items-center justify-center h-9 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800"
+                                    data-act="whatsapp"
+                                    data-action="{{ route('comercial.propostas.enviar-whatsapp', $proposta) }}"
+                                    data-telefone="{{ e($cliente?->telefone ?? '') }}"
+                                    data-ref="{{ e($ref) }}">
+                                <i class="fa-brands fa-whatsapp text-base"></i>
+                            </button>
+                            <button type="button"
+                                    class="inline-flex items-center justify-center h-9 rounded-xl border border-blue-200 bg-blue-50 text-blue-800"
+                                    data-act="email"
+                                    data-action="{{ route('comercial.propostas.enviar-email', $proposta) }}"
+                                    data-email="{{ e($cliente?->email ?? '') }}"
+                                    data-ref="{{ e($ref) }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16v12H4V6zm0 1l8 6 8-6"/>
+                                </svg>
+                            </button>
+                            <a href="{{ $canUpdate ? route('comercial.propostas.edit', $proposta) : 'javascript:void(0)' }}"
+                               class="inline-flex items-center justify-center h-9 rounded-xl border {{ $canUpdate ? 'border-slate-200 bg-white text-slate-700' : 'border-slate-300 bg-slate-200 text-slate-500 cursor-not-allowed' }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16.5 3.5l4 4L8 20H4v-4L16.5 3.5z"/>
+                                </svg>
+                            </a>
+                            <form method="POST" action="{{ route('comercial.propostas.destroy', $proposta) }}" data-confirm="Deseja excluir esta proposta?">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit"
+                                        class="w-full inline-flex items-center justify-center h-9 rounded-xl border {{ $canDelete ? 'border-red-200 bg-red-50 text-red-700' : 'border-slate-300 bg-slate-200 text-slate-500 cursor-not-allowed' }}"
+                                        @if(!$canDelete) disabled @endif>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 7h12M9 7V5h6v2m-8 0l1 14h8l1-14"/>
+                                    </svg>
+                                </button>
+                            </form>
+                        </div>
+                    </article>
+                @empty
+                    <div class="px-4 py-10 text-center text-slate-500 text-sm">
+                        Nenhuma proposta encontrada.
+                    </div>
+                @endforelse
+            </div>
+
+            <div class="hidden md:block overflow-x-auto">
+                <table class="comercial-table min-w-full text-sm">
                     <thead class="bg-slate-50">
                     <tr class="text-left text-slate-600">
                         <th class="px-5 py-3 font-semibold">ID</th>
@@ -129,12 +230,12 @@
                             <td class="px-5 py-3 font-semibold text-slate-800">#{{ $proposta->id }}</td>
 
                             <td class="px-5 py-3">
-                                <div class="font-medium text-slate-800">{{ $clienteTxt }}</div>
+                                <div class="font-medium text-slate-800 cell-wrap">{{ $clienteTxt }}</div>
                                 <div class="text-xs text-slate-500">{{ $cnpjClienteTxt }}</div>
                             </td>
 
                             <td class="px-5 py-3">
-                                <div class="font-medium text-slate-800">{{ $ref }}</div>
+                                <div class="font-medium text-slate-800 cell-wrap">{{ $ref }}</div>
                                 <div class="text-xs text-slate-500">—</div>
                             </td>
 

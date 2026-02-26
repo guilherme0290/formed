@@ -57,6 +57,12 @@ class EnsureRoutePermission
             return true;
         }
 
+        // Permite rotas do módulo master para qualquer papel;
+        // a autorização fina continua na checagem de permissões logo abaixo no handle().
+        if (str_starts_with($routeName, 'master.')) {
+            return true;
+        }
+
         if ($user->hasPapel('Cliente')) {
             return str_starts_with($routeName, 'cliente.')
                 || $this->isClienteOperationalServiceRoute($routeName);
@@ -109,8 +115,16 @@ class EnsureRoutePermission
 
     private function userHasPermission(User $user, string $permissionKey): bool
     {
+        $keys = [$permissionKey];
+
+        if (str_starts_with($permissionKey, 'master.tabela-precos.')) {
+            $keys[] = str_replace('master.tabela-precos.', 'comercial.tabela-precos.', $permissionKey);
+        } elseif (str_starts_with($permissionKey, 'comercial.tabela-precos.')) {
+            $keys[] = str_replace('comercial.tabela-precos.', 'master.tabela-precos.', $permissionKey);
+        }
+
         $viaPapel = $user->papel()
-            ->whereHas('permissoes', fn ($q) => $q->where('chave', $permissionKey))
+            ->whereHas('permissoes', fn ($q) => $q->whereIn('chave', $keys))
             ->exists();
 
         if ($viaPapel) {
@@ -118,7 +132,7 @@ class EnsureRoutePermission
         }
 
         return $user->permissoesDiretas()
-            ->where('chave', $permissionKey)
+            ->whereIn('chave', $keys)
             ->exists();
     }
 
@@ -507,4 +521,3 @@ class EnsureRoutePermission
         return route('dashboard');
     }
 }
-

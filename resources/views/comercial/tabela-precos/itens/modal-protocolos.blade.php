@@ -197,8 +197,8 @@
                         <div class="col-span-3 text-xs text-slate-600">${examesTxt}</div>
                         <div class="col-span-2 text-right font-semibold text-slate-800">${total}</div>
                         <div class="col-span-2 flex gap-2 justify-end">
-                            <button type="button" class="text-blue-600 text-sm" data-action="edit">Editar</button>
-                            <button type="button" class="text-red-600 text-sm" data-action="del">Excluir</button>
+                            <button type="button" class="text-slate-400 text-sm cursor-not-allowed" data-action="edit" disabled title="Desabilitado">Editar</button>
+                            <button type="button" class="text-slate-400 text-sm cursor-not-allowed" data-action="del" disabled title="Desabilitado">Excluir</button>
                         </div>
                     `;
 

@@ -1,5 +1,5 @@
 @extends('layouts.comercial')
-@section('title', 'Comiss√µes do m√™s')
+@section('title', 'Comissıes do MÍs')
 @section('page-container', 'w-full p-0')
 
 @section('content')
@@ -7,47 +7,46 @@
         $mesNome = \Carbon\Carbon::createFromDate($anoSelecionado, $mes, 1)->locale('pt_BR')->isoFormat('MMMM');
     @endphp
 
-    <div class="w-full px-3 md:px-5 py-4 md:py-5 space-y-6">
-        <div class="flex items-center justify-between flex-wrap gap-3">
-            <div class="space-y-1">
-                <div class="inline-flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-orange-500">
-                    <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-orange-100 text-orange-600">$</span>
-                    Minhas Comiss√µes ¬∑ {{ $anoSelecionado }}
+    <div class="w-full px-3 md:px-5 py-4 md:py-5 space-y-5">
+        <header class="rounded-xl border border-indigo-100 bg-gradient-to-r from-indigo-700 via-indigo-600 to-blue-600 px-4 py-3 text-white">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <p class="text-xs uppercase tracking-[0.18em] text-indigo-100">Minhas Comissıes ∑ {{ $anoSelecionado }}</p>
+                    <h1 class="text-xl md:text-2xl font-semibold">{{ ucfirst($mesNome) }}</h1>
                 </div>
-                <h1 class="text-2xl md:text-3xl font-semibold text-slate-900">{{ ucfirst($mesNome) }}</h1>
+                <div class="flex flex-wrap items-center gap-2">
+                    <a href="{{ route('comercial.dashboard') }}"
+                       class="inline-flex items-center gap-2 rounded-lg bg-white/10 px-3 py-1.5 text-xs font-semibold hover:bg-white/20">
+                        Painel Comercial
+                    </a>
+                    <a href="{{ route('comercial.comissoes.ano', ['ano' => $anoSelecionado]) }}"
+                       class="inline-flex items-center gap-2 rounded-lg bg-white/10 px-3 py-1.5 text-xs font-semibold hover:bg-white/20">
+                        Voltar para meses
+                    </a>
+                </div>
             </div>
-            <div class="flex flex-wrap items-center gap-2">
-                <a href="{{ route('comercial.dashboard') }}"
-                   class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900">
-                    &larr; Painel Comercial
-                </a>
-                <a href="{{ route('comercial.comissoes.ano', ['ano' => $anoSelecionado]) }}"
-                   class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900">
-                    &larr; Voltar para meses
-                </a>
-            </div>
-        </div>
+        </header>
 
-        <div class="grid md:grid-cols-3 gap-4">
+        <div class="grid md:grid-cols-3 gap-3">
             <a href="{{ route('comercial.comissoes.previsao', ['ano' => $anoSelecionado, 'mes' => $mes]) }}"
-               class="rounded-2xl border border-orange-100 bg-orange-50/60 hover:bg-orange-100 transition p-4 shadow-sm">
-                <p class="text-xs font-semibold text-orange-600 uppercase tracking-wide">Previs√£o de Comiss√£o</p>
-                <p class="text-2xl font-bold text-slate-900 mt-2">R$ {{ number_format($totais->previsao ?? 0, 2, ',', '.') }}</p>
-                <p class="text-xs text-slate-600 mt-1">Somat√≥rio das comiss√µes previstas</p>
+               class="rounded-xl border border-indigo-100 bg-indigo-50/50 hover:bg-indigo-50 transition p-4 shadow-sm">
+                <p class="text-xs font-semibold text-indigo-700 uppercase tracking-wide">Previs„o de Comiss„o</p>
+                <p class="text-2xl font-bold text-indigo-900 mt-2">R$ {{ number_format($totais->previsao ?? 0, 2, ',', '.') }}</p>
+                <p class="text-xs text-slate-600 mt-1">SomatÛrio das comissıes previstas.</p>
             </a>
 
             <a href="{{ route('comercial.comissoes.efetivada', ['ano' => $anoSelecionado, 'mes' => $mes]) }}"
-               class="rounded-2xl border border-emerald-100 bg-emerald-50/70 hover:bg-emerald-100 transition p-4 shadow-sm">
-                <p class="text-xs font-semibold text-emerald-600 uppercase tracking-wide">Comiss√£o Efetivada</p>
-                <p class="text-2xl font-bold text-emerald-700 mt-2">R$ {{ number_format($totais->efetivada ?? 0, 2, ',', '.') }}</p>
-                <p class="text-xs text-slate-600 mt-1">Pagamentos confirmados</p>
+               class="rounded-xl border border-blue-100 bg-blue-50/50 hover:bg-blue-50 transition p-4 shadow-sm">
+                <p class="text-xs font-semibold text-blue-700 uppercase tracking-wide">Comiss„o Efetivada</p>
+                <p class="text-2xl font-bold text-blue-800 mt-2">R$ {{ number_format($totais->efetivada ?? 0, 2, ',', '.') }}</p>
+                <p class="text-xs text-slate-600 mt-1">Pagamentos confirmados.</p>
             </a>
 
             <a href="{{ route('comercial.comissoes.inadimplentes', ['ano' => $anoSelecionado, 'mes' => $mes]) }}"
-               class="rounded-2xl border border-rose-100 bg-rose-50/70 hover:bg-rose-100 transition p-4 shadow-sm">
-                <p class="text-xs font-semibold text-rose-600 uppercase tracking-wide">Clientes Inadimplentes</p>
-                <p class="text-2xl font-bold text-rose-700 mt-2">{{ $totais->inadimplentes ?? 0 }}</p>
-                <p class="text-xs text-slate-600 mt-1">Comiss√£o pendente de pagamento</p>
+               class="rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 transition p-4 shadow-sm">
+                <p class="text-xs font-semibold text-slate-700 uppercase tracking-wide">Clientes Inadimplentes</p>
+                <p class="text-2xl font-bold text-slate-900 mt-2">{{ $totais->inadimplentes ?? 0 }}</p>
+                <p class="text-xs text-slate-600 mt-1">Comissıes pendentes de pagamento.</p>
             </a>
         </div>
     </div>

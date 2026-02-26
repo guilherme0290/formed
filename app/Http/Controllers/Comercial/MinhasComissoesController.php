@@ -54,9 +54,9 @@ class MinhasComissoesController extends Controller
         $base = $this->baseQuery($user->id, $user->empresa_id, $anoSelecionado, $mes);
 
         $totais = $base->clone()
-            ->selectRaw("SUM(CASE WHEN status != 'CANCELADA' THEN valor_comissao ELSE 0 END) as previsao")
-            ->selectRaw("SUM(CASE WHEN status = 'PAGA' THEN valor_comissao ELSE 0 END) as efetivada")
-            ->selectRaw("COUNT(DISTINCT CASE WHEN status = 'PENDENTE' THEN cliente_id END) as inadimplentes")
+            ->selectRaw("SUM(CASE WHEN comissoes.status != 'CANCELADA' THEN comissoes.valor_comissao ELSE 0 END) as previsao")
+            ->selectRaw("SUM(CASE WHEN comissoes.status = 'PAGA' THEN comissoes.valor_comissao ELSE 0 END) as efetivada")
+            ->selectRaw("COUNT(DISTINCT CASE WHEN comissoes.status = 'PENDENTE' THEN comissoes.cliente_id END) as inadimplentes")
             ->first();
 
         return view('comercial.comissoes.mes', [
@@ -71,8 +71,9 @@ class MinhasComissoesController extends Controller
     {
         $user = $request->user();
         $clientes = $this->agrupadoPorCliente($user->id, $user->empresa_id, $ano, $mes, ['PENDENTE', 'PAGA']);
+        $detalhesPorCliente = $this->agrupadoPorClienteEServico($user->id, $user->empresa_id, $ano, $mes, ['PENDENTE', 'PAGA']);
 
-        return view('comercial.comissoes.previsao', compact('clientes', 'ano', 'mes'));
+        return view('comercial.comissoes.previsao', compact('clientes', 'detalhesPorCliente', 'ano', 'mes'));
     }
 
     public function efetivada(Request $request, int $ano, int $mes): View
@@ -96,9 +97,16 @@ class MinhasComissoesController extends Controller
         $user = $request->user();
 
         $anos = Comissao::query()
-            ->selectRaw('YEAR(COALESCE(gerada_em, created_at)) as ano')
-            ->where('empresa_id', $user->empresa_id)
-            ->where('vendedor_id', $user->id)
+            ->leftJoin('clientes', 'clientes.id', '=', 'comissoes.cliente_id')
+            ->selectRaw('YEAR(COALESCE(comissoes.gerada_em, comissoes.created_at)) as ano')
+            ->where('comissoes.empresa_id', $user->empresa_id)
+            ->where(function ($q) use ($user) {
+                $q->where('comissoes.vendedor_id', $user->id)
+                    ->orWhere(function ($sub) use ($user) {
+                        $sub->whereNull('comissoes.vendedor_id')
+                            ->where('clientes.vendedor_id', $user->id);
+                    });
+            })
             ->distinct()
             ->orderByDesc('ano')
             ->pluck('ano')
@@ -121,10 +129,11 @@ class MinhasComissoesController extends Controller
     private function mesesResumo(int $vendedorId, int $empresaId, int $ano): Collection
     {
         $data = $this->baseQuery($vendedorId, $empresaId, $ano)
-            ->selectRaw('MONTH(COALESCE(gerada_em, created_at)) as mes')
-            ->selectRaw("SUM(CASE WHEN status != 'CANCELADA' THEN valor_comissao ELSE 0 END) as total")
-            ->selectRaw("SUM(CASE WHEN status = 'PAGA' THEN valor_comissao ELSE 0 END) as total_efetivado")
-            ->selectRaw("SUM(CASE WHEN status = 'PENDENTE' THEN valor_comissao ELSE 0 END) as total_previsto")
+            ->selectRaw('MONTH(COALESCE(comissoes.gerada_em, comissoes.created_at)) as mes')
+            ->selectRaw("SUM(CASE WHEN comissoes.status != 'CANCELADA' THEN comissoes.valor_comissao ELSE 0 END) as total")
+            ->selectRaw("SUM(CASE WHEN comissoes.status = 'PAGA' THEN comissoes.valor_comissao ELSE 0 END) as total_efetivado")
+            ->selectRaw("SUM(CASE WHEN comissoes.status = 'PENDENTE' THEN comissoes.valor_comissao ELSE 0 END) as total_previsto")
+            ->selectRaw("COUNT(DISTINCT CASE WHEN comissoes.status = 'PENDENTE' THEN comissoes.cliente_id END) as inadimplentes")
             ->groupBy('mes')
             ->get()
             ->keyBy('mes');
@@ -140,6 +149,9 @@ class MinhasComissoesController extends Controller
                 'mes' => $mes,
                 'nome' => Carbon::createFromDate($ano, $mes, 1)->locale('pt_BR')->isoFormat('MMM'),
                 'total' => $registro->total ?? 0,
+                'total_efetivado' => $registro->total_efetivado ?? 0,
+                'total_previsto' => $registro->total_previsto ?? 0,
+                'inadimplentes' => $registro->inadimplentes ?? 0,
                 'status' => $statusAberto ? 'ABERTO' : 'FECHADO',
             ];
         });
@@ -148,10 +160,10 @@ class MinhasComissoesController extends Controller
     private function agrupadoPorCliente(int $vendedorId, int $empresaId, int $ano, int $mes, array $status): Collection
     {
         $rows = $this->baseQuery($vendedorId, $empresaId, $ano, $mes)
-            ->whereIn('status', $status)
-            ->select('cliente_id')
-            ->selectRaw('SUM(valor_comissao) as total')
-            ->groupBy('cliente_id')
+            ->whereIn('comissoes.status', $status)
+            ->select('comissoes.cliente_id')
+            ->selectRaw('SUM(comissoes.valor_comissao) as total')
+            ->groupBy('comissoes.cliente_id')
             ->orderByDesc('total')
             ->get();
 
@@ -163,15 +175,38 @@ class MinhasComissoesController extends Controller
         });
     }
 
+    private function agrupadoPorClienteEServico(int $vendedorId, int $empresaId, int $ano, int $mes, array $status): Collection
+    {
+        $rows = $this->baseQuery($vendedorId, $empresaId, $ano, $mes)
+            ->leftJoin('servicos', 'servicos.id', '=', 'comissoes.servico_id')
+            ->whereIn('comissoes.status', $status)
+            ->select('comissoes.cliente_id')
+            ->selectRaw("COALESCE(servicos.nome, CONCAT('Serviço #', comissoes.servico_id)) as servico_nome")
+            ->selectRaw('SUM(comissoes.valor_comissao) as total')
+            ->selectRaw('COUNT(comissoes.id) as quantidade')
+            ->groupBy('comissoes.cliente_id', 'comissoes.servico_id', 'servicos.nome')
+            ->orderByDesc('total')
+            ->get();
+
+        return $rows->groupBy('cliente_id');
+    }
+
     private function baseQuery(int $vendedorId, int $empresaId, int $ano, ?int $mes = null)
     {
         $query = Comissao::query()
-            ->where('empresa_id', $empresaId)
-            ->where('vendedor_id', $vendedorId)
-            ->whereYear(DB::raw('COALESCE(gerada_em, created_at)'), $ano);
+            ->leftJoin('clientes', 'clientes.id', '=', 'comissoes.cliente_id')
+            ->where('comissoes.empresa_id', $empresaId)
+            ->where(function ($q) use ($vendedorId) {
+                $q->where('comissoes.vendedor_id', $vendedorId)
+                    ->orWhere(function ($sub) use ($vendedorId) {
+                        $sub->whereNull('comissoes.vendedor_id')
+                            ->where('clientes.vendedor_id', $vendedorId);
+                    });
+            })
+            ->whereYear(DB::raw('COALESCE(comissoes.gerada_em, comissoes.created_at)'), $ano);
 
         if ($mes) {
-            $query->whereMonth(DB::raw('COALESCE(gerada_em, created_at)'), $mes);
+            $query->whereMonth(DB::raw('COALESCE(comissoes.gerada_em, comissoes.created_at)'), $mes);
         }
 
         return $query;

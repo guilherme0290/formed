@@ -3,18 +3,18 @@
 
 @section('content')
     <div class="max-w-[1800px] mx-auto px-3 sm:px-4 lg:px-8 py-6 space-y-6">
-        <div>
+        <div class="flex flex-wrap items-center gap-2">
             <a href="{{ route('comercial.contratos.index') }}"
                class="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900">
                 ← Voltar
             </a>
             <a href="{{ route('comercial.contratos.vigencia', $contrato) }}"
-               class="ml-3 inline-flex items-center rounded-lg border border-indigo-200 bg-white px-3 py-1.5 text-sm font-semibold text-indigo-700 shadow-sm hover:bg-indigo-50 hover:text-indigo-900">
+               class="inline-flex items-center rounded-lg border border-indigo-200 bg-white px-3 py-1.5 text-sm font-semibold text-indigo-700 shadow-sm hover:bg-indigo-50 hover:text-indigo-900">
                 ➕ Nova vigência
             </a>
         </div>
 
-        <header class="flex items-center justify-between gap-3">
+        <header class="flex flex-wrap items-center justify-between gap-3">
             <div>
                 <h1 class="text-2xl font-semibold text-slate-900">Contrato #{{ $contrato->id }}</h1>
                 <p class="text-slate-500 text-sm mt-1">Cliente: {{ $contrato->cliente->razao_social ?? '—' }}</p>
@@ -70,7 +70,7 @@
             </div>
 
             <div class="overflow-x-auto">
-                <table class="min-w-full text-sm">
+                <table class="comercial-table min-w-full text-sm">
                     <thead class="bg-slate-50">
                     <tr class="text-left text-slate-600">
                         <th class="px-5 py-3 font-semibold">Serviço</th>
@@ -185,7 +185,7 @@
                 </div>
 
                 <div class="overflow-x-auto">
-                    <table class="min-w-full text-sm">
+                    <table class="comercial-table min-w-full text-sm">
                         <thead class="bg-slate-50">
                         <tr class="text-left text-slate-600">
                             <th class="px-5 py-3 font-semibold">GHE</th>

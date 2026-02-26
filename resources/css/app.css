@@ -1,3 +1,36 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer components {
+    .comercial-layout .overflow-x-auto {
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .comercial-layout .comercial-table {
+        width: 100%;
+        min-width: 640px;
+    }
+
+    .comercial-layout .comercial-table th {
+        white-space: nowrap;
+    }
+
+    .comercial-layout .comercial-table td,
+    .comercial-layout .comercial-table .cell-wrap {
+        white-space: normal;
+    }
+
+    @media (max-width: 767px) {
+        .comercial-layout .comercial-table {
+            min-width: 560px;
+        }
+
+        .comercial-layout .comercial-table th,
+        .comercial-layout .comercial-table td {
+            padding: 0.65rem 0.75rem;
+            font-size: 0.75rem;
+            line-height: 1.05rem;
+        }
+    }
+}

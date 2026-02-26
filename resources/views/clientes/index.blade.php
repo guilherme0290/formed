@@ -23,7 +23,7 @@
         $canUpdate = $isMaster || isset($permissionMap[$permPrefix.'.update']);
         $canDelete = $isMaster || isset($permissionMap[$permPrefix.'.delete']);
     @endphp
-    <div class="w-full mx-auto px-4 md:px-6 xl:px-8 py-6 space-y-6">
+    <div class="w-full mx-auto px-2 sm:px-4 md:px-6 xl:px-8 py-4 md:py-6 space-y-5 md:space-y-6 overflow-x-hidden">
         @if ($user && optional($user->papel)->nome === 'Master')
             <div>
                 <a href="{{ route('master.dashboard') }}"
@@ -51,7 +51,7 @@
             </div>
         @endif
 
-        <div class="flex items-center justify-between flex-wrap gap-3">
+        <div class="flex items-start sm:items-center justify-between flex-wrap gap-3">
             <div>
                 <h1 class="text-2xl font-semibold text-gray-800">Clientes</h1>
                 <p class="text-sm text-gray-500">Gerencie os clientes da sua empresa.</p>
@@ -59,21 +59,21 @@
 
             <a href="{{ $canCreate ? route($routePrefix.'.create') : 'javascript:void(0)' }}"
                @if(!$canCreate) title="Usuário sem permissão" aria-disabled="true" @endif
-               class="px-4 py-2 rounded-lg shadow {{ $canCreate ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}">
+               class="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 rounded-lg shadow whitespace-nowrap {{ $canCreate ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}">
                 Novo Cliente
             </a>
         </div>
 
         {{-- FILTRO --}}
-        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+        <div class="bg-white rounded-2xl p-4 md:p-5 shadow-sm border border-slate-100">
             <form method="GET" class="grid md:grid-cols-6 gap-4 items-end">
 
                 <div class="md:col-span-2">
-                    <label class="block text-sm font-medium mb-1 text-slate-700">Busca (raz&atilde;o social, nome fantasia ou CNPJ)</label>
+                    <label class="block text-sm font-medium mb-1 text-slate-700 break-words">Busca (raz&atilde;o social, nome fantasia ou CNPJ)</label>
                     <div class="relative">
                         <input type="search" name="q" id="cliente-search" value="{{ $q }}"
                                autocomplete="off"
-                               placeholder="Ex: 12.345.678/0001-00, Raz&atilde;o Social ou Nome Fantasia"
+                               placeholder="Raz&atilde;o social, fantasia ou CNPJ"
                                class="w-full rounded-lg border-slate-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                         <div id="clientes-autocomplete"
                              class="absolute z-20 mt-1 w-full max-h-64 overflow-auto rounded-lg border border-slate-200 bg-white shadow-lg hidden">
@@ -108,12 +108,12 @@
                     </select>
                 </div>
 
-                <div class="flex items-center gap-3">
-                    <button class="px-4 py-2 bg-blue-600 text-white rounded-lg shadow">
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+                    <button class="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg shadow">
                         Filtrar
                     </button>
                     <a href="{{ route($routePrefix.'.index') }}"
-                       class="px-4 py-2 bg-gray-200 rounded-lg">
+                       class="w-full sm:w-auto inline-flex items-center justify-center text-center px-4 py-2 bg-gray-200 rounded-lg">
                         Limpar
                     </a>
                 </div>
@@ -123,7 +123,80 @@
 
         {{-- TABELA --}}
         <div class="bg-white shadow-sm rounded-3xl border border-slate-100 overflow-hidden">
-            <table class="min-w-full text-sm">
+            <div class="md:hidden divide-y divide-slate-100">
+                @forelse($clientes as $cliente)
+                    @php
+                        $tipoCliente = ($cliente->tipo_cliente ?? 'final') === 'parceiro' ? 'parceiro' : 'final';
+                    @endphp
+                    <div class="p-4 space-y-3"
+                         data-filtro-item
+                         data-razao="{{ $cliente->razao_social }}"
+                         data-fantasia="{{ $cliente->nome_fantasia }}"
+                         data-cnpj="{{ preg_replace('/\D+/', '', $cliente->cnpj ?? '') }}">
+                        <div class="text-sm font-semibold text-slate-900 uppercase">{{ $cliente->razao_social }}</div>
+                        @if($cliente->nome_fantasia)
+                            <div class="text-xs text-slate-500 uppercase">{{ $cliente->nome_fantasia }}</div>
+                        @endif
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                            <div>
+                                <div class="text-slate-500">CNPJ</div>
+                                <div class="font-medium text-slate-800">{{ $cliente->cnpj }}</div>
+                            </div>
+                            <div>
+                                <div class="text-slate-500">Contato</div>
+                                <div class="font-medium text-slate-800 break-words">{{ $cliente->email }}</div>
+                                <div class="font-medium text-slate-800">{{ $cliente->telefone }}</div>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold {{ $tipoCliente === 'parceiro' ? 'bg-amber-100 text-amber-800' : 'bg-sky-100 text-sky-800' }}">
+                                {{ $tipoCliente === 'parceiro' ? 'Parceiro' : 'Final' }}
+                            </span>
+                            <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold {{ $cliente->ativo ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700' }}">
+                                {{ $cliente->ativo ? 'Ativo' : 'Inativo' }}
+                            </span>
+                        </div>
+                        <div class="flex flex-wrap gap-2 pt-1">
+                            <a href="{{ $canUpdate ? route($routePrefix.'.edit', $cliente) : 'javascript:void(0)' }}"
+                               @if(!$canUpdate) title="Usuário sem permissão" aria-disabled="true" @endif
+                               class="px-3 py-2 rounded-lg text-xs {{ $canUpdate ? 'text-blue-700 bg-blue-100' : 'text-slate-500 bg-slate-200 cursor-not-allowed' }}">
+                                Editar
+                            </a>
+                            <a href="{{ $canUpdate ? route($routePrefix.'.acesso.form', $cliente) : 'javascript:void(0)' }}"
+                               @if(!$canUpdate) title="Usuário sem permissão" aria-disabled="true" @endif
+                               class="px-3 py-2 rounded-lg text-xs {{ $canUpdate ? 'text-indigo-700 bg-indigo-100' : 'text-slate-500 bg-slate-200 cursor-not-allowed' }}"
+                               @if($canUpdate && $cliente->userCliente)
+                                   onclick="openAcessoModal(this); return false;"
+                                   data-cliente-nome="{{ $cliente->razao_social }}"
+                                   data-user-id="{{ $cliente->userCliente->id }}"
+                                   data-user-name="{{ $cliente->userCliente->name }}"
+                                   data-user-login="{{ $cliente->userCliente->email ?: $cliente->userCliente->documento }}"
+                                   data-user-status="{{ $cliente->userCliente->ativo ? 'Ativo' : 'Inativo' }}"
+                                   data-user-created="{{ optional($cliente->userCliente->created_at)->format('d/m/Y H:i') }}"
+                               @endif>
+                                {{ $cliente->userCliente ? 'Ver acesso' : 'Criar acesso' }}
+                            </a>
+                            <form action="{{ route($routePrefix.'.destroy', $cliente) }}"
+                                  method="POST"
+                                  class="inline"
+                                  data-confirm="Tem certeza que deseja excluir este cliente?">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit"
+                                        @if(!$canDelete) disabled title="Usuário sem permissão" @endif
+                                        class="px-3 py-2 rounded-lg text-xs {{ $canDelete ? 'text-red-700 bg-red-100' : 'text-slate-500 bg-slate-200 cursor-not-allowed opacity-70' }}">
+                                    Excluir
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                @empty
+                    <div class="px-4 py-6 text-center text-gray-500 text-sm">Nenhum cliente encontrado.</div>
+                @endforelse
+            </div>
+
+            <div class="hidden md:block overflow-x-auto">
+            <table class="comercial-table min-w-[900px] text-sm">
                 <thead class="bg-gray-50 text-xs uppercase text-gray-500">
                 <tr>
                     <th class="px-4 py-2 text-left w-64">Cliente</th>
@@ -136,7 +209,8 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                 @forelse($clientes as $cliente)
-                    <tr data-razao="{{ $cliente->razao_social }}"
+                    <tr data-filtro-item
+                        data-razao="{{ $cliente->razao_social }}"
                         data-fantasia="{{ $cliente->nome_fantasia }}"
                         data-cnpj="{{ preg_replace('/\D+/', '', $cliente->cnpj ?? '') }}">
                         <td class="px-4 py-3">
@@ -254,6 +328,7 @@
                 @endforelse
                 </tbody>
             </table>
+            </div>
 
             <div class="p-4">
                 {{ $clientes->links() }}
@@ -345,7 +420,7 @@
     <script>
         (function () {
             const input = document.getElementById('cliente-search');
-            const rows = Array.from(document.querySelectorAll('tbody tr[data-razao]'));
+            const rows = Array.from(document.querySelectorAll('[data-filtro-item][data-razao]'));
 
             if (!input || rows.length === 0) {
                 return;
@@ -386,4 +461,3 @@
         })();
     </script>
 @endpush
-

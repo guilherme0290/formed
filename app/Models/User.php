@@ -79,10 +79,13 @@ class User extends Authenticatable
             return false;
         }
 
-        $atual = mb_strtolower($papel->nome);
+        $atual = mb_strtolower(trim((string) $papel->nome));
 
         $nomes = is_array($nome) ? $nome : [$nome];
-        $nomesNormalizados = array_map(fn ($n) => mb_strtolower($n), $nomes);
+        $nomesNormalizados = array_map(
+            fn ($n) => mb_strtolower(trim((string) $n)),
+            $nomes
+        );
 
         return in_array($atual, $nomesNormalizados, true);
     }

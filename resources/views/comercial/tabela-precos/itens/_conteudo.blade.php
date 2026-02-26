@@ -1,16 +1,31 @@
-@php
+﻿@php
     $routePrefix = $routePrefix ?? 'comercial';
     $dashboardRoute = $dashboardRoute ?? route($routePrefix === 'master' ? 'master.dashboard' : 'comercial.dashboard');
     $user = auth()->user();
-    $permissionMap = $user?->papel?->permissoes?->pluck('chave')->flip()->all() ?? [];
-    $isMaster = $user?->hasPapel('Master');
+    $permissionMap = collect($user?->papel?->permissoes?->pluck('chave')->all() ?? [])
+        ->merge($user?->permissoesDiretas?->pluck('chave')->all() ?? [])
+        ->filter()
+        ->flip()
+        ->all();
+    $isMaster = (bool) ($user?->isMaster());
     $permPrefix = $routePrefix === 'master' ? 'master.tabela-precos' : 'comercial.tabela-precos';
-    $canCreate = $isMaster || isset($permissionMap[$permPrefix.'.create']);
+    $fallbackPrefix = $routePrefix === 'master' ? 'comercial.tabela-precos' : 'master.tabela-precos';
+    $canCreate = $isMaster
+        || isset($permissionMap[$permPrefix.'.create'])
+        || isset($permissionMap[$fallbackPrefix.'.create']);
     $canUpdate = $isMaster || isset($permissionMap[$permPrefix.'.update']);
     $canDelete = $isMaster || isset($permissionMap[$permPrefix.'.delete']);
+    $dashboardPermPrefix = $routePrefix === 'master' ? 'master.dashboard' : 'comercial.dashboard';
+    $dashboardPermFallback = $routePrefix === 'master' ? 'comercial.dashboard' : 'master.dashboard';
+    $canOpenAuxModals = $isMaster
+        || $canUpdate
+        || isset($permissionMap[$permPrefix.'.view'])
+        || isset($permissionMap[$fallbackPrefix.'.view'])
+        || isset($permissionMap[$dashboardPermPrefix.'.view'])
+        || isset($permissionMap[$dashboardPermFallback.'.view']);
 @endphp
 
-<div class="w-full px-2 sm:px-3 md:px-4 py-2 md:py-3 space-y-6">
+<div class="w-full max-w-full overflow-x-hidden px-2 sm:px-3 md:px-4 py-2 md:py-3 space-y-4 md:space-y-6">
 
     <div class="mb-4">
         <a href="{{ $dashboardRoute }}"
@@ -18,34 +33,34 @@
             &larr; Voltar ao Painel
         </a>
     </div>
-    <header class="flex items-center justify-between">
+    <header class="flex flex-col gap-3 sm:flex-wrap sm:flex-row sm:items-center sm:justify-between">
         <div>
             <h1 class="text-2xl font-semibold text-slate-900">Itens da Tabela de Preços</h1>
             <p class="text-slate-500 text-sm mt-1">
                 Itens utilizados nas propostas comerciais.
             </p>
         </div>
-        <div class="flex flex-col sm:flex-row gap-2 sm:items-center">
+        <div class="w-full sm:w-auto flex flex-col sm:flex-row gap-2 sm:items-center">
             <button type="button"
                     @if($canCreate) onclick="openNovoItemModal()" @endif
                     @if(!$canCreate) title="Usuário sem permissão" @endif
-                    class="inline-flex items-center justify-center gap-2 rounded-2xl
+                    class="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-2xl
                        {{ $canCreate ? 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} px-5 py-2.5 text-sm font-semibold shadow-sm
                        ring-1 ring-blue-600/20 hover:ring-blue-700/30
                        transition"
                     @if(!$canCreate) disabled @endif>
-                <span class="text-base leading-none">＋</span>
-                <span>ASO, Documentos e Laudos</span>
+                <span class="text-base leading-none">+</span>
+                <span class="text-left md:text-center">ASO, Documentos e Laudos</span>
             </button>
 
             <button type="button"
-                    @if($canUpdate) onclick="openEsocialModal()" @endif
-                    @if(!$canUpdate) title="Usuário sem permissão" @endif
-                    class="inline-flex items-center justify-center gap-2 rounded-2xl
-                       {{ $canUpdate ? 'bg-white hover:bg-indigo-50 active:bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} px-5 py-2.5 text-sm font-semibold shadow-sm
+                    @if($canOpenAuxModals) onclick="openEsocialModal()" @endif
+                    @if(!$canOpenAuxModals) title="Usuário sem permissão" @endif
+                    class="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-2xl
+                       {{ $canOpenAuxModals ? 'bg-white hover:bg-indigo-50 active:bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} px-5 py-2.5 text-sm font-semibold shadow-sm
                        ring-1 ring-indigo-200 hover:ring-indigo-300
                        transition"
-                    @if(!$canUpdate) disabled @endif>
+                    @if(!$canOpenAuxModals) disabled @endif>
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
                      stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -54,39 +69,39 @@
                 <span>eSocial</span>
             </button>
             <button type="button"
-                    @if($canUpdate) onclick="openExamesModal()" @endif
-                    @if(!$canUpdate) title="Usuário sem permissão" @endif
-                    class="inline-flex items-center justify-center gap-2 rounded-2xl
-               {{ $canUpdate ? 'bg-white hover:bg-blue-50 active:bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} px-4 py-2 text-sm font-semibold shadow-sm
+                    @if($canOpenAuxModals) onclick="openExamesModal()" @endif
+                    @if(!$canOpenAuxModals) title="Usuário sem permissão" @endif
+                    class="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-2xl
+               {{ $canOpenAuxModals ? 'bg-white hover:bg-blue-50 active:bg-blue-100 text-blue-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} px-4 py-2 text-sm font-semibold shadow-sm
                ring-1 ring-blue-200 hover:ring-blue-300 transition"
-                    @if(!$canUpdate) disabled @endif>
+                    @if(!$canOpenAuxModals) disabled @endif>
                 <span>Exames</span>
             </button>
             <button type="button"
-                    @if($canUpdate) onclick="openMedicoesCrudModal()" @endif
-                    @if(!$canUpdate) title="Usuário sem permissão" @endif
-                    class="inline-flex items-center justify-center gap-2 rounded-2xl
-               {{ $canUpdate ? 'bg-white hover:bg-amber-50 active:bg-amber-100 text-amber-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} px-4 py-2 text-sm font-semibold shadow-sm
+                    @if($canOpenAuxModals) onclick="openMedicoesCrudModal()" @endif
+                    @if(!$canOpenAuxModals) title="Usuário sem permissão" @endif
+                    class="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-2xl
+               {{ $canOpenAuxModals ? 'bg-white hover:bg-amber-50 active:bg-amber-100 text-amber-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} px-4 py-2 text-sm font-semibold shadow-sm
                ring-1 ring-amber-200 hover:ring-amber-300 transition"
-                    @if(!$canUpdate) disabled @endif>
+                    @if(!$canOpenAuxModals) disabled @endif>
                 <span>Medições LTCAT/LTIP</span>
             </button>
             <button type="button"
-                    @if($canUpdate) onclick="openTreinamentosCrudModal()" @endif
-                    @if(!$canUpdate) title="Usuário sem permissão" @endif
-                    class="inline-flex items-center justify-center gap-2 rounded-2xl
-               {{ $canUpdate ? 'bg-white hover:bg-emerald-50 active:bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} px-4 py-2 text-sm font-semibold shadow-sm
+                    @if($canOpenAuxModals) onclick="openTreinamentosCrudModal()" @endif
+                    @if(!$canOpenAuxModals) title="Usuário sem permissão" @endif
+                    class="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-2xl
+               {{ $canOpenAuxModals ? 'bg-white hover:bg-emerald-50 active:bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} px-4 py-2 text-sm font-semibold shadow-sm
                ring-1 ring-emerald-200 hover:ring-emerald-300 transition"
-                    @if(!$canUpdate) disabled @endif>
+                    @if(!$canOpenAuxModals) disabled @endif>
                 <span>Treinamentos</span>
             </button>
             <button type="button"
-                    @if($canUpdate) onclick="openProtocolosModal()" @endif
-                    @if(!$canUpdate) title="Usuário sem permissão" @endif
-                    class="inline-flex items-center justify-center gap-2 rounded-2xl
-               {{ $canUpdate ? 'bg-white hover:bg-slate-50 active:bg-slate-100 text-slate-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} px-4 py-2 text-sm font-semibold shadow-sm
+                    @if($canOpenAuxModals) onclick="openProtocolosModal()" @endif
+                    @if(!$canOpenAuxModals) title="Usuário sem permissão" @endif
+                    class="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-2xl
+               {{ $canOpenAuxModals ? 'bg-white hover:bg-slate-50 active:bg-slate-100 text-slate-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} px-4 py-2 text-sm font-semibold shadow-sm
                ring-1 ring-slate-200 hover:ring-slate-300 transition"
-                    @if(!$canUpdate) disabled @endif>
+                    @if(!$canOpenAuxModals) disabled @endif>
                 <span>Grupo de Exames</span>
             </button>
 {{--            <button type="button"--}}
@@ -112,10 +127,125 @@
             });
         </script>
     @endif
+    @php
+        $treinamentoId = (int) config('services.treinamento_id');
+        $itensTreinamentos = $itens->filter(fn ($i) => (int) ($i->servico_id ?? 0) === $treinamentoId);
+        $itensOutros = $itens->reject(fn ($i) => (int) ($i->servico_id ?? 0) === $treinamentoId);
+    @endphp
 
     <section class="bg-white rounded-2xl shadow border border-slate-100 overflow-hidden">
-        <div class="overflow-x-auto">
-            <table class="min-w-full text-sm">
+        <div class="md:hidden p-3 space-y-3">
+            @if($itens->isEmpty())
+                <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+                    Nenhum item cadastrado.
+                </div>
+            @else
+                @if($itensOutros->isNotEmpty())
+                    <div class="text-[11px] font-semibold text-slate-600 uppercase tracking-wide px-1">
+                        Serviços (ASO, documentos, laudos, etc.)
+                    </div>
+                    @foreach($itensOutros as $item)
+                        <article class="rounded-xl border border-slate-200 p-3 space-y-2">
+                            <div class="flex items-start justify-between gap-2">
+                                <div class="min-w-0">
+                                    <p class="text-xs text-slate-500">{{ $item->servico?->nome ?? 'Item livre' }}</p>
+                                    <p class="text-sm font-semibold text-slate-800 leading-tight break-words">{{ $item->descricao }}</p>
+                                    <p class="text-xs text-slate-500">{{ $item->codigo }}</p>
+                                </div>
+                                @if($item->ativo)
+                                    <span class="text-[11px] px-2 py-1 rounded-full bg-green-50 text-green-700 border border-green-100 whitespace-nowrap">Ativo</span>
+                                @else
+                                    <span class="text-[11px] px-2 py-1 rounded-full bg-red-50 text-red-700 border border-red-100 whitespace-nowrap">Inativo</span>
+                                @endif
+                            </div>
+                            <div class="flex items-center justify-between gap-2">
+                                <p class="text-base font-bold text-slate-800">R$ {{ number_format($item->preco, 2, ',', '.') }}</p>
+                                <div class="flex items-center gap-3">
+                                    <button type="button"
+                                            class="text-sm {{ $canUpdate ? 'text-blue-600 hover:underline' : 'text-slate-500 cursor-not-allowed' }}"
+                                            @if($canUpdate) onclick="openEditarItemModal(this)" @endif
+                                            @if(!$canUpdate) title="Usuário sem permissão" @endif
+                                            data-id="{{ $item->id }}"
+                                            data-servico-id="{{ $item->servico_id ?? '' }}"
+                                            data-codigo="{{ e($item->codigo ?? '') }}"
+                                            data-descricao="{{ e($item->descricao ?? '') }}"
+                                            data-preco="{{ $item->preco }}"
+                                            data-ativo="{{ $item->ativo ? 1 : 0 }}"
+                                            data-update-url="{{ route($routePrefix.'.tabela-precos.itens.update', $item) }}"
+                                            @if(!$canUpdate) disabled @endif>
+                                        Editar
+                                    </button>
+                                    <form method="POST"
+                                          action="{{ route($routePrefix.'.tabela-precos.itens.destroy', $item) }}"
+                                          data-confirm="Deseja remover este item?">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button class="text-sm {{ $canDelete ? 'text-red-600 hover:underline' : 'text-slate-500 cursor-not-allowed' }}"
+                                                @if(!$canDelete) disabled title="Usuário sem permissão" @endif>
+                                            Excluir
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </article>
+                    @endforeach
+                @endif
+
+                @if($itensTreinamentos->isNotEmpty())
+                    <div class="text-[11px] font-semibold text-emerald-700 uppercase tracking-wide px-1 pt-1">
+                        Treinamentos (NRs)
+                    </div>
+                    @foreach($itensTreinamentos as $item)
+                        <article class="rounded-xl border border-emerald-200 bg-emerald-50/30 p-3 space-y-2">
+                            <div class="flex items-start justify-between gap-2">
+                                <div class="min-w-0">
+                                    <p class="text-xs text-slate-500">{{ $item->servico?->nome ?? 'Treinamentos' }}</p>
+                                    <p class="text-sm font-semibold text-slate-800 leading-tight break-words">{{ $item->codigo }}</p>
+                                    <p class="text-xs text-slate-600 break-words">{{ $item->descricao }}</p>
+                                </div>
+                                @if($item->ativo)
+                                    <span class="text-[11px] px-2 py-1 rounded-full bg-green-50 text-green-700 border border-green-100 whitespace-nowrap">Ativo</span>
+                                @else
+                                    <span class="text-[11px] px-2 py-1 rounded-full bg-red-50 text-red-700 border border-red-100 whitespace-nowrap">Inativo</span>
+                                @endif
+                            </div>
+                            <div class="flex items-center justify-between gap-2">
+                                <p class="text-base font-bold text-slate-800">R$ {{ number_format($item->preco, 2, ',', '.') }}</p>
+                                <div class="flex items-center gap-3">
+                                    <button type="button"
+                                            class="text-sm {{ $canUpdate ? 'text-blue-600 hover:underline' : 'text-slate-500 cursor-not-allowed' }}"
+                                            @if($canUpdate) onclick="openEditarItemModal(this)" @endif
+                                            @if(!$canUpdate) title="Usuário sem permissão" @endif
+                                            data-id="{{ $item->id }}"
+                                            data-servico-id="{{ $item->servico_id ?? '' }}"
+                                            data-codigo="{{ e($item->codigo ?? '') }}"
+                                            data-descricao="{{ e($item->descricao ?? '') }}"
+                                            data-preco="{{ $item->preco }}"
+                                            data-ativo="{{ $item->ativo ? 1 : 0 }}"
+                                            data-update-url="{{ route($routePrefix.'.tabela-precos.itens.update', $item) }}"
+                                            @if(!$canUpdate) disabled @endif>
+                                        Editar
+                                    </button>
+                                    <form method="POST"
+                                          action="{{ route($routePrefix.'.tabela-precos.itens.destroy', $item) }}"
+                                          data-confirm="Deseja remover este item?">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button class="text-sm {{ $canDelete ? 'text-red-600 hover:underline' : 'text-slate-500 cursor-not-allowed' }}"
+                                                @if(!$canDelete) disabled title="Usuário sem permissão" @endif>
+                                            Excluir
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </article>
+                    @endforeach
+                @endif
+            @endif
+        </div>
+
+        <div class="hidden md:block overflow-x-auto">
+            <table class="comercial-table min-w-full text-sm">
                 <thead class="bg-slate-50">
                 <tr class="text-left text-slate-600">
                     <th class="px-5 py-3 font-semibold">Serviço</th>
@@ -126,12 +256,6 @@
                 </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
-                @php
-                    $treinamentoId = (int) config('services.treinamento_id');
-                    $itensTreinamentos = $itens->filter(fn ($i) => (int) ($i->servico_id ?? 0) === $treinamentoId);
-                    $itensOutros = $itens->reject(fn ($i) => (int) ($i->servico_id ?? 0) === $treinamentoId);
-                @endphp
-
                 @if($itens->isEmpty())
                     <tr>
                         <td colspan="5" class="px-5 py-6 text-center text-slate-500">
@@ -304,7 +428,7 @@
                 <button type="button"
                         onclick="closeNovoItemModal()"
                         class="h-9 w-9 rounded-xl hover:bg-slate-100 text-slate-500 flex items-center justify-center">
-                    ✕
+                    &times;
                 </button>
             </div>
 
@@ -348,7 +472,7 @@
                         <label class="text-xs font-semibold text-slate-600">Serviço (opcional)</label>
                         <select id="item_servico_id" name="servico_id"
                                 class="w-full mt-1 rounded-xl border-slate-200 text-sm px-3 py-2">
-                            <option value="">— Item livre (sem serviço) —</option>
+                            <option value="">— Item livre (sem Serviço) —</option>
                             @foreach($servicos as $s)
                                 <option value="{{ $s->id }}" @selected(old('servico_id') == $s->id)>
                                     {{ $s->nome }}
@@ -384,12 +508,12 @@
                     {{-- Código --}}
 
                     <div>
-                        <label class="text-xs font-semibold text-slate-600">Codigo(opcional)</label>
+                        <label class="text-xs font-semibold text-slate-600">Código (opcional)</label>
                         <input id="item_codigo" type="text" name="codigo" value="{{ old('codigo') }}"
                                class="w-full mt-1 rounded-xl border-slate-200 text-sm px-3 py-2">
                     </div>
                     <div>
-                        <label class="text-xs font-semibold text-slate-600">Descricao</label>
+                        <label class="text-xs font-semibold text-slate-600">Descrição</label>
                         <input id="item_descricao" type="text" name="descricao" value="{{ old('descricao') }}"
                                required
                                class="w-full mt-1 rounded-xl border-slate-200 text-sm px-3 py-2">
@@ -641,7 +765,7 @@
                 el.form.action = data.updateUrl;
                 el.spoof.innerHTML = '<input type="hidden" name="_method" value="PUT">';
                 el.title.textContent = 'Editar Item';
-                el.submit.textContent = 'Salvar alterações';
+                el.submit.textContent = 'Salvar alterAções';
 
                 if (el.servico) el.servico.value = data.servicoId || '';
                 if (el.codigo) el.codigo.value = data.codigo || '';
@@ -696,3 +820,4 @@
         })();
     </script>
 @endpush
+

@@ -148,7 +148,7 @@
                         <h2 class="text-sm font-semibold text-slate-700">Itens da proposta</h2>
                     </div>
                     <div class="overflow-x-auto">
-                        <table class="min-w-full text-sm">
+                        <table class="comercial-table min-w-full text-sm">
                             <thead class="bg-white">
                             <tr class="text-left text-slate-500">
                                 <th class="px-4 py-2 font-semibold">Serviço</th>
@@ -229,7 +229,7 @@
                         ->sum('valor_total');
                 @endphp
                 <div class="border-t border-slate-200 pt-3">
-                    <div class="ml-auto w-full md:w-[420px] rounded-xl border border-emerald-100 bg-emerald-50/60 px-4 py-3">
+                    <div class="ml-auto w-full md:max-w-[420px] rounded-xl border border-emerald-100 bg-emerald-50/60 px-4 py-3">
                         <div class="grid grid-cols-2 gap-1 text-xs text-slate-900">
                             <span class="uppercase tracking-wide">Subtotal</span>
                             <span class="text-right font-semibold text-slate-900">

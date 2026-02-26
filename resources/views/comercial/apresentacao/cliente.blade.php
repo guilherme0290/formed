@@ -30,42 +30,24 @@
         @endif
 
         <section class="bg-emerald-600 rounded-2xl shadow border border-emerald-700 overflow-hidden">
-            <div class="px-6 py-4 border-b border-emerald-700 bg-emerald-600">
+            <div class="px-4 md:px-6 py-4 border-b border-emerald-700 bg-emerald-600">
                 <h2 class="text-sm font-semibold text-white">1. Dados do Cliente</h2>
-                <p class="text-xs text-emerald-100 mt-1">Selecione uma proposta ou informe manualmente.</p>
+                <p class="text-xs text-emerald-100 mt-1">Preencha os dados do cliente manualmente.</p>
             </div>
 
-            <form method="POST" action="{{ route('comercial.apresentacao.cliente.store') }}" class="p-6 space-y-5 bg-white" id="formApresentacaoCliente">
+            <form method="POST" action="{{ route('comercial.apresentacao.cliente.store') }}" class="p-4 md:p-6 space-y-5 bg-white" id="formApresentacaoCliente">
                 @csrf
-
-                <div>
-                    <label class="text-xs font-semibold text-slate-600">Selecionar proposta (opcional)</label>
-                    <select id="proposta_id" name="proposta_id"
-                            class="w-full mt-1 rounded-xl border border-slate-200 text-sm px-3 py-2">
-                        <option value="">— Informar manualmente —</option>
-                        @foreach($propostas as $p)
-                            <option value="{{ $p->id }}"
-                                    @selected((string) old('proposta_id', $draft['proposta_id'] ?? '') === (string) $p->id)
-                                    data-razao="{{ e($p->cliente?->razao_social ?? '') }}"
-                                    data-cnpj="{{ e($p->cliente?->cnpj ?? '') }}"
-                                    data-telefone="{{ e($p->cliente?->telefone ?? '') }}">
-                                #{{ str_pad((int) $p->id, 2, '0', STR_PAD_LEFT) }} - {{ $p->cliente?->razao_social ?? '-' }}
-                            </option>
-                        @endforeach
-                    </select>
-                    <p class="text-[11px] text-slate-500 mt-1">Ao selecionar, os campos abaixo serão preenchidos automaticamente (você pode editar).</p>
-                </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="text-xs font-semibold text-slate-600">CNPJ *</label>
-                        <div class="mt-1 flex gap-2">
+                        <div class="mt-1 flex flex-col sm:flex-row gap-2">
                             <input id="cnpj" name="cnpj" type="text" required
                                    value="{{ old('cnpj', $draft['cnpj'] ?? '') }}"
-                                   class="flex-1 rounded-xl border border-slate-200 text-sm px-3 py-2"
+                                   class="w-full sm:flex-1 rounded-xl border border-slate-200 text-sm px-3 py-2"
                                    placeholder="00.000.000/0000-00">
                             <button type="button" id="btnBuscarCnpj"
-                                    class="rounded-xl bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 text-sm font-semibold">
+                                    class="w-full sm:w-auto rounded-xl bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 text-sm font-semibold whitespace-nowrap">
                                 Buscar
                             </button>
                         </div>
@@ -99,14 +81,14 @@
                     </div>
                 </div>
 
-                <div class="pt-2 flex justify-end gap-2">
+                <div class="pt-2 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
                     <a href="{{ route('comercial.apresentacao.cancelar') }}"
-                       class="rounded-xl px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">
+                       class="w-full sm:w-auto text-center rounded-xl px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">
                         Cancelar
                     </a>
 
                     <button type="submit"
-                            class="rounded-xl bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 text-sm font-semibold">
+                            class="w-full sm:w-auto rounded-xl bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 text-sm font-semibold">
                         Próximo
                     </button>
                 </div>
@@ -117,7 +99,6 @@
     @push('scripts')
         <script>
             (function () {
-                const propostaSelect = document.getElementById('proposta_id');
                 const cnpj = document.getElementById('cnpj');
                 const razao = document.getElementById('razao_social');
                 const telefone = document.getElementById('telefone');
@@ -136,15 +117,6 @@
                 function clearMsg() {
                     cnpjMsg?.classList.add('hidden');
                 }
-
-                propostaSelect?.addEventListener('change', () => {
-                    const opt = propostaSelect.selectedOptions?.[0];
-                    if (!opt || !opt.value) return;
-
-                    if (cnpj) cnpj.value = opt.dataset.cnpj || '';
-                    if (razao) razao.value = opt.dataset.razao || '';
-                    if (telefone) telefone.value = opt.dataset.telefone || '';
-                });
 
                 btnBuscar?.addEventListener('click', async () => {
                     clearMsg();
@@ -179,3 +151,6 @@
         </script>
     @endpush
 @endsection
+
+
+

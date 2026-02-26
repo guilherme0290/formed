@@ -142,7 +142,8 @@
             </div>
 
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                <table class="w-full text-sm">
+                <div class="overflow-x-auto">
+                <table class="comercial-table w-full text-sm">
                     <thead class="bg-slate-50 text-slate-500">
                     <tr>
                         <th class="text-left px-4 py-3">Função</th>
@@ -199,6 +200,7 @@
                     @endforelse
                     </tbody>
                 </table>
+                </div>
                 <div class="px-4 py-4">
                     {{ $funcoes->links() }}
                 </div>
