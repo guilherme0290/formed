@@ -6,7 +6,7 @@
 @php($canUpdate = $canUpdate ?? false)
 @php($canDelete = $canDelete ?? false)
 
-<div id="modalGhe" class="fixed inset-0 z-[90] hidden bg-black/50 overflow-y-auto">
+<div id="modalGhe" data-overlay-root="true" class="fixed inset-0 z-[90] hidden bg-black/50 overflow-y-auto">
     <div class="min-h-full w-full flex items-center justify-center p-4 md:p-6">
         <div class="bg-white w-full max-w-6xl rounded-2xl shadow-xl overflow-hidden max-h-[88vh] flex flex-col text-base">
             <div class="px-6 py-4 bg-amber-700 text-white flex items-center justify-between">
@@ -45,7 +45,7 @@
 </div>
 
 {{-- Modal interno: Form criar/editar --}}
-<div id="modalGheForm" class="fixed inset-0 z-[100] hidden bg-black/50 overflow-y-auto">
+<div id="modalGheForm" data-overlay-root="true" class="fixed inset-0 z-[100] hidden bg-black/50 overflow-y-auto">
     <div class="min-h-full w-full flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-5xl rounded-2xl shadow-xl overflow-hidden text-base max-h-[90vh] overflow-y-auto">
             <div class="px-6 py-4 border-b border-slate-800/30 bg-gradient-to-r from-slate-900 to-slate-700 text-white flex items-center justify-between">

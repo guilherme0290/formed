@@ -4,7 +4,7 @@
 @php($canUpdate = $canUpdate ?? false)
 @php($canDelete = $canDelete ?? false)
 
-<div id="modalTreinamentosCrud" class="fixed inset-0 z-[90] hidden bg-black/50 overflow-y-auto">
+<div id="modalTreinamentosCrud" data-overlay-root="true" class="fixed inset-0 z-[90] hidden bg-black/50 overflow-y-auto">
     <div class="min-h-full w-full flex items-center justify-center p-4 md:p-6">
         <div class="bg-white w-full max-w-5xl rounded-2xl shadow-xl overflow-hidden max-h-[85vh] flex flex-col">
 
@@ -73,7 +73,7 @@
 </div>
 
 {{-- MODAL FORM TREINAMENTO --}}
-<div id="modalTreinamentoForm" class="fixed inset-0 z-[100] hidden bg-black/50 overflow-y-auto">
+<div id="modalTreinamentoForm" data-overlay-root="true" class="fixed inset-0 z-[100] hidden bg-black/50 overflow-y-auto">
     <div class="min-h-full w-full flex items-center justify-center p-4 md:p-6">
         <div class="bg-white w-full max-w-xl rounded-2xl shadow-xl overflow-hidden max-h-[85vh] flex flex-col">
             <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">

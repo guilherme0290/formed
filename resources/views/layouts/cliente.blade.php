@@ -381,6 +381,8 @@
     </div>
 </div>
 
+<div id="app-overlay-root" class="fixed inset-0 z-[20000] pointer-events-none"></div>
+
 @stack('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
@@ -388,6 +390,18 @@ document.addEventListener('DOMContentLoaded', function () {
     const closeBtn = document.getElementById('cliente-mobile-sidebar-close');
     const sidebar = document.getElementById('cliente-mobile-sidebar');
     const backdrop = document.getElementById('cliente-mobile-sidebar-backdrop');
+    const overlayRoot = document.getElementById('app-overlay-root');
+
+    function mountOverlayModals() {
+        if (!overlayRoot) return;
+        document.querySelectorAll('[data-overlay-root="true"]').forEach((modal) => {
+            if (!modal || modal.parentElement === overlayRoot) return;
+            modal.classList.add('pointer-events-auto');
+            overlayRoot.appendChild(modal);
+        });
+    }
+
+    mountOverlayModals();
 
     function openSidebar() {
         if (!sidebar || !backdrop) return;
@@ -421,7 +435,5 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 </body>
 </html>
-
-
 
 

@@ -418,6 +418,7 @@
 {{-- MODAL NOVO ITEM --}}
 @php($storeRoute = $routePrefix.'.tabela-precos.itens.store')
 <div id="modalNovoItem"
+     data-overlay-root="true"
      class="fixed inset-0 z-[90] hidden bg-black/50 overflow-y-auto">
     {{-- Centralizador + respiro --}}
     <div class="min-h-full w-full flex items-center justify-center p-4 md:p-6">

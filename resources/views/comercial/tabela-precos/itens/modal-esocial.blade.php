@@ -4,7 +4,7 @@
 @php($canDelete = $canDelete ?? false)
 
 {{-- Modal eSocial --}}
-<div id="modalEsocial" class="fixed inset-0 z-[90] hidden bg-black/50 overflow-y-auto">
+<div id="modalEsocial" data-overlay-root="true" class="fixed inset-0 z-[90] hidden bg-black/50 overflow-y-auto">
     <div class="min-h-full flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-4xl rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[85vh]">
 
@@ -46,7 +46,7 @@
 </div>
 
 {{-- Modal interno: criar/editar faixa --}}
-<div id="modalEsocialForm" class="fixed inset-0 z-[100] hidden bg-black/50 overflow-y-auto">
+<div id="modalEsocialForm" data-overlay-root="true" class="fixed inset-0 z-[100] hidden bg-black/50 overflow-y-auto">
     <div class="min-h-full flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-5xl rounded-2xl shadow-xl overflow-hidden max-h-[90vh] overflow-y-auto">
             <div class="px-6 py-4 border-b flex items-center justify-between">
