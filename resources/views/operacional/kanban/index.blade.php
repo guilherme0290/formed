@@ -76,18 +76,16 @@
                     @endphp
                     <span class="absolute inset-y-0 left-3 flex items-center text-slate-400 text-sm">🔍</span>
                     <input type="text"
+                           id="kanban-index-autocomplete-input"
                            name="q"
                            value="{{ $filtroBusca ?? '' }}"
-                           list="kanban-cliente-autocomplete"
                            placeholder="Buscar..."
+                           autocomplete="off"
                            class="w-full pl-9 pr-24 py-2.5 rounded-2xl border border-slate-200 bg-white/95
                               text-sm text-slate-700 shadow-sm
                               focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400">
-                    <datalist id="kanban-cliente-autocomplete">
-                        @foreach(($clienteAutocomplete ?? collect()) as $item)
-                            <option value="{{ $item }}"></option>
-                        @endforeach
-                    </datalist>
+                    <div id="kanban-index-autocomplete-list"
+                         class="absolute z-20 mt-1 w-full max-h-64 overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg hidden"></div>
                     <input type="hidden" name="servico_id" value="{{ $filtroServico }}">
                     <input type="hidden" name="responsavel_id" value="{{ $filtroResponsavel }}">
                     <input type="hidden" name="coluna_id" value="{{ $filtroColuna }}">
@@ -3322,6 +3320,16 @@
             }
         });
 
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            window.initTailwindAutocomplete?.(
+                'kanban-index-autocomplete-input',
+                'kanban-index-autocomplete-list',
+                @json($clienteAutocomplete ?? []),
+                { maxItems: 200 }
+            );
+        });
     </script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {

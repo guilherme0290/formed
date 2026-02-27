@@ -90,9 +90,23 @@ class ClienteController extends Controller
 
         $routePrefix = $this->routePrefix();
 
-        $autocompleteOptions = $clientes->getCollection()
-            ->pluck('razao_social')
-            ->filter()
+        $autocompleteOptions = Cliente::query()
+            ->where('empresa_id', $empresaId)
+            ->when($this->isComercialNaoMaster($r->user()), function ($query) use ($r) {
+                $query->where('vendedor_id', (int) $r->user()->id);
+            })
+            ->when($status !== 'todos', fn($query) => $query->where('ativo', $status === 'ativo'))
+            ->when(!empty($dataInicioNormalizada), fn($query) => $query->whereDate('clientes.created_at', '>=', $dataInicioNormalizada))
+            ->when(!empty($dataFimNormalizada), fn($query) => $query->whereDate('clientes.created_at', '<=', $dataFimNormalizada))
+            ->orderBy('razao_social')
+            ->get(['razao_social', 'nome_fantasia', 'cnpj'])
+            ->flatMap(function ($cliente) {
+                return array_filter([
+                    $cliente->razao_social,
+                    $cliente->nome_fantasia,
+                    $cliente->cnpj,
+                ]);
+            })
             ->unique()
             ->values();
 

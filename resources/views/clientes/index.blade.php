@@ -66,7 +66,7 @@
 
         {{-- FILTRO --}}
         <div class="bg-white rounded-2xl p-4 md:p-5 shadow-sm border border-slate-100">
-            <form method="GET" class="grid md:grid-cols-6 gap-4 items-end">
+            <form method="GET" class="grid md:grid-cols-4 gap-4 items-end" id="clientes-filter-form">
 
                 <div class="md:col-span-2">
                     <label class="block text-sm font-medium mb-1 text-slate-700 break-words">Busca (raz&atilde;o social, nome fantasia ou CNPJ)</label>
@@ -79,24 +79,6 @@
                              class="absolute z-20 mt-1 w-full max-h-64 overflow-auto rounded-lg border border-slate-200 bg-white shadow-lg hidden">
                         </div>
                     </div>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium mb-1 text-slate-700">Data inicial</label>
-                    <input
-                        type="date"
-                        name="data_inicio"
-                        value="{{ $dataInicioNormalizada ?? '' }}"
-                        class="w-full rounded-lg border-slate-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium mb-1 text-slate-700">Data final</label>
-                    <input
-                        type="date"
-                        name="data_fim"
-                        value="{{ $dataFimNormalizada ?? '' }}"
-                        class="w-full rounded-lg border-slate-300 px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                 </div>
 
                 <div>
@@ -412,7 +394,8 @@
             window.initTailwindAutocomplete?.(
                 'cliente-search',
                 'clientes-autocomplete',
-                @json($autocompleteOptions)
+                @json($autocompleteOptions),
+                { maxItems: 200 }
             );
         });
     </script>
@@ -420,44 +403,21 @@
     <script>
         (function () {
             const input = document.getElementById('cliente-search');
-            const rows = Array.from(document.querySelectorAll('[data-filtro-item][data-razao]'));
+            const form = document.getElementById('clientes-filter-form');
 
-            if (!input || rows.length === 0) {
+            if (!input || !form) {
                 return;
             }
 
-            const normalize = (value) => (value || '')
-                .toString()
-                .toLowerCase()
-                .normalize('NFD')
-                .replace(/\p{Diacritic}/gu, '');
+            let timer = null;
+            const delay = 350;
 
-            const onlyDigits = (value) => (value || '').toString().replace(/\D+/g, '');
-            const onlyText = (value) => (value || '')
-                .toString()
-                .replace(/\d+/g, ' ')
-                .replace(/\s+/g, ' ')
-                .trim();
-
-            const filterRows = () => {
-                const raw = input.value.trim();
-                const term = normalize(onlyText(raw));
-                const termDigits = onlyDigits(raw);
-
-                rows.forEach((row) => {
-                    const razao = normalize(row.dataset.razao);
-                    const fantasia = normalize(row.dataset.fantasia);
-                    const cnpj = onlyDigits(row.dataset.cnpj);
-
-                const matchesTexto = term === '' || razao.includes(term) || fantasia.includes(term);
-                const matchesCnpj = termDigits !== '' && cnpj.includes(termDigits);
-
-                row.style.display = matchesTexto || matchesCnpj ? '' : 'none';
+            input.addEventListener('input', () => {
+                clearTimeout(timer);
+                timer = setTimeout(() => {
+                    form.submit();
+                }, delay);
             });
-        };
-
-            input.addEventListener('input', filterRows);
-            filterRows();
         })();
     </script>
 @endpush

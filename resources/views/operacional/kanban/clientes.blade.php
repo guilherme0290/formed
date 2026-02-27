@@ -151,25 +151,9 @@
             window.initTailwindAutocomplete?.(
                 'kanban-clientes-input',
                 'kanban-clientes-list',
-                @json($clienteAutocomplete ?? [])
+                @json($clienteAutocomplete ?? []),
+                { maxItems: 200 }
             );
-        });
-    </script>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const form = document.querySelector('form[method="GET"]');
-            const input = document.getElementById('kanban-clientes-input');
-            if (!form || !input) return;
-
-            let timer = null;
-            const delay = 350;
-
-            input.addEventListener('input', () => {
-                clearTimeout(timer);
-                timer = setTimeout(() => {
-                    form.submit();
-                }, delay);
-            });
         });
     </script>
 @endpush
