@@ -111,7 +111,7 @@ class GerarEsocialMensal extends Command
                 ]);
 
                 $descricao = 'eSocial - ' . $referencia->format('m/Y');
-                $vendaItem = VendaItem::create([
+                VendaItem::create([
                     'venda_id' => $venda->id,
                     'servico_id' => $servicoEsocialId,
                     'descricao_snapshot' => $descricao,
@@ -120,36 +120,7 @@ class GerarEsocialMensal extends Command
                     'subtotal_snapshot' => $valor,
                 ]);
 
-                $contaKey = $contrato->empresa_id . ':' . $contrato->cliente_id . ':' . $vencimento->toDateString();
-                $conta = $contasPorCliente[$contaKey] ?? null;
-                if (!$conta) {
-                    $conta = ContaReceber::create([
-                        'empresa_id' => $contrato->empresa_id,
-                        'cliente_id' => $contrato->cliente_id,
-                        'status' => 'FECHADA',
-                        'total' => 0,
-                        'total_baixado' => 0,
-                        'vencimento' => $vencimento->toDateString(),
-                        'pago_em' => null,
-                    ]);
-                    $contasPorCliente[$contaKey] = $conta;
-                }
 
-                ContaReceberItem::create([
-                    'conta_receber_id' => $conta->id,
-                    'empresa_id' => $contrato->empresa_id,
-                    'cliente_id' => $contrato->cliente_id,
-                    'venda_id' => $venda->id,
-                    'venda_item_id' => $vendaItem->id,
-                    'servico_id' => $servicoEsocialId,
-                    'descricao' => $descricao,
-                    'data_realizacao' => $referencia->toDateString(),
-                    'vencimento' => $vencimento->toDateString(),
-                    'status' => 'ABERTO',
-                    'valor' => $valor,
-                ]);
-
-                $service->recalcularConta($conta->fresh());
                 $service->atualizarStatusVenda($venda->id);
             });
 
