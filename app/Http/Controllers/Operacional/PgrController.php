@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Anexos;
 use App\Models\Cliente;
 use App\Models\Funcao;
+use App\Models\Funcionario;
 use App\Services\AsoGheService;
 use App\Models\KanbanColuna;
 use App\Models\PgrSolicitacoes;
@@ -63,6 +64,7 @@ class PgrController extends Controller
         $artInfo = $this->artInfoParaCliente($cliente);
         $valorArt  = $artInfo['valor'] ?? 500.00;
         $artDisponivel = $artInfo['disponivel'];
+        $funcaoQtdMap = $this->funcionarioCountByFuncao($cliente, $empresaId);
 
         return view('operacional.kanban.pgr.form', [
             'cliente'   => $cliente,
@@ -75,6 +77,7 @@ class PgrController extends Controller
             'modo'      => 'create',
             'origem'    => $origem,
             'artDisponivel' => $artDisponivel,
+            'funcaoQtdMap' => $funcaoQtdMap,
         ]);
     }
 
@@ -106,6 +109,7 @@ class PgrController extends Controller
         $artInfo = $this->artInfoParaCliente($cliente);
         $valorArt = $pgr->valor_art ?? ($artInfo['valor'] ?? 500.00);
         $artDisponivel = $artInfo['disponivel'];
+        $funcaoQtdMap = $this->funcionarioCountByFuncao($cliente, $empresaId);
 
         return view('operacional.kanban.pgr.form', [
             'cliente'   => $cliente,
@@ -119,6 +123,7 @@ class PgrController extends Controller
             'pgr'       => $pgr,
             'modo'      => 'edit',
             'artDisponivel' => $artDisponivel,
+            'funcaoQtdMap' => $funcaoQtdMap,
         ]);
     }
 
@@ -239,11 +244,11 @@ class PgrController extends Controller
 
             // Monta descrição amigável considerando se já tem PCMSO
             $descricao = "PGR - {$tipoLabel}";
-            if ($pgr->com_pcms0) {
-                $descricao .= ' + PCMSO';
-            }
             if ($pgr->com_art) {
                 $descricao .= ' (COM ART)';
+            }
+            if ($pgr->com_pcms0) {
+                $descricao .= ' + PCMSO';
             }
 
             $tarefa->update([
@@ -542,12 +547,11 @@ class PgrController extends Controller
         // monta uma descrição mais amigável pra aparecer no modal
         $descricao = "PGR - " . ($pgr->tipo === 'matriz' ? 'Matriz' : 'Específico');
 
-        if ($pgr->com_pcms0) {
-            $descricao .= ' + PCMSO';
-        }
-
         if ($pgr->com_art) {
             $descricao .= ' (COM ART)';
+        }
+        if ($pgr->com_pcms0) {
+            $descricao .= ' + PCMSO';
         }
 
         $tarefa->update([
@@ -635,5 +639,20 @@ class PgrController extends Controller
             ->unique('id')
             ->values();
     }
-}
 
+    private function funcionarioCountByFuncao(Cliente $cliente, int $empresaId): array
+    {
+        return Funcionario::query()
+            ->where('empresa_id', $empresaId)
+            ->where('cliente_id', $cliente->id)
+            ->where('ativo', true)
+            ->whereNotNull('funcao_id')
+            ->selectRaw('funcao_id, COUNT(*) as total')
+            ->groupBy('funcao_id')
+            ->pluck('total', 'funcao_id')
+            ->map(function ($total) {
+                return (int) $total;
+            })
+            ->toArray();
+    }
+}

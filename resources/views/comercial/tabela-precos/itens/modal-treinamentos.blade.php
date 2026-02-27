@@ -1,5 +1,8 @@
 {{-- MODAL TREINAMENTOS (CRUD) --}}
 @php($routePrefix = $routePrefix ?? 'comercial')
+@php($canCreate = $canCreate ?? false)
+@php($canUpdate = $canUpdate ?? false)
+@php($canDelete = $canDelete ?? false)
 
 <div id="modalTreinamentosCrud" class="fixed inset-0 z-[90] hidden bg-black/50 overflow-y-auto">
     <div class="min-h-full w-full flex items-center justify-center p-4 md:p-6">
@@ -34,11 +37,11 @@
                     </label>
 
                     <button type="button"
-                            onclick="openTreinamentoFormModal()"
+                            @if($canCreate) onclick="openTreinamentoFormModal()" @endif
                             class="inline-flex items-center justify-center gap-2 rounded-2xl
-                                   bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800
-                                   text-white px-5 py-2.5 text-sm font-semibold shadow-sm
-                                   ring-1 ring-emerald-600/20 hover:ring-emerald-700/30 transition">
+                                   {{ $canCreate ? 'bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} px-5 py-2.5 text-sm font-semibold shadow-sm
+                                   ring-1 ring-emerald-600/20 hover:ring-emerald-700/30 transition"
+                            @if(!$canCreate) disabled title="Usuário sem permissão" @endif>
                         <span class="text-base leading-none">＋</span>
                         <span>Novo Treinamento</span>
                     </button>
@@ -139,6 +142,12 @@
 @push('scripts')
     <script>
         (function () {
+            const PERMS = {
+                create: @json((bool) $canCreate),
+                update: @json((bool) $canUpdate),
+                delete: @json((bool) $canDelete),
+            };
+            const deny = (msg) => window.uiAlert?.(msg || 'Usuário sem permissão.');
             const CSRF = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
             const URLS = {
@@ -241,8 +250,8 @@
                 </div>
 
                 <div class="col-span-2 text-right">
-                    <button type="button" class="text-slate-400 text-sm mr-3 cursor-not-allowed" data-act="edit" disabled title="Desabilitado">Editar</button>
-                    <button type="button" class="text-slate-400 text-sm cursor-not-allowed" data-act="del" disabled title="Desabilitado">Excluir</button>
+                    <button type="button" class="text-sm mr-3 ${PERMS.update ? 'text-blue-600 hover:underline' : 'text-slate-400 cursor-not-allowed'}" data-act="edit" ${PERMS.update ? '' : 'disabled title=\"Usuário sem permissão\"'}>Editar</button>
+                    <button type="button" class="text-sm ${PERMS.delete ? 'text-red-600 hover:underline' : 'text-slate-400 cursor-not-allowed'}" data-act="del" ${PERMS.delete ? '' : 'disabled title=\"Usuário sem permissão\"'}>Excluir</button>
                 </div>
             `;
 
@@ -262,6 +271,8 @@
             }
 
             function openForm(nr = null) {
+                if (nr && !PERMS.update) return deny('Usuário sem permissão para editar.');
+                if (!nr && !PERMS.create) return deny('Usuário sem permissão para criar.');
                 dom.formTitle.textContent = nr ? 'Editar Treinamento' : 'Novo Treinamento';
                 dom.id.value = nr?.id || '';
                 dom.codigo.value = nr?.codigo || '';
@@ -277,8 +288,10 @@
             async function save(e) {
                 e.preventDefault();
                 alertHide();
-
                 const id = dom.id.value;
+                if (id && !PERMS.update) return deny('Usuário sem permissão para editar.');
+                if (!id && !PERMS.create) return deny('Usuário sem permissão para criar.');
+
                 const payload = {
                     codigo: (dom.codigo.value || '').trim(),
                     titulo: (dom.titulo.value || '').trim(),
@@ -325,6 +338,7 @@
             }
 
             async function destroy(id) {
+                if (!PERMS.delete) return deny('Usuário sem permissão para excluir.');
                 const ok = await window.uiConfirm('Deseja excluir este treinamento?');
                 if (!ok) return;
 

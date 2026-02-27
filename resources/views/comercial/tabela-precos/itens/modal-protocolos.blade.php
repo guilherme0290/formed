@@ -1,4 +1,7 @@
 @php($routePrefix = $routePrefix ?? 'comercial')
+@php($canCreate = $canCreate ?? false)
+@php($canUpdate = $canUpdate ?? false)
+@php($canDelete = $canDelete ?? false)
 
 <div id="modalProtocolos" class="fixed inset-0 z-[200] hidden bg-black/50 overflow-y-auto">
     <div class="min-h-full w-full flex items-center justify-center p-4 md:p-6">
@@ -22,11 +25,11 @@
                     <div class="text-sm font-semibold text-slate-800">Lista de Grupos</div>
 
                     <button type="button"
-                            onclick="openProtocoloForm(null)"
+                            @if($canCreate) onclick="openProtocoloForm(null)" @endif
                             class="inline-flex items-center justify-center gap-2 rounded-2xl
-                                   bg-slate-800 hover:bg-slate-900 active:bg-black
-                                   text-white px-5 py-2.5 text-sm font-semibold shadow-sm
-                                   ring-1 ring-slate-700/30 transition">
+                                   {{ $canCreate ? 'bg-slate-800 hover:bg-slate-900 active:bg-black text-white' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} px-5 py-2.5 text-sm font-semibold shadow-sm
+                                   ring-1 ring-slate-700/30 transition"
+                            @if(!$canCreate) disabled title="Usuário sem permissão" @endif>
                         <span class="text-base leading-none">＋</span>
                         <span>Novo Grupo</span>
                     </button>
@@ -104,6 +107,12 @@
 @push('scripts')
     <script>
         (function () {
+            const PERMS = {
+                create: @json((bool) $canCreate),
+                update: @json((bool) $canUpdate),
+                delete: @json((bool) $canDelete),
+            };
+            const deny = (msg) => window.uiAlert?.(msg || 'Usuário sem permissão.');
             const CSRF = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
             const PROTOCOLOS = {
@@ -197,8 +206,8 @@
                         <div class="col-span-3 text-xs text-slate-600">${examesTxt}</div>
                         <div class="col-span-2 text-right font-semibold text-slate-800">${total}</div>
                         <div class="col-span-2 flex gap-2 justify-end">
-                            <button type="button" class="text-slate-400 text-sm cursor-not-allowed" data-action="edit" disabled title="Desabilitado">Editar</button>
-                            <button type="button" class="text-slate-400 text-sm cursor-not-allowed" data-action="del" disabled title="Desabilitado">Excluir</button>
+                            <button type="button" class="text-sm ${PERMS.update ? 'text-blue-600 hover:underline' : 'text-slate-400 cursor-not-allowed'}" data-action="edit" ${PERMS.update ? '' : 'disabled title=\"Usuário sem permissão\"'}>Editar</button>
+                            <button type="button" class="text-sm ${PERMS.delete ? 'text-red-600 hover:underline' : 'text-slate-400 cursor-not-allowed'}" data-action="del" ${PERMS.delete ? '' : 'disabled title=\"Usuário sem permissão\"'}>Excluir</button>
                         </div>
                     `;
 
@@ -243,6 +252,8 @@
             async function saveProtocolo(e){
                 e.preventDefault();
                 const id = PROTOCOLOS.dom.id.value;
+                if (id && !PERMS.update) return deny('Usuário sem permissão para editar.');
+                if (!id && !PERMS.create) return deny('Usuário sem permissão para criar.');
                 const payload = {
                     titulo: PROTOCOLOS.dom.titulo.value.trim(),
                     descricao: PROTOCOLOS.dom.descricao.value.trim() || null,
@@ -277,6 +288,7 @@
             }
 
             async function destroyProtocolo(id){
+                if (!PERMS.delete) return deny('Usuário sem permissão para excluir.');
                 const ok = await window.uiConfirm('Deseja remover este grupo?');
                 if (!ok) return;
                 try{
@@ -300,6 +312,8 @@
             window.closeProtocolosModal = () => PROTOCOLOS.dom.modal?.classList.add('hidden');
 
             window.openProtocoloForm = async function(protocolo){
+                if (protocolo && !PERMS.update) return deny('Usuário sem permissão para editar.');
+                if (!protocolo && !PERMS.create) return deny('Usuário sem permissão para criar.');
                 await loadExames();
                 PROTOCOLOS.dom.modalForm?.classList.remove('hidden');
                 PROTOCOLOS.dom.title.textContent = protocolo ? 'Editar Grupo' : 'Novo Grupo';

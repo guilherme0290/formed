@@ -1,4 +1,7 @@
 @php($routePrefix = $routePrefix ?? 'comercial')
+@php($canCreate = $canCreate ?? false)
+@php($canUpdate = $canUpdate ?? false)
+@php($canDelete = $canDelete ?? false)
 
 <div id="modalExamesCrud" class="fixed inset-0 z-[90] hidden bg-black/50 overflow-y-auto">
     <div class="min-h-full w-full flex items-center justify-center p-4 md:p-6">
@@ -23,11 +26,11 @@
                     <div class="text-sm font-semibold text-slate-800">Lista de exames</div>
 
                     <button type="button"
-                            onclick="openExameForm(null)"
+                            @if($canCreate) onclick="openExameForm(null)" @endif
                             class="inline-flex items-center justify-center gap-2 rounded-2xl
-                                   bg-blue-600 hover:bg-blue-700 active:bg-blue-800
-                                   text-white px-5 py-2.5 text-sm font-semibold shadow-sm
-                                   ring-1 ring-blue-600/20 hover:ring-blue-700/30 transition">
+                                   {{ $canCreate ? 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} px-5 py-2.5 text-sm font-semibold shadow-sm
+                                   ring-1 ring-blue-600/20 hover:ring-blue-700/30 transition"
+                            @if(!$canCreate) disabled title="Usuário sem permissão" @endif>
                         <span class="text-base leading-none">＋</span>
                         <span>Novo Exame</span>
                     </button>
@@ -105,6 +108,12 @@
 @push('scripts')
     <script>
         (function(){
+            const PERMS = {
+                create: @json((bool) $canCreate),
+                update: @json((bool) $canUpdate),
+                delete: @json((bool) $canDelete),
+            };
+            const deny = (msg) => window.uiAlert?.(msg || 'Usuário sem permissão.');
 
             const CSRF = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
@@ -245,8 +254,8 @@
                                 </div>
 
                                 <div class="col-span-2 text-right">
-                                  <button type="button" class="text-slate-400 text-sm cursor-not-allowed" data-act="edit" disabled title="Desabilitado">Editar</button>
-                                  <button type="button" class="text-slate-400 text-sm ml-2 cursor-not-allowed" data-act="del" disabled title="Desabilitado">Excluir</button>
+                                  <button type="button" class="text-sm ${PERMS.update ? 'text-blue-600 hover:underline' : 'text-slate-400 cursor-not-allowed'}" data-act="edit" ${PERMS.update ? '' : 'disabled title=\"Usuário sem permissão\"'}>Editar</button>
+                                  <button type="button" class="text-sm ml-2 ${PERMS.delete ? 'text-red-600 hover:underline' : 'text-slate-400 cursor-not-allowed'}" data-act="del" ${PERMS.delete ? '' : 'disabled title=\"Usuário sem permissão\"'}>Excluir</button>
                                 </div>
                               `;
 
@@ -259,6 +268,8 @@
 
             function openExameForm(exame){
                 if(!EXAMES.dom.modalForm) return;
+                if (exame && !PERMS.update) return deny('Usuário sem permissão para editar.');
+                if (!exame && !PERMS.create) return deny('Usuário sem permissão para criar.');
 
                 EXAMES.dom.id.value = exame?.id ?? '';
                 EXAMES.dom.titulo.value = exame?.titulo ?? '';
@@ -280,8 +291,10 @@
 
             async function saveExame(e){
                 e.preventDefault();
-
                 const id = EXAMES.dom.id.value;
+                if (id && !PERMS.update) return deny('Usuário sem permissão para editar.');
+                if (!id && !PERMS.create) return deny('Usuário sem permissão para criar.');
+
                 const payload = {
                     titulo: (EXAMES.dom.titulo.value||'').trim(),
                     descricao: (EXAMES.dom.descricao.value||'').trim() || null,
@@ -328,6 +341,7 @@
             }
 
             async function deleteExame(id){
+                if (!PERMS.delete) return deny('Usuário sem permissão para excluir.');
                 const ok = await window.uiConfirm('Deseja remover este exame?');
                 if (!ok) return;
 

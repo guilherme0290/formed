@@ -228,7 +228,7 @@
                                         <button type="button"
                                                 class="px-3 py-2 rounded-xl border border-blue-200 text-sm bg-blue-50 hover:bg-blue-100 text-blue-800 font-semibold"
                                                 id="btnGheGlobal">
-                                            Gerenciar GHE
+                                            Gerenciar GHE no Cliente
                                         </button>
                                     </div>
                                 </div>
@@ -426,11 +426,6 @@
         </div>
     </div>
 
-    @include('comercial.tabela-precos.itens.modal-ghes', [
-        'routePrefix' => 'comercial',
-        'clientes' => $clientes ?? collect(),
-        'funcoes' => $funcoes ?? collect(),
-    ])
     @include('comercial.tabela-precos.itens.modal-protocolos', ['routePrefix' => 'comercial'])
     {{--
     MODAL PACOTE EXAMES (dinamico)
@@ -1138,8 +1133,14 @@
                     el.gheSelect?.addEventListener('change', setCurrentGheFromSelect);
                     el.btnAddGheConfig?.addEventListener('click', addOrUpdateCurrentGheConfig);
                     el.btnGheGlobal?.addEventListener('click', () => {
-                        if (typeof window.openGheModal === 'function') {
-                            window.openGheModal();
+                        if (typeof window.uiAlert === 'function') {
+                            window.uiAlert('GHE é gerenciado exclusivamente em Parâmetros do Cliente.', {
+                                title: 'Gerenciamento de GHE',
+                                icon: 'info',
+                                confirmText: 'Entendi',
+                            });
+                        } else {
+                            alert('GHE é gerenciado exclusivamente em Parâmetros do Cliente.');
                         }
                     });
 

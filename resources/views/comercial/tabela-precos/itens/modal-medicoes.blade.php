@@ -1,4 +1,7 @@
 @php($routePrefix = $routePrefix ?? 'comercial')
+@php($canCreate = $canCreate ?? false)
+@php($canUpdate = $canUpdate ?? false)
+@php($canDelete = $canDelete ?? false)
 
 <div id="modalMedicoesCrud" class="fixed inset-0 z-[90] hidden bg-black/50 overflow-y-auto">
     <div class="min-h-full w-full flex items-center justify-center p-4 md:p-6">
@@ -23,11 +26,11 @@
                     <div class="text-sm font-semibold text-slate-800">Lista de medições</div>
 
                     <button type="button"
-                            onclick="openMedicaoForm(null)"
+                            @if($canCreate) onclick="openMedicaoForm(null)" @endif
                             class="inline-flex items-center justify-center gap-2 rounded-2xl
-                                   bg-amber-600 hover:bg-amber-700 active:bg-amber-800
-                                   text-white px-5 py-2.5 text-sm font-semibold shadow-sm
-                                   ring-1 ring-amber-600/20 hover:ring-amber-700/30 transition">
+                                   {{ $canCreate ? 'bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} px-5 py-2.5 text-sm font-semibold shadow-sm
+                                   ring-1 ring-amber-600/20 hover:ring-amber-700/30 transition"
+                            @if(!$canCreate) disabled title="Usuário sem permissão" @endif>
                         <span class="text-base leading-none">＋</span>
                         <span>Nova Medição</span>
                     </button>
@@ -103,6 +106,12 @@
 @push('scripts')
     <script>
         (function(){
+            const PERMS = {
+                create: @json((bool) $canCreate),
+                update: @json((bool) $canUpdate),
+                delete: @json((bool) $canDelete),
+            };
+            const deny = (msg) => window.uiAlert?.(msg || 'Usuário sem permissão.');
             const CSRF = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
             const MEDICOES = {
@@ -238,8 +247,8 @@
                         </div>
 
                         <div class="col-span-3 text-right">
-                          <button type="button" class="text-slate-400 text-sm cursor-not-allowed" data-act="edit" disabled title="Desabilitado">Editar</button>
-                          <button type="button" class="text-slate-400 text-sm ml-2 cursor-not-allowed" data-act="del" disabled title="Desabilitado">Excluir</button>
+                          <button type="button" class="text-sm ${PERMS.update ? 'text-blue-600 hover:underline' : 'text-slate-400 cursor-not-allowed'}" data-act="edit" ${PERMS.update ? '' : 'disabled title=\"Usuário sem permissão\"'}>Editar</button>
+                          <button type="button" class="text-sm ml-2 ${PERMS.delete ? 'text-red-600 hover:underline' : 'text-slate-400 cursor-not-allowed'}" data-act="del" ${PERMS.delete ? '' : 'disabled title=\"Usuário sem permissão\"'}>Excluir</button>
                         </div>
                     `;
 
@@ -251,6 +260,7 @@
             }
 
             async function deleteMedicao(id){
+                if (!PERMS.delete) return deny('Usuário sem permissão para excluir.');
                 const ok = await window.uiConfirm('Remover esta medição?');
                 if (!ok) return;
                 try{
@@ -286,6 +296,8 @@
 
             window.openMedicaoForm = function(medicao){
                 if(!MEDICOES.dom.modalForm) return;
+                if (medicao && !PERMS.update) return deny('Usuário sem permissão para editar.');
+                if (!medicao && !PERMS.create) return deny('Usuário sem permissão para criar.');
 
                 resetMedicaoForm();
 
@@ -312,6 +324,9 @@
 
             MEDICOES.dom.form?.addEventListener('submit', async (e)=>{
                 e.preventDefault();
+                const id = MEDICOES.dom.id?.value;
+                if (id && !PERMS.update) return deny('Usuário sem permissão para editar.');
+                if (!id && !PERMS.create) return deny('Usuário sem permissão para criar.');
 
                 const payload = {
                     titulo: MEDICOES.dom.titulo?.value || '',
@@ -320,7 +335,6 @@
                     ativo: MEDICOES.dom.ativo?.checked ? 1 : 0,
                 };
 
-                const id = MEDICOES.dom.id?.value;
                 const url = id ? MEDICOES.urls.update(id) : MEDICOES.urls.store;
                 const method = id ? 'PUT' : 'POST';
 

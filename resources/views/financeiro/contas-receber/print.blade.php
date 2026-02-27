@@ -473,26 +473,6 @@
         </tr>
     </table>
 
-    <div class="section">
-        <div class="section-title">Assinatura / Responsável</div>
-        <div class="section-body">
-            <table>
-                <tr>
-                    <td style="width:50%; vertical-align:top; padding-right:8px;">
-                        <div class="signature-line">
-                            <div class="small"><strong>Responsável Técnico</strong></div>
-                            <div class="small muted">CRM: ____________________</div>
-                        </div>
-                    </td>
-                    <td style="width:50%; vertical-align:top; padding-left:8px;">
-                        <div class="signature-line">
-                            <div class="small"><strong>Financeiro FORMED</strong></div>
-                            <div class="small muted">{{ $empresa->email ?? 'financeiro@formed.com.br' }}</div>
-                        </div>
-                    </td>
-                </tr>
-            </table>
-        </div>
-    </div>
+
 </body>
 </html>

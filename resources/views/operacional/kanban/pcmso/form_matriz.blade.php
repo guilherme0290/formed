@@ -106,7 +106,15 @@
                                 Funcoes e Cargos
                             </h2>
 
-                            <x-funcoes.create-button label="Cadastrar nova funcao" variant="sky" :allowCreate="true" />
+                            <x-funcoes.create-button label="Cadastrar nova função" variant="sky" :allowCreate="true" />
+                        </div>
+
+                        <div class="mb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                            <button type="button" id="pcmso-btn-add-all-funcoes"
+                                    class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-sky-600 text-white text-xs font-semibold hover:bg-sky-700">
+                                <span>+</span>
+                                <span>Inserir todas as funções</span>
+                            </button>
                         </div>
 
                         @php
@@ -147,18 +155,32 @@
                                                 help-text="Funcoes listadas por GHE, pre-configuradas pelo vendedor/comercial."
                                                 :funcoes="$funcoes"
                                                 :selected="old('funcoes.'.$idx.'.funcao_id', $f['funcao_id'] ?? null)"
-                                                :show-create="true"
+                                                :show-create="false"
                                                 :allowCreate="true"
                                             />
                                         </div>
 
                                         <div class="col-span-2">
                                             <label class="block text-xs font-medium text-slate-500 mb-1">Qtd</label>
-                                            <input type="number"
-                                                   name="funcoes[{{ $idx }}][quantidade]"
-                                                   class="w-full rounded-lg border-slate-200 text-sm px-3 py-2"
-                                                   value="{{ old('funcoes.'.$idx.'.quantidade', $f['quantidade'] ?? 1) }}"
-                                                   min="1">
+                                            <div class="flex items-center rounded-xl border border-slate-300 bg-white overflow-hidden shadow-sm">
+                                                <button type="button"
+                                                        class="h-9 w-9 inline-flex items-center justify-center bg-slate-100 text-slate-700 font-bold text-base border-r border-slate-200 transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-inset"
+                                                        data-qty-dec
+                                                        aria-label="Diminuir quantidade">
+                                                    -
+                                                </button>
+                                                <input type="number"
+                                                       name="funcoes[{{ $idx }}][quantidade]"
+                                                       class="w-full border-0 text-center text-sm font-semibold text-slate-800 px-2 py-2 focus:ring-0"
+                                                       value="{{ old('funcoes.'.$idx.'.quantidade', $f['quantidade'] ?? 1) }}"
+                                                       min="1">
+                                                <button type="button"
+                                                        class="h-9 w-9 inline-flex items-center justify-center bg-emerald-50 text-emerald-700 font-bold text-base border-l border-slate-200 transition hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-inset"
+                                                        data-qty-inc
+                                                        aria-label="Aumentar quantidade">
+                                                    +
+                                                </button>
+                                            </div>
                                         </div>
 
                                         <div class="col-span-2">
@@ -212,7 +234,7 @@
                         <button type="submit"
                                 class="flex-1 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm
                    font-semibold py-2.5 transition">
-                            {{ $isEdit ? 'Salvar alterações' : 'Criar Tarefa PCMSO' }}
+                            {{ $isEdit ? 'Salvar alterações' : 'Solicitar PCMSO' }}
                         </button>
 
                     </div>
@@ -342,7 +364,7 @@
                     <div class="mt-4">
                         <button type="submit"
                                 class="w-full px-6 py-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium shadow-sm">
-                            {{ $isEdit ? 'Salvar alterações' : 'Criar Tarefa PCMSO' }}
+                            {{ $isEdit ? 'Salvar alterações' : 'Solicitar PCMSO' }}
                         </button>
                     </div>
                 </div>
@@ -383,41 +405,65 @@
                 // ----- FUNCOES DINAMICAS -----
                 const funcoesWrapper = document.getElementById('pcmso-funcoes-wrapper');
                 const btnAddFuncao = document.getElementById('pcmso-btn-add-funcao');
+                const btnAddAllFuncoes = document.getElementById('pcmso-btn-add-all-funcoes');
+                const funcaoQtdMap = @json($funcaoQtdMap ?? []);
+                const templateFuncao = funcoesWrapper ? funcoesWrapper.querySelector('.funcao-item')?.cloneNode(true) : null;
+
+                function getQuantidadePadraoPorFuncao(funcaoId) {
+                    const key = String(funcaoId || '').trim();
+                    if (!key) return 1;
+
+                    const total = parseInt(funcaoQtdMap[key] ?? funcaoQtdMap[Number(key)] ?? 0, 10);
+                    if (Number.isNaN(total) || total < 1) return 1;
+                    return total;
+                }
+
+                function aplicarQuantidadePorFuncao(item, funcaoId) {
+                    if (!item) return;
+                    const input = item.querySelector('input[name$="[quantidade]"]');
+                    if (!(input instanceof HTMLInputElement)) return;
+                    input.value = String(getQuantidadePadraoPorFuncao(funcaoId));
+                }
+
+                function criarCardFuncao(novoIndex, funcaoId = '', quantidade = '1') {
+                    const base = funcoesWrapper?.querySelector('.funcao-item') || templateFuncao;
+                    if (!base) return null;
+
+                    const clone = base.cloneNode(true);
+                    clone.dataset.funcaoIndex = String(novoIndex);
+
+                    clone.querySelectorAll('input, select').forEach(function (el) {
+                        if (el.name && el.name.includes('funcoes[')) {
+                            el.name = el.name.replace(/funcoes\[\d+]/, 'funcoes[' + novoIndex + ']');
+                        }
+
+                        if (el.tagName === 'SELECT') {
+                            el.value = String(funcaoId || '');
+                        } else if (el.name && el.name.includes('[quantidade]')) {
+                            el.value = String(quantidade || '1');
+                        } else {
+                            el.value = '';
+                        }
+
+                        if (el.id && el.id.startsWith('funcoes_')) {
+                            el.id = el.id.replace(/_\d+_funcao_id$/, '_' + novoIndex + '_funcao_id');
+                        }
+                    });
+
+                    const badge = clone.querySelector('.badge-funcao');
+                    if (badge) {
+                        badge.textContent = 'Funcao ' + (novoIndex + 1);
+                    }
+
+                    return clone;
+                }
 
                 if (funcoesWrapper && btnAddFuncao) {
                     btnAddFuncao.addEventListener('click', function () {
-                        const itens = funcoesWrapper.querySelectorAll('.funcao-item');
-                        const novoIndex = itens.length;
-
-                        const base = itens[itens.length - 1];
-                        const clone = base.cloneNode(true);
-
-                        clone.dataset.funcaoIndex = String(novoIndex);
-
-                        clone.querySelectorAll('input, select').forEach(function (el) {
-                            if (el.name && el.name.includes('funcoes[')) {
-                                el.name = el.name.replace(/\[\d+]/, '[' + novoIndex + ']');
-                            }
-
-                            if (el.tagName === 'SELECT') {
-                                el.value = '';
-                            } else if (el.name.includes('[quantidade]')) {
-                                el.value = '1';
-                            } else {
-                                el.value = '';
-                            }
-
-                            if (el.id && el.id.startsWith('funcoes_')) {
-                                el.id = el.id.replace(/_\d+_funcao_id$/, '_' + novoIndex + '_funcao_id');
-                            }
-                        });
-
-                        const badge = clone.querySelector('.badge-funcao');
-                        if (badge) {
-                            badge.textContent = 'Funcao ' + (novoIndex + 1);
-                        }
-
-                        funcoesWrapper.appendChild(clone);
+                        const novoIndex = funcoesWrapper.querySelectorAll('.funcao-item').length;
+                        const card = criarCardFuncao(novoIndex);
+                        if (!card) return;
+                        funcoesWrapper.appendChild(card);
                     });
 
                     funcoesWrapper.addEventListener('click', function (e) {
@@ -435,6 +481,65 @@
                             item.remove();
                             reindexFuncoes(funcoesWrapper);
                         }
+                    });
+                }
+
+                if (funcoesWrapper) {
+                    funcoesWrapper.addEventListener('click', function (e) {
+                        const btnInc = e.target.closest('[data-qty-inc]');
+                        const btnDec = e.target.closest('[data-qty-dec]');
+                        if (!btnInc && !btnDec) return;
+
+                        const item = e.target.closest('.funcao-item');
+                        if (!item) return;
+
+                        const input = item.querySelector('input[name$="[quantidade]"]');
+                        if (!(input instanceof HTMLInputElement)) return;
+
+                        const atual = parseInt(input.value || '1', 10);
+                        const seguro = Number.isNaN(atual) ? 1 : atual;
+                        const proximo = btnInc ? seguro + 1 : Math.max(1, seguro - 1);
+
+                        input.value = String(proximo);
+                        input.dispatchEvent(new Event('input', { bubbles: true }));
+                    });
+
+                    funcoesWrapper.addEventListener('change', function (e) {
+                        const target = e.target;
+                        if (!(target instanceof HTMLSelectElement)) return;
+                        if (!target.name || !target.name.includes('[funcao_id]')) return;
+
+                        const item = target.closest('.funcao-item');
+                        if (!item) return;
+
+                        aplicarQuantidadePorFuncao(item, target.value || '');
+                    });
+                }
+
+                if (funcoesWrapper && btnAddAllFuncoes) {
+                    btnAddAllFuncoes.addEventListener('click', function () {
+                        const primeiraSelect = funcoesWrapper.querySelector('select[name^="funcoes"][name$="[funcao_id]"]');
+                        if (!primeiraSelect) return;
+
+                        const opcoes = Array.from(primeiraSelect.options).filter(function (opt) {
+                            return String(opt.value || '').trim() !== '';
+                        });
+
+                        if (!opcoes.length) {
+                            window.uiAlert('Não há funções parametrizadas para inserir.');
+                            return;
+                        }
+
+                        funcoesWrapper.innerHTML = '';
+
+                        opcoes.forEach(function (opt, idx) {
+                            const card = criarCardFuncao(idx, opt.value, String(getQuantidadePadraoPorFuncao(opt.value)));
+                            if (card) {
+                                funcoesWrapper.appendChild(card);
+                            }
+                        });
+
+                        reindexFuncoes(funcoesWrapper);
                     });
                 }
 

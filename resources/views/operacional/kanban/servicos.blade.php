@@ -263,7 +263,7 @@
                         </div>
                         @if($paePermitido)
                             <p class="mt-3 text-[11px] text-rose-700">
-                                Clique para criar uma nova solicitação de PAE para este cliente.
+                                Clique para solicitar PAE para este cliente.
                             </p>
                         @else
                             <p class="mt-3 text-[11px] text-amber-700 font-medium">
@@ -289,7 +289,7 @@
                         </div>
                         @if($treinPermitido)
                             <p class="mt-3 text-[11px] text-indigo-700">
-                                Clique para criar uma nova solicitação de Treinamento de NRs para este cliente.
+                                Clique para solicitar Treinamento de NRs para este cliente.
                             </p>
                         @else
                             <p class="mt-3 text-[11px] text-amber-700 font-medium">
@@ -303,5 +303,4 @@
         </div>
     </div>
 @endsection
-
 

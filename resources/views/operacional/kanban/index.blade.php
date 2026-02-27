@@ -246,16 +246,7 @@
                 </div>
             </form>
         </section>
-        <div class="mb-4 flex flex-wrap items-center gap-2 text-[11px] text-slate-600">
-            <span class="font-semibold text-slate-700">Legenda (Pendente):</span>
-            <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-slate-200 bg-white">
-                <span class="inline-block w-2 h-2 rounded-full" style="background:#2563eb;"></span> ASO
-            </span>
-            <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-slate-200 bg-white">
-                <span class="inline-block w-2 h-2 rounded-full" style="background:#16a34a;"></span> Treinamentos NRs
-            </span>
-            <span class="text-slate-500">Demais serviços seguem a cor da coluna.</span>
-        </div>
+
         @php
             $statusCardsConfig = [
                 'pendente'              => ['icon' => '⏳', 'bg' => 'from-amber-400 to-amber-500'],
@@ -715,9 +706,9 @@
                                         } elseif ($servicoNome === 'PGR') {
                                             $temPgrPcmso = $pgr && !empty($pgr->com_pcms0);
                                             if ($temPgrPcmso) {
-                                                $tituloCard = 'PCMSO + PGR - ' . $clienteNome;
+                                                $tituloCard = 'PGR + PCMSO - ' . $clienteNome;
                                                 $subtituloCard = $pgr->obra_nome ?: 'Obra não informada';
-                                                $badgeLabel = 'PCMSO + PGR';
+                                                $badgeLabel = 'PGR + PCMSO';
                                             } elseif ($pgr && $pgr->obra_nome) {
                                                 $tituloCard    = 'PGR - ' . $pgr->obra_nome;
                                                 $subtituloCard = $clienteNome;
@@ -1894,7 +1885,7 @@
                 spanResp.textContent = card.dataset.responsavel ?? '';
                 const servicoOriginal = card.dataset.servico ?? '';
                 const isPgrComPcmso = servicoOriginal === 'PGR' && card.dataset.pgrComPcmso === '1';
-                const servicoModal = isPgrComPcmso ? 'PCMSO + PGR' : servicoOriginal;
+                const servicoModal = isPgrComPcmso ? 'PGR + PCMSO' : servicoOriginal;
                 const tipoServicoModal = isPgrComPcmso ? 'PCMSO' : servicoOriginal;
                 spanServico.textContent = servicoModal;
                 spanTipoServ.textContent = tipoServicoModal;
@@ -1903,9 +1894,6 @@
                 spanPrioridade.textContent = card.dataset.prioridade ?? '';
                 spanStatusText.textContent = card.dataset.status ?? '';
                 let observacoesModal = card.dataset.observacoes ?? '';
-                if (isPgrComPcmso && observacoesModal.startsWith('PGR - ')) {
-                    observacoesModal = observacoesModal.replace('PGR - ', 'PCMSO + PGR - ');
-                }
                 spanObs.textContent = observacoesModal;
                 updateModalTempo(card, Date.now());
 

@@ -781,7 +781,7 @@
                                     id="btnSubmitAso"
                                     @disabled(!$temTiposAsoPermitidos || !$tipoAsoSelecionadoPermitido)
                                     class="w-full px-6 py-3 rounded-xl bg-sky-500 hover:bg-sky-600 text-white text-sm font-medium shadow-sm {{ (!$temTiposAsoPermitidos || !$tipoAsoSelecionadoPermitido) ? 'opacity-60 cursor-not-allowed hover:bg-sky-500' : '' }}">
-                                {{ $isEdit ? 'Atualizar Tarefa ASO' : 'Criar Tarefa ASO' }}
+                                {{ $isEdit ? 'Atualizar Solicitação ASO' : 'Solicitar ASO' }}
                             </button>
                         </div>
                     </div>

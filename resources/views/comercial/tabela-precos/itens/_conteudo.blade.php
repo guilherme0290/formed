@@ -13,8 +13,12 @@
     $canCreate = $isMaster
         || isset($permissionMap[$permPrefix.'.create'])
         || isset($permissionMap[$fallbackPrefix.'.create']);
-    $canUpdate = $isMaster || isset($permissionMap[$permPrefix.'.update']);
-    $canDelete = $isMaster || isset($permissionMap[$permPrefix.'.delete']);
+    $canUpdate = $isMaster
+        || isset($permissionMap[$permPrefix.'.update'])
+        || isset($permissionMap[$fallbackPrefix.'.update']);
+    $canDelete = $isMaster
+        || isset($permissionMap[$permPrefix.'.delete'])
+        || isset($permissionMap[$fallbackPrefix.'.delete']);
     $dashboardPermPrefix = $routePrefix === 'master' ? 'master.dashboard' : 'comercial.dashboard';
     $dashboardPermFallback = $routePrefix === 'master' ? 'comercial.dashboard' : 'master.dashboard';
     $canOpenAuxModals = $isMaster
@@ -404,11 +408,11 @@
 
 </div>
 
-@include('comercial.tabela-precos.itens.modal-protocolos', ['routePrefix' => $routePrefix])
-@include('comercial.tabela-precos.itens.modal-ghes', [
+@include('comercial.tabela-precos.itens.modal-protocolos', [
     'routePrefix' => $routePrefix,
-    'clientes' => $clientes ?? collect(),
-    'funcoes' => $funcoes ?? collect(),
+    'canCreate' => $canCreate,
+    'canUpdate' => $canUpdate,
+    'canDelete' => $canDelete,
 ])
 
 {{-- MODAL NOVO ITEM --}}
@@ -562,16 +566,43 @@
 </div>
 
 
-@include('comercial.tabela-precos.itens.modal-esocial', ['routePrefix' => $routePrefix])
-@include('comercial.tabela-precos.itens.modal-exames', ['routePrefix' => $routePrefix])
-@include('comercial.tabela-precos.itens.modal-medicoes', ['routePrefix' => $routePrefix])
-@include('comercial.tabela-precos.itens.modal-treinamentos', ['routePrefix' => $routePrefix])
+@include('comercial.tabela-precos.itens.modal-esocial', [
+    'routePrefix' => $routePrefix,
+    'canCreate' => $canCreate,
+    'canUpdate' => $canUpdate,
+    'canDelete' => $canDelete,
+])
+@include('comercial.tabela-precos.itens.modal-exames', [
+    'routePrefix' => $routePrefix,
+    'canCreate' => $canCreate,
+    'canUpdate' => $canUpdate,
+    'canDelete' => $canDelete,
+])
+@include('comercial.tabela-precos.itens.modal-medicoes', [
+    'routePrefix' => $routePrefix,
+    'canCreate' => $canCreate,
+    'canUpdate' => $canUpdate,
+    'canDelete' => $canDelete,
+])
+@include('comercial.tabela-precos.itens.modal-treinamentos', [
+    'routePrefix' => $routePrefix,
+    'canCreate' => $canCreate,
+    'canUpdate' => $canUpdate,
+    'canDelete' => $canDelete,
+])
 
 
 
 @push('scripts')
     <script>
         (function () {
+            const PERMS = {
+                view: @json($canOpenAuxModals),
+                create: @json($canCreate),
+                update: @json($canUpdate),
+                delete: @json($canDelete),
+            };
+            window.tabelaPrecosPerms = PERMS;
 
             // ============================
             // CONFIG / ELEMENTOS (ITENS)
@@ -738,11 +769,16 @@
 
             window.openNovoItemModal = function () {
                 if (!el.modalItem) return;
+                if (!PERMS.create) {
+                    window.uiAlert?.('Usuário sem permissão para criar.');
+                    return;
+                }
 
                 el.form.action = storeUrl;
                 el.spoof.innerHTML = '';
                 el.title.textContent = 'Novo Item';
                 el.submit.textContent = 'Salvar';
+                el.submit.disabled = false;
 
                 resetNovoItemForm();
 
@@ -759,6 +795,10 @@
             // ============================
             window.openEditarItemModal = function (btn) {
                 if (!el.modalItem || !btn) return;
+                if (!PERMS.update) {
+                    window.uiAlert?.('Usuário sem permissão para editar.');
+                    return;
+                }
 
                 const data = btn.dataset;
 
@@ -766,6 +806,7 @@
                 el.spoof.innerHTML = '<input type="hidden" name="_method" value="PUT">';
                 el.title.textContent = 'Editar Item';
                 el.submit.textContent = 'Salvar alterAções';
+                el.submit.disabled = false;
 
                 if (el.servico) el.servico.value = data.servicoId || '';
                 if (el.codigo) el.codigo.value = data.codigo || '';
@@ -820,4 +861,3 @@
         })();
     </script>
 @endpush
-

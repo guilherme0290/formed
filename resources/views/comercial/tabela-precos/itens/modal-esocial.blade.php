@@ -1,4 +1,7 @@
 @php($routePrefix = $routePrefix ?? 'comercial')
+@php($canCreate = $canCreate ?? false)
+@php($canUpdate = $canUpdate ?? false)
+@php($canDelete = $canDelete ?? false)
 
 {{-- Modal eSocial --}}
 <div id="modalEsocial" class="fixed inset-0 z-[90] hidden bg-black/50 overflow-y-auto">
@@ -33,7 +36,8 @@
                 <div id="esocialFaixas" class="space-y-2"></div>
 
                 <button id="btnNovaFaixa" type="button"
-                        class="mt-5 w-full rounded-xl bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 text-sm font-semibold">
+                        class="mt-5 w-full rounded-xl {{ $canCreate ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} px-4 py-2 text-sm font-semibold"
+                        @if(!$canCreate) disabled title="Usuário sem permissão" @endif>
                     + Nova Faixa
                 </button>
             </div>
@@ -113,6 +117,12 @@
 @push('scripts')
     <script>
         (function () {
+            const PERMS = {
+                create: @json((bool) $canCreate),
+                update: @json((bool) $canUpdate),
+                delete: @json((bool) $canDelete),
+            };
+            const deny = (msg) => window.uiAlert?.(msg || 'Usuário sem permissão.');
             const modal = document.getElementById('modalEsocial');
             const modalForm = document.getElementById('modalEsocialForm');
 
@@ -213,8 +223,8 @@
                 </div>
 
                 <div class="col-span-2 text-center">
-                    <button type="button" class="text-slate-400 text-sm cursor-not-allowed" data-action="edit" disabled title="Desabilitado">Editar</button>
-                    <button type="button" class="text-slate-400 text-sm cursor-not-allowed" data-action="del" disabled title="Desabilitado">Excluir</button>
+                    <button type="button" class="text-sm ${PERMS.update ? 'text-blue-600 hover:underline' : 'text-slate-400 cursor-not-allowed'}" data-action="edit" ${PERMS.update ? '' : 'disabled title=\"Usuário sem permissão\"'}>Editar</button>
+                    <button type="button" class="text-sm ${PERMS.delete ? 'text-red-600 hover:underline' : 'text-slate-400 cursor-not-allowed'}" data-action="del" ${PERMS.delete ? '' : 'disabled title=\"Usuário sem permissão\"'}>Excluir</button>
                 </div>
             `;
 
@@ -306,6 +316,8 @@
 
             function openEsocialForm(faixa = null) {
                 if (!ESOCIAL.dom.modalForm) return;
+                if (faixa && !PERMS.update) return deny('Usuário sem permissão para editar.');
+                if (!faixa && !PERMS.create) return deny('Usuário sem permissão para criar.');
 
                 ESOCIAL.dom.title.textContent = faixa ? 'Editar Faixa' : 'Nova Faixa';
 
@@ -332,6 +344,8 @@
                 esocialAlertHide();
 
                 const id = ESOCIAL.dom.id.value;
+                if (id && !PERMS.update) return deny('Usuário sem permissão para editar.');
+                if (!id && !PERMS.create) return deny('Usuário sem permissão para criar.');
                 const inicio = Number(ESOCIAL.dom.inicio.value || 0);
                 const fim = Number(ESOCIAL.dom.fim.value || 0);
                 const descricao = ESOCIAL.dom.descricao.value || null;
@@ -378,6 +392,7 @@
             }
 
             async function deleteEsocialFaixa(id) {
+                if (!PERMS.delete) return deny('Usuário sem permissão para excluir.');
                 const ok = await window.uiConfirm('Deseja remover esta faixa?');
                 if (!ok) return;
 

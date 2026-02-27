@@ -623,7 +623,7 @@
                             Próximo →
                         </button>
                         <button type="button" id="apr-submit" class="apr-btn-success hidden inline-flex w-full items-center justify-center px-5 py-3 rounded-xl text-sm font-bold shadow-md transition-colors">
-                            Criar APR
+                            Solicitar APR
                         </button>
                     </div>
                 </div>

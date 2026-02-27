@@ -541,6 +541,9 @@
         'funcoes' => $funcoes ?? collect(),
         'gheScope' => 'cliente',
         'clienteSelector' => '[name="cliente_id"]',
+        'canCreate' => true,
+        'canUpdate' => true,
+        'canDelete' => true,
     ])
     @include('comercial.tabela-precos.itens.modal-protocolos', ['routePrefix' => 'comercial'])
     {{--

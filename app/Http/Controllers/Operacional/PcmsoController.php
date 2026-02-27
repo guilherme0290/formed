@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Anexos;
 use App\Models\Cliente;
 use App\Models\Funcao;
+use App\Models\Funcionario;
 use App\Models\KanbanColuna;
 use App\Models\PcmsoSolicitacoes;
 use App\Models\Servico;
@@ -71,6 +72,7 @@ class PcmsoController extends Controller
         $funcoes = app(AsoGheService::class)
             ->funcoesDisponiveisParaCliente($usuario->empresa_id, $cliente->id);
         $funcoes = $this->mergeFuncoesDisponiveis($funcoes, $request, null, $usuario->empresa_id);
+        $funcaoQtdMap = $this->funcionarioCountByFuncao($cliente, $usuario->empresa_id);
 
         if ($tipo === 'matriz') {
             return view('operacional.kanban.pcmso.form_matriz', [
@@ -79,6 +81,7 @@ class PcmsoController extends Controller
                 'funcoes' => $funcoes,
                 'anexos'  => collect(),
                 'origem'  => $request->query('origem', $request->input('origem')),
+                'funcaoQtdMap' => $funcaoQtdMap,
             ]);
         }
 
@@ -88,6 +91,7 @@ class PcmsoController extends Controller
             'funcoes' => $funcoes,
             'anexos'  => collect(),
             'origem'  => $request->query('origem', $request->input('origem')),
+            'funcaoQtdMap' => $funcaoQtdMap,
         ]);
     }
 
@@ -273,6 +277,7 @@ class PcmsoController extends Controller
         $funcoes = app(AsoGheService::class)
             ->funcoesDisponiveisParaCliente($empresaId, $cliente->id);
         $funcoes = $this->mergeFuncoesDisponiveis($funcoes, $request, $pcmso->funcoes ?? null, $empresaId);
+        $funcaoQtdMap = $this->funcionarioCountByFuncao($cliente, $empresaId);
 
         if ($tipo === 'matriz') {
             return view('operacional.kanban.pcmso.form_matriz', [
@@ -283,6 +288,7 @@ class PcmsoController extends Controller
                 'isEdit'  => true,
                 'anexos'  => $anexos,
                 'origem'  => $request->query('origem', $request->input('origem')),
+                'funcaoQtdMap' => $funcaoQtdMap,
             ]);
         }
 
@@ -294,6 +300,7 @@ class PcmsoController extends Controller
             'isEdit'  => true,
             'anexos'  => $anexos,
             'origem'  => $request->query('origem', $request->input('origem')),
+            'funcaoQtdMap' => $funcaoQtdMap,
         ]);
     }
 
@@ -462,5 +469,20 @@ class PcmsoController extends Controller
             ->values();
     }
 
-}
+    private function funcionarioCountByFuncao(Cliente $cliente, int $empresaId): array
+    {
+        return Funcionario::query()
+            ->where('empresa_id', $empresaId)
+            ->where('cliente_id', $cliente->id)
+            ->where('ativo', true)
+            ->whereNotNull('funcao_id')
+            ->selectRaw('funcao_id, COUNT(*) as total')
+            ->groupBy('funcao_id')
+            ->pluck('total', 'funcao_id')
+            ->map(function ($total) {
+                return (int) $total;
+            })
+            ->toArray();
+    }
 
+}

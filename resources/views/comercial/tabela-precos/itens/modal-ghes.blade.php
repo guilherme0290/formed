@@ -2,6 +2,9 @@
 @php($gheScope = $gheScope ?? 'global')
 @php($clienteSelector = $clienteSelector ?? '[name="cliente_id"]')
 @php($isClienteScope = $gheScope === 'cliente')
+@php($canCreate = $canCreate ?? false)
+@php($canUpdate = $canUpdate ?? false)
+@php($canDelete = $canDelete ?? false)
 
 <div id="modalGhe" class="fixed inset-0 z-[90] hidden bg-black/50 overflow-y-auto">
     <div class="min-h-full w-full flex items-center justify-center p-4 md:p-6">
@@ -25,11 +28,11 @@
 
                 <div class="flex flex-wrap items-center justify-end gap-3">
                     <button type="button"
-                            onclick="openGheForm(null)"
+                            @if($canCreate) onclick="openGheForm(null)" @endif
                             class="inline-flex items-center justify-center gap-2 rounded-2xl
-                                   bg-amber-700 hover:bg-amber-800 active:bg-amber-900
-                                   text-white px-5 py-2.5 text-sm font-semibold shadow-sm
-                                   ring-1 ring-amber-600/30 transition">
+                                   {{ $canCreate ? 'bg-amber-700 hover:bg-amber-800 active:bg-amber-900 text-white' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} px-5 py-2.5 text-sm font-semibold shadow-sm
+                                   ring-1 ring-amber-600/30 transition"
+                            @if(!$canCreate) disabled title="Usuário sem permissão" @endif>
                         <span class="text-base leading-none">＋</span>
                         <span>Novo GHE</span>
                     </button>
@@ -45,158 +48,123 @@
 <div id="modalGheForm" class="fixed inset-0 z-[100] hidden bg-black/50 overflow-y-auto">
     <div class="min-h-full w-full flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-5xl rounded-2xl shadow-xl overflow-hidden text-base max-h-[90vh] overflow-y-auto">
-            <div class="px-6 py-4 border-b flex items-center justify-between">
-                <h3 id="gheFormTitle" class="text-xl font-semibold text-slate-800">Novo GHE</h3>
+            <div class="px-6 py-4 border-b border-slate-800/30 bg-gradient-to-r from-slate-900 to-slate-700 text-white flex items-center justify-between">
+                <h3 id="gheFormTitle" class="text-xl font-semibold">Novo GHE</h3>
                 <button type="button" onclick="closeGheForm()"
-                        class="h-9 w-9 rounded-xl hover:bg-slate-100 text-slate-500 flex items-center justify-center">
+                        class="h-9 w-9 rounded-xl hover:bg-white/10 text-white/80 flex items-center justify-center">
                     ✕
                 </button>
             </div>
 
-            <form id="formGhe" class="p-6 space-y-6">
+            <form id="formGhe" class="flex flex-col">
                 <input type="hidden" id="ghe_id" value="">
-                <div class="space-y-5">
-                    <section class="space-y-3">
-                        <div class="text-xs font-semibold text-slate-600 uppercase tracking-wide">1. Identificação</div>
-                        <div class="grid md:grid-cols-3 gap-4">
+
+                <div class="p-6 space-y-5">
+                    <section class="rounded-2xl border border-sky-200 bg-sky-50/70 p-4">
+                        <div class="text-[11px] font-semibold uppercase tracking-wide text-sky-700">1. Dados principais</div>
+                        <div class="mt-3 grid md:grid-cols-2 gap-4">
                             <div>
                                 <label class="text-xs font-semibold text-slate-600">Nome do GHE *</label>
-                                <input  required id="ghe_nome" type="text"
-                                       class="w-full mt-1 rounded-xl border-slate-200 text-sm px-3 py-2"
+                                <input required id="ghe_nome" type="text"
+                                       class="w-full mt-1 rounded-xl border-slate-200 text-sm px-3 py-2 bg-white"
                                        placeholder="Ex: Trabalho em Altura">
                             </div>
-                            <div>
-                                <div class="flex items-center justify-between">
-                                    <label class="text-xs font-semibold text-slate-600">Grupo de Exames (opcional)</label>
-                                    <button type="button"
-                                            id="gheProtocoloNovo"
-                                            class="text-[11px] font-semibold text-amber-700 hover:text-amber-800 underline decoration-dotted">
-                                        + Novo Grupo
-                                    </button>
-                                </div>
-                                <select id="ghe_protocolo" class="w-full mt-1 rounded-xl border-slate-200 text-sm px-3 py-2">
-                                    <option value="">Selecione...</option>
-                                </select>
-                                <div id="gheProtocoloResumo" class="mt-2 text-xs text-slate-500">Nenhum exame selecionado.</div>
-                            </div>
-                            <div class="md:col-span-3">
-                                <div class="flex items-center justify-between">
-                                    <label class="text-xs font-semibold text-slate-600">Funções do GHE (opcional)</label>
-                                    <div class="flex items-center gap-2 text-[11px] font-semibold">
-                                        <button type="button"
-                                                id="gheFuncoesReload"
-                                                class="text-amber-700 hover:text-amber-800 underline decoration-dotted">
-                                            Recarregar lista
-                                        </button>
-                                        <a href="{{ route('comercial.funcoes.index') }}"
-                                           class="text-amber-700 hover:text-amber-800 underline decoration-dotted"
-                                           target="_blank" rel="noopener">
-                                            Gerenciar funções
-                                        </a>
-                                    </div>
-                                </div>
-                                <input id="gheFuncoesFilter" type="text"
-                                       class="mt-1 w-full rounded-xl border-slate-200 text-sm px-3 py-2"
-                                       placeholder="Buscar função por nome ou descrição">
-                                <div class="mt-2 flex flex-wrap items-center gap-3 text-xs font-semibold text-slate-600">
-                                    <label class="inline-flex items-center gap-2">
-                                        <input type="checkbox" id="gheFuncoesSelectAll" class="rounded border-slate-300">
-                                        Selecionar todas as funções
-                                        <span class="text-[11px] text-slate-500" id="gheFuncoesSelectedCount">(0 selecionadas)</span>
-                                    </label>
-                                    <button type="button"
-                                            id="gheFuncoesClear"
-                                            class="text-[11px] font-semibold text-slate-600 hover:text-slate-800 underline decoration-dotted">
-                                        Limpar seleções
-                                    </button>
-                                </div>
-                                <div id="gheFuncoesList" class="mt-1 max-h-40 overflow-y-auto border border-slate-200 rounded-xl p-3 space-y-2 text-sm">
-                                    @forelse($funcoes as $funcao)
-                                        @php($descricao = trim((string) ($funcao->descricao ?? '')))
-                                        @php($search = mb_strtolower(trim($funcao->nome . ' ' . $descricao)))
-                                        <label class="flex items-start gap-2" data-search="{{ e($search) }}">
-                                            <input type="checkbox" value="{{ $funcao->id }}">
-                                            <span>
-                                                <span class="block">{{ $funcao->nome }}</span>
-                                                @if($descricao)
-                                                    <span class="block text-xs text-slate-500">{{ $descricao }}</span>
-                                                @endif
-                                            </span>
-                                        </label>
-                                    @empty
-                                        <div class="text-sm text-slate-500">Nenhuma função cadastrada.</div>
-                                    @endforelse
-                                </div>
-                                <div class="text-xs text-slate-500 mt-1">Você pode informar as funções depois.</div>
+                            <div class="text-xs text-slate-500 flex items-end">
+                                Defina um nome objetivo para facilitar o vínculo com funções e exames.
                             </div>
                         </div>
                     </section>
+
+                    <section class="rounded-2xl border border-slate-200 bg-white p-4">
+                        <div class="flex items-start justify-between gap-2">
+                            <div>
+                                <div class="text-[11px] font-semibold uppercase tracking-wide text-slate-700">2. Funções vinculadas</div>
+                                <p class="mt-1 text-xs text-slate-500">Mova as funções para a lista da direita.</p>
+                            </div>
+                            <div class="flex items-center gap-2 text-[11px] font-semibold">
+                                <span id="gheFuncoesSelectedCount" class="text-slate-500">(0 selecionadas)</span>
+                                <button type="button"
+                                        id="gheFuncoesReload"
+                                        class="text-sky-700 hover:text-sky-800 underline decoration-dotted">
+                                    Recarregar
+                                </button>
+                                <a href="{{ route('comercial.funcoes.index') }}"
+                                   class="text-sky-700 hover:text-sky-800 underline decoration-dotted"
+                                   target="_blank" rel="noopener">
+                                    Gerenciar
+                                </a>
+                            </div>
+                        </div>
+
+                        <div class="mt-3 grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-3">
+                            <div class="space-y-2">
+                                <label for="gheFuncoesSearchAvailable" class="text-[11px] font-semibold text-slate-600">Não selecionadas</label>
+                                <input id="gheFuncoesSearchAvailable" type="text"
+                                       class="w-full rounded-xl border-slate-200 text-sm px-3 py-2"
+                                       placeholder="Buscar função">
+                                <select id="gheFuncoesAvailable" multiple
+                                        class="w-full h-56 rounded-xl border border-slate-200 text-sm px-2 py-2 bg-white"></select>
+                            </div>
+
+                            <div class="flex md:flex-col items-center justify-center gap-2 pt-6">
+                                <button type="button" id="gheFuncoesAdd" class="h-9 min-w-9 px-2 rounded-lg border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100" title="Adicionar selecionadas">&gt;</button>
+                                <button type="button" id="gheFuncoesRemove" class="h-9 min-w-9 px-2 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50" title="Remover selecionadas">&lt;</button>
+                                <button type="button" id="gheFuncoesAddAll" class="h-9 min-w-9 px-2 rounded-lg border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100" title="Adicionar todas">&gt;&gt;</button>
+                                <button type="button" id="gheFuncoesRemoveAll" class="h-9 min-w-9 px-2 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50" title="Remover todas">&lt;&lt;</button>
+                            </div>
+
+                            <div class="space-y-2">
+                                <label for="gheFuncoesSearchSelected" class="text-[11px] font-semibold text-slate-600">Selecionadas</label>
+                                <input id="gheFuncoesSearchSelected" type="text"
+                                       class="w-full rounded-xl border-slate-200 text-sm px-3 py-2"
+                                       placeholder="Buscar função">
+                                <select id="gheFuncoesSelected" multiple
+                                        class="w-full h-56 rounded-xl border border-slate-200 text-sm px-2 py-2 bg-white"></select>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4">
+                        <div class="flex items-center justify-between gap-2">
+                            <div>
+                                <div class="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">3. Grupo de exames</div>
+                                <p class="mt-1 text-xs text-slate-500">Opcional, para vincular exames ao GHE.</p>
+                            </div>
+                            <button type="button"
+                                    id="gheProtocoloNovo"
+                                    class="text-[11px] font-semibold {{ $canCreate ? 'text-emerald-700 hover:text-emerald-800' : 'text-slate-400 cursor-not-allowed' }} underline decoration-dotted"
+                                    @if(!$canCreate) disabled title="Usuário sem permissão" @endif>
+                                + Novo Grupo
+                            </button>
+                        </div>
+
+                        <select id="ghe_protocolo" class="w-full mt-3 rounded-xl border-slate-200 text-sm px-3 py-2 bg-white">
+                            <option value="">Selecione...</option>
+                        </select>
+                        <div id="gheProtocoloResumo" class="mt-2 text-xs text-slate-500">Nenhum exame selecionado.</div>
+                    </section>
+
+                    <div class="hidden">
+                        <input id="ghe_base_adm" type="number" min="0" step="0.01" value="0.00">
+                        <input id="ghe_base_per" type="number" min="0" step="0.01" value="0.00">
+                        <input id="ghe_base_dem" type="number" min="0" step="0.01" value="0.00">
+                        <input id="ghe_base_fun" type="number" min="0" step="0.01" value="0.00">
+                        <input id="ghe_base_ret" type="number" min="0" step="0.01" value="0.00">
+                        <input id="ghe_fechado_adm" type="number" min="0" step="0.01" value="">
+                        <input id="ghe_fechado_per" type="number" min="0" step="0.01" value="">
+                        <input id="ghe_fechado_dem" type="number" min="0" step="0.01" value="">
+                        <input id="ghe_fechado_fun" type="number" min="0" step="0.01" value="">
+                        <input id="ghe_fechado_ret" type="number" min="0" step="0.01" value="">
+                    </div>
                 </div>
 
-                <div class="grid md:grid-cols-5 gap-3 hidden">
-                    <div>
-                        <label class="text-xs font-semibold text-slate-600">Base Admissional</label>
-                        <input id="ghe_base_adm" type="number" min="0" step="0.01"
-                               class="w-full mt-1 rounded-xl border-slate-200 text-sm px-3 py-2" value="0.00">
-                    </div>
-                    <div>
-                        <label class="text-xs font-semibold text-slate-600">Base Periódico</label>
-                        <input id="ghe_base_per" type="number" min="0" step="0.01"
-                               class="w-full mt-1 rounded-xl border-slate-200 text-sm px-3 py-2" value="0.00">
-                    </div>
-                    <div>
-                        <label class="text-xs font-semibold text-slate-600">Base Demissional</label>
-                        <input id="ghe_base_dem" type="number" min="0" step="0.01"
-                               class="w-full mt-1 rounded-xl border-slate-200 text-sm px-3 py-2" value="0.00">
-                    </div>
-                    <div>
-                        <label class="text-xs font-semibold text-slate-600">Base Mudança</label>
-                        <input id="ghe_base_fun" type="number" min="0" step="0.01"
-                               class="w-full mt-1 rounded-xl border-slate-200 text-sm px-3 py-2" value="0.00">
-                    </div>
-                    <div>
-                        <label class="text-xs font-semibold text-slate-600">Base Retorno</label>
-                        <input id="ghe_base_ret" type="number" min="0" step="0.01"
-                               class="w-full mt-1 rounded-xl border-slate-200 text-sm px-3 py-2" value="0.00">
-                    </div>
-                </div>
-
-                <div class="grid md:grid-cols-5 gap-3 hidden">
-                    <div>
-                        <label class="text-xs font-semibold text-slate-600">Preço fechado Admissional</label>
-                        <input id="ghe_fechado_adm" type="number" min="0" step="0.01"
-                               class="w-full mt-1 rounded-xl border-slate-200 text-sm px-3 py-2" placeholder="Opcional">
-                    </div>
-                    <div>
-                        <label class="text-xs font-semibold text-slate-600">Preço fechado Periódico</label>
-                        <input id="ghe_fechado_per" type="number" min="0" step="0.01"
-                               class="w-full mt-1 rounded-xl border-slate-200 text-sm px-3 py-2" placeholder="Opcional">
-                    </div>
-                    <div>
-                        <label class="text-xs font-semibold text-slate-600">Preço fechado Demissional</label>
-                        <input id="ghe_fechado_dem" type="number" min="0" step="0.01"
-                               class="w-full mt-1 rounded-xl border-slate-200 text-sm px-3 py-2" placeholder="Opcional">
-                    </div>
-                    <div>
-                        <label class="text-xs font-semibold text-slate-600">Preço fechado Mudança</label>
-                        <input id="ghe_fechado_fun" type="number" min="0" step="0.01"
-                               class="w-full mt-1 rounded-xl border-slate-200 text-sm px-3 py-2" placeholder="Opcional">
-                    </div>
-                    <div>
-                        <label class="text-xs font-semibold text-slate-600">Preço fechado Retorno</label>
-                        <input id="ghe_fechado_ret" type="number" min="0" step="0.01"
-                               class="w-full mt-1 rounded-xl border-slate-200 text-sm px-3 py-2" placeholder="Opcional">
-                    </div>
-                </div>
-
-                <div class="pt-2 flex justify-end gap-3">
+                <div class="sticky bottom-0 bg-white border-t border-slate-200 px-6 py-4 flex justify-end gap-3">
                     <button type="button" onclick="closeGheForm()"
                             class="rounded-xl px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">
                         Cancelar
                     </button>
-
                     <button type="submit"
-                            class="rounded-xl bg-amber-700 hover:bg-amber-800 text-white px-5 py-2 text-sm font-semibold">
+                            class="rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white px-5 py-2 text-sm font-semibold">
                         Salvar
                     </button>
                 </div>
@@ -208,6 +176,12 @@
 @push('scripts')
     <script>
         (function () {
+            const PERMS = {
+                create: @json((bool) $canCreate),
+                update: @json((bool) $canUpdate),
+                delete: @json((bool) $canDelete),
+            };
+            const deny = (msg) => window.uiAlert?.(msg || 'Usuário sem permissão.');
             const CSRF = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
             const FUNCOES = @json($funcoes->map(fn ($f) => ['id' => $f->id, 'nome' => $f->nome, 'descricao' => $f->descricao]));
             const IS_CLIENTE_SCOPE = @json($isClienteScope);
@@ -230,7 +204,7 @@
                     protocolos: @json(route($routePrefix.'.protocolos-exames.indexJson')),
                     funcoes: @json(route($routePrefix.'.funcoes.indexJson')),
                 },
-                state: { ghes: [], protocolos: [], funcoes: FUNCOES || [] },
+                state: { ghes: [], protocolos: [], funcoes: FUNCOES || [], selectedFuncoes: new Set() },
                 dom: {
                     modal: document.getElementById('modalGhe'),
                     list: document.getElementById('gheList'),
@@ -242,11 +216,15 @@
                     nome: document.getElementById('ghe_nome'),
                     protocolo: document.getElementById('ghe_protocolo'),
                     protocoloResumo: document.getElementById('gheProtocoloResumo'),
-                    funcoesList: document.getElementById('gheFuncoesList'),
-                    funcoesFilter: document.getElementById('gheFuncoesFilter'),
-                    funcoesSelectAll: document.getElementById('gheFuncoesSelectAll'),
+                    funcoesSearchAvailable: document.getElementById('gheFuncoesSearchAvailable'),
+                    funcoesSearchSelected: document.getElementById('gheFuncoesSearchSelected'),
+                    funcoesAvailable: document.getElementById('gheFuncoesAvailable'),
+                    funcoesSelected: document.getElementById('gheFuncoesSelected'),
+                    funcoesAdd: document.getElementById('gheFuncoesAdd'),
+                    funcoesRemove: document.getElementById('gheFuncoesRemove'),
+                    funcoesAddAll: document.getElementById('gheFuncoesAddAll'),
+                    funcoesRemoveAll: document.getElementById('gheFuncoesRemoveAll'),
                     funcoesSelectedCount: document.getElementById('gheFuncoesSelectedCount'),
-                    funcoesClear: document.getElementById('gheFuncoesClear'),
                     funcoesReload: document.getElementById('gheFuncoesReload'),
                     baseAdm: document.getElementById('ghe_base_adm'),
                     basePer: document.getElementById('ghe_base_per'),
@@ -392,8 +370,8 @@
                         </div>
                         <div class="col-span-6 text-xs text-slate-600">${escapeHtml(funcoesTxt)}</div>
                         <div class="col-span-1 flex gap-2 justify-end">
-                            <button type="button" class="text-slate-400 text-sm cursor-not-allowed" data-action="edit" disabled title="Desabilitado">Editar</button>
-                            <button type="button" class="text-slate-400 text-sm cursor-not-allowed" data-action="del" disabled title="Desabilitado">Excluir</button>
+                            <button type="button" class="text-sm ${PERMS.update ? 'text-blue-600 hover:underline' : 'text-slate-400 cursor-not-allowed'}" data-action="edit" ${PERMS.update ? '' : 'disabled title=\"Usuário sem permissão\"'}>Editar</button>
+                            <button type="button" class="text-sm ${PERMS.delete ? 'text-red-600 hover:underline' : 'text-slate-400 cursor-not-allowed'}" data-action="del" ${PERMS.delete ? '' : 'disabled title=\"Usuário sem permissão\"'}>Excluir</button>
                         </div>
                     `;
 
@@ -404,66 +382,104 @@
             }
 
             function getSelectedFuncoes(){
-                return Array.from(GHE.dom.funcoesList.querySelectorAll('input[type="checkbox"]:checked'))
-                    .map(cb => Number(cb.value));
+                return Array.from(GHE.state.selectedFuncoes.values()).map(Number).filter(id => id > 0);
             }
 
             function updateSelectedCount(){
                 if (!GHE.dom.funcoesSelectedCount) return;
-                const total = GHE.dom.funcoesList
-                    ? GHE.dom.funcoesList.querySelectorAll('input[type="checkbox"]:checked').length
-                    : 0;
-                GHE.dom.funcoesSelectedCount.textContent = `(${total} selecionadas)`;
+                GHE.dom.funcoesSelectedCount.textContent = `(${getSelectedFuncoes().length} selecionadas)`;
             }
 
-            function updateSelectAllState(){
-                if (!GHE.dom.funcoesSelectAll) return;
-                const allVisible = Array.from(GHE.dom.funcoesList.querySelectorAll('label:not(.hidden) input[type="checkbox"]'));
-                if (!allVisible.length) {
-                    GHE.dom.funcoesSelectAll.checked = false;
-                    return;
-                }
-                GHE.dom.funcoesSelectAll.checked = allVisible.every(cb => cb.checked);
+            function matchesSearch(funcao, query) {
+                const nome = String(funcao?.nome || '').toLowerCase();
+                const descricao = String(funcao?.descricao || '').toLowerCase();
+                if (!query) return true;
+                return nome.includes(query) || descricao.includes(query);
             }
 
             function setSelectedFuncoes(ids){
-                const idSet = new Set((ids || []).map(id => Number(id)));
-                GHE.dom.funcoesList.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-                    cb.checked = idSet.has(Number(cb.value));
-                });
-                updateSelectAllState();
+                GHE.state.selectedFuncoes = new Set((ids || []).map(id => Number(id)).filter(id => id > 0));
+                renderFuncoesList();
                 updateSelectedCount();
             }
 
-            function renderFuncoesList() {
-                const list = GHE.dom.funcoesList;
-                if (!list) return;
-                list.innerHTML = '';
-                if (!GHE.state.funcoes.length) {
-                    list.innerHTML = '<div class="text-sm text-slate-500">Nenhuma função cadastrada.</div>';
+            function renderFuncoesSelect(selectEl, items) {
+                if (!selectEl) return;
+                selectEl.innerHTML = '';
+
+                if (!items.length) {
+                    const opt = document.createElement('option');
+                    opt.disabled = true;
+                    opt.value = '';
+                    opt.textContent = 'Nenhuma função';
+                    selectEl.appendChild(opt);
                     return;
                 }
-                const selected = new Set(getSelectedFuncoes());
-                GHE.state.funcoes.forEach(funcao => {
-                    const descricao = String(funcao?.descricao || '').trim();
-                    const search = (String(funcao?.nome || '') + ' ' + descricao).trim().toLowerCase();
-                    const row = document.createElement('label');
-                    row.className = 'flex items-start gap-2';
-                    row.dataset.search = search;
-                    row.innerHTML = `
-                        <input type="checkbox" value="${funcao.id}">
-                        <span>
-                            <span class="block">${escapeHtml(funcao.nome || '')}</span>
-                            ${descricao ? `<span class="block text-xs text-slate-500">${escapeHtml(descricao)}</span>` : ``}
-                        </span>
-                    `;
-                    const cb = row.querySelector('input[type="checkbox"]');
-                    if (selected.has(Number(funcao.id))) cb.checked = true;
-                    list.appendChild(row);
+
+                items.forEach(funcao => {
+                    const opt = document.createElement('option');
+                    opt.value = String(funcao.id);
+                    opt.textContent = String(funcao.nome || '').toLocaleUpperCase('pt-BR');
+                    selectEl.appendChild(opt);
                 });
-                applyFuncoesFilter();
-                updateSelectAllState();
+            }
+
+            function renderFuncoesList() {
+                const queryAvailable = String(GHE.dom.funcoesSearchAvailable?.value || '').trim().toLowerCase();
+                const querySelected = String(GHE.dom.funcoesSearchSelected?.value || '').trim().toLowerCase();
+
+                const available = [];
+                const selected = [];
+
+                GHE.state.funcoes.forEach(funcao => {
+                    const id = Number(funcao?.id || 0);
+                    if (id <= 0) return;
+
+                    if (GHE.state.selectedFuncoes.has(id)) {
+                        if (matchesSearch(funcao, querySelected)) {
+                            selected.push(funcao);
+                        }
+                    } else if (matchesSearch(funcao, queryAvailable)) {
+                        available.push(funcao);
+                    }
+                });
+
+                renderFuncoesSelect(GHE.dom.funcoesAvailable, available);
+                renderFuncoesSelect(GHE.dom.funcoesSelected, selected);
                 updateSelectedCount();
+            }
+
+            function moveOptions(sourceEl, toSelected) {
+                if (!sourceEl) return;
+                const ids = Array.from(sourceEl.selectedOptions)
+                    .map(opt => Number(opt.value))
+                    .filter(id => id > 0);
+
+                ids.forEach(id => {
+                    if (toSelected) {
+                        GHE.state.selectedFuncoes.add(id);
+                    } else {
+                        GHE.state.selectedFuncoes.delete(id);
+                    }
+                });
+
+                renderFuncoesList();
+            }
+
+            function moveAll(toSelected) {
+                const allIds = GHE.state.funcoes
+                    .map(f => Number(f?.id || 0))
+                    .filter(id => id > 0);
+
+                allIds.forEach(id => {
+                    if (toSelected) {
+                        GHE.state.selectedFuncoes.add(id);
+                    } else {
+                        GHE.state.selectedFuncoes.delete(id);
+                    }
+                });
+
+                renderFuncoesList();
             }
 
             async function reloadFuncoes(){
@@ -485,18 +501,11 @@
                 }
             }
 
-            function applyFuncoesFilter(){
-                const query = (GHE.dom.funcoesFilter?.value || '').trim().toLowerCase();
-                const labels = GHE.dom.funcoesList?.querySelectorAll('label[data-search]') || [];
-                labels.forEach(label => {
-                    const hay = label.dataset.search || '';
-                    label.classList.toggle('hidden', query !== '' && !hay.includes(query));
-                });
-                updateSelectAllState();
-            }
-
             async function saveGhe(e){
                 e.preventDefault();
+                const id = GHE.dom.id.value;
+                if (id && !PERMS.update) return deny('Usuário sem permissão para editar.');
+                if (!id && !PERMS.create) return deny('Usuário sem permissão para criar.');
                 const payload = {
                     nome: GHE.dom.nome.value.trim(),
                     grupo_exames_id: Number(GHE.dom.protocolo?.value || 0) || null,
@@ -525,7 +534,6 @@
                     return alertBox('err', 'Selecione um cliente para salvar o GHE.');
                 }
 
-                const id = GHE.dom.id.value;
                 if (IS_CLIENTE_SCOPE) {
                     payload.cliente_id = clienteId;
                     payload.protocolo_id = payload.grupo_exames_id;
@@ -559,6 +567,7 @@
             }
 
             async function destroyGhe(id){
+                if (!PERMS.delete) return deny('Usuário sem permissão para excluir.');
                 const ok = await window.uiConfirm('Deseja remover este GHE?');
                 if (!ok) return;
                 try{
@@ -586,6 +595,8 @@
             window.closeGheModal = () => GHE.dom.modal?.classList.add('hidden');
 
             window.openGheForm = async function(ghe){
+                if (ghe && !PERMS.update) return deny('Usuário sem permissão para editar.');
+                if (!ghe && !PERMS.create) return deny('Usuário sem permissão para criar.');
                 GHE.dom.modalForm?.classList.remove('hidden');
                 GHE.dom.title.textContent = ghe ? 'Editar GHE' : 'Novo GHE';
                 GHE.dom.id.value = ghe?.id || '';
@@ -594,6 +605,8 @@
                     GHE.dom.protocolo.value = ghe?.grupo_exames_id || '';
                     updateProtocoloResumo();
                 }
+                if (GHE.dom.funcoesSearchAvailable) GHE.dom.funcoesSearchAvailable.value = '';
+                if (GHE.dom.funcoesSearchSelected) GHE.dom.funcoesSearchSelected.value = '';
                 renderFuncoesList();
                 setSelectedFuncoes(ghe?.funcoes?.map(f => f.id) || []);
                 GHE.dom.baseAdm.value = Number(ghe?.base?.admissional || 0).toFixed(2);
@@ -606,38 +619,25 @@
                 GHE.dom.fechadoDem.value = ghe?.preco_fechado?.demissional ?? '';
                 GHE.dom.fechadoFun.value = ghe?.preco_fechado?.mudanca_funcao ?? '';
                 GHE.dom.fechadoRet.value = ghe?.preco_fechado?.retorno_trabalho ?? '';
-                if (GHE.dom.funcoesFilter) {
-                    GHE.dom.funcoesFilter.value = '';
-                    applyFuncoesFilter();
-                }
             };
             window.closeGheForm = () => GHE.dom.modalForm?.classList.add('hidden');
 
             GHE.dom.form?.addEventListener('submit', saveGhe);
             GHE.dom.protocolo?.addEventListener('change', updateProtocoloResumo);
-            GHE.dom.funcoesFilter?.addEventListener('input', applyFuncoesFilter);
             GHE.dom.funcoesReload?.addEventListener('click', reloadFuncoes);
-            GHE.dom.funcoesSelectAll?.addEventListener('change', (e) => {
-                const checked = e.target.checked;
-                GHE.dom.funcoesList.querySelectorAll('label:not(.hidden) input[type="checkbox"]').forEach(cb => {
-                    cb.checked = checked;
-                });
-                updateSelectedCount();
-            });
-            GHE.dom.funcoesList?.addEventListener('change', (e) => {
-                if (e.target && e.target.matches('input[type="checkbox"]')) {
-                    updateSelectAllState();
-                    updateSelectedCount();
-                }
-            });
-            GHE.dom.funcoesClear?.addEventListener('click', () => {
-                GHE.dom.funcoesList.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-                    cb.checked = false;
-                });
-                if (GHE.dom.funcoesSelectAll) GHE.dom.funcoesSelectAll.checked = false;
-                updateSelectedCount();
-            });
+            GHE.dom.funcoesSearchAvailable?.addEventListener('input', renderFuncoesList);
+            GHE.dom.funcoesSearchSelected?.addEventListener('input', renderFuncoesList);
+            GHE.dom.funcoesAdd?.addEventListener('click', () => moveOptions(GHE.dom.funcoesAvailable, true));
+            GHE.dom.funcoesRemove?.addEventListener('click', () => moveOptions(GHE.dom.funcoesSelected, false));
+            GHE.dom.funcoesAddAll?.addEventListener('click', () => moveAll(true));
+            GHE.dom.funcoesRemoveAll?.addEventListener('click', () => moveAll(false));
+            GHE.dom.funcoesAvailable?.addEventListener('dblclick', () => moveOptions(GHE.dom.funcoesAvailable, true));
+            GHE.dom.funcoesSelected?.addEventListener('dblclick', () => moveOptions(GHE.dom.funcoesSelected, false));
             document.getElementById('gheProtocoloNovo')?.addEventListener('click', () => {
+                if (!PERMS.create) {
+                    deny('Usuário sem permissão para criar.');
+                    return;
+                }
                 if (typeof window.openProtocolosModal === 'function') {
                     window.openProtocolosModal();
                 }
@@ -649,4 +649,9 @@
     </script>
 @endpush
 
-@include('comercial.tabela-precos.itens.modal-protocolos', ['routePrefix' => $routePrefix])
+@include('comercial.tabela-precos.itens.modal-protocolos', [
+    'routePrefix' => $routePrefix,
+    'canCreate' => $canCreate,
+    'canUpdate' => $canUpdate,
+    'canDelete' => $canDelete,
+])

@@ -36,7 +36,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <button type="submit" name="com_pcms0" value="1"
                                 class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700">
-                            Sim, criar PGR + PCMSO
+                            Sim, solicitar PGR + PCMSO
                         </button>
 
                         <button type="submit" name="com_pcms0" value="0"

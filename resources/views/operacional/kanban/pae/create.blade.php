@@ -95,7 +95,7 @@
                     <button type="submit"
                             class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-xl
                                    bg-rose-600 text-white text-sm font-semibold hover:bg-rose-700">
-                        {{ !empty($isEdit) ? 'Salvar alterações' : 'Criar Tarefa PAE' }}
+                        {{ !empty($isEdit) ? 'Salvar alterações' : 'Solicitar PAE' }}
                     </button>
                 </div>
             </form>

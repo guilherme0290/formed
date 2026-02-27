@@ -102,7 +102,9 @@
                                 $comArtOld = old('com_art', isset($pgr) ? (string) (int) $pgr->com_art : null);
                             @endphp
                             <div class="grid grid-cols-1 gap-3 mb-3">
-                                <label class="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                                <label
+                                    class="relative flex items-center gap-2 text-sm font-semibold text-slate-700 @if(!($artDisponivel ?? true)) cursor-not-allowed @endif"
+                                    data-art-bloqueado-label>
                                     <input type="radio"
                                            id="com_art_sim"
                                            name="com_art"
@@ -112,6 +114,10 @@
                                            @if(!($artDisponivel ?? true)) disabled @endif
                                            required>
                                     <span>Com ART</span>
+                                    <span id="tooltip-art-bloqueado"
+                                          class="hidden absolute left-0 top-full mt-2 z-20 max-w-xs rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-medium text-amber-800 shadow-sm">
+                                        Serviço não parametrizado entre em contato com seu comercial
+                                    </span>
                                 </label>
                                 <label class="flex items-center gap-2 text-sm font-semibold text-slate-700">
                                     <input type="radio"
@@ -237,6 +243,22 @@
                                 <x-funcoes.create-button label="Cadastrar nova função" variant="emerald" :allowCreate="true" />
                             </div>
 
+                            <div class="mb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                                <button type="button" id="btn-add-all-funcoes"
+                                        class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-sky-600 text-white text-xs font-semibold hover:bg-sky-700">
+                                    <span>+</span>
+                                    <span>Inserir todas as funções</span>
+                                </button>
+
+                                <div class="inline-flex items-center gap-2 text-xs text-slate-600">
+                                    <span>Total por funções</span>
+                                    <span id="total-funcionarios-funcoes"
+                                          class="inline-flex min-w-10 items-center justify-center px-2.5 py-1 rounded-full bg-sky-500 text-white font-semibold">
+                                        0
+                                    </span>
+                                </div>
+                            </div>
+
                             @php
                                 $funcoesForm = old('funcoes');
 
@@ -285,22 +307,36 @@
                                                 help-text="Funções listadas por GHE, pré-configuradas pelo vendedor/comercial."
                                                 :funcoes="$funcoes"
                                                 :selected="old('funcoes.'.$idx.'.funcao_id', $f['funcao_id'] ?? null)"
-                                                :show-create="true"
+                                                :show-create="false"
                                                 :allowCreate="true"
                                             />
                                         </div>
 
                                         <div class="col-span-2">
                                             <label class="block text-xs font-medium text-slate-500 mb-1">Qtd</label>
-                                            <input type="number"
-                                                   name="funcoes[{{ $idx }}][quantidade]"
-                                                   class="w-full rounded-lg border-slate-200 text-sm px-3 py-2"
-                                                   value="{{ old('funcoes.'.$idx.'.quantidade', $f['quantidade'] ?? 1) }}"
-                                                   min="1">
+                                            <div class="flex items-center rounded-xl border border-slate-300 bg-white overflow-hidden shadow-sm">
+                                                <button type="button"
+                                                        class="h-9 w-9 inline-flex items-center justify-center bg-slate-100 text-slate-700 font-bold text-base border-r border-slate-200 transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-inset"
+                                                        data-qty-dec
+                                                        aria-label="Diminuir quantidade">
+                                                    -
+                                                </button>
+                                                <input type="number"
+                                                       name="funcoes[{{ $idx }}][quantidade]"
+                                                       class="w-full border-0 text-center text-sm font-semibold text-slate-800 px-2 py-2 focus:ring-0"
+                                                       value="{{ old('funcoes.'.$idx.'.quantidade', $f['quantidade'] ?? 1) }}"
+                                                       min="1">
+                                                <button type="button"
+                                                        class="h-9 w-9 inline-flex items-center justify-center bg-emerald-50 text-emerald-700 font-bold text-base border-l border-slate-200 transition hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-inset"
+                                                        data-qty-inc
+                                                        aria-label="Aumentar quantidade">
+                                                    +
+                                                </button>
+                                            </div>
                                         </div>
 
                                         <div class="col-span-2">
-                                            <label class="block text-xs font-medium text-slate-500 mb-1">CBO</label>
+                                            <label class="block text-xs font-medium text-slate-500 mb-1">CBO(Opcional)</label>
                                             <input type="text"
                                                    name="funcoes[{{ $idx }}][cbo]"
                                                    class="w-full rounded-lg border-slate-200 text-sm px-3 py-2"
@@ -320,14 +356,39 @@
                                         </div>
 
                                         <div class="col-span-12">
-                                            <div class="flex flex-wrap items-center gap-2 text-xs">
-                                                <span class="text-slate-500">NRs:</span>
-                                                <div class="flex flex-wrap gap-1" data-nr-tags></div>
-                                                <span class="text-slate-400" data-nr-empty>Nenhuma definida</span>
-                                                <button type="button"
-                                                        class="btn-definir-nr inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-50">
-                                                    Definir NRs
-                                                </button>
+                                            @php
+                                                $nrAltura = (int) old('funcoes.'.$idx.'.nr_altura', $f['nr_altura'] ?? 0);
+                                                $nrEletricidade = (int) old('funcoes.'.$idx.'.nr_eletricidade', $f['nr_eletricidade'] ?? 0);
+                                                $nrEspacoConfinado = (int) old('funcoes.'.$idx.'.nr_espaco_confinado', $f['nr_espaco_confinado'] ?? 0);
+                                                $nrNenhuma = $nrAltura !== 1 && $nrEletricidade !== 1 && $nrEspacoConfinado !== 1;
+                                            @endphp
+
+                                            <div class="flex flex-wrap items-center gap-3 text-xs">
+                                                <span class="text-slate-500 font-medium">Atividades especiais (NR):</span>
+
+                                                <label class="inline-flex items-center gap-1.5 text-slate-700">
+                                                    <input type="checkbox" class="rounded border-slate-300 text-emerald-600"
+                                                           data-nr-checkbox="altura" @checked($nrAltura === 1)>
+                                                    <span>NR-35 (altura)</span>
+                                                </label>
+
+                                                <label class="inline-flex items-center gap-1.5 text-slate-700">
+                                                    <input type="checkbox" class="rounded border-slate-300 text-emerald-600"
+                                                           data-nr-checkbox="eletricidade" @checked($nrEletricidade === 1)>
+                                                    <span>NR-10 (eletricidade)</span>
+                                                </label>
+
+                                                <label class="inline-flex items-center gap-1.5 text-slate-700">
+                                                    <input type="checkbox" class="rounded border-slate-300 text-emerald-600"
+                                                           data-nr-checkbox="espaco_confinado" @checked($nrEspacoConfinado === 1)>
+                                                    <span>NR-33 (espaço confinado)</span>
+                                                </label>
+
+                                                <label class="inline-flex items-center gap-1.5 text-slate-700">
+                                                    <input type="checkbox" class="rounded border-slate-300 text-emerald-600"
+                                                           data-nr-checkbox="nenhuma" @checked($nrNenhuma)>
+                                                    <span>Nenhuma</span>
+                                                </label>
                                             </div>
                                             <input type="hidden"
                                                    name="funcoes[{{ $idx }}][nr_altura]"
@@ -369,7 +430,7 @@
 
                             <button type="submit"
                                     class="flex-1 inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700">
-                                {{ $modo === 'edit' ? 'Atualizar PGR' : 'Criar PGR' }}
+                                {{ $modo === 'edit' ? 'Atualizar Solicitação PGR' : 'Solicitar PGR' }}
                             </button>
                         </div>
                     </div>
@@ -500,7 +561,7 @@
                         <div class="mt-4 pt-4 border-t border-slate-100">
                             <button type="submit"
                                     class="w-full px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium shadow-sm">
-                                {{ $modo === 'edit' ? 'Atualizar PGR' : 'Criar PGR' }}
+                                {{ $modo === 'edit' ? 'Atualizar Solicitação PGR' : 'Solicitar PGR' }}
                             </button>
                         </div>
                     </div>
@@ -514,47 +575,6 @@
                 @method('DELETE')
             </form>
         @endif
-    </div>
-
-    <div id="nrModal" class="fixed inset-0 z-[90] hidden items-center justify-center bg-black/50 p-4 overflow-y-auto">
-        <div class="bg-white w-full max-w-md rounded-2xl shadow-xl overflow-hidden max-h-[90vh] overflow-y-auto">
-            <div class="px-5 py-4 border-b border-slate-100 bg-slate-900 text-white flex items-center justify-between">
-                <div>
-                    <h2 class="text-sm font-semibold">Atividades especiais (NR)</h2>
-                    <p class="text-xs text-slate-300">Selecione se esta funcao exige alguma NR.</p>
-                </div>
-                <button type="button" id="btnFecharNrModal"
-                        class="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-slate-800 text-white">X</button>
-            </div>
-            <div class="p-5 space-y-3">
-                <label class="flex items-center gap-2 text-sm">
-                    <input type="checkbox" class="nr-option" data-nr="altura">
-                    <span>Trabalho em altura (NR-35)</span>
-                </label>
-                <label class="flex items-center gap-2 text-sm">
-                    <input type="checkbox" class="nr-option" data-nr="eletricidade">
-                    <span>Eletricidade (NR-10)</span>
-                </label>
-                <label class="flex items-center gap-2 text-sm">
-                    <input type="checkbox" class="nr-option" data-nr="espaco_confinado">
-                    <span>Espaço confinado (NR-33)</span>
-                </label>
-                <label class="flex items-center gap-2 text-sm pt-2 border-t border-slate-100">
-                    <input type="checkbox" class="nr-option" data-nr="nenhuma">
-                    <span>Nenhuma</span>
-                </label>
-            </div>
-            <div class="px-5 py-4 border-t border-slate-100 flex items-center justify-end gap-2">
-                <button type="button" id="btnCancelarNrModal"
-                        class="px-3 py-2 text-xs rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50">
-                    Cancelar
-                </button>
-                <button type="button" id="btnSalvarNrModal"
-                        class="px-4 py-2 text-xs rounded-lg bg-emerald-600 text-white font-semibold hover:bg-emerald-700">
-                    Salvar
-                </button>
-            </div>
-        </div>
     </div>
 
     @push('scripts')
@@ -590,6 +610,19 @@
                 // ========= ART =========
                 const radiosArt = document.querySelectorAll('input[name="com_art"]');
                 const alertArt = document.getElementById('alert-art');
+                const radioArtSim = document.getElementById('com_art_sim');
+                const artBloqueadoLabel = document.querySelector('[data-art-bloqueado-label]');
+                const tooltipArtBloqueado = document.getElementById('tooltip-art-bloqueado');
+                let tooltipArtTimer = null;
+
+                function mostrarTooltipArtBloqueado() {
+                    if (!tooltipArtBloqueado) return;
+                    tooltipArtBloqueado.classList.remove('hidden');
+                    window.clearTimeout(tooltipArtTimer);
+                    tooltipArtTimer = window.setTimeout(() => {
+                        tooltipArtBloqueado.classList.add('hidden');
+                    }, 2800);
+                }
 
                 function aplicarEstadoArt(valor) {
                     if (alertArt) {
@@ -602,6 +635,19 @@
                         aplicarEstadoArt(radio.value);
                     });
                 });
+
+                if (artBloqueadoLabel && radioArtSim && radioArtSim.disabled) {
+                    artBloqueadoLabel.addEventListener('click', function (e) {
+                        e.preventDefault();
+                        mostrarTooltipArtBloqueado();
+                    });
+
+                    artBloqueadoLabel.addEventListener('mouseleave', function () {
+                        if (!tooltipArtBloqueado) return;
+                        window.clearTimeout(tooltipArtTimer);
+                        tooltipArtBloqueado.classList.add('hidden');
+                    });
+                }
 
                 const checkedArt = document.querySelector('input[name="com_art"]:checked');
                 aplicarEstadoArt(checkedArt ? checkedArt.value : '');
@@ -627,12 +673,85 @@
                 // ========= FUNCOES DINAMICAS =========
                 const wrapper = document.getElementById('funcoes-wrapper');
                 const btnAdd = document.getElementById('btn-add-funcao');
-                const nrModal = document.getElementById('nrModal');
-                const btnFecharNrModal = document.getElementById('btnFecharNrModal');
-                const btnCancelarNrModal = document.getElementById('btnCancelarNrModal');
-                const btnSalvarNrModal = document.getElementById('btnSalvarNrModal');
-                const nrOptions = nrModal ? nrModal.querySelectorAll('.nr-option') : [];
-                let nrItemAtual = null;
+                const btnAddAllFuncoes = document.getElementById('btn-add-all-funcoes');
+                const totalFuncoesEl = document.getElementById('total-funcionarios-funcoes');
+                const funcaoQtdMap = @json($funcaoQtdMap ?? []);
+                const templateFuncao = wrapper ? wrapper.querySelector('.funcao-item')?.cloneNode(true) : null;
+
+                function atualizarTotalFuncionariosFuncoes() {
+                    if (!wrapper || !totalFuncoesEl) return;
+                    let total = 0;
+                    wrapper.querySelectorAll('input[name$="[quantidade]"]').forEach(function (input) {
+                        const qtd = parseInt(input.value || '0', 10);
+                        if (!Number.isNaN(qtd) && qtd > 0) {
+                            total += qtd;
+                        }
+                    });
+                    totalFuncoesEl.textContent = String(total);
+                }
+
+                function getQuantidadePadraoPorFuncao(funcaoId) {
+                    const key = String(funcaoId || '').trim();
+                    if (!key) return 1;
+
+                    const total = parseInt(funcaoQtdMap[key] ?? funcaoQtdMap[Number(key)] ?? 0, 10);
+                    if (Number.isNaN(total) || total < 1) return 1;
+                    return total;
+                }
+
+                function aplicarQuantidadePorFuncao(item, funcaoId) {
+                    if (!item) return;
+                    const input = item.querySelector('input[name$="[quantidade]"]');
+                    if (!(input instanceof HTMLInputElement)) return;
+
+                    input.value = String(getQuantidadePadraoPorFuncao(funcaoId));
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+
+                function criarCardFuncao(novoIndex, funcaoId = '', quantidade = '1') {
+                    const base = wrapper?.querySelector('.funcao-item') || templateFuncao;
+                    if (!base) return null;
+
+                    const clone = base.cloneNode(true);
+                    clone.dataset.funcaoIndex = String(novoIndex);
+                    clone.removeAttribute('data-funcao-ultimo');
+
+                    clone.querySelectorAll('input, select').forEach(function (el) {
+                        if (el.name && el.name.includes('funcoes[')) {
+                            el.name = el.name.replace(/funcoes\[\d+]/, 'funcoes[' + novoIndex + ']');
+                        }
+
+                        if (el.tagName === 'SELECT') {
+                            el.value = String(funcaoId || '');
+                        } else if (el.name && el.name.includes('[quantidade]')) {
+                            el.value = String(quantidade || '1');
+                        } else if (el.name && el.name.includes('[nr_')) {
+                            el.value = '0';
+                        } else {
+                            el.value = '';
+                        }
+
+                        if (el.id && el.id.startsWith('funcoes_')) {
+                            el.id = el.id.replace(/_\d+_funcao_id$/, '_' + novoIndex + '_funcao_id');
+                        }
+                    });
+
+                    if (funcaoId) {
+                        clone.setAttribute('data-funcao-ultimo', String(funcaoId));
+                    }
+
+                    clone.querySelectorAll('[data-nr-checkbox]').forEach(function (checkbox) {
+                        checkbox.checked = checkbox.getAttribute('data-nr-checkbox') === 'nenhuma';
+                    });
+
+                    const badge = clone.querySelector('.badge-funcao');
+                    if (badge) {
+                        badge.textContent = 'Função ' + (novoIndex + 1);
+                    }
+
+                    sincronizarNrDoCard(clone);
+                    return clone;
+                }
 
                 function getNrInputs(item) {
                     return {
@@ -643,110 +762,59 @@
                     };
                 }
 
-                function renderNrTags(item) {
-                    const tags = item.querySelector('[data-nr-tags]');
-                    const empty = item.querySelector('[data-nr-empty]');
+                function getNrCheckboxes(item) {
+                    return {
+                        altura: item.querySelector('[data-nr-checkbox="altura"]'),
+                        eletricidade: item.querySelector('[data-nr-checkbox="eletricidade"]'),
+                        espacoConfinado: item.querySelector('[data-nr-checkbox="espaco_confinado"]'),
+                        nenhuma: item.querySelector('[data-nr-checkbox="nenhuma"]'),
+                    };
+                }
+
+                function sincronizarNrDoCard(item) {
                     const inputs = getNrInputs(item);
-                    if (!tags || !inputs.altura || !inputs.eletricidade || !inputs.espacoConfinado) {
+                    const checks = getNrCheckboxes(item);
+                    if (!inputs.altura || !inputs.eletricidade || !inputs.espacoConfinado || !inputs.definido) {
                         return;
                     }
 
-                    const ativos = [];
-                    if (inputs.altura.value === '1') ativos.push('NR-35');
-                    if (inputs.eletricidade.value === '1') ativos.push('NR-10');
-                    if (inputs.espacoConfinado.value === '1') ativos.push('NR-33');
+                    // fallback: se nada estiver marcado, mantem "Nenhuma" ativo
+                    const algumEspecialMarcado =
+                        (checks.altura?.checked === true) ||
+                        (checks.eletricidade?.checked === true) ||
+                        (checks.espacoConfinado?.checked === true);
 
-                    tags.innerHTML = '';
-                    if (!ativos.length) {
-                        const definido = inputs.definido?.value === '1';
-                        if (empty) {
-                            empty.textContent = definido ? 'Nenhuma' : 'Nenhuma definida';
-                            empty.classList.remove('hidden');
-                        }
-                        return;
+                    if (!algumEspecialMarcado && checks.nenhuma) {
+                        checks.nenhuma.checked = true;
                     }
 
-                    if (empty) empty.classList.add('hidden');
-                    ativos.forEach(label => {
-                        const span = document.createElement('span');
-                        span.className = 'inline-flex items-center rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-semibold text-slate-700';
-                        span.textContent = label;
-                        tags.appendChild(span);
-                    });
+                    inputs.altura.value = checks.altura?.checked ? '1' : '0';
+                    inputs.eletricidade.value = checks.eletricidade?.checked ? '1' : '0';
+                    inputs.espacoConfinado.value = checks.espacoConfinado?.checked ? '1' : '0';
+                    inputs.definido.value = '1';
                 }
 
                 function resetNr(item) {
                     const inputs = getNrInputs(item);
+                    const checks = getNrCheckboxes(item);
                     if (inputs.altura) inputs.altura.value = '0';
                     if (inputs.eletricidade) inputs.eletricidade.value = '0';
                     if (inputs.espacoConfinado) inputs.espacoConfinado.value = '0';
-                    if (inputs.definido) inputs.definido.value = '0';
-                    renderNrTags(item);
-                }
-
-                function abrirNrModal(item) {
-                    if (!nrModal || !item) return;
-                    nrItemAtual = item;
-                    const inputs = getNrInputs(item);
-                    nrOptions.forEach(opt => {
-                        const nr = opt.getAttribute('data-nr');
-                        if (nr === 'altura') opt.checked = inputs.altura?.value === '1';
-                        if (nr === 'eletricidade') opt.checked = inputs.eletricidade?.value === '1';
-                        if (nr === 'espaco_confinado') opt.checked = inputs.espacoConfinado?.value === '1';
-                        if (nr === 'nenhuma') {
-                            const nenhum = (inputs.altura?.value !== '1' && inputs.eletricidade?.value !== '1' && inputs.espacoConfinado?.value !== '1');
-                            opt.checked = nenhum;
-                        }
-                    });
-                    nrModal.classList.remove('hidden');
-                    nrModal.classList.add('flex');
-                }
-
-                function fecharNrModal() {
-                    if (!nrModal) return;
-                    nrModal.classList.add('hidden');
-                    nrModal.classList.remove('flex');
-                    nrItemAtual = null;
+                    if (inputs.definido) inputs.definido.value = '1';
+                    if (checks.altura) checks.altura.checked = false;
+                    if (checks.eletricidade) checks.eletricidade.checked = false;
+                    if (checks.espacoConfinado) checks.espacoConfinado.checked = false;
+                    if (checks.nenhuma) checks.nenhuma.checked = true;
+                    sincronizarNrDoCard(item);
                 }
 
                 if (wrapper && btnAdd) {
                     btnAdd.addEventListener('click', function () {
-                        const itens = wrapper.querySelectorAll('.funcao-item');
-                        const novoIndex = itens.length;
-
-                        const base = itens[itens.length - 1];
-                        const clone = base.cloneNode(true);
-
-                        clone.dataset.funcaoIndex = String(novoIndex);
-                        clone.removeAttribute('data-funcao-ultimo');
-
-                        clone.querySelectorAll('input, select').forEach(function (el) {
-                            if (el.name && el.name.includes('funcoes[')) {
-                                el.name = el.name.replace(/\[\d+]/, '[' + novoIndex + ']');
-                            }
-
-                            if (el.tagName === 'SELECT') {
-                                el.value = '';
-                            } else if (el.name.includes('[quantidade]')) {
-                                el.value = '1';
-                            } else if (el.name.includes('[nr_')) {
-                                el.value = '0';
-                            } else {
-                                el.value = '';
-                            }
-
-                            if (el.id && el.id.startsWith('funcoes_')) {
-                                el.id = el.id.replace(/_\d+_funcao_id$/, '_' + novoIndex + '_funcao_id');
-                            }
-                        });
-
-                        const badge = clone.querySelector('.badge-funcao');
-                        if (badge) {
-                            badge.textContent = 'Função ' + (novoIndex + 1);
-                        }
-
-                        wrapper.appendChild(clone);
-                        renderNrTags(clone);
+                        const novoIndex = wrapper.querySelectorAll('.funcao-item').length;
+                        const card = criarCardFuncao(novoIndex);
+                        if (!card) return;
+                        wrapper.appendChild(card);
+                        atualizarTotalFuncionariosFuncoes();
                     });
 
                     // 🔹 NOVO: remover função com delegação de evento
@@ -764,12 +832,40 @@
                         if (item) {
                             item.remove();
                             reindexFuncoes(wrapper);
+                            atualizarTotalFuncionariosFuncoes();
                         }
                     });
                 }
 
                 if (wrapper) {
-                    wrapper.querySelectorAll('.funcao-item').forEach(renderNrTags);
+                    wrapper.querySelectorAll('.funcao-item').forEach(sincronizarNrDoCard);
+                    atualizarTotalFuncionariosFuncoes();
+
+                    wrapper.addEventListener('click', function (e) {
+                        const btnInc = e.target.closest('[data-qty-inc]');
+                        const btnDec = e.target.closest('[data-qty-dec]');
+                        if (!btnInc && !btnDec) return;
+
+                        const item = e.target.closest('.funcao-item');
+                        if (!item) return;
+
+                        const input = item.querySelector('input[name$="[quantidade]"]');
+                        if (!(input instanceof HTMLInputElement)) return;
+
+                        const atual = parseInt(input.value || '1', 10);
+                        const seguro = Number.isNaN(atual) ? 1 : atual;
+                        const proximo = btnInc ? seguro + 1 : Math.max(1, seguro - 1);
+
+                        input.value = String(proximo);
+                        input.dispatchEvent(new Event('input', { bubbles: true }));
+                    });
+
+                    wrapper.addEventListener('input', function (e) {
+                        const target = e.target;
+                        if (!(target instanceof HTMLInputElement)) return;
+                        if (!target.name || !target.name.includes('[quantidade]')) return;
+                        atualizarTotalFuncionariosFuncoes();
+                    });
 
                     wrapper.addEventListener('change', function (e) {
                         const target = e.target;
@@ -792,78 +888,67 @@
                             item.setAttribute('data-funcao-ultimo', valor);
                         }
 
-                        const definido = item.querySelector('input[name$="[nr_definido]"]')?.value;
-                        if (definido !== '1') {
-                            abrirNrModal(item);
-                        }
+                        aplicarQuantidadePorFuncao(item, valor);
                     });
 
-                    wrapper.addEventListener('click', function (e) {
-                        const btn = e.target.closest('.btn-definir-nr');
-                        if (!btn) return;
-                        const item = btn.closest('.funcao-item');
+                    wrapper.addEventListener('change', function (e) {
+                        const target = e.target;
+                        if (!(target instanceof HTMLInputElement)) return;
+                        if (!target.matches('[data-nr-checkbox]')) return;
+                        const item = target.closest('.funcao-item');
                         if (!item) return;
-                        abrirNrModal(item);
+
+                        const checks = getNrCheckboxes(item);
+                        const tipo = target.getAttribute('data-nr-checkbox');
+
+                        if (tipo === 'nenhuma' && target.checked) {
+                            if (checks.altura) checks.altura.checked = false;
+                            if (checks.eletricidade) checks.eletricidade.checked = false;
+                            if (checks.espacoConfinado) checks.espacoConfinado.checked = false;
+                        } else if (tipo !== 'nenhuma' && target.checked) {
+                            if (checks.nenhuma) checks.nenhuma.checked = false;
+                        }
+
+                        // se desmarcar a ultima opcao especial, volta para "Nenhuma"
+                        const algumEspecialMarcado =
+                            (checks.altura?.checked === true) ||
+                            (checks.eletricidade?.checked === true) ||
+                            (checks.espacoConfinado?.checked === true);
+                        if (!algumEspecialMarcado && checks.nenhuma) {
+                            checks.nenhuma.checked = true;
+                        }
+
+                        sincronizarNrDoCard(item);
                     });
                 }
 
-                if (nrModal) {
-                    nrModal.addEventListener('click', function (e) {
-                        if (e.target === nrModal) {
-                            fecharNrModal();
+                if (wrapper && btnAddAllFuncoes) {
+                    btnAddAllFuncoes.addEventListener('click', function () {
+                        const primeiraSelect = wrapper.querySelector('select[name^="funcoes"][name$="[funcao_id]"]');
+                        if (!primeiraSelect) return;
+
+                        const opcoes = Array.from(primeiraSelect.options).filter(function (opt) {
+                            return String(opt.value || '').trim() !== '';
+                        });
+
+                        if (!opcoes.length) {
+                            window.uiAlert('Não há funções parametrizadas para inserir.');
+                            return;
                         }
+
+                        wrapper.innerHTML = '';
+
+                        opcoes.forEach(function (opt, idx) {
+                            const card = criarCardFuncao(idx, opt.value, String(getQuantidadePadraoPorFuncao(opt.value)));
+                            if (card) {
+                                wrapper.appendChild(card);
+                            }
+                        });
+
+                        reindexFuncoes(wrapper);
+                        atualizarTotalFuncionariosFuncoes();
                     });
                 }
-
-                btnFecharNrModal?.addEventListener('click', fecharNrModal);
-                btnCancelarNrModal?.addEventListener('click', fecharNrModal);
-
-                nrOptions.forEach(opt => {
-                    opt.addEventListener('change', function () {
-                        const nr = this.getAttribute('data-nr');
-                        if (nr === 'nenhuma' && this.checked) {
-                            nrOptions.forEach(o => {
-                                if (o.getAttribute('data-nr') !== 'nenhuma') {
-                                    o.checked = false;
-                                }
-                            });
-                        }
-                        if (nr !== 'nenhuma' && this.checked) {
-                            const none = nrModal.querySelector('.nr-option[data-nr="nenhuma"]');
-                            if (none) none.checked = false;
-                        }
-                    });
-                });
-
-                btnSalvarNrModal?.addEventListener('click', function () {
-                    if (!nrItemAtual) return;
-                    const inputs = getNrInputs(nrItemAtual);
-                    if (!inputs.altura || !inputs.eletricidade || !inputs.espacoConfinado || !inputs.definido) {
-                        fecharNrModal();
-                        return;
-                    }
-
-                    const selecionados = {
-                        altura: nrModal.querySelector('.nr-option[data-nr="altura"]')?.checked,
-                        eletricidade: nrModal.querySelector('.nr-option[data-nr="eletricidade"]')?.checked,
-                        espacoConfinado: nrModal.querySelector('.nr-option[data-nr="espaco_confinado"]')?.checked,
-                        nenhuma: nrModal.querySelector('.nr-option[data-nr="nenhuma"]')?.checked,
-                    };
-
-                    if (selecionados.nenhuma) {
-                        inputs.altura.value = '0';
-                        inputs.eletricidade.value = '0';
-                        inputs.espacoConfinado.value = '0';
-                    } else {
-                        inputs.altura.value = selecionados.altura ? '1' : '0';
-                        inputs.eletricidade.value = selecionados.eletricidade ? '1' : '0';
-                        inputs.espacoConfinado.value = selecionados.espacoConfinado ? '1' : '0';
-                    }
-
-                    inputs.definido.value = '1';
-                    renderNrTags(nrItemAtual);
-                    fecharNrModal();
-                });
 
                 // função auxiliar para reindexar os índices/names/labels
                 function reindexFuncoes(wrapper) {

@@ -164,14 +164,15 @@
 
             @php $canTabela = $can('comercial.tabela-precos.view'); @endphp
             @php $activeTabela = request()->routeIs('comercial.tabela-precos.*'); @endphp
-            <a href="{{ $canTabela ? route('comercial.tabela-precos.index') : 'javascript:void(0)' }}"
-               @if(!$canTabela) title="Usuário sem permissão" aria-disabled="true" @endif
-               class="group flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition {{ $menuState($canTabela, $activeTabela) }}">
-                <span class="{{ $iconState($canTabela, $activeTabela) }}">
-                    <i class="fa-solid fa-tags w-4 text-center"></i>
-                </span>
-                <span data-sidebar-label>Tabela de Preços</span>
-            </a>
+            @if($canTabela)
+                <a href="{{ route('comercial.tabela-precos.index') }}"
+                   class="group flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition {{ $menuState(true, $activeTabela) }}">
+                    <span class="{{ $iconState(true, $activeTabela) }}">
+                        <i class="fa-solid fa-tags w-4 text-center"></i>
+                    </span>
+                    <span data-sidebar-label>Tabela de Preços</span>
+                </a>
+            @endif
 
             @php $canContratos = $can('comercial.contratos.view'); @endphp
             @php $activeContratos = request()->routeIs('comercial.contratos.*'); @endphp
@@ -524,6 +525,5 @@
 
 </body>
 </html>
-
 
 
