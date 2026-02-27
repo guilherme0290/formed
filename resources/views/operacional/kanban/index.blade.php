@@ -896,6 +896,7 @@
 
     {{-- Modal de Detalhes da Tarefa --}}
     <div id="tarefa-modal"
+         data-overlay-root="true"
          class="fixed inset-0 z-[90] hidden items-center justify-center bg-black/50 p-4 overflow-y-auto">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden">
             {{-- Cabeçalho --}}

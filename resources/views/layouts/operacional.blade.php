@@ -186,6 +186,8 @@
     </div>
 </div>
 
+<div id="app-overlay-root" class="fixed inset-0 z-[20000] pointer-events-none"></div>
+
 {{-- SortableJS para drag & drop do Kanban --}}
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 
@@ -203,8 +205,20 @@
             const btnCollapse   = document.querySelector('[data-sidebar-collapse]');
             const labels        = document.querySelectorAll('[data-sidebar-label]');
             const headerTitle   = document.querySelector('[data-sidebar-label-header]');
+            const overlayRoot   = document.getElementById('app-overlay-root');
 
             let desktopCollapsed = false;
+
+            function mountOverlayModals() {
+                if (!overlayRoot) return;
+                document.querySelectorAll('[data-overlay-root="true"]').forEach((modal) => {
+                    if (!modal || modal.parentElement === overlayRoot) return;
+                    modal.classList.add('pointer-events-auto');
+                    overlayRoot.appendChild(modal);
+                });
+            }
+
+            mountOverlayModals();
 
             function isMobile() {
                 return window.innerWidth < MOBILE_BREAKPOINT;

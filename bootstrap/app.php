@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Session\TokenMismatchException;
 use App\Http\Middleware\RequestTiming;
 use App\Http\Middleware\EnsureRoutePermission;
@@ -18,6 +19,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'route.permission' => EnsureRoutePermission::class,
         ]);
+    })
+    ->withSchedule(function (Schedule $schedule): void {
+        $schedule->command('esocial:gerar-vendas-mensais')
+            ->monthlyOn(1, '02:00');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (TokenMismatchException $e, $request) {
@@ -37,7 +42,6 @@ return Application::configure(basePath: dirname(__DIR__))
                 ->with('error', $message);
         });
     })->create();
-
 
 
 

@@ -1,4 +1,5 @@
 <div id="modal-tarefa-detalhes"
+     data-overlay-root="true"
      x-data="{ open: false, tarefa: {}, solicitacao: {}, tipo: '', funcoes: [] }"
      x-show="open"
      style="display: none;"
