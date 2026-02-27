@@ -31,6 +31,8 @@
                 ];
             })
             ->values();
+        $totalVendasSemFatura = $vendasAgrupadas->count();
+        $valorTotalVendasSemFatura = (float) $vendasAgrupadas->sum('total');
 
         $abaAtiva = $abaAtiva ?? 'vendas';
 
@@ -169,6 +171,24 @@
         </section>
 
         <section data-cr-tab="vendas" class="space-y-4 {{ $abaAtiva === 'vendas' ? '' : 'hidden' }}">
+            <section class="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                <article class="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-4 shadow-sm">
+                    <p class="text-xs uppercase tracking-wide font-semibold text-emerald-700">Vendas sem fatura</p>
+                    <p class="mt-1 text-2xl font-semibold text-emerald-900">
+                        {{ number_format($totalVendasSemFatura, 0, ',', '.') }}
+                    </p>
+                    <p class="mt-1 text-xs text-emerald-700/80">Quantidade total no filtro atual</p>
+                </article>
+
+                <article class="rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-4 shadow-sm">
+                    <p class="text-xs uppercase tracking-wide font-semibold text-indigo-700">Valor sem faturar</p>
+                    <p class="mt-1 text-2xl font-semibold text-indigo-900">
+                        R$ {{ number_format($valorTotalVendasSemFatura, 2, ',', '.') }}
+                    </p>
+                    <p class="mt-1 text-xs text-indigo-700/80">Somatório das vendas sem fatura no filtro atual</p>
+                </article>
+            </section>
+
             <section class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
                 <header class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
                     <div>
