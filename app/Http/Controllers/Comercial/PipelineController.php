@@ -44,7 +44,10 @@ class PipelineController extends Controller
             ->orderByDesc('id');
 
         if (!$isMaster) {
-            $query->where('vendedor_id', $user->id);
+            $query->where(function ($q) use ($user) {
+                $q->where('vendedor_id', $user->id)
+                    ->orWhereHas('cliente', fn ($cliente) => $cliente->where('vendedor_id', $user->id));
+            });
         }
 
         if ($busca !== '') {
@@ -180,7 +183,10 @@ class PipelineController extends Controller
         $user = $request->user();
         abort_unless($proposta->empresa_id === $user->empresa_id, 403);
         if (!$user->hasPapel('Master')) {
-            abort_unless((int) $proposta->vendedor_id === (int) $user->id, 403);
+            $clienteVendedorId = (int) optional($proposta->cliente)->vendedor_id;
+            $podeMover = (int) $proposta->vendedor_id === (int) $user->id
+                || $clienteVendedorId === (int) $user->id;
+            abort_unless($podeMover, 403);
         }
 
         if (in_array(strtoupper((string) $proposta->status), ['FECHADA','CANCELADA'], true)) {

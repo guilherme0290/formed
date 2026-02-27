@@ -1,6 +1,5 @@
-@extends('layouts.comercial')
+@extends('layouts.master')
 @section('title', 'Previs&atilde;o de Comiss&atilde;o')
-@section('page-container', 'w-full p-0')
 
 @section('content')
     @php
@@ -16,7 +15,7 @@
                     <h1 class="text-xl md:text-2xl font-semibold">{{ ucfirst($mesNome) }} / {{ $ano }}</h1>
                     <p class="text-xs text-indigo-100 mt-1">Soma das comiss&otilde;es previstas por cliente.</p>
                 </div>
-                <a href="{{ route('comercial.comissoes.ano', ['ano' => $ano]) }}"
+                <a href="{{ route('master.comissoes.vendedores', ['ano' => $ano, 'vendedor' => $vendedorId]) }}"
                    class="inline-flex items-center gap-2 rounded-lg bg-white/10 px-3 py-1.5 text-xs font-semibold hover:bg-white/20">
                     Voltar
                 </a>
@@ -79,6 +78,7 @@
         </div>
     </div>
 @endsection
+
 
 
 

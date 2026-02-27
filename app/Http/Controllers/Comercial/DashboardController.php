@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Comercial;
 use App\Http\Controllers\Controller;
 use App\Models\AgendaTarefa;
 use App\Models\Comissao;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -15,15 +16,43 @@ class DashboardController extends Controller
     {
         $user = $request->user();
         $empresaId = $user?->empresa_id ?? null;
+        $isMaster = (bool) ($user?->isMaster());
         $agendaDataSelecionada = $this->agendaDataSelecionada($request);
         $agendaInicioMes = $agendaDataSelecionada->copy()->startOfMonth();
         $agendaFimMes = $agendaDataSelecionada->copy()->endOfMonth();
-        $agendaDiaSelecionado = $request->query('agenda_dia');
+        $agendaDiaSelecionado = $this->agendaDiaSelecionado($request, $agendaDataSelecionada);
 
         $ranking = $this->rankingVendedores($empresaId);
-        $agendaTarefas = AgendaTarefa::query()
-            ->where('user_id', $user?->id)
+        $vendedores = collect();
+        $vendedorSelecionado = $isMaster ? (string) $request->query('vendedor', 'todos') : (string) ($user?->id ?? '');
+        $vendedorId = $isMaster ? null : $user?->id;
+
+        if ($isMaster) {
+            $vendedores = User::query()
+                ->where('empresa_id', $empresaId)
+                ->whereHas('papel', function ($q) {
+                    $q->whereRaw('LOWER(nome) = ?', ['comercial']);
+                })
+                ->orderBy('name')
+                ->get(['id', 'name']);
+
+            if ($vendedorSelecionado !== 'todos') {
+                $vendedorId = $vendedores->firstWhere('id', (int) $vendedorSelecionado)?->id;
+                $vendedorSelecionado = $vendedorId ? (string) $vendedorId : 'todos';
+            }
+        }
+
+        $agendaQuery = AgendaTarefa::query()
+            ->where('empresa_id', $empresaId)
+            ->when(
+                $isMaster && $vendedorSelecionado === 'todos',
+                fn ($query) => $query->whereIn('user_id', $vendedores->pluck('id'))
+            )
+            ->when($vendedorId, fn ($query) => $query->where('user_id', $vendedorId));
+
+        $agendaTarefas = (clone $agendaQuery)
             ->whereBetween('data', [$agendaInicioMes->toDateString(), $agendaFimMes->toDateString()])
+            ->with('usuario:id,name')
             ->orderBy('data')
             ->orderBy('hora')
             ->orderBy('id')
@@ -51,22 +80,15 @@ class DashboardController extends Controller
             $agendaDias[] = null;
         }
 
-        if (!$agendaDiaSelecionado || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $agendaDiaSelecionado)) {
-            $agendaDiaSelecionado = $agendaDataSelecionada->toDateString();
-        }
-
         $agendaKpis = [
-            'aberto_total' => AgendaTarefa::query()
-                ->where('user_id', $user?->id)
+            'aberto_total' => (clone $agendaQuery)
                 ->where('status', 'PENDENTE')
                 ->count(),
-            'pendentes_dia' => AgendaTarefa::query()
-                ->where('user_id', $user?->id)
+            'pendentes_dia' => (clone $agendaQuery)
                 ->whereDate('data', $agendaDiaSelecionado)
                 ->where('status', 'PENDENTE')
                 ->count(),
-            'concluidas_dia' => AgendaTarefa::query()
-                ->where('user_id', $user?->id)
+            'concluidas_dia' => (clone $agendaQuery)
                 ->whereDate('data', $agendaDiaSelecionado)
                 ->where('status', 'CONCLUIDA')
                 ->count(),
@@ -82,6 +104,9 @@ class DashboardController extends Controller
             'agendaMesAnterior' => $agendaDataSelecionada->copy()->subMonthNoOverflow(),
             'agendaMesProximo' => $agendaDataSelecionada->copy()->addMonthNoOverflow(),
             'agendaKpis' => $agendaKpis,
+            'isMaster' => $isMaster,
+            'vendedores' => $vendedores,
+            'vendedorSelecionado' => $vendedorSelecionado,
         ]);
     }
 
@@ -137,5 +162,31 @@ class DashboardController extends Controller
         } catch (\Throwable $e) {
             return Carbon::today();
         }
+    }
+
+    private function agendaDiaSelecionado(Request $request, Carbon $agendaDataSelecionada): string
+    {
+        $agendaDia = (string) $request->query('agenda_dia', '');
+
+        if ($agendaDia === '') {
+            $hoje = Carbon::today();
+            if ($hoje->isSameMonth($agendaDataSelecionada)) {
+                return $hoje->toDateString();
+            }
+
+            return $agendaDataSelecionada->copy()->startOfMonth()->toDateString();
+        }
+
+        try {
+            $dia = Carbon::parse($agendaDia);
+        } catch (\Throwable $e) {
+            return $agendaDataSelecionada->copy()->startOfMonth()->toDateString();
+        }
+
+        if (!$dia->isSameMonth($agendaDataSelecionada)) {
+            return $agendaDataSelecionada->copy()->startOfMonth()->toDateString();
+        }
+
+        return $dia->toDateString();
     }
 }

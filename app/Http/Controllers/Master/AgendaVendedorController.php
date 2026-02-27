@@ -16,9 +16,10 @@ class AgendaVendedorController extends Controller
     public function index(Request $request): View
     {
         $empresaId = $request->user()->empresa_id ?? 1;
-        $dataSelecionada = $this->dataSelecionada($request);
-        $periodo = $this->periodoSelecionado($request);
-        [$inicio, $fim] = $this->intervaloDoPeriodo($dataSelecionada, $periodo);
+
+        $agendaDataSelecionada = $this->mesSelecionado($request);
+        $inicioMes = $agendaDataSelecionada->copy()->startOfMonth();
+        $fimMes = $agendaDataSelecionada->copy()->endOfMonth();
 
         $vendedores = User::query()
             ->where('empresa_id', $empresaId)
@@ -30,127 +31,83 @@ class AgendaVendedorController extends Controller
 
         $vendedorSelecionado = $request->query('vendedor', 'todos');
         $vendedorId = null;
+
         if ($vendedorSelecionado !== 'todos') {
             $vendedorId = $vendedores->firstWhere('id', (int) $vendedorSelecionado)?->id;
             $vendedorSelecionado = $vendedorId ? (string) $vendedorId : 'todos';
         }
 
-        $tarefas = AgendaTarefa::query()
+        $agendaDiaSelecionado = $this->diaSelecionado($request, $agendaDataSelecionada);
+
+        $agendaTarefasMes = AgendaTarefa::query()
             ->where('empresa_id', $empresaId)
-            ->when(
-                $periodo === 'dia',
-                fn ($q) => $q->whereDate('data', $dataSelecionada->toDateString()),
-                fn ($q) => $q->whereBetween('data', [$inicio->toDateString(), $fim->toDateString()])
-            )
             ->when($vendedorId, fn ($q) => $q->where('user_id', $vendedorId))
+            ->whereBetween('data', [$inicioMes->toDateString(), $fimMes->toDateString()])
             ->with('usuario:id,name')
-            ->orderBy('user_id')
+            ->orderBy('data')
             ->orderBy('hora')
             ->orderBy('id')
             ->get();
 
-        $pendentes = $tarefas->where('status', 'PENDENTE');
-        $concluidas = $tarefas->where('status', 'CONCLUIDA');
+        $agendaTarefasPorData = $agendaTarefasMes->groupBy(fn ($tarefa) => $tarefa->data->toDateString());
 
-        $kpis = [
-            'total' => $tarefas->count(),
-            'pendentes' => $pendentes->count(),
-            'concluidas' => $concluidas->count(),
+        $agendaContagensPorData = [];
+        foreach ($agendaTarefasPorData as $data => $itens) {
+            $agendaContagensPorData[$data] = [
+                'pendentes' => $itens->where('status', 'PENDENTE')->count(),
+                'concluidas' => $itens->where('status', 'CONCLUIDA')->count(),
+            ];
+        }
+
+        $agendaKpis = [
+            'aberto_total' => AgendaTarefa::query()
+                ->where('empresa_id', $empresaId)
+                ->when($vendedorId, fn ($q) => $q->where('user_id', $vendedorId))
+                ->where('status', 'PENDENTE')
+                ->count(),
+            'pendentes_dia' => AgendaTarefa::query()
+                ->where('empresa_id', $empresaId)
+                ->when($vendedorId, fn ($q) => $q->where('user_id', $vendedorId))
+                ->whereDate('data', $agendaDiaSelecionado)
+                ->where('status', 'PENDENTE')
+                ->count(),
+            'concluidas_dia' => AgendaTarefa::query()
+                ->where('empresa_id', $empresaId)
+                ->when($vendedorId, fn ($q) => $q->where('user_id', $vendedorId))
+                ->whereDate('data', $agendaDiaSelecionado)
+                ->where('status', 'CONCLUIDA')
+                ->count(),
         ];
 
-        $inicioMes = $dataSelecionada->copy()->startOfMonth();
-        $fimMes = $dataSelecionada->copy()->endOfMonth();
+        $agendaMesAnterior = $agendaDataSelecionada->copy()->subMonthNoOverflow()->startOfMonth();
+        $agendaMesProximo = $agendaDataSelecionada->copy()->addMonthNoOverflow()->startOfMonth();
 
-        $tarefasPorData = collect();
-        $contagensPorData = [];
-        $datasCalendario = [];
-        $calendariosAno = [];
+        $agendaDias = [];
+        $primeiroDiaSemana = $inicioMes->dayOfWeek;
 
-        if ($periodo === 'ano') {
-            $inicioAno = $dataSelecionada->copy()->startOfYear();
-            $fimAno = $dataSelecionada->copy()->endOfYear();
+        for ($i = 0; $i < $primeiroDiaSemana; $i++) {
+            $agendaDias[] = null;
+        }
 
-            $tarefasAno = AgendaTarefa::query()
-                ->where('empresa_id', $empresaId)
-                ->when($vendedorId, fn ($q) => $q->where('user_id', $vendedorId))
-                ->whereBetween('data', [$inicioAno->toDateString(), $fimAno->toDateString()])
-                ->orderBy('data')
-                ->orderBy('hora')
-                ->orderBy('id')
-                ->get();
+        for ($dia = $inicioMes->copy(); $dia->lte($fimMes); $dia->addDay()) {
+            $agendaDias[] = $dia->copy();
+        }
 
-            $tarefasPorData = $tarefasAno->groupBy(fn ($tarefa) => $tarefa->data->toDateString());
-            foreach ($tarefasPorData as $data => $itens) {
-                $contagensPorData[$data] = [
-                    'pendentes' => $itens->where('status', 'PENDENTE')->count(),
-                    'concluidas' => $itens->where('status', 'CONCLUIDA')->count(),
-                ];
-            }
-
-            for ($mes = 1; $mes <= 12; $mes++) {
-                $inicio = $dataSelecionada->copy()->month($mes)->startOfMonth();
-                $fim = $inicio->copy()->endOfMonth();
-                $datas = [];
-                $offset = $inicio->dayOfWeek;
-                for ($i = 0; $i < $offset; $i++) {
-                    $datas[] = null;
-                }
-                for ($dia = $inicio->copy(); $dia->lte($fim); $dia->addDay()) {
-                    $datas[] = $dia->copy();
-                }
-                while (count($datas) % 7 !== 0) {
-                    $datas[] = null;
-                }
-                $calendariosAno[] = [
-                    'titulo' => $inicio->locale('pt_BR')->translatedFormat('F'),
-                    'datas' => $datas,
-                ];
-            }
-        } else {
-            $tarefasMes = AgendaTarefa::query()
-                ->where('empresa_id', $empresaId)
-                ->when($vendedorId, fn ($q) => $q->where('user_id', $vendedorId))
-                ->whereBetween('data', [$inicioMes->toDateString(), $fimMes->toDateString()])
-                ->orderBy('data')
-                ->orderBy('hora')
-                ->orderBy('id')
-                ->get();
-
-            $tarefasPorData = $tarefasMes->groupBy(fn ($tarefa) => $tarefa->data->toDateString());
-            foreach ($tarefasPorData as $data => $itens) {
-                $contagensPorData[$data] = [
-                    'pendentes' => $itens->where('status', 'PENDENTE')->count(),
-                    'concluidas' => $itens->where('status', 'CONCLUIDA')->count(),
-                ];
-            }
-
-            $primeiroDiaSemana = $inicioMes->dayOfWeek;
-            for ($i = 0; $i < $primeiroDiaSemana; $i++) {
-                $datasCalendario[] = null;
-            }
-            for ($dia = $inicioMes->copy(); $dia->lte($fimMes); $dia->addDay()) {
-                $datasCalendario[] = $dia->copy();
-            }
-            while (count($datasCalendario) % 7 !== 0) {
-                $datasCalendario[] = null;
-            }
+        while (count($agendaDias) % 7 !== 0) {
+            $agendaDias[] = null;
         }
 
         return view('master.agenda-vendedores.index', compact(
             'vendedores',
             'vendedorSelecionado',
-            'tarefas',
-            'pendentes',
-            'concluidas',
-            'kpis',
-            'dataSelecionada',
-            'periodo',
-            'inicio',
-            'fim',
-            'tarefasPorData',
-            'contagensPorData',
-            'datasCalendario',
-            'calendariosAno'
+            'agendaDataSelecionada',
+            'agendaDiaSelecionado',
+            'agendaTarefasPorData',
+            'agendaContagensPorData',
+            'agendaKpis',
+            'agendaMesAnterior',
+            'agendaMesProximo',
+            'agendaDias'
         ));
     }
 
@@ -161,7 +118,7 @@ class AgendaVendedorController extends Controller
         $vendedor = $this->buscarVendedor($empresaId, (int) $data['user_id']);
 
         if (!$vendedor) {
-            return back()->withInput()->with('erro', 'Vendedor inválido.');
+            return back()->withInput()->with('erro', 'Vendedor invalido.');
         }
 
         AgendaTarefa::create([
@@ -178,7 +135,11 @@ class AgendaVendedorController extends Controller
         ]);
 
         return redirect()
-            ->route('master.agenda-vendedores.index', ['data' => $data['data']])
+            ->route('master.agenda-vendedores.index', [
+                'agenda_data' => $request->input('agenda_data', $data['data']),
+                'agenda_dia' => $data['data'],
+                'vendedor' => $request->input('vendedor', 'todos'),
+            ])
             ->with('ok', 'Tarefa criada.');
     }
 
@@ -188,14 +149,14 @@ class AgendaVendedorController extends Controller
         $this->authorizeEmpresa($tarefa, $empresaId);
 
         if ($tarefa->status !== 'PENDENTE') {
-            return back()->with('erro', 'Só é possível editar tarefas pendentes.');
+            return back()->with('erro', 'So e possivel editar tarefas pendentes.');
         }
 
         $data = $this->validateTarefa($request, $empresaId);
         $vendedor = $this->buscarVendedor($empresaId, (int) $data['user_id']);
 
         if (!$vendedor) {
-            return back()->withInput()->with('erro', 'Vendedor inválido.');
+            return back()->withInput()->with('erro', 'Vendedor invalido.');
         }
 
         $tarefa->update([
@@ -211,9 +172,9 @@ class AgendaVendedorController extends Controller
 
         return redirect()
             ->route('master.agenda-vendedores.index', [
-                'data' => $data['data'],
-                'periodo' => $request->query('periodo', 'mes'),
-                'vendedor' => $request->query('vendedor', 'todos'),
+                'agenda_data' => $request->input('agenda_data', $data['data']),
+                'agenda_dia' => $data['data'],
+                'vendedor' => $request->input('vendedor', 'todos'),
             ])
             ->with('ok', 'Tarefa atualizada.');
     }
@@ -229,8 +190,12 @@ class AgendaVendedorController extends Controller
         ]);
 
         return redirect()
-            ->route('master.agenda-vendedores.index', ['data' => $tarefa->data->toDateString()])
-            ->with('ok', 'Tarefa concluída.');
+            ->route('master.agenda-vendedores.index', [
+                'agenda_data' => $request->input('agenda_data', $tarefa->data->toDateString()),
+                'agenda_dia' => $tarefa->data->toDateString(),
+                'vendedor' => $request->input('vendedor', 'todos'),
+            ])
+            ->with('ok', 'Tarefa concluida.');
     }
 
     public function destroy(Request $request, AgendaTarefa $tarefa): RedirectResponse
@@ -239,50 +204,60 @@ class AgendaVendedorController extends Controller
         $this->authorizeEmpresa($tarefa, $empresaId);
 
         if ($tarefa->status !== 'PENDENTE') {
-            return back()->with('erro', 'Só é possível remover tarefas pendentes.');
+            return back()->with('erro', 'So e possivel remover tarefas pendentes.');
         }
 
         $data = $tarefa->data->toDateString();
         $tarefa->delete();
 
         return redirect()
-            ->route('master.agenda-vendedores.index', ['data' => $data])
+            ->route('master.agenda-vendedores.index', [
+                'agenda_data' => $request->input('agenda_data', $data),
+                'agenda_dia' => $data,
+                'vendedor' => $request->input('vendedor', 'todos'),
+            ])
             ->with('ok', 'Tarefa removida.');
     }
 
-    private function dataSelecionada(Request $request): Carbon
+    private function mesSelecionado(Request $request): Carbon
     {
-        $data = $request->query('data');
+        $agendaData = (string) $request->query('agenda_data', $request->query('data', now()->toDateString()));
+
         try {
-            return $data ? Carbon::parse($data) : Carbon::today();
+            if (preg_match('/^\d{4}-\d{2}$/', $agendaData) === 1) {
+                return Carbon::createFromFormat('Y-m', $agendaData)->startOfMonth();
+            }
+
+            return Carbon::parse($agendaData)->startOfMonth();
         } catch (\Throwable $e) {
-            return Carbon::today();
+            return Carbon::today()->startOfMonth();
         }
     }
 
-    private function periodoSelecionado(Request $request): string
+    private function diaSelecionado(Request $request, Carbon $mes): string
     {
-        $periodo = strtolower((string) $request->query('periodo', 'mes'));
-        return in_array($periodo, ['mes', 'ano'], true) ? $periodo : 'mes';
-    }
+        $agendaDia = (string) $request->query('agenda_dia', '');
 
-    private function intervaloDoPeriodo(Carbon $base, string $periodo): array
-    {
-        if ($periodo === 'mes') {
-            $inicio = $base->copy()->startOfMonth();
-            $fim = $base->copy()->endOfMonth();
-            return [$inicio, $fim];
+        if ($agendaDia === '') {
+            $hoje = now();
+            if ($hoje->isSameMonth($mes)) {
+                return $hoje->toDateString();
+            }
+
+            return $mes->copy()->startOfMonth()->toDateString();
         }
 
-        if ($periodo === 'ano') {
-            $inicio = $base->copy()->startOfYear();
-            $fim = $base->copy()->endOfYear();
-            return [$inicio, $fim];
+        try {
+            $dia = Carbon::parse($agendaDia);
+        } catch (\Throwable $e) {
+            return $mes->copy()->startOfMonth()->toDateString();
         }
 
-        $inicio = $base->copy()->startOfMonth();
-        $fim = $base->copy()->endOfMonth();
-        return [$inicio, $fim];
+        if (!$dia->isSameMonth($mes)) {
+            return $mes->copy()->startOfMonth()->toDateString();
+        }
+
+        return $dia->toDateString();
     }
 
     private function validateTarefa(Request $request, int $empresaId): array
@@ -300,6 +275,9 @@ class AgendaVendedorController extends Controller
             'data' => ['required', 'date'],
             'hora' => ['nullable', 'date_format:H:i'],
             'cliente' => ['nullable', 'string', 'max:255'],
+            'agenda_data' => ['nullable', 'string', 'max:20'],
+            'agenda_dia' => ['nullable', 'date'],
+            'vendedor' => ['nullable', 'string', 'max:20'],
         ]);
     }
 

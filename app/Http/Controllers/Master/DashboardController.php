@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Master;
 
 use App\Http\Controllers\Controller;
+use App\Models\AgendaTarefa;
 use App\Models\Proposta;
 use App\Models\ContaReceberBaixa;
 use App\Models\ContaReceberItem;
@@ -20,7 +21,8 @@ class DashboardController extends Controller
 {
     public function index(\Illuminate\Http\Request $request)
     {
-        $empresaId = auth()->user()->empresa_id ?? null;
+        $user = auth()->user();
+        $empresaId = $user->empresa_id ?? null;
 
         $visaoEmpresa  = $this->metricasEmpresa($empresaId);
         $operacionais = $this->metricasOperacionais($empresaId);
@@ -28,13 +30,114 @@ class DashboardController extends Controller
         $financeiro   = $this->metricasFinanceiras($empresaId);
         $agendamentosHoje = $this->resumoAgendamentosHoje($empresaId);
 
+        $agendaDataSelecionada = $this->agendaDataSelecionada($request);
+        $agendaInicioMes = $agendaDataSelecionada->copy()->startOfMonth();
+        $agendaFimMes = $agendaDataSelecionada->copy()->endOfMonth();
+        $agendaDiaSelecionado = $this->agendaDiaSelecionado($request, $agendaDataSelecionada);
+
+        $agendaTarefas = AgendaTarefa::query()
+            ->where('empresa_id', $empresaId)
+            ->where('user_id', $user?->id)
+            ->whereBetween('data', [$agendaInicioMes->toDateString(), $agendaFimMes->toDateString()])
+            ->orderBy('data')
+            ->orderBy('hora')
+            ->orderBy('id')
+            ->get();
+
+        $agendaTarefasPorData = $agendaTarefas->groupBy(fn ($tarefa) => $tarefa->data->toDateString());
+
+        $agendaContagensPorData = [];
+        foreach ($agendaTarefasPorData as $data => $itens) {
+            $agendaContagensPorData[$data] = [
+                'pendentes' => $itens->where('status', 'PENDENTE')->count(),
+                'concluidas' => $itens->where('status', 'CONCLUIDA')->count(),
+            ];
+        }
+
+        $agendaDias = [];
+        $primeiroDiaSemana = $agendaInicioMes->dayOfWeek;
+        for ($i = 0; $i < $primeiroDiaSemana; $i++) {
+            $agendaDias[] = null;
+        }
+        for ($dia = $agendaInicioMes->copy(); $dia->lte($agendaFimMes); $dia->addDay()) {
+            $agendaDias[] = $dia->copy();
+        }
+        while (count($agendaDias) % 7 !== 0) {
+            $agendaDias[] = null;
+        }
+
+        $agendaKpis = [
+            'aberto_total' => AgendaTarefa::query()
+                ->where('empresa_id', $empresaId)
+                ->where('user_id', $user?->id)
+                ->where('status', 'PENDENTE')
+                ->count(),
+            'pendentes_dia' => AgendaTarefa::query()
+                ->where('empresa_id', $empresaId)
+                ->where('user_id', $user?->id)
+                ->whereDate('data', $agendaDiaSelecionado)
+                ->where('status', 'PENDENTE')
+                ->count(),
+            'concluidas_dia' => AgendaTarefa::query()
+                ->where('empresa_id', $empresaId)
+                ->where('user_id', $user?->id)
+                ->whereDate('data', $agendaDiaSelecionado)
+                ->where('status', 'CONCLUIDA')
+                ->count(),
+        ];
+
         return view('master.dashboard', [
             'visaoEmpresa'  => $visaoEmpresa,
             'operacionais' => $operacionais,
             'comerciais'   => $comerciais,
             'financeiro'   => $financeiro,
             'agendamentosHoje' => $agendamentosHoje,
+            'agendaDataSelecionada' => $agendaDataSelecionada,
+            'agendaDiaSelecionado' => $agendaDiaSelecionado,
+            'agendaDias' => $agendaDias,
+            'agendaContagensPorData' => $agendaContagensPorData,
+            'agendaTarefasPorData' => $agendaTarefasPorData,
+            'agendaMesAnterior' => $agendaDataSelecionada->copy()->subMonthNoOverflow(),
+            'agendaMesProximo' => $agendaDataSelecionada->copy()->addMonthNoOverflow(),
+            'agendaKpis' => $agendaKpis,
         ]);
+    }
+
+    private function agendaDataSelecionada(\Illuminate\Http\Request $request): Carbon
+    {
+        $data = (string) $request->query('agenda_data', '');
+
+        try {
+            return $data !== '' ? Carbon::parse($data) : Carbon::today();
+        } catch (\Throwable $e) {
+            return Carbon::today();
+        }
+    }
+
+    private function agendaDiaSelecionado(\Illuminate\Http\Request $request, Carbon $agendaDataSelecionada): string
+    {
+        $agendaDia = (string) $request->query('agenda_dia', '');
+
+        if ($agendaDia === '') {
+            $hoje = Carbon::today();
+            if ($hoje->isSameMonth($agendaDataSelecionada)) {
+                return $hoje->toDateString();
+            }
+
+            return $agendaDataSelecionada->copy()->startOfMonth()->toDateString();
+        }
+
+        try {
+            $dia = Carbon::parse($agendaDia);
+        } catch (\Throwable $e) {
+            return $agendaDataSelecionada->copy()->startOfMonth()->toDateString();
+        }
+
+        if (!$dia->isSameMonth($agendaDataSelecionada)) {
+            return $agendaDataSelecionada->copy()->startOfMonth()->toDateString();
+        }
+
+        return $dia->toDateString();
     }
 
     public function agendamentos(\Illuminate\Http\Request $request)
@@ -1787,4 +1890,3 @@ class DashboardController extends Controller
         return 'data:' . $mime . ';base64,' . base64_encode($data);
     }
 }
-

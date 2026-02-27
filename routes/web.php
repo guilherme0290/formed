@@ -1022,6 +1022,15 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
         Route::delete('/agenda-vendedores/{tarefa}', [AgendaVendedorController::class, 'destroy'])
             ->name('agenda-vendedores.destroy');
 
+        // Agenda do Master (dashboard)
+        Route::prefix('agenda')->name('agenda.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Master\AgendaController::class, 'index'])->name('index');
+            Route::post('/', [\App\Http\Controllers\Master\AgendaController::class, 'store'])->name('store');
+            Route::put('/{tarefa}', [\App\Http\Controllers\Master\AgendaController::class, 'update'])->name('update');
+            Route::patch('/{tarefa}/concluir', [\App\Http\Controllers\Master\AgendaController::class, 'concluir'])->name('concluir');
+            Route::delete('/{tarefa}', [\App\Http\Controllers\Master\AgendaController::class, 'destroy'])->name('destroy');
+        });
+
         // Empresa (dados cadastrais)
         Route::prefix('empresa')->name('empresa.')->group(function () {
             Route::get('/', [\App\Http\Controllers\Master\EmpresaController::class, 'edit'])
@@ -1109,6 +1118,14 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
                 ->name('destroy');
             Route::get('/vendedores', [\App\Http\Controllers\Master\ComissoesVendedoresController::class, 'index'])
                 ->name('vendedores');
+            Route::get('/vendedores/{ano}/{mes}', [\App\Http\Controllers\Master\ComissoesVendedoresController::class, 'mes'])
+                ->name('vendedores.mes');
+            Route::get('/vendedores/{ano}/{mes}/previsao', [\App\Http\Controllers\Master\ComissoesVendedoresController::class, 'previsao'])
+                ->name('vendedores.previsao');
+            Route::get('/vendedores/{ano}/{mes}/efetivada', [\App\Http\Controllers\Master\ComissoesVendedoresController::class, 'efetivada'])
+                ->name('vendedores.efetivada');
+            Route::get('/vendedores/{ano}/{mes}/inadimplentes', [\App\Http\Controllers\Master\ComissoesVendedoresController::class, 'inadimplentes'])
+                ->name('vendedores.inadimplentes');
         });
 
         // Tabela de PreÃ§os (master reutiliza o mesmo conteÃºdo da Ã¡rea comercial)

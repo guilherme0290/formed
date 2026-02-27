@@ -3,29 +3,27 @@
 namespace App\Http\Controllers\Master;
 
 use App\Http\Controllers\Controller;
+use App\Models\Cliente;
 use App\Models\Comissao;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\View\View;
 
 class ComissoesVendedoresController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request): View
     {
         $empresaId = $request->user()->empresa_id ?? null;
         [$anos, $anoSelecionado] = $this->anosDisponiveis($empresaId, $request->integer('ano'));
 
-        $vendedorId = $request->integer('vendedor');
+        $vendedorId = $this->vendedorSelecionado($request, $empresaId);
         $vendedores = $this->vendedoresDaEmpresa($empresaId);
-
-        // se vendedor enviado não existe ou não pertence, zera
-        if ($vendedorId && !$vendedores->has($vendedorId)) {
-            $vendedorId = null;
-        }
-
         $vendedoresIds = $vendedores->keys()->filter()->values()->all();
+
         $meses = $this->mesesResumo($empresaId, $anoSelecionado, $vendedorId, $vendedoresIds);
         $ranking = $this->rankingVendedores($empresaId, $anoSelecionado, $vendedorId, $vendedoresIds);
 
@@ -37,6 +35,61 @@ class ComissoesVendedoresController extends Controller
             'meses' => $meses,
             'ranking' => $ranking,
         ]);
+    }
+
+    public function mes(Request $request, int $ano, int $mes): RedirectResponse
+    {
+        return redirect()->route('master.comissoes.vendedores.previsao', [
+            'ano' => $ano,
+            'mes' => $mes,
+            'vendedor' => $request->integer('vendedor') ?: null,
+        ]);
+    }
+
+    public function previsao(Request $request, int $ano, int $mes): View
+    {
+        $empresaId = $request->user()->empresa_id ?? null;
+        $vendedorId = $this->vendedorSelecionado($request, $empresaId);
+        $vendedoresIds = $this->vendedoresDaEmpresa($empresaId)->keys()->filter()->values()->all();
+
+        $clientes = $this->agrupadoPorCliente($empresaId, $ano, $mes, ['PENDENTE', 'PAGA'], $vendedorId, $vendedoresIds);
+        $detalhesPorCliente = $this->agrupadoPorClienteEServico($empresaId, $ano, $mes, ['PENDENTE', 'PAGA'], $vendedorId, $vendedoresIds);
+
+        return view('master.comissoes.previsao', compact('clientes', 'detalhesPorCliente', 'ano', 'mes', 'vendedorId'));
+    }
+
+    public function efetivada(Request $request, int $ano, int $mes): View
+    {
+        $empresaId = $request->user()->empresa_id ?? null;
+        $vendedorId = $this->vendedorSelecionado($request, $empresaId);
+        $vendedoresIds = $this->vendedoresDaEmpresa($empresaId)->keys()->filter()->values()->all();
+
+        $clientes = $this->agrupadoPorCliente($empresaId, $ano, $mes, ['PAGA'], $vendedorId, $vendedoresIds);
+
+        return view('master.comissoes.efetivada', compact('clientes', 'ano', 'mes', 'vendedorId'));
+    }
+
+    public function inadimplentes(Request $request, int $ano, int $mes): View
+    {
+        $empresaId = $request->user()->empresa_id ?? null;
+        $vendedorId = $this->vendedorSelecionado($request, $empresaId);
+        $vendedoresIds = $this->vendedoresDaEmpresa($empresaId)->keys()->filter()->values()->all();
+
+        $clientes = $this->agrupadoPorCliente($empresaId, $ano, $mes, ['PENDENTE'], $vendedorId, $vendedoresIds);
+
+        return view('master.comissoes.inadimplentes', compact('clientes', 'ano', 'mes', 'vendedorId'));
+    }
+
+    private function vendedorSelecionado(Request $request, ?int $empresaId): ?int
+    {
+        $vendedores = $this->vendedoresDaEmpresa($empresaId);
+        $vendedorId = $request->integer('vendedor');
+
+        if ($vendedorId && !$vendedores->has($vendedorId)) {
+            return null;
+        }
+
+        return $vendedorId ?: null;
     }
 
     private function anosDisponiveis(?int $empresaId, ?int $anoInput): array
@@ -130,15 +183,21 @@ class ComissoesVendedoresController extends Controller
         });
     }
 
-    private function rankingVendedores(?int $empresaId, int $ano, ?int $vendedorId = null, array $vendedoresIds = []): Collection
-    {
+    private function rankingVendedores(
+        ?int $empresaId,
+        int $ano,
+        ?int $vendedorId = null,
+        array $vendedoresIds = []
+    ): Collection {
         $comerciais = $this->vendedoresDaEmpresa($empresaId);
         $ids = !empty($vendedoresIds)
             ? $vendedoresIds
             : $comerciais->keys()->filter()->toArray();
+
         if ($vendedorId) {
             $ids = array_values(array_intersect($ids, [$vendedorId]));
         }
+
         if (empty($ids)) {
             return collect();
         }
@@ -159,7 +218,87 @@ class ComissoesVendedoresController extends Controller
                 'total' => $totais[$user->id]->total ?? 0,
             ];
             $row->vendedor = $user;
+
             return $row;
         })->sortByDesc('total')->values();
     }
+
+    private function agrupadoPorCliente(
+        ?int $empresaId,
+        int $ano,
+        int $mes,
+        array $status,
+        ?int $vendedorId,
+        array $vendedoresIds
+    ): Collection {
+        $rows = $this->baseQuery($empresaId, $ano, $mes, $vendedorId, $vendedoresIds)
+            ->whereIn('comissoes.status', $status)
+            ->select('comissoes.cliente_id')
+            ->selectRaw('SUM(comissoes.valor_comissao) as total')
+            ->groupBy('comissoes.cliente_id')
+            ->orderByDesc('total')
+            ->get();
+
+        $clientes = Cliente::whereIn('id', $rows->pluck('cliente_id'))->get()->keyBy('id');
+
+        return $rows->map(function ($row) use ($clientes) {
+            $row->cliente = $clientes->get($row->cliente_id);
+
+            return $row;
+        });
+    }
+
+    private function agrupadoPorClienteEServico(
+        ?int $empresaId,
+        int $ano,
+        int $mes,
+        array $status,
+        ?int $vendedorId,
+        array $vendedoresIds
+    ): Collection {
+        $rows = $this->baseQuery($empresaId, $ano, $mes, $vendedorId, $vendedoresIds)
+            ->leftJoin('servicos', 'servicos.id', '=', 'comissoes.servico_id')
+            ->whereIn('comissoes.status', $status)
+            ->select('comissoes.cliente_id')
+            ->selectRaw("COALESCE(servicos.nome, CONCAT('Servi�o #', comissoes.servico_id)) as servico_nome")
+            ->selectRaw('SUM(comissoes.valor_comissao) as total')
+            ->selectRaw('COUNT(comissoes.id) as quantidade')
+            ->groupBy('comissoes.cliente_id', 'comissoes.servico_id', 'servicos.nome')
+            ->orderByDesc('total')
+            ->get();
+
+        return $rows->groupBy('cliente_id');
+    }
+
+    private function baseQuery(?int $empresaId, int $ano, int $mes, ?int $vendedorId, array $vendedoresIds)
+    {
+        $query = Comissao::query()
+            ->leftJoin('clientes', 'clientes.id', '=', 'comissoes.cliente_id')
+            ->when($empresaId, fn ($q) => $q->where('comissoes.empresa_id', $empresaId))
+            ->whereYear(DB::raw('COALESCE(comissoes.gerada_em, comissoes.created_at)'), $ano)
+            ->whereMonth(DB::raw('COALESCE(comissoes.gerada_em, comissoes.created_at)'), $mes);
+
+        if ($vendedorId) {
+            $query->where(function ($q) use ($vendedorId) {
+                $q->where('comissoes.vendedor_id', $vendedorId)
+                    ->orWhere(function ($sub) use ($vendedorId) {
+                        $sub->whereNull('comissoes.vendedor_id')
+                            ->where('clientes.vendedor_id', $vendedorId);
+                    });
+            });
+        } elseif (!empty($vendedoresIds)) {
+            $query->where(function ($q) use ($vendedoresIds) {
+                $q->whereIn('comissoes.vendedor_id', $vendedoresIds)
+                    ->orWhere(function ($sub) use ($vendedoresIds) {
+                        $sub->whereNull('comissoes.vendedor_id')
+                            ->whereIn('clientes.vendedor_id', $vendedoresIds);
+                    });
+            });
+        }
+
+        return $query;
+    }
 }
+
+
+
