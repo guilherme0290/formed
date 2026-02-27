@@ -81,6 +81,11 @@ window.initTailwindAutocomplete = (inputRef, listRef, options = [], config = {})
     if (!input || !list) return;
 
     const maxItems = Number(config.maxItems || 10);
+    const dataset = Array.from(new Set((Array.isArray(options) ? options : [])
+        .map((value) => (value ?? '').toString().trim())
+        .filter(Boolean)));
+    let filteredItems = [];
+    let activeIndex = -1;
 
     const normalize = (value) => (value || '')
         .toString()
@@ -88,45 +93,113 @@ window.initTailwindAutocomplete = (inputRef, listRef, options = [], config = {})
         .replace(/[\u0300-\u036f]/g, '')
         .toLowerCase();
 
+    const closeList = () => {
+        list.classList.add('hidden');
+        activeIndex = -1;
+    };
+
+    const setActive = (nextIndex) => {
+        const buttons = Array.from(list.querySelectorAll('[data-autocomplete-item="1"]'));
+        buttons.forEach((btn, idx) => {
+            const isActive = idx === nextIndex;
+            btn.classList.toggle('bg-blue-50', isActive);
+            btn.classList.toggle('text-blue-700', isActive);
+            btn.classList.toggle('font-semibold', isActive);
+            if (isActive) {
+                btn.scrollIntoView({ block: 'nearest' });
+            }
+        });
+    };
+
+    const selectItem = (value) => {
+        input.value = value;
+        closeList();
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+
     const render = (items) => {
         list.innerHTML = '';
         if (!items.length) {
-            list.classList.add('hidden');
+            closeList();
             return;
         }
 
-        items.forEach((value) => {
+        filteredItems = items;
+        activeIndex = 0;
+
+        items.forEach((value, idx) => {
             const btn = document.createElement('button');
             btn.type = 'button';
-            btn.className = 'w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50';
+            btn.setAttribute('data-autocomplete-item', '1');
+            btn.className = 'w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 transition';
             btn.textContent = value;
+            btn.addEventListener('mouseenter', () => {
+                activeIndex = idx;
+                setActive(activeIndex);
+            });
             btn.addEventListener('click', () => {
-                input.value = value;
-                list.classList.add('hidden');
-                input.dispatchEvent(new Event('input', { bubbles: true }));
+                selectItem(value);
             });
             list.appendChild(btn);
         });
 
         list.classList.remove('hidden');
+        setActive(activeIndex);
+    };
+
+    const filterOptions = () => {
+        const query = normalize(input.value);
+        const filtered = dataset
+            .filter((value) => !query || normalize(value).includes(query))
+            .slice(0, maxItems);
+        render(filtered);
     };
 
     input.addEventListener('input', () => {
-        const query = normalize(input.value);
-        if (!query) {
-            list.classList.add('hidden');
+        filterOptions();
+    });
+
+    input.addEventListener('focus', () => {
+        filterOptions();
+    });
+
+    input.addEventListener('keydown', (event) => {
+        if (list.classList.contains('hidden')) return;
+        if (!filteredItems.length) return;
+
+        if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            activeIndex = (activeIndex + 1) % filteredItems.length;
+            setActive(activeIndex);
             return;
         }
 
-        const filtered = options
-            .filter((value) => normalize(value).includes(query))
-            .slice(0, maxItems);
-        render(filtered);
+        if (event.key === 'ArrowUp') {
+            event.preventDefault();
+            activeIndex = (activeIndex - 1 + filteredItems.length) % filteredItems.length;
+            setActive(activeIndex);
+            return;
+        }
+
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            const selected = filteredItems[activeIndex] ?? filteredItems[0];
+            if (selected) {
+                selectItem(selected);
+            }
+            return;
+        }
+
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            closeList();
+        }
     });
 
     document.addEventListener('click', (event) => {
         if (!list.contains(event.target) && event.target !== input) {
-            list.classList.add('hidden');
+            closeList();
         }
     });
 };

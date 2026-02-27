@@ -3,7 +3,53 @@
 @section('page-container', 'w-full px-0 py-3')
 
 @section('content')
+    <style>
+        .agenda-empty-float {
+            animation: agendaFloat 3.2s ease-in-out infinite;
+        }
+
+        .agenda-empty-tilt {
+            animation: agendaTilt 4.8s ease-in-out infinite;
+            transform-origin: 50% 60%;
+        }
+
+        .agenda-empty-shadow {
+            animation: agendaShadow 3.2s ease-in-out infinite;
+        }
+
+        .agenda-empty-dot-1 {
+            animation: agendaDot 2.3s ease-in-out infinite;
+        }
+
+        .agenda-empty-dot-2 {
+            animation: agendaDot 2.3s ease-in-out infinite 0.6s;
+        }
+
+        @keyframes agendaFloat {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-9px); }
+        }
+
+        @keyframes agendaTilt {
+            0%, 100% { transform: rotate(-2deg); }
+            50% { transform: rotate(2deg); }
+        }
+
+        @keyframes agendaShadow {
+            0%, 100% { transform: scale(1); opacity: .25; }
+            50% { transform: scale(.86); opacity: .15; }
+        }
+
+        @keyframes agendaDot {
+            0%, 100% { transform: translateY(0px); opacity: .45; }
+            50% { transform: translateY(-8px); opacity: .95; }
+        }
+    </style>
+
     <div class="w-full px-4 md:px-6 lg:px-10 py-3 space-y-4">
+        @php
+            $agendaFiltroQuery = $isMaster ? ['vendedor' => $vendedorSelecionado] : [];
+        @endphp
 
         <header class="space-y-1">
             <h1 class="text-2xl md:text-3xl font-semibold text-slate-900">Painel Comercial</h1>
@@ -19,7 +65,8 @@
         @endif
 
         <section>
-            <div class="rounded-xl shadow overflow-hidden bg-gradient-to-r from-indigo-700 via-indigo-600 to-blue-600">
+            <div class="rounded-xl shadow overflow-hidden bg-gradient-to-r from-indigo-700 via-indigo-600 to-blue-600 {{ $isMaster ? 'cursor-pointer hover:opacity-95 transition' : '' }}"
+                 @if($isMaster) onclick="window.location='{{ route('master.comissoes.vendedores') }}'" @endif>
                 <div class="px-4 md:px-6 py-2 border-b border-white/10 flex flex-wrap items-center justify-between gap-2">
                     <h2 class="text-sm md:text-base font-semibold text-white">
                         Ranking de Vendedores - {{ $ranking['mesAtual'] ?? now()->translatedFormat('F Y') }}
@@ -85,24 +132,24 @@
         </section>
 
         <section class="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <article class="rounded-xl border border-indigo-100 bg-indigo-50/60 px-4 py-3">
+            <article class="rounded-xl border border-indigo-100 bg-indigo-50/60 px-4 py-2.5">
                 <p class="text-[11px] uppercase tracking-wide text-indigo-700 font-semibold">Total de compromissos em aberto</p>
-                <p class="text-2xl font-bold text-indigo-900 mt-1">{{ $agendaKpis['aberto_total'] ?? 0 }}</p>
+                <p class="text-xl font-bold text-indigo-900 mt-1">{{ $agendaKpis['aberto_total'] ?? 0 }}</p>
             </article>
-            <article class="rounded-xl border border-amber-100 bg-amber-50/70 px-4 py-3">
+            <article class="rounded-xl border border-amber-100 bg-amber-50/70 px-4 py-2.5">
                 <p class="text-[11px] uppercase tracking-wide text-amber-700 font-semibold">Pendentes do dia</p>
-                <p class="text-2xl font-bold text-amber-800 mt-1">{{ $agendaKpis['pendentes_dia'] ?? 0 }}</p>
+                <p class="text-xl font-bold text-amber-800 mt-1">{{ $agendaKpis['pendentes_dia'] ?? 0 }}</p>
             </article>
-            <article class="rounded-xl border border-emerald-100 bg-emerald-50/70 px-4 py-3">
+            <article class="rounded-xl border border-emerald-100 bg-emerald-50/70 px-4 py-2.5">
                 <p class="text-[11px] uppercase tracking-wide text-emerald-700 font-semibold">Conclu&iacute;das do dia</p>
-                <p class="text-2xl font-bold text-emerald-800 mt-1">{{ $agendaKpis['concluidas_dia'] ?? 0 }}</p>
+                <p class="text-xl font-bold text-emerald-800 mt-1">{{ $agendaKpis['concluidas_dia'] ?? 0 }}</p>
             </article>
         </section>
 
         <section class="bg-white rounded-xl border border-indigo-100 shadow-sm overflow-hidden">
             <div class="bg-gradient-to-r from-indigo-700 via-indigo-600 to-blue-600 text-white px-3 py-2 flex items-center justify-between gap-2 flex-wrap">
                 <div class="flex items-center gap-2">
-                    <a href="{{ route('comercial.dashboard', ['agenda_data' => $agendaMesAnterior->toDateString(), 'agenda_dia' => $agendaMesAnterior->copy()->startOfMonth()->toDateString()]) }}"
+                    <a href="{{ route('comercial.dashboard', array_merge(['agenda_data' => $agendaMesAnterior->toDateString(), 'agenda_dia' => $agendaMesAnterior->copy()->startOfMonth()->toDateString()], $agendaFiltroQuery)) }}"
                        class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-semibold">
                         M&ecirc;s anterior
                     </a>
@@ -112,6 +159,18 @@
                                value="{{ $agendaDataSelecionada->format('Y-m') }}"
                                onchange="this.form.submit()"
                                class="px-2.5 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-semibold text-white border border-white/20">
+                        @if($isMaster)
+                            <select name="vendedor"
+                                    onchange="this.form.submit()"
+                                    class="px-2.5 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-semibold text-white border border-white/20">
+                                <option value="todos" @selected($vendedorSelecionado === 'todos') style="color:#0f172a;background:#ffffff;">Todos os vendedores</option>
+                                @foreach ($vendedores as $vendedor)
+                                    <option value="{{ $vendedor->id }}" @selected((string) $vendedor->id === (string) $vendedorSelecionado) style="color:#0f172a;background:#ffffff;">
+                                        {{ $vendedor->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        @endif
                     </form>
                 </div>
 
@@ -121,11 +180,13 @@
                 </div>
 
                 <div class="flex items-center gap-2">
-                    <button type="button" id="btnAbrirModalAgenda"
-                            class="px-3 py-2 rounded-lg bg-blue-500 hover:bg-blue-400 text-xs font-semibold">
-                        Nova tarefa
-                    </button>
-                    <a href="{{ route('comercial.dashboard', ['agenda_data' => $agendaMesProximo->toDateString(), 'agenda_dia' => $agendaMesProximo->copy()->startOfMonth()->toDateString()]) }}"
+                    @if(!$isMaster)
+                        <button type="button" id="btnAbrirModalAgenda"
+                                class="px-3 py-2 rounded-lg bg-blue-500 hover:bg-blue-400 text-xs font-semibold">
+                            Nova tarefa
+                        </button>
+                    @endif
+                    <a href="{{ route('comercial.dashboard', array_merge(['agenda_data' => $agendaMesProximo->toDateString(), 'agenda_dia' => $agendaMesProximo->copy()->startOfMonth()->toDateString()], $agendaFiltroQuery)) }}"
                        class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-semibold">
                         Pr&oacute;ximo m&ecirc;s
                     </a>
@@ -181,18 +242,19 @@
                         </div>
                         <div class="p-3 space-y-3 h-[390px] overflow-y-auto" id="agendaSideConteudo">
                             <div class="h-full min-h-[240px] flex flex-col items-center justify-start pt-6 text-center gap-3">
-                                <div class="relative w-[280px] h-[280px]">
-                                    <div id="agenda-empty-lottie" class="absolute inset-0"></div>
-                                    <div id="agenda-empty-fallback" class="absolute inset-0 flex items-center justify-center text-indigo-400 transition-opacity duration-300">
-                                        <span class="relative inline-flex items-center justify-center">
-                                            <span class="absolute inline-flex h-28 w-28 rounded-full bg-indigo-200/60 animate-ping"></span>
-                                            <i class="fa-solid fa-calendar-days text-8xl animate-pulse relative"></i>
+                                <div class="relative w-[220px] h-[220px] flex items-center justify-center">
+                                    <span class="absolute h-20 w-24 rounded-[999px] bg-indigo-900/20 blur-sm agenda-empty-shadow"></span>
+                                    <span class="absolute left-16 top-16 h-3 w-3 rounded-full bg-indigo-300 agenda-empty-dot-1"></span>
+                                    <span class="absolute right-16 top-20 h-2.5 w-2.5 rounded-full bg-sky-300 agenda-empty-dot-2"></span>
+                                    <span class="agenda-empty-float">
+                                        <span class="agenda-empty-tilt relative inline-flex h-24 w-24 items-center justify-center rounded-2xl border border-indigo-200 bg-white shadow-lg">
+                                            <i class="fa-regular fa-file-lines text-5xl text-indigo-500"></i>
                                         </span>
-                                    </div>
+                                    </span>
                                 </div>
                                 <div>
-                                    <p class="text-sm font-semibold text-slate-700">Sem compromisso para hoje</p>
-                                    <p class="text-xs text-slate-500 mt-1">Selecione outro dia ou crie uma nova tarefa.</p>
+                                    <p class="text-sm font-semibold text-slate-700">Nenhum compromisso para esta data.</p>
+                                    <p class="text-xs text-slate-500 mt-1">Use o botão "Nova tarefa" para registrar seu próximo lembrete.</p>
                                 </div>
                             </div>
                         </div>
@@ -208,43 +270,55 @@
                         @php
                             $isConcluida = $tarefa->status === 'CONCLUIDA';
                             $cardClasses = $isConcluida
-                                ? 'bg-emerald-50/40 border-emerald-200'
-                                : 'bg-amber-50/40 border-amber-200';
+                                ? 'bg-white border-emerald-200'
+                                : 'bg-white border-amber-200';
                             $accentClasses = $isConcluida
                                 ? 'border-l-emerald-500'
                                 : 'border-l-amber-500';
                         @endphp
-                        <div class="rounded-lg border border-l-4 shadow-sm px-3 py-2.5 space-y-2 {{ $cardClasses }} {{ $accentClasses }}">
-                            <div class="flex items-start justify-between gap-3">
+                        <div class="rounded-2xl border border-l-4 shadow-sm hover:shadow-lg transition px-4 py-3 space-y-3 {{ $cardClasses }} {{ $accentClasses }}">
+                            <div class="flex items-start justify-between gap-3 pb-2 border-b border-slate-100">
                                 <div class="min-w-0">
-                                    <p class="text-[15px] leading-tight font-semibold text-slate-900 truncate">{{ $tarefa->titulo }}</p>
-                                    @if($tarefa->descricao)
-                                        <p class="text-xs text-slate-600 mt-0.5 line-clamp-2">{{ $tarefa->descricao }}</p>
-                                    @endif
+                                    <p class="text-base leading-tight font-semibold text-slate-900 truncate">{{ $tarefa->titulo }}</p>
                                 </div>
-                                <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap {{ $isConcluida ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700' }}">
+                                <span class="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold whitespace-nowrap {{ $isConcluida ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700' }}">
                                     {!! $isConcluida ? 'Conclu&iacute;da' : 'Pendente' !!}
                                 </span>
                             </div>
-                            <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
-                                <div><span class="font-medium text-slate-600">Hora:</span> {{ $tarefa->hora?->format('H:i') ?? '--:--' }}</div>
+                            @if($tarefa->descricao)
+                                <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                                    {{ $tarefa->descricao }}
+                                </div>
+                            @endif
+                            <div class="flex flex-wrap items-center gap-2 text-xs">
+                                <span class="inline-flex items-center gap-1 rounded-lg bg-slate-100 text-slate-700 px-2.5 py-1">
+                                    <i class="fa-regular fa-clock"></i> {{ $tarefa->hora?->format('H:i') ?? '--:--' }}
+                                </span>
                                 @if($tarefa->cliente)
-                                    <div><span class="font-medium text-slate-600">Cliente:</span> {{ $tarefa->cliente }}</div>
+                                    <span class="inline-flex items-center gap-1 rounded-lg bg-blue-50 text-blue-700 px-2.5 py-1">
+                                        <i class="fa-regular fa-user"></i> {{ $tarefa->cliente }}
+                                    </span>
+                                @endif
+                                @if($isMaster)
+                                    <span class="inline-flex items-center gap-1 rounded-lg bg-indigo-50 text-indigo-700 px-2.5 py-1">
+                                        <i class="fa-solid fa-briefcase"></i> {{ $tarefa->usuario?->name ?? 'Nao informado' }}
+                                    </span>
                                 @endif
                             </div>
-                            <div class="flex flex-wrap items-center justify-end gap-1.5 text-xs">
-                                @if (!$isConcluida)
+                            <div class="flex flex-wrap items-center justify-end gap-2 text-xs pt-1">
+                                @if (!$isConcluida && !$isMaster)
                                     <form method="POST" action="{{ route('comercial.agenda.concluir', $tarefa) }}">
                                         @csrf
                                         @method('PATCH')
                                         <input type="hidden" name="origem" value="dashboard">
                                         <input type="hidden" name="agenda_data" value="{{ $agendaDataSelecionada->toDateString() }}">
-                                        <button class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-emerald-600 text-white hover:bg-emerald-700">
+                                        <button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700">
+                                            <i class="fa-solid fa-check text-[10px]"></i>
                                             Concluir
                                         </button>
                                     </form>
                                     <button type="button"
-                                            class="js-editar-agenda inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-900 text-white hover:bg-slate-800"
+                                            class="js-editar-agenda inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 text-white hover:bg-slate-800"
                                             data-id="{{ $tarefa->id }}"
                                             data-titulo="{{ $tarefa->titulo }}"
                                             data-descricao="{{ $tarefa->descricao }}"
@@ -253,6 +327,7 @@
                                             data-data="{{ $tarefa->data?->toDateString() }}"
                                             data-hora="{{ $tarefa->hora?->format('H:i') }}"
                                             data-cliente="{{ $tarefa->cliente }}">
+                                        <i class="fa-solid fa-pen text-[10px]"></i>
                                         Editar
                                     </button>
                                     <form method="POST" action="{{ route('comercial.agenda.destroy', $tarefa) }}" data-confirm="Remover esta tarefa?">
@@ -260,7 +335,8 @@
                                         @method('DELETE')
                                         <input type="hidden" name="origem" value="dashboard">
                                         <input type="hidden" name="agenda_data" value="{{ $agendaDataSelecionada->toDateString() }}">
-                                        <button class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-white border border-rose-200 text-rose-700 hover:bg-rose-50">
+                                        <button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-rose-200 text-rose-700 hover:bg-rose-50">
+                                            <i class="fa-regular fa-trash-can text-[10px]"></i>
                                             Excluir
                                         </button>
                                     </form>
@@ -419,8 +495,6 @@
         })();
     </script>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script>
-
     @if(session('ok'))
         <div id="successPopup" class="fixed inset-0 z-[120] flex items-center justify-center bg-black/35 p-4">
             <div class="w-full max-w-sm rounded-2xl border border-emerald-200 bg-white shadow-xl overflow-hidden">
@@ -462,143 +536,29 @@
         (function () {
             const label = document.getElementById('agendaSideLabel');
             const content = document.getElementById('agendaSideConteudo');
-            let emptyLottieInstance = null;
-            let lottieLoaderPromise = null;
             const emptyStateHtml = `
                 <div class="h-full min-h-[240px] flex flex-col items-center justify-start pt-6 text-center gap-3">
-                    <div class="relative w-[280px] h-[280px]">
-                        <div id="agenda-empty-lottie" class="absolute inset-0"></div>
-                        <div id="agenda-empty-fallback" class="absolute inset-0 flex items-center justify-center text-indigo-400 transition-opacity duration-300">
-                            <span class="relative inline-flex items-center justify-center">
-                                <span class="absolute inline-flex h-28 w-28 rounded-full bg-indigo-200/60 animate-ping"></span>
-                                <i class="fa-solid fa-calendar-days text-8xl animate-pulse relative"></i>
+                    <div class="relative w-[220px] h-[220px] flex items-center justify-center">
+                        <span class="absolute h-20 w-24 rounded-[999px] bg-indigo-900/20 blur-sm agenda-empty-shadow"></span>
+                        <span class="absolute left-16 top-16 h-3 w-3 rounded-full bg-indigo-300 agenda-empty-dot-1"></span>
+                        <span class="absolute right-16 top-20 h-2.5 w-2.5 rounded-full bg-sky-300 agenda-empty-dot-2"></span>
+                        <span class="agenda-empty-float">
+                            <span class="agenda-empty-tilt relative inline-flex h-24 w-24 items-center justify-center rounded-2xl border border-indigo-200 bg-white shadow-lg">
+                                <i class="fa-regular fa-file-lines text-5xl text-indigo-500"></i>
                             </span>
-                        </div>
+                        </span>
                     </div>
                     <div>
-                        <p class="text-sm font-semibold text-slate-700">Sem compromisso para hoje</p>
-                        <p class="text-xs text-slate-500 mt-1">Selecione outro dia ou crie uma nova tarefa.</p>
+                        <p class="text-sm font-semibold text-slate-700">Nenhum compromisso para esta data.</p>
+                        <p class="text-xs text-slate-500 mt-1">Use o botão "Nova tarefa" para registrar seu próximo lembrete.</p>
                     </div>
                 </div>
             `;
-
-            function ensureLottieLoaded() {
-                if (typeof window.lottie !== 'undefined') {
-                    return Promise.resolve(window.lottie);
-                }
-                if (lottieLoaderPromise) {
-                    return lottieLoaderPromise;
-                }
-
-                const scriptSources = [
-                    'https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js',
-                    'https://cdn.jsdelivr.net/npm/lottie-web@5.12.2/build/player/lottie.min.js',
-                    'https://unpkg.com/lottie-web@5.12.2/build/player/lottie.min.js',
-                ];
-
-                lottieLoaderPromise = new Promise((resolve, reject) => {
-                    let index = 0;
-
-                    const loadNext = () => {
-                        if (typeof window.lottie !== 'undefined') {
-                            resolve(window.lottie);
-                            return;
-                        }
-                        if (index >= scriptSources.length) {
-                            reject(new Error('Lottie library unavailable'));
-                            return;
-                        }
-
-                        const src = scriptSources[index++];
-                        const script = document.createElement('script');
-                        script.src = src;
-                        script.async = true;
-                        script.onload = () => {
-                            if (typeof window.lottie !== 'undefined') {
-                                resolve(window.lottie);
-                                return;
-                            }
-                            loadNext();
-                        };
-                        script.onerror = loadNext;
-                        document.head.appendChild(script);
-                    };
-
-                    loadNext();
-                });
-
-                return lottieLoaderPromise;
-            }
-
-            function initEmptyLottie() {
-                const el = document.getElementById('agenda-empty-lottie');
-                const fallback = document.getElementById('agenda-empty-fallback');
-                if (!el) return;
-                if (fallback) {
-                    fallback.classList.remove('hidden', 'opacity-20');
-                    fallback.classList.add('opacity-100');
-                }
-                if (emptyLottieInstance) {
-                    emptyLottieInstance.destroy();
-                    emptyLottieInstance = null;
-                }
-
-                const animationPaths = [
-                    @json(asset('animations/agenda-empty-local.json')),
-                ];
-
-                const tryLoad = (index = 0) => {
-                    if (typeof window.lottie === 'undefined') return;
-                    if (index >= animationPaths.length) {
-                        if (fallback) fallback.classList.remove('hidden');
-                        return;
-                    }
-
-                    emptyLottieInstance = window.lottie.loadAnimation({
-                        container: el,
-                        renderer: 'svg',
-                        loop: true,
-                        autoplay: true,
-                        path: animationPaths[index],
-                    });
-
-                    emptyLottieInstance.addEventListener('DOMLoaded', () => {
-                        if (fallback) {
-                            fallback.classList.remove('hidden', 'opacity-20');
-                            fallback.classList.add('opacity-100');
-                        }
-                    });
-
-                    emptyLottieInstance.addEventListener('data_failed', () => {
-                        if (emptyLottieInstance) {
-                            emptyLottieInstance.destroy();
-                            emptyLottieInstance = null;
-                        }
-                        tryLoad(index + 1);
-                    });
-                };
-
-                ensureLottieLoaded()
-                    .then(() => tryLoad(0))
-                    .catch(() => {
-                        if (fallback) {
-                            fallback.classList.remove('hidden', 'opacity-20');
-                            fallback.classList.add('opacity-100');
-                        }
-                    });
-            }
 
             function updateSidePanel(dateLabel, html, hasItems, taskCount = 0) {
                 if (!content || !label) return;
                 label.textContent = dateLabel;
                 content.innerHTML = hasItems ? html : emptyStateHtml;
-
-                if (!hasItems) {
-                    initEmptyLottie();
-                } else if (emptyLottieInstance) {
-                    emptyLottieInstance.destroy();
-                    emptyLottieInstance = null;
-                }
             }
 
             document.querySelectorAll('.agenda-dia').forEach(btn => {

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Cliente;
 use App\Models\Comissao;
 use Carbon\Carbon;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -46,24 +47,11 @@ class MinhasComissoesController extends Controller
         ]);
     }
 
-    public function mes(Request $request, int $ano, int $mes): View
+    public function mes(Request $request, int $ano, int $mes): RedirectResponse
     {
-        $user = $request->user();
-        [$anosDisponiveis, $anoSelecionado] = $this->anosDisponiveis($request, $ano);
-
-        $base = $this->baseQuery($user->id, $user->empresa_id, $anoSelecionado, $mes);
-
-        $totais = $base->clone()
-            ->selectRaw("SUM(CASE WHEN comissoes.status != 'CANCELADA' THEN comissoes.valor_comissao ELSE 0 END) as previsao")
-            ->selectRaw("SUM(CASE WHEN comissoes.status = 'PAGA' THEN comissoes.valor_comissao ELSE 0 END) as efetivada")
-            ->selectRaw("COUNT(DISTINCT CASE WHEN comissoes.status = 'PENDENTE' THEN comissoes.cliente_id END) as inadimplentes")
-            ->first();
-
-        return view('comercial.comissoes.mes', [
-            'anos' => $anosDisponiveis,
-            'anoSelecionado' => $anoSelecionado,
+        return redirect()->route('comercial.comissoes.previsao', [
+            'ano' => $ano,
             'mes' => $mes,
-            'totais' => $totais,
         ]);
     }
 

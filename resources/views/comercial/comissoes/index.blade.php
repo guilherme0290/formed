@@ -1,5 +1,5 @@
 @extends('layouts.comercial')
-@section('title', 'Minhas Comissões')
+@section('title', 'Minhas Comiss&otilde;es')
 @section('page-container', 'w-full p-0')
 
 @section('content')
@@ -21,9 +21,9 @@
         <header class="rounded-xl border border-indigo-100 bg-gradient-to-r from-indigo-700 via-indigo-600 to-blue-600 px-4 py-3 text-white">
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                    <p class="text-xs uppercase tracking-[0.2em] text-indigo-100">Minhas Comissões</p>
-                    <h1 class="text-xl md:text-2xl font-semibold">Visão Geral</h1>
-                    <p class="text-xs text-indigo-100 mt-1">Acompanhe suas comissões por ano.</p>
+                    <p class="text-xs uppercase tracking-[0.2em] text-indigo-100">Minhas Comiss&otilde;es</p>
+                    <h1 class="text-xl md:text-2xl font-semibold">Vis&atilde;o Geral</h1>
+                    <p class="text-xs text-indigo-100 mt-1">Acompanhe suas comiss&otilde;es por ano.</p>
                 </div>
                 <div class="flex items-center gap-2">
                     <a href="{{ route('comercial.dashboard') }}"
@@ -46,7 +46,8 @@
                     $theme = $cardThemes[($mes->mes - 1) % count($cardThemes)];
                 @endphp
 
-                <article class="rounded-xl border {{ $theme['border'] }} {{ $theme['bg'] }} shadow-sm p-4 flex h-full flex-col gap-3 text-left">
+                <a href="{{ route('comercial.comissoes.previsao', ['ano' => $anoSelecionado, 'mes' => $mes->mes]) }}"
+                   class="rounded-xl border {{ $theme['border'] }} {{ $theme['bg'] }} shadow-sm p-4 flex h-full flex-col gap-3 text-left transition hover:shadow-md hover:-translate-y-[1px] cursor-pointer">
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-xs font-semibold uppercase tracking-wide text-orange-500">{{ $mes->nome }}</p>
@@ -67,19 +68,17 @@
                     </div>
 
                     <div class="grid grid-cols-2 gap-2">
-                        <a href="{{ route('comercial.comissoes.previsao', ['ano' => $anoSelecionado, 'mes' => $mes->mes]) }}"
-                           class="rounded-lg {{ $theme['box'] }} px-2.5 py-2 transition hover:bg-slate-200/80">
+                        <div class="rounded-lg {{ $theme['box'] }} px-2.5 py-2">
                             <p class="text-[11px] font-semibold uppercase tracking-wide text-orange-500">Previsto</p>
                             <p class="text-sm font-semibold text-slate-900">R$ {{ number_format($mes->total_previsto ?? 0, 2, ',', '.') }}</p>
-                        </a>
+                        </div>
 
-                        <a href="{{ route('comercial.comissoes.efetivada', ['ano' => $anoSelecionado, 'mes' => $mes->mes]) }}"
-                           class="rounded-lg {{ $theme['box'] }} px-2.5 py-2 transition hover:bg-slate-200/80">
+                        <div class="rounded-lg {{ $theme['box'] }} px-2.5 py-2">
                             <p class="text-[11px] font-semibold uppercase tracking-wide text-emerald-600">Efetivado</p>
                             <p class="text-sm font-semibold text-slate-900">R$ {{ number_format($mes->total_efetivado ?? 0, 2, ',', '.') }}</p>
-                        </a>
+                        </div>
                     </div>
-                </article>
+                </a>
             @endforeach
         </div>
 
