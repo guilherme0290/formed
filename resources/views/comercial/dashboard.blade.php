@@ -181,10 +181,13 @@
                         </div>
                         <div class="p-3 space-y-3 h-[390px] overflow-y-auto" id="agendaSideConteudo">
                             <div class="h-full min-h-[240px] flex flex-col items-center justify-start pt-6 text-center gap-3">
-                                <div class="relative w-[180px] h-[180px]">
+                                <div class="relative w-[280px] h-[280px]">
                                     <div id="agenda-empty-lottie" class="absolute inset-0"></div>
-                                    <div id="agenda-empty-fallback" class="absolute inset-0 flex items-center justify-center text-indigo-400">
-                                        <i class="fa-regular fa-calendar-xmark text-6xl"></i>
+                                    <div id="agenda-empty-fallback" class="absolute inset-0 flex items-center justify-center text-indigo-400 transition-opacity duration-300">
+                                        <span class="relative inline-flex items-center justify-center">
+                                            <span class="absolute inline-flex h-28 w-28 rounded-full bg-indigo-200/60 animate-ping"></span>
+                                            <i class="fa-solid fa-calendar-days text-8xl animate-pulse relative"></i>
+                                        </span>
                                     </div>
                                 </div>
                                 <div>
@@ -460,12 +463,16 @@
             const label = document.getElementById('agendaSideLabel');
             const content = document.getElementById('agendaSideConteudo');
             let emptyLottieInstance = null;
+            let lottieLoaderPromise = null;
             const emptyStateHtml = `
                 <div class="h-full min-h-[240px] flex flex-col items-center justify-start pt-6 text-center gap-3">
-                    <div class="relative w-[180px] h-[180px]">
+                    <div class="relative w-[280px] h-[280px]">
                         <div id="agenda-empty-lottie" class="absolute inset-0"></div>
-                        <div id="agenda-empty-fallback" class="absolute inset-0 flex items-center justify-center text-indigo-400">
-                            <i class="fa-regular fa-calendar-xmark text-6xl"></i>
+                        <div id="agenda-empty-fallback" class="absolute inset-0 flex items-center justify-center text-indigo-400 transition-opacity duration-300">
+                            <span class="relative inline-flex items-center justify-center">
+                                <span class="absolute inline-flex h-28 w-28 rounded-full bg-indigo-200/60 animate-ping"></span>
+                                <i class="fa-solid fa-calendar-days text-8xl animate-pulse relative"></i>
+                            </span>
                         </div>
                     </div>
                     <div>
@@ -475,28 +482,110 @@
                 </div>
             `;
 
+            function ensureLottieLoaded() {
+                if (typeof window.lottie !== 'undefined') {
+                    return Promise.resolve(window.lottie);
+                }
+                if (lottieLoaderPromise) {
+                    return lottieLoaderPromise;
+                }
+
+                const scriptSources = [
+                    'https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js',
+                    'https://cdn.jsdelivr.net/npm/lottie-web@5.12.2/build/player/lottie.min.js',
+                    'https://unpkg.com/lottie-web@5.12.2/build/player/lottie.min.js',
+                ];
+
+                lottieLoaderPromise = new Promise((resolve, reject) => {
+                    let index = 0;
+
+                    const loadNext = () => {
+                        if (typeof window.lottie !== 'undefined') {
+                            resolve(window.lottie);
+                            return;
+                        }
+                        if (index >= scriptSources.length) {
+                            reject(new Error('Lottie library unavailable'));
+                            return;
+                        }
+
+                        const src = scriptSources[index++];
+                        const script = document.createElement('script');
+                        script.src = src;
+                        script.async = true;
+                        script.onload = () => {
+                            if (typeof window.lottie !== 'undefined') {
+                                resolve(window.lottie);
+                                return;
+                            }
+                            loadNext();
+                        };
+                        script.onerror = loadNext;
+                        document.head.appendChild(script);
+                    };
+
+                    loadNext();
+                });
+
+                return lottieLoaderPromise;
+            }
+
             function initEmptyLottie() {
                 const el = document.getElementById('agenda-empty-lottie');
                 const fallback = document.getElementById('agenda-empty-fallback');
-                if (!el || typeof window.lottie === 'undefined') return;
-                if (fallback) fallback.classList.remove('hidden');
+                if (!el) return;
+                if (fallback) {
+                    fallback.classList.remove('hidden', 'opacity-20');
+                    fallback.classList.add('opacity-100');
+                }
                 if (emptyLottieInstance) {
                     emptyLottieInstance.destroy();
                     emptyLottieInstance = null;
                 }
-                emptyLottieInstance = window.lottie.loadAnimation({
-                    container: el,
-                    renderer: 'svg',
-                    loop: true,
-                    autoplay: true,
-                    path: 'https://assets9.lottiefiles.com/packages/lf20_t24tpvcu.json',
-                });
-                emptyLottieInstance.addEventListener('DOMLoaded', () => {
-                    if (fallback) fallback.classList.add('hidden');
-                });
-                emptyLottieInstance.addEventListener('data_failed', () => {
-                    if (fallback) fallback.classList.remove('hidden');
-                });
+
+                const animationPaths = [
+                    @json(asset('animations/agenda-empty-local.json')),
+                ];
+
+                const tryLoad = (index = 0) => {
+                    if (typeof window.lottie === 'undefined') return;
+                    if (index >= animationPaths.length) {
+                        if (fallback) fallback.classList.remove('hidden');
+                        return;
+                    }
+
+                    emptyLottieInstance = window.lottie.loadAnimation({
+                        container: el,
+                        renderer: 'svg',
+                        loop: true,
+                        autoplay: true,
+                        path: animationPaths[index],
+                    });
+
+                    emptyLottieInstance.addEventListener('DOMLoaded', () => {
+                        if (fallback) {
+                            fallback.classList.remove('hidden', 'opacity-20');
+                            fallback.classList.add('opacity-100');
+                        }
+                    });
+
+                    emptyLottieInstance.addEventListener('data_failed', () => {
+                        if (emptyLottieInstance) {
+                            emptyLottieInstance.destroy();
+                            emptyLottieInstance = null;
+                        }
+                        tryLoad(index + 1);
+                    });
+                };
+
+                ensureLottieLoaded()
+                    .then(() => tryLoad(0))
+                    .catch(() => {
+                        if (fallback) {
+                            fallback.classList.remove('hidden', 'opacity-20');
+                            fallback.classList.add('opacity-100');
+                        }
+                    });
             }
 
             function updateSidePanel(dateLabel, html, hasItems, taskCount = 0) {
