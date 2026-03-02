@@ -195,6 +195,10 @@ class EnsureRoutePermission
             return $this->resolveCrudPermission('comercial.contratos', $routeName, $method);
         }
 
+        if (str_starts_with($routeName, 'comercial.funcoes.')) {
+            return $this->resolveCrudPermission('comercial.funcoes', $routeName, $method);
+        }
+
         if ($routeName === 'comercial.tabela-precos.update') {
             return 'comercial.tabela-precos.update';
         }

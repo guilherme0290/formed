@@ -5,8 +5,9 @@
 <aside id="master-sidebar"
        class="fixed inset-y-0 left-0 z-[9999] w-64 bg-slate-950 text-slate-100 shadow-2xl
               transform -translate-x-full transition-all duration-200 ease-in-out
+              opacity-0 invisible pointer-events-none
               flex flex-col relative overflow-hidden
-              md:static md:translate-x-0">
+              md:static md:translate-x-0 md:opacity-100 md:visible md:pointer-events-auto">
 
     <div class="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.06]">
         <img src="{{ asset('storage/logo.svg') }}" alt="FORMED" class="w-40">
@@ -27,7 +28,7 @@
 
             <div class="flex flex-col leading-tight">
                 <span data-sidebar-label-header class="text-sm font-semibold text-slate-100">Master</span>
-                <span class="text-[11px] text-slate-500" data-sidebar-label>Modulo</span>
+                <span class="text-[11px] text-slate-500" data-sidebar-label>Módulo</span>
             </div>
         </div>
 
@@ -57,13 +58,13 @@
                     || request()->routeIs('comercial.funcoes.*'),
                 'children' => [
                     [
-                        'label' => 'Tabela de Precos',
+                        'label' => 'Tabela de Preços',
                         'icon' => 'fa-solid fa-tags',
                         'route' => route('master.tabela-precos.itens.index'),
                         'active' => request()->routeIs('master.tabela-precos.*'),
                     ],
                     [
-                        'label' => 'Comissoes',
+                        'label' => 'Comissões',
                         'icon' => 'fa-solid fa-coins',
                         'route' => route('master.comissoes.index'),
                         'active' => request()->routeIs('master.comissoes.index')
@@ -73,16 +74,22 @@
                             || request()->routeIs('master.comissoes.bulk'),
                     ],
                     [
-                        'label' => 'Comissoes (Vendedores)',
+                        'label' => 'Comissões (Vendedores)',
                         'icon' => 'fa-solid fa-chart-column',
                         'route' => route('master.comissoes.vendedores'),
                         'active' => request()->routeIs('master.comissoes.vendedores'),
                     ],
                     [
-                        'label' => 'Funcoes',
+                        'label' => 'Funções',
                         'icon' => 'fa-solid fa-puzzle-piece',
                         'route' => route('comercial.funcoes.index'),
                         'active' => request()->routeIs('comercial.funcoes.*'),
+                    ],
+                    [
+                        'label' => 'Gerar Apresentação',
+                        'icon' => 'fa-solid fa-display',
+                        'route' => route('comercial.apresentacao.cliente'),
+                        'active' => request()->routeIs('comercial.apresentacao.*'),
                     ],
                 ],
             ],
@@ -204,3 +211,7 @@
         </form>
     </div>
 </aside>
+
+
+
+

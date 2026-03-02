@@ -44,6 +44,11 @@ return [
         'comercial.tabela-precos.update'  => 'Editar itens tabela de preços',
         'comercial.tabela-precos.delete'  => 'Excluir itens tabela de preços',
 
+        'comercial.funcoes.view'          => 'Ver funções',
+        'comercial.funcoes.create'        => 'Criar funções',
+        'comercial.funcoes.update'        => 'Editar funções',
+        'comercial.funcoes.delete'        => 'Excluir funções',
+
         'comercial.contratos.view'        => 'Ver contratos',
         'comercial.contratos.create'      => 'Criar contratos',
         'comercial.contratos.update'      => 'Editar contratos',

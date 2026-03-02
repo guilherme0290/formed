@@ -16,13 +16,13 @@
     <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
     <link rel="shortcut icon" type="image/png" href="{{ asset('favicon.png') }}">
 </head>
-<body class="bg-slate-900">
-<div class="min-h-screen flex relative overflow-x-hidden">
+<body class="bg-slate-50">
+<div class="min-h-screen md:flex relative overflow-x-hidden">
 
     @include('layouts.partials.master-sidebar')
 
     {{-- Área principal --}}
-    <div class="flex-1 min-w-0 flex flex-col bg-slate-50">
+    <div class="flex-1 min-h-screen min-w-0 flex flex-col bg-slate-50">
 
         <header class="bg-indigo-700 text-white shadow-sm sticky top-0 z-20">
             <div class="w-full px-4 md:px-6 h-16 flex items-center justify-between gap-3 py-2">
@@ -75,14 +75,14 @@
                             <a href="{{ route('master.acessos', ['tab' => 'senhas']) }}"
                                data-only-my-password
                                class="flex items-center gap-2 px-4 py-3 text-sm hover:bg-slate-50">
-                                <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">🔒</span>
+                                <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600"><i class="fa-solid fa-key"></i></span>
                                 <span>Alterar Senha</span>
                             </a>
                             <form method="POST" action="{{ route('logout') }}">
                                 @csrf
                                 <button type="submit"
                                         class="w-full flex items-center gap-2 px-4 py-3 text-sm hover:bg-slate-50 text-left">
-                                    <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-600">🚪</span>
+                                    <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-600"><i class="fa-solid fa-right-from-bracket"></i></span>
                                     <span>Sair</span>
                                 </button>
                             </form>
@@ -94,7 +94,7 @@
 
         <main class="flex-1 min-w-0 relative overflow-x-hidden overflow-y-auto">
 
-            {{-- Marca d’água --}}
+            {{-- Marca d'água --}}
             <div class="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.05]">
                 <img src="{{ asset('storage/logo.svg') }}"
                      alt="FORMED"
@@ -108,21 +108,21 @@
     </div>
 </div>
 
-{{-- Configuracoes do painel (modal) --}}
+{{-- Configurações do painel (modal) --}}
 <div id="dashboard-config-backdrop" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[80] hidden"></div>
 <div id="dashboard-config-modal" class="fixed inset-0 z-[90] hidden items-center justify-center p-4 overflow-y-auto">
     <div class="w-full max-w-3xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden max-h-[90vh] overflow-y-auto">
         <div class="flex items-start justify-between px-6 py-5 border-b border-slate-100">
             <div class="flex items-start gap-3">
                 <div class="h-10 w-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                    ⚙️
+                    <i class="fa-solid fa-gear"></i>
                 </div>
                 <div>
                     <div class="text-lg font-semibold text-slate-900">Configurações do Painel Master</div>
                     <div class="text-sm text-slate-500">Personalize os indicadores exibidos no dashboard</div>
                 </div>
             </div>
-            <button type="button" class="h-9 w-9 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50" data-config-close>×</button>
+            <button type="button" class="h-9 w-9 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50" data-config-close>&times;</button>
         </div>
         <div class="p-6 space-y-5">
             <div class="grid gap-4 md:grid-cols-2">
@@ -226,6 +226,7 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+        const MOBILE_BREAKPOINT = 768;
         const sidebar       = document.getElementById('master-sidebar');
         const backdrop      = document.getElementById('master-sidebar-backdrop');
         const btnToggleMob  = document.querySelector('[data-sidebar-toggle]');
@@ -239,19 +240,86 @@
         let desktopCollapsed = false;
 
         function isMobile() {
-            return window.innerWidth < 768;
+            return window.innerWidth < MOBILE_BREAKPOINT;
+        }
+
+        function setDesktopCollapsed(collapsed) {
+            if (!sidebar) return;
+            desktopCollapsed = collapsed;
+            sidebar.classList.toggle('w-64', !collapsed);
+            sidebar.classList.toggle('w-16', collapsed);
+            labels.forEach(l => l.classList.toggle('hidden', collapsed));
+            submenuWraps.forEach(el => el.classList.toggle('hidden', collapsed));
+            submenuToggles.forEach(el => el.classList.toggle('hidden', collapsed));
+            if (headerTitle) headerTitle.textContent = collapsed ? 'M' : 'Master';
         }
 
         function openSidebar() {
-            sidebar.classList.remove('-translate-x-full');
+            if (!sidebar || !backdrop) return;
+            if (isMobile()) {
+                // No mobile sempre abre expandido como drawer.
+                setDesktopCollapsed(false);
+                sidebar.style.setProperty('position', 'fixed');
+                sidebar.style.setProperty('top', '0');
+                sidebar.style.setProperty('bottom', '0');
+                sidebar.style.setProperty('left', '0');
+                sidebar.style.setProperty('width', window.innerWidth <= 640 ? '100vw' : 'min(22rem, 92vw)');
+                sidebar.style.setProperty('max-width', '100vw');
+                sidebar.style.setProperty('z-index', '9999');
+                document.body.classList.add('overflow-hidden');
+            }
+
             backdrop.classList.remove('opacity-0', 'pointer-events-none');
+            sidebar.classList.remove('-translate-x-full', 'opacity-0', 'invisible', 'pointer-events-none');
+            sidebar.classList.add('translate-x-0', 'opacity-100', 'visible', 'pointer-events-auto');
         }
 
         function closeSidebar() {
+            if (!sidebar || !backdrop) return;
             if (isMobile()) {
-                sidebar.classList.add('-translate-x-full');
+                // Garante drawer fora do fluxo da página no mobile.
+                sidebar.style.setProperty('position', 'fixed');
+                sidebar.style.setProperty('top', '0');
+                sidebar.style.setProperty('bottom', '0');
+                sidebar.style.setProperty('left', '0');
+                sidebar.style.setProperty('width', window.innerWidth <= 640 ? '100vw' : 'min(22rem, 92vw)');
+                sidebar.style.setProperty('max-width', '100vw');
+                sidebar.style.setProperty('z-index', '9999');
+                sidebar.classList.remove('translate-x-0', 'opacity-100', 'visible', 'pointer-events-auto');
+                sidebar.classList.add('-translate-x-full', 'opacity-0', 'invisible', 'pointer-events-none');
                 backdrop.classList.add('opacity-0', 'pointer-events-none');
+                document.body.classList.remove('overflow-hidden');
             }
+        }
+
+        function syncSidebarState() {
+            if (!sidebar || !backdrop) return;
+            if (isMobile()) {
+                // Força modo drawer no mobile, evitando ocupar espaço no layout.
+                sidebar.style.setProperty('position', 'fixed');
+                sidebar.style.setProperty('top', '0');
+                sidebar.style.setProperty('bottom', '0');
+                sidebar.style.setProperty('left', '0');
+                sidebar.style.setProperty('width', window.innerWidth <= 640 ? '100vw' : 'min(22rem, 92vw)');
+                sidebar.style.setProperty('max-width', '100vw');
+                sidebar.style.setProperty('z-index', '9999');
+                closeSidebar();
+                return;
+            }
+
+            // Desktop: sidebar sempre visível, sem backdrop.
+            sidebar.style.removeProperty('position');
+            sidebar.style.removeProperty('top');
+            sidebar.style.removeProperty('bottom');
+            sidebar.style.removeProperty('left');
+            sidebar.style.removeProperty('width');
+            sidebar.style.removeProperty('max-width');
+
+            sidebar.classList.remove('-translate-x-full', 'translate-x-0', 'opacity-0', 'invisible', 'pointer-events-none');
+            sidebar.classList.add('opacity-100', 'visible', 'pointer-events-auto');
+            backdrop.classList.add('opacity-0', 'pointer-events-none');
+            document.body.classList.remove('overflow-hidden');
+            setDesktopCollapsed(desktopCollapsed);
         }
 
         btnToggleMob?.addEventListener('click', openSidebar);
@@ -259,14 +327,12 @@
         backdrop?.addEventListener('click', closeSidebar);
 
         btnCollapse?.addEventListener('click', () => {
-            desktopCollapsed = !desktopCollapsed;
-            sidebar.classList.toggle('w-64', !desktopCollapsed);
-            sidebar.classList.toggle('w-16', desktopCollapsed);
-            labels.forEach(l => l.classList.toggle('hidden', desktopCollapsed));
-            submenuWraps.forEach(el => el.classList.toggle('hidden', desktopCollapsed));
-            submenuToggles.forEach(el => el.classList.toggle('hidden', desktopCollapsed));
-            if (headerTitle) headerTitle.textContent = desktopCollapsed ? 'M' : 'Master';
+            if (isMobile()) return;
+            setDesktopCollapsed(!desktopCollapsed);
         });
+
+        syncSidebarState();
+        window.addEventListener('resize', syncSidebarState);
     });
 </script>
 <script>
@@ -370,3 +436,6 @@
 @stack('scripts')
 </body>
 </html>
+
+
+

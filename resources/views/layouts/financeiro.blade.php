@@ -8,88 +8,42 @@
     <title>@yield('title', 'Painel Financeiro') - Formed</title>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+          integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA=="
+          crossorigin="anonymous"
+          referrerpolicy="no-referrer">
     <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
     <link rel="shortcut icon" type="image/png" href="{{ asset('favicon.png') }}">
 </head>
-<body class="bg-slate-950 text-slate-50">
-<div class="min-h-screen flex relative">
+<body class="bg-slate-50 text-slate-900">
+<div class="min-h-screen md:flex relative overflow-x-hidden">
     @php
         $authUser = auth()->user();
         $isMaster = $authUser?->isMaster();
-        $permissionMap = $authUser?->papel?->permissoes?->pluck('chave')->flip()->all() ?? [];
-        $can = function (string $key) use ($isMaster, $permissionMap): bool {
-            return $isMaster || isset($permissionMap[$key]);
-        };
     @endphp
 
     @if($isMaster)
         @include('layouts.partials.master-sidebar')
     @else
-        {{-- Sidebar --}}
-        <aside class="hidden md:flex flex-col w-60 bg-slate-950 text-slate-100 border-r border-slate-900 relative overflow-hidden">
-            <div class="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.06]">
-                <img src="{{ asset('storage/logo.svg') }}" alt="FORMED" class="w-36">
-            </div>
-            <div class="relative z-10 h-16 flex items-center px-5 text-lg font-semibold border-b border-slate-900">
-                Financeiro
-            </div>
-            <nav class="relative z-10 flex-1 px-3 mt-4 space-y-1">
-                @php
-                    $links = [
-                        ['label' => 'Dashboard', 'icon' => '📊', 'route' => route('financeiro.dashboard'), 'active' => request()->routeIs('financeiro.dashboard')],
-                        ['label' => 'Contratos', 'icon' => '📄', 'route' => route('financeiro.contratos'), 'active' => request()->routeIs('financeiro.contratos*')],
-                        ['label' => 'Contas a Receber', 'icon' => '💳', 'route' => route('financeiro.contas-receber'), 'active' => request()->routeIs('financeiro.contas-receber*')],
-                        ['label' => 'Contas a Pagar', 'icon' => '💸', 'route' => route('financeiro.contas-pagar.index'), 'active' => request()->routeIs('financeiro.contas-pagar*')],
-                    ];
-                @endphp
-                @foreach($links as $link)
-                    @php
-                        $perm = match ($link['label']) {
-                            'Dashboard' => 'financeiro.dashboard.view',
-                            'Contratos' => 'financeiro.contratos.view',
-                            default => 'financeiro.contas-receber.view',
-                        };
-                        $enabled = $can($perm);
-                    @endphp
-                    <a href="{{ $enabled ? $link['route'] : 'javascript:void(0)' }}"
-                       @if(!$enabled) title="Usuário sem permissão" aria-disabled="true" @endif
-                       class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm {{ $link['active'] && $enabled ? 'bg-indigo-600 text-white font-semibold' : ($enabled ? 'text-slate-200 hover:bg-slate-800' : 'text-slate-500 bg-slate-900 cursor-not-allowed') }}">
-                        <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800">{{ $link['icon'] }}</span>
-                        <span>{{ $link['label'] }}</span>
-                    </a>
-                @endforeach
-            </nav>
-            <div class="relative z-10 px-4 py-4 border-t border-slate-900 space-y-2 text-sm">
-                <a href="{{ url('/') }}" class="flex items-center gap-2 text-slate-300 hover:text-white">
-                    <span>←</span><span>Voltar</span>
-                </a>
-                <form method="POST" action="{{ route('logout') }}">
-                    @csrf
-                    <button class="flex items-center gap-2 text-rose-400 hover:text-rose-300">
-                        <span>🚪</span> Sair
-                    </button>
-                </form>
-            </div>
-        </aside>
+        @include('layouts.partials.financeiro-sidebar')
     @endif
 
     {{-- Main --}}
-    <div class="flex-1 flex flex-col bg-slate-50">
+    <div class="flex-1 min-h-screen flex flex-col bg-slate-50">
         <header class="bg-indigo-700 text-white shadow-sm">
             <div class="w-full px-4 md:px-6 h-16 flex items-center">
                 <div class="flex items-center gap-3 w-1/3">
-                    @if($isMaster)
-                        <button type="button"
-                                class="inline-flex md:hidden items-center justify-center p-2 rounded-lg text-indigo-50 hover:bg-indigo-800 focus:outline-none focus:ring-2 focus:ring-white"
-                                data-sidebar-toggle>
-                            <span class="sr-only">Abrir menu</span>
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
-                                 viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                      d="M4 6h16M4 12h16M4 18h16"/>
-                            </svg>
-                        </button>
-                    @endif
+                    <button type="button"
+                            class="inline-flex md:hidden items-center justify-center p-2 rounded-lg text-indigo-50 hover:bg-indigo-800 focus:outline-none focus:ring-2 focus:ring-white"
+                            data-sidebar-toggle>
+                        <span class="sr-only">Abrir menu</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+                             viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M4 6h16M4 12h16M4 18h16"/>
+                        </svg>
+                    </button>
                     <div class="flex flex-col">
                         <span class="font-semibold text-lg leading-none">FORMED</span>
                         <span class="text-[11px] text-indigo-100">M&oacute;dulo Financeiro</span>
@@ -140,7 +94,7 @@
             </div>
         </header>
 
-        <main class="flex-1 relative overflow-hidden">
+        <main class="flex-1 relative bg-slate-50 overflow-x-hidden overflow-y-auto">
             <div class="relative z-10">
                 <div class="@yield('page-container', 'w-full px-4 sm:px-6 lg:px-8 py-6')">
                     @if(session('error') || session('erro'))
@@ -154,121 +108,192 @@
         </main>
     </div>
 </div>
-@if($isMaster)
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const MOBILE_BREAKPOINT = 768;
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const MOBILE_BREAKPOINT = 768;
 
-            const sidebar = document.getElementById('master-sidebar');
-            const backdrop = document.getElementById('master-sidebar-backdrop');
-            const btnToggleMob = document.querySelector('[data-sidebar-toggle]');
-            const btnCloses = document.querySelectorAll('[data-sidebar-close]');
-            const btnCollapse = document.querySelector('[data-sidebar-collapse]');
-            const labels = document.querySelectorAll('[data-sidebar-label]');
-            const headerTitle = document.querySelector('[data-sidebar-label-header]');
+        const sidebarId = @json($isMaster ? 'master-sidebar' : 'financeiro-sidebar');
+        const backdropId = @json($isMaster ? 'master-sidebar-backdrop' : 'financeiro-sidebar-backdrop');
 
-            let desktopCollapsed = false;
+        const sidebar = document.getElementById(sidebarId);
+        const backdrop = document.getElementById(backdropId);
+        const btnToggleMob = document.querySelector('[data-sidebar-toggle]');
+        const btnCloses = document.querySelectorAll('[data-sidebar-close]');
+        const btnCollapse = document.querySelector('[data-sidebar-collapse]');
+        const labels = document.querySelectorAll('[data-sidebar-label]');
+        const headerTitle = document.querySelector('[data-sidebar-label-header]');
 
-            function isMobile() {
-                return window.innerWidth < MOBILE_BREAKPOINT;
+        let desktopCollapsed = false;
+        let mobileHideTimer = null;
+
+        function isMobile() {
+            return window.innerWidth < MOBILE_BREAKPOINT;
+        }
+
+        function isSidebarOpenMobile() {
+            if (!sidebar) return false;
+            return sidebar.classList.contains('translate-x-0');
+        }
+
+        function abrirSidebarMobile() {
+            if (!sidebar) return;
+            if (mobileHideTimer) {
+                clearTimeout(mobileHideTimer);
+                mobileHideTimer = null;
             }
 
-            function abrirSidebarMobile() {
-                if (!sidebar) return;
-                sidebar.classList.remove('-translate-x-full');
-                sidebar.classList.add('translate-x-0');
+            sidebar.style.setProperty('display', 'flex');
+            desktopCollapsed = false;
+            sidebar.style.setProperty('position', 'fixed');
+            sidebar.style.setProperty('top', '0');
+            sidebar.style.setProperty('bottom', '0');
+            sidebar.style.setProperty('left', '0');
+            sidebar.style.setProperty('right', 'auto');
+            sidebar.style.setProperty('z-index', '9999');
+            sidebar.style.setProperty('width', window.innerWidth <= 640 ? '100vw' : 'min(22rem, 92vw)');
+            sidebar.style.setProperty('max-width', '100vw');
+            labels.forEach(el => el.classList.remove('hidden'));
+            if (headerTitle) headerTitle.classList.remove('hidden');
 
-                if (backdrop) {
-                    backdrop.classList.remove('opacity-0', 'pointer-events-none');
-                    backdrop.classList.add('opacity-100');
+            sidebar.classList.remove('opacity-0', 'invisible', 'pointer-events-none', '-translate-x-full');
+            sidebar.classList.add('opacity-100', 'visible', 'pointer-events-auto', 'translate-x-0');
+            sidebar.style.transform = 'translateX(0)';
+            document.body.classList.add('overflow-hidden');
+
+            if (backdrop) {
+                backdrop.classList.remove('opacity-0', 'pointer-events-none');
+                backdrop.classList.add('opacity-100');
+            }
+        }
+
+        function fecharSidebarMobile() {
+            if (!sidebar) return;
+            sidebar.classList.remove('opacity-100', 'visible', 'pointer-events-auto', 'translate-x-0');
+            sidebar.classList.add('opacity-0', 'invisible', 'pointer-events-none', '-translate-x-full');
+            sidebar.style.transform = 'translateX(-100%)';
+
+            if (backdrop) {
+                backdrop.classList.add('opacity-0', 'pointer-events-none');
+                backdrop.classList.remove('opacity-100');
+            }
+            document.body.classList.remove('overflow-hidden');
+
+            if (mobileHideTimer) {
+                clearTimeout(mobileHideTimer);
+            }
+            mobileHideTimer = setTimeout(() => {
+                if (isMobile()) {
+                    sidebar.style.setProperty('display', 'none');
                 }
+            }, 220);
+        }
+
+        function setDesktopCollapsed(collapsed) {
+            if (!sidebar) return;
+            desktopCollapsed = collapsed;
+
+            if (collapsed) {
+                sidebar.style.width = 'clamp(3.5rem, 6vw, 4rem)';
+                labels.forEach(el => el.classList.add('hidden'));
+                if (headerTitle) headerTitle.classList.add('hidden');
+            } else {
+                sidebar.style.width = 'clamp(14rem, 18vw, 18rem)';
+                labels.forEach(el => el.classList.remove('hidden'));
+                if (headerTitle) headerTitle.classList.remove('hidden');
             }
+        }
 
-            function fecharSidebarMobile() {
-                if (!sidebar) return;
-                sidebar.classList.remove('translate-x-0');
-                sidebar.classList.add('-translate-x-full');
+        if (btnToggleMob) {
+            btnToggleMob.addEventListener('click', function () {
+                if (!isMobile() || !sidebar) return;
+                if (isSidebarOpenMobile()) {
+                    fecharSidebarMobile();
+                } else {
+                    abrirSidebarMobile();
+                }
+            });
+        }
 
+        if (btnCollapse) {
+            btnCollapse.addEventListener('click', function () {
+                if (isMobile()) return;
+                setDesktopCollapsed(!desktopCollapsed);
+            });
+        }
+
+        btnCloses.forEach(btn => {
+            btn.addEventListener('click', function () {
+                if (isMobile()) {
+                    fecharSidebarMobile();
+                }
+            });
+        });
+
+        if (backdrop) {
+            backdrop.addEventListener('click', function () {
+                if (isMobile()) {
+                    fecharSidebarMobile();
+                }
+            });
+        }
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && isMobile()) {
+                fecharSidebarMobile();
+            }
+        });
+
+        if (sidebar && isMobile()) {
+            sidebar.style.setProperty('display', 'none');
+            fecharSidebarMobile();
+        } else if (sidebar) {
+            sidebar.style.setProperty('display', 'flex');
+            sidebar.classList.remove('opacity-0', 'invisible', 'pointer-events-none', '-translate-x-full');
+            sidebar.classList.add('opacity-100', 'visible', 'pointer-events-auto', 'translate-x-0');
+            sidebar.style.removeProperty('transform');
+            sidebar.style.removeProperty('position');
+            sidebar.style.removeProperty('top');
+            sidebar.style.removeProperty('bottom');
+            sidebar.style.removeProperty('left');
+            sidebar.style.removeProperty('right');
+            sidebar.style.removeProperty('z-index');
+            sidebar.style.removeProperty('max-width');
+            sidebar.style.removeProperty('width');
+            setDesktopCollapsed(false);
+        }
+
+        window.addEventListener('resize', function () {
+            if (!sidebar) return;
+            if (isMobile()) {
+                setDesktopCollapsed(false);
+                fecharSidebarMobile();
+            } else {
+                if (mobileHideTimer) {
+                    clearTimeout(mobileHideTimer);
+                    mobileHideTimer = null;
+                }
+                sidebar.style.setProperty('display', 'flex');
+                sidebar.classList.remove('opacity-0', 'invisible', 'pointer-events-none', '-translate-x-full');
+                sidebar.classList.add('opacity-100', 'visible', 'pointer-events-auto', 'translate-x-0');
+                sidebar.style.removeProperty('transform');
+                sidebar.style.removeProperty('position');
+                sidebar.style.removeProperty('top');
+                sidebar.style.removeProperty('bottom');
+                sidebar.style.removeProperty('left');
+                sidebar.style.removeProperty('right');
+                sidebar.style.removeProperty('z-index');
+                sidebar.style.removeProperty('max-width');
+                sidebar.style.removeProperty('width');
+                document.body.classList.remove('overflow-hidden');
                 if (backdrop) {
                     backdrop.classList.add('opacity-0', 'pointer-events-none');
                     backdrop.classList.remove('opacity-100');
                 }
             }
-
-            function setDesktopCollapsed(collapsed) {
-                if (!sidebar) return;
-                desktopCollapsed = collapsed;
-
-                if (desktopCollapsed) {
-                    sidebar.style.width = 'clamp(3.5rem, 6vw, 4rem)';
-                } else {
-                    sidebar.style.width = 'clamp(14rem, 18vw, 18rem)';
-                }
-                labels.forEach(el => el.classList.toggle('hidden', desktopCollapsed));
-                if (headerTitle) headerTitle.classList.toggle('hidden', desktopCollapsed);
-            }
-
-            if (btnToggleMob) {
-                btnToggleMob.addEventListener('click', function () {
-                    if (!isMobile()) return;
-                    if (sidebar.classList.contains('-translate-x-full')) {
-                        abrirSidebarMobile();
-                    } else {
-                        fecharSidebarMobile();
-                    }
-                });
-            }
-
-            if (btnCollapse) {
-                btnCollapse.addEventListener('click', function () {
-                    if (isMobile()) return;
-                    setDesktopCollapsed(!desktopCollapsed);
-                });
-            }
-
-            btnCloses.forEach(btn => {
-                btn.addEventListener('click', function () {
-                    if (isMobile()) {
-                        fecharSidebarMobile();
-                    }
-                });
-            });
-
-            if (backdrop) {
-                backdrop.addEventListener('click', function () {
-                    if (isMobile()) {
-                        fecharSidebarMobile();
-                    }
-                });
-            }
-
-            document.addEventListener('keydown', function (e) {
-                if (e.key === 'Escape' && isMobile()) {
-                    fecharSidebarMobile();
-                }
-            });
-
-            if (isMobile()) {
-                fecharSidebarMobile();
-            } else {
-                setDesktopCollapsed(false);
-            }
-
-            window.addEventListener('resize', function () {
-                if (isMobile()) {
-                    setDesktopCollapsed(false);
-                    fecharSidebarMobile();
-                } else {
-                    sidebar.classList.remove('-translate-x-full', 'translate-x-0');
-                    if (backdrop) {
-                        backdrop.classList.add('opacity-0', 'pointer-events-none');
-                        backdrop.classList.remove('opacity-100');
-                    }
-                }
-            });
         });
-    </script>
-@endif
+    });
+</script>
 @stack('scripts')
 </body>
 </html>
+

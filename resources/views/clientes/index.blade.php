@@ -156,13 +156,14 @@
                             <div class="flex flex-wrap gap-2 pt-1">
                                 <a href="{{ $canUpdate ? route($routePrefix.'.edit', $cliente) : 'javascript:void(0)' }}"
                                    @if(!$canUpdate) title="Usuário sem permissão" aria-disabled="true" @endif
-                                   class="px-3 py-2 rounded-lg text-xs font-semibold {{ $canUpdate ? 'text-blue-700 bg-blue-100 hover:bg-blue-200' : 'text-slate-500 bg-slate-200 cursor-not-allowed' }}">
+                                   class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border {{ $canUpdate ? 'text-blue-700 bg-blue-50 border-blue-200 hover:bg-blue-100' : 'text-slate-500 bg-slate-200 border-slate-300 cursor-not-allowed' }}">
+                                    <i class="fa-regular fa-pen-to-square"></i>
                                     Editar
                                 </a>
 
                                 <a href="{{ $canUpdate ? route($routePrefix.'.acesso.form', $cliente) : 'javascript:void(0)' }}"
                                    @if(!$canUpdate) title="Usuário sem permissão" aria-disabled="true" @endif
-                                   class="px-3 py-2 rounded-lg text-xs font-semibold {{ $canUpdate ? 'text-indigo-700 bg-indigo-100 hover:bg-indigo-200' : 'text-slate-500 bg-slate-200 cursor-not-allowed' }}"
+                                   class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border {{ $canUpdate ? 'text-indigo-700 bg-indigo-50 border-indigo-200 hover:bg-indigo-100' : 'text-slate-500 bg-slate-200 border-slate-300 cursor-not-allowed' }}"
                                    @if($canUpdate && $cliente->userCliente)
                                        onclick="openAcessoModal(this); return false;"
                                        data-cliente-nome="{{ $cliente->razao_social }}"
@@ -172,6 +173,7 @@
                                        data-user-status="{{ $cliente->userCliente->ativo ? 'Ativo' : 'Inativo' }}"
                                        data-user-created="{{ optional($cliente->userCliente->created_at)->format('d/m/Y H:i') }}"
                                    @endif>
+                                    <i class="fa-solid fa-key"></i>
                                     {{ $cliente->userCliente ? 'Ver acesso' : 'Criar acesso' }}
                                 </a>
 
@@ -183,7 +185,8 @@
                                     @method('DELETE')
                                     <button type="submit"
                                             @if(!$canDelete) disabled title="Usuário sem permissão" @endif
-                                            class="px-3 py-2 rounded-lg text-xs font-semibold {{ $canDelete ? 'text-rose-700 bg-rose-100 hover:bg-rose-200' : 'text-slate-500 bg-slate-200 cursor-not-allowed opacity-70' }}">
+                                            class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border {{ $canDelete ? 'text-rose-700 bg-rose-50 border-rose-200 hover:bg-rose-100' : 'text-slate-500 bg-slate-200 border-slate-300 cursor-not-allowed opacity-70' }}">
+                                        <i class="fa-regular fa-trash-can"></i>
                                         Excluir
                                     </button>
                                 </form>
@@ -238,7 +241,7 @@
                                 <td class="px-4 py-2.5 text-center">
                                     @if($cliente->userCliente)
                                         <button type="button"
-                                                class="inline-flex items-center justify-center w-9 h-9 text-emerald-700 bg-emerald-100 rounded-full text-base"
+                                                class="inline-flex items-center justify-center h-9 w-9 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 shadow-sm hover:bg-emerald-100 transition"
                                                 title="Acesso criado"
                                                 aria-label="Acesso criado"
                                                 onclick="openAcessoModal(this)"
@@ -248,13 +251,13 @@
                                                 data-user-login="{{ $cliente->userCliente->email ?: $cliente->userCliente->documento }}"
                                                 data-user-status="{{ $cliente->userCliente->ativo ? 'Ativo' : 'Inativo' }}"
                                                 data-user-created="{{ optional($cliente->userCliente->created_at)->format('d/m/Y H:i') }}">
-                                            &#128275;
+                                            <i class="fa-solid fa-lock-open text-sm"></i>
                                         </button>
                                     @else
-                                        <span class="inline-flex items-center justify-center w-9 h-9 text-slate-600 bg-slate-100 rounded-full text-base"
+                                        <span class="inline-flex items-center justify-center h-9 w-9 rounded-xl border border-slate-200 bg-slate-100 text-slate-500"
                                               title="Sem acesso"
                                               aria-label="Sem acesso">
-                                            &#128274;
+                                            <i class="fa-solid fa-lock text-sm"></i>
                                         </span>
                                     @endif
                                 </td>
@@ -271,10 +274,10 @@
                                     <div class="flex items-center justify-center gap-2">
                                         <a href="{{ $canUpdate ? route($routePrefix.'.edit', $cliente) : 'javascript:void(0)' }}"
                                            @if(!$canUpdate) title="Usuário sem permissão" aria-disabled="true" @endif
-                                           class="px-3 py-1.5 rounded-lg text-xs font-semibold {{ $canUpdate ? 'text-blue-700 bg-blue-100 hover:bg-blue-200' : 'text-slate-500 bg-slate-200 cursor-not-allowed' }}"
+                                           class="inline-flex h-9 w-9 items-center justify-center rounded-xl border transition {{ $canUpdate ? 'text-blue-700 bg-blue-50 border-blue-200 hover:bg-blue-100' : 'text-slate-500 bg-slate-200 border-slate-300 cursor-not-allowed' }}"
                                            title="Editar"
                                            aria-label="Editar">
-                                            &#9998;
+                                            <i class="fa-regular fa-pen-to-square text-sm"></i>
                                         </a>
 
                                         <form action="{{ route($routePrefix.'.destroy', $cliente) }}"
@@ -285,16 +288,16 @@
                                             @method('DELETE')
                                             <button type="submit"
                                                     @if(!$canDelete) disabled title="Usuário sem permissão" @endif
-                                                    class="px-3 py-1.5 rounded-lg text-xs font-semibold {{ $canDelete ? 'text-rose-700 bg-rose-100 hover:bg-rose-200' : 'text-slate-500 bg-slate-200 cursor-not-allowed opacity-70' }}"
+                                                    class="inline-flex h-9 w-9 items-center justify-center rounded-xl border transition {{ $canDelete ? 'text-rose-700 bg-rose-50 border-rose-200 hover:bg-rose-100' : 'text-slate-500 bg-slate-200 border-slate-300 cursor-not-allowed opacity-70' }}"
                                                     title="Excluir"
                                                     aria-label="Excluir">
-                                                &#128465;
+                                                <i class="fa-regular fa-trash-can text-sm"></i>
                                             </button>
                                         </form>
 
                                         <a href="{{ $canUpdate ? route($routePrefix.'.acesso.form', $cliente) : 'javascript:void(0)' }}"
                                            @if(!$canUpdate) title="Usuário sem permissão" aria-disabled="true" @endif
-                                           class="px-3 py-1.5 rounded-lg text-xs font-semibold {{ $canUpdate ? 'text-indigo-700 bg-indigo-100 hover:bg-indigo-200' : 'text-slate-500 bg-slate-200 cursor-not-allowed' }}"
+                                           class="inline-flex h-9 w-9 items-center justify-center rounded-xl border transition {{ $canUpdate ? 'text-indigo-700 bg-indigo-50 border-indigo-200 hover:bg-indigo-100' : 'text-slate-500 bg-slate-200 border-slate-300 cursor-not-allowed' }}"
                                            title="{{ $cliente->userCliente ? 'Ver acesso' : 'Criar acesso' }}"
                                            aria-label="{{ $cliente->userCliente ? 'Ver acesso' : 'Criar acesso' }}"
                                            @if($canUpdate && $cliente->userCliente)
@@ -306,7 +309,7 @@
                                                data-user-status="{{ $cliente->userCliente->ativo ? 'Ativo' : 'Inativo' }}"
                                                data-user-created="{{ optional($cliente->userCliente->created_at)->format('d/m/Y H:i') }}"
                                            @endif>
-                                            &#128273;
+                                            <i class="fa-solid fa-key text-sm"></i>
                                         </a>
                                     </div>
                                 </td>

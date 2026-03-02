@@ -32,7 +32,7 @@
     $pacotesTreinamentos = $pacotesTreinamentos ?? [];
     $treinamentosBloqueados = array_diff(array_keys($treinamentosDisponiveis), $treinamentosPermitidos);
     $temTreinamentosBloqueados = !empty($treinamentosDisponiveis) && !empty($treinamentosBloqueados);
-    $treinamentoAviso = 'Serviço não contratado, converse com seu comercial';
+    $treinamentoAviso = 'Você não possui treinamento ativo, entre em contato com seu comercial.';
     $pacoteSelecionadoId = old(
         'pacote_id',
         $aso && !empty($aso->treinamento_pacote['contrato_item_id'])
@@ -407,15 +407,20 @@
 
                             <div class="grid grid-cols-2 gap-3 text-sm">
                                 {{-- SIM --}}
-                                <button type="button"
-                                        id="btn_treina_sim"
-                                        class="px-4 py-2 rounded-xl border text-center text-xs font-medium
-                                        {{ $vaiFazerTreinamento ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-700 border-slate-300' }}
-                                        {{ $temTreinamentosPermitidos ? '' : 'opacity-60 cursor-not-allowed' }}"
-                                        {{ $temTreinamentosPermitidos ? '' : 'disabled' }}
-                                        title="{{ $temTreinamentosPermitidos ? '' : $treinamentoAviso }}">
-                                    Sim
-                                </button>
+                                <div class="relative {{ $temTreinamentosPermitidos ? '' : 'group' }}">
+                                    <button type="button"
+                                            id="btn_treina_sim"
+                                            class="w-full px-4 py-2 rounded-xl border text-center text-xs font-medium
+                                            {{ $vaiFazerTreinamento ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-700 border-slate-300' }}
+                                            {{ $temTreinamentosPermitidos ? '' : 'opacity-90' }}">
+                                        Sim
+                                    </button>
+                                    @if(!$temTreinamentosPermitidos)
+                                        <div class="pointer-events-none absolute left-1/2 top-full z-20 mt-2 hidden w-64 -translate-x-1/2 rounded-lg bg-slate-900 px-3 py-2 text-center text-[11px] text-white shadow-lg group-hover:block">
+                                            {{ $treinamentoAviso }}
+                                        </div>
+                                    @endif
+                                </div>
 
                                 {{-- NÃO --}}
                                 <button type="button"
@@ -636,9 +641,14 @@
                             <div id="pcmsoExternoUploadWrap"
                                  data-has-existing="{{ $pcmsoExternoAnexoId ? '1' : '0' }}"
                                  class="{{ $pcmsoElaboradoFormed === 0 ? '' : 'hidden' }}">
-                                <p class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                                    Arquivo do PCMSO deve ser anexado abaixo.
-                                </p>
+                                <div class="rounded-xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 px-3 py-2.5">
+                                    <p class="inline-flex items-center gap-2 text-xs font-medium text-amber-800">
+                                        <span class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+                                            <i class="fa-solid fa-triangle-exclamation text-[10px]"></i>
+                                        </span>
+                                        O arquivo do PCMSO externo deve ser anexado abaixo.
+                                    </p>
+                                </div>
                                 @if($isEdit && $pcmsoExternoAnexoId)
                                     <p class="mt-2 text-xs text-slate-500">
                                         PCMSO externo já anexado.
@@ -655,11 +665,12 @@
                             @enderror
                         </div>
 
+                        <div id="upload-anexos-wrap" class="{{ $pcmsoElaboradoFormed === 1 ? 'hidden' : '' }}">
                         {{-- Dropzone --}}
                         <div id="dropzone-anexos"
                              class="flex flex-col items-center justify-center px-6 py-10 border-2 border-dashed rounded-2xl
-                        border-slate-300 bg-slate-50 text-center cursor-pointer
-                        hover:border-sky-400 hover:bg-sky-50 transition">
+                         border-slate-300 bg-slate-50 text-center cursor-pointer
+                         hover:border-sky-400 hover:bg-sky-50 transition">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mb-2" fill="none" viewBox="0 0 24 24"
                                  stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
@@ -682,6 +693,7 @@
 
                         {{-- Lista de arquivos selecionados --}}
                         <ul id="lista-anexos" class="mt-3 text-xs text-slate-600 space-y-1"></ul>
+                        </div>
                         @if($isEdit)
                             <div class="mt-6">
                                 <h3 class="text-sm font-semibold text-slate-800 mb-3">
@@ -1202,10 +1214,6 @@
                 }
 
                 function atualizarTreinamento() {
-                    if (btnSim.disabled) {
-                        campo.value = '0';
-                    }
-
                     const ativo = campo.value === '1';
 
                     if (ativo) {
@@ -1231,9 +1239,6 @@
                 }
 
                 btnSim.addEventListener('click', function () {
-                    if (btnSim.disabled) {
-                        return;
-                    }
                     campo.value = '1';
                     atualizarTreinamento();
                 });
@@ -1591,6 +1596,8 @@
             document.addEventListener('DOMContentLoaded', function () {
                 const radios = Array.from(document.querySelectorAll('.js-pcmso-radio'));
                 const wrap = document.getElementById('pcmsoExternoUploadWrap');
+                const uploadWrap = document.getElementById('upload-anexos-wrap');
+                const inputAnexos = document.getElementById('input-anexos');
 
                 if (!radios.length || !wrap) {
                     return;
@@ -1603,6 +1610,12 @@
 
                     wrap.classList.toggle('hidden', elaboradoPelaFormed);
                     wrap.dataset.requireAnexo = (!elaboradoPelaFormed && !hasExisting) ? '1' : '0';
+                    if (uploadWrap) {
+                        uploadWrap.classList.toggle('hidden', elaboradoPelaFormed);
+                    }
+                    if (inputAnexos) {
+                        inputAnexos.disabled = elaboradoPelaFormed;
+                    }
 
                 };
 

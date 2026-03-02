@@ -4,6 +4,14 @@
 @section('page-container', 'w-full p-0')
 
 @section('content')
+    @php
+        $user = auth()->user();
+        $permissionMap = $user?->papel?->permissoes?->pluck('chave')->flip()->all() ?? [];
+        $isMaster = $user?->hasPapel('Master');
+        $canCreate = $isMaster || isset($permissionMap['comercial.funcoes.create']);
+        $canUpdate = $isMaster || isset($permissionMap['comercial.funcoes.update']);
+        $canDelete = $isMaster || isset($permissionMap['comercial.funcoes.delete']);
+    @endphp
     <div class="w-full px-3 md:px-5 py-4 md:py-5 space-y-6">
         <div>
             <a href="{{ route('master.dashboard') }}"
@@ -41,8 +49,8 @@
         @endif
 
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
-            <form method="GET" class="flex flex-col gap-3 md:flex-row md:items-end">
-                <div class="flex-1">
+            <form method="GET" id="funcoes-filter-form" class="flex flex-col gap-3 md:flex-row md:items-end">
+                <div class="w-full md:max-w-xl">
                     <label class="block text-xs font-semibold text-slate-600 mb-1">Buscar</label>
                     <div class="relative">
                         <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔎</span>
@@ -56,7 +64,7 @@
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 mb-1">Status</label>
-                    <select name="status" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                    <select id="funcoes-status-filter" name="status" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
                         <option value="">Todos</option>
                         <option value="ativos" @selected($status === 'ativos')>Ativos</option>
                         <option value="inativos" @selected($status === 'inativos')>Inativos</option>
@@ -90,20 +98,24 @@
                         <div>
                             <label class="block text-xs font-semibold text-slate-600 mb-1">Nome *</label>
                             <input name="nome" value="{{ old('nome') }}" required
+                                   @if(!$canCreate) disabled @endif
                                    class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-slate-600 mb-1">CBO</label>
                             <input name="cbo" value="{{ old('cbo') }}"
+                                   @if(!$canCreate) disabled @endif
                                    class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-slate-600 mb-1">Descrição</label>
                             <textarea name="descricao" rows="3"
+                                      @if(!$canCreate) disabled @endif
                                       class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">{{ old('descricao') }}</textarea>
                         </div>
                         <div class="flex justify-end">
-                            <button class="px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-semibold">
+                            <button @if(!$canCreate) disabled title="Usuário sem permissão" @endif
+                                    class="px-4 py-2 rounded-xl text-white text-sm font-semibold {{ $canCreate ? 'bg-emerald-600' : 'bg-slate-300 cursor-not-allowed' }}">
                                 Salvar
                             </button>
                         </div>
@@ -127,13 +139,15 @@
                         <div>
                             <label class="block text-xs font-semibold text-slate-600 mb-1">Arquivo (.xlsx)</label>
                             <input type="file" name="arquivo" accept=".xlsx,.csv"
+                                   @if(!$canCreate) disabled @endif
                                    class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm bg-white">
                             @error('arquivo')
                                 <p class="text-xs text-rose-600 mt-1">{{ $message }}</p>
                             @enderror
                         </div>
                         <div class="flex justify-end">
-                            <button class="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold">
+                            <button @if(!$canCreate) disabled title="Usuário sem permissão" @endif
+                                    class="px-4 py-2 rounded-xl text-white text-sm font-semibold {{ $canCreate ? 'bg-indigo-600' : 'bg-slate-300 cursor-not-allowed' }}">
                                 Importar
                             </button>
                         </div>
@@ -146,7 +160,7 @@
                 <table class="comercial-table w-full text-sm">
                     <thead class="bg-slate-50 text-slate-500">
                     <tr>
-                        <th class="text-left px-4 py-3">Função</th>
+                        <th class="text-left px-4 py-3">Funções</th>
                         <th class="text-left px-4 py-3">CBO</th>
                         <th class="text-left px-4 py-3">Status</th>
                         <th class="text-right px-4 py-3">Ações</th>
@@ -161,31 +175,36 @@
                             <td class="px-4 py-3 font-medium text-slate-800">{{ $funcao->nome }}</td>
                             <td class="px-4 py-3 text-slate-500">{{ $funcao->cbo ?? '—' }}</td>
                             <td class="px-4 py-3">
-                                <span class="text-xs px-2 py-1 rounded-full {{ $funcao->ativo ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600' }}">
-                                    {{ $funcao->ativo ? 'ativa' : 'inativa' }}
+                                <span class="inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full {{ $funcao->ativo ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600' }}">
+                                    <i class="fa-solid {{ $funcao->ativo ? 'fa-circle-check' : 'fa-circle-minus' }} text-[11px]"></i>
+                                    <span>{{ $funcao->ativo ? 'ativa' : 'inativa' }}</span>
                                 </span>
                             </td>
                             <td class="px-4 py-3 text-right">
-                                <div class="inline-flex gap-2">
+                                <div class="inline-flex items-center gap-2">
                                     <button type="button"
-                                            class="text-slate-600 hover:text-slate-900"
+                                            @if(!$canUpdate) disabled title="Usuário sem permissão" @endif
+                                            class="inline-flex h-9 w-9 items-center justify-center rounded-xl border transition {{ $canUpdate ? 'text-blue-700 bg-blue-50 border-blue-200 hover:bg-blue-100' : 'text-slate-500 bg-slate-200 border-slate-300 cursor-not-allowed opacity-70' }}"
                                             title="Editar"
+                                            aria-label="Editar"
                                             data-funcao-edit
                                             data-funcao-id="{{ $funcao->id }}"
                                             data-funcao-nome="{{ $funcao->nome }}"
                                             data-funcao-cbo="{{ $funcao->cbo }}"
                                             data-funcao-descricao="{{ $funcao->descricao }}"
                                             data-funcao-ativo="{{ $funcao->ativo ? 1 : 0 }}">
-                                        ✏️
+                                        <i class="fa-regular fa-pen-to-square text-sm"></i>
                                     </button>
                                     <form method="POST" action="{{ route('comercial.funcoes.destroy', $funcao) }}"
                                           data-confirm="{{ $temVinculo ? 'Esta função possui vínculos e será inativada. Deseja continuar?' : 'Deseja excluir esta função?' }}">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit"
-                                                class="text-slate-600 hover:text-slate-900"
-                                                title="{{ $temVinculo ? 'Inativar' : 'Excluir' }}">
-                                            {{ $temVinculo ? '⏻' : '🗑️' }}
+                                                @if(!$canDelete) disabled title="Usuário sem permissão" @endif
+                                                class="inline-flex h-9 w-9 items-center justify-center rounded-xl border transition {{ $canDelete ? 'text-rose-700 bg-rose-50 border-rose-200 hover:bg-rose-100' : 'text-slate-500 bg-slate-200 border-slate-300 cursor-not-allowed opacity-70' }}"
+                                                title="{{ $temVinculo ? 'Inativar' : 'Excluir' }}"
+                                                aria-label="{{ $temVinculo ? 'Inativar' : 'Excluir' }}">
+                                            <i class="fa-solid {{ $temVinculo ? 'fa-power-off' : 'fa-trash-can' }} text-sm"></i>
                                         </button>
                                     </form>
                                 </div>
@@ -246,7 +265,8 @@
                         <button type="button" class="px-4 py-2 rounded-xl border text-sm" id="modalFuncaoCancel">
                             Cancelar
                         </button>
-                        <button class="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold">
+                        <button @if(!$canUpdate) disabled title="Usuário sem permissão" @endif
+                                class="px-4 py-2 rounded-xl text-white text-sm font-semibold {{ $canUpdate ? 'bg-indigo-600' : 'bg-slate-300 cursor-not-allowed' }}">
                             Salvar alterações
                         </button>
                     </div>
@@ -297,6 +317,19 @@
                     'funcoes-autocomplete-list',
                     @json($funcoesAutocomplete ?? [])
                 );
+
+                const form = document.getElementById('funcoes-filter-form');
+                const input = document.getElementById('funcoes-autocomplete-input');
+                const status = document.getElementById('funcoes-status-filter');
+                let timer = null;
+
+                const submitWithDebounce = () => {
+                    clearTimeout(timer);
+                    timer = setTimeout(() => form?.submit(), 350);
+                };
+
+                input?.addEventListener('input', submitWithDebounce);
+                status?.addEventListener('change', () => form?.submit());
             });
         </script>
     @endpush

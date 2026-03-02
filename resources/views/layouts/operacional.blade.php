@@ -9,91 +9,29 @@
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @stack('styles')
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+          integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA=="
+          crossorigin="anonymous"
+          referrerpolicy="no-referrer">
     <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
     <link rel="shortcut icon" type="image/png" href="{{ asset('favicon.png') }}">
 </head>
-<body class="bg-slate-900">
-<div class="min-h-screen flex relative">
+<body class="bg-slate-50">
+<div class="min-h-screen md:flex relative overflow-x-hidden">
     @php
         $authUser = auth()->user();
         $isMaster = $authUser?->isMaster();
-        $permissionMap = $authUser?->papel?->permissoes?->pluck('chave')->flip()->all() ?? [];
-        $can = function (string $key) use ($isMaster, $permissionMap): bool {
-            return $isMaster || isset($permissionMap[$key]);
-        };
     @endphp
 
     @if($isMaster)
         @include('layouts.partials.master-sidebar')
     @else
-        {{-- BACKDROP (mobile) --}}
-        <div id="operacional-sidebar-backdrop"
-             class="fixed inset-0 bg-black/40 z-20 opacity-0 pointer-events-none transition-opacity duration-200 md:hidden"></div>
-
-        {{-- Sidebar esquerda --}}
-        <aside id="operacional-sidebar"
-               class="fixed inset-y-0 left-0 z-30 w-64 bg-slate-950 text-slate-100
-                      transform -translate-x-full transition-transform duration-200 ease-in-out
-                      flex flex-col relative overflow-hidden
-                      md:static md:translate-x-0">
-
-        <div class="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.06]">
-            <img src="{{ asset('storage/logo.svg') }}" alt="FORMED" class="w-40">
-        </div>
-
-        <div class="relative z-10 h-16 flex items-center justify-between px-4 text-lg font-semibold border-b border-slate-800">
-
-            <div class="flex items-center gap-2">
-                {{-- Botão de colapse (DESKTOP) --}}
-                <button type="button"
-                        class="hidden md:inline-flex items-center justify-center p-1.5 rounded-lg text-slate-300 hover:bg-slate-800"
-                        data-sidebar-collapse
-                        title="Recolher/expandir">
-                    {{-- Chevron simples --}}
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
-                         viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M15 19l-7-7 7-7"/>
-                    </svg>
-                </button>
-
-                <span data-sidebar-label-header>Operacional</span>
-            </div>
-
-            {{-- Botão fechar (somente mobile) --}}
-            <button type="button"
-                    class="inline-flex items-center justify-center p-2 rounded-lg text-slate-300 hover:bg-slate-800 md:hidden"
-                    data-sidebar-close>
-                ✕
-            </button>
-        </div>
-
-        <nav class="relative z-10 flex-1 px-3 mt-4 space-y-1">
-            @php $canKanban = $can('operacional.dashboard.view'); @endphp
-            <a href="{{ $canKanban ? route('operacional.kanban') : 'javascript:void(0)' }}"
-               @if(!$canKanban) title="Usuário sem permissão" aria-disabled="true" @endif
-               class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium {{ $canKanban ? 'bg-slate-800 text-slate-50' : 'bg-slate-900 text-slate-500 cursor-not-allowed' }}">
-                <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-700">
-                    &#x1F5C2;&#xFE0F;
-                </span>
-                <span data-sidebar-label>Painel Operacional</span>
-            </a>
-        </nav>
-
-        <div class="relative z-10 px-4 py-4 border-t border-slate-800 space-y-2 text-sm">
-            <form method="POST" action="{{ route('logout') }}">
-                @csrf
-                <button class="flex items-center gap-2 text-rose-400 hover:text-rose-300">
-                    <span>&#x1F6AA;</span>
-                    <span data-sidebar-label>Sair</span>
-                </button>
-            </form>
-        </div>
-        </aside>
+        @include('layouts.partials.operacional-sidebar')
     @endif
 
     {{-- Área principal --}}
-    <div class="flex-1 flex flex-col bg-slate-50">
+    <div class="flex-1 min-h-screen flex flex-col bg-slate-50">
 
         <header class="bg-blue-900 text-white shadow-sm">
             <div class="w-full px-4 md:px-6 h-14 flex items-center justify-between gap-3">
@@ -164,7 +102,7 @@
             </div>
         </header>
 
-        <main class="flex-1 relative overflow-hidden">
+        <main class="flex-1 relative bg-slate-50 overflow-x-hidden overflow-y-auto">
 
             {{-- Marca d'água com a logo da FORMED --}}
             <div class="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.06]">
@@ -208,6 +146,7 @@
             const overlayRoot   = document.getElementById('app-overlay-root');
 
             let desktopCollapsed = false;
+            let mobileHideTimer = null;
 
             function mountOverlayModals() {
                 if (!overlayRoot) return;
@@ -226,10 +165,33 @@
 
             // --- MOBILE: abrir/fechar overlay ---
 
+            function isSidebarOpenMobile() {
+                if (!sidebar) return false;
+                return sidebar.classList.contains('translate-x-0');
+            }
+
             function abrirSidebarMobile() {
                 if (!sidebar) return;
-                sidebar.classList.remove('-translate-x-full');
-                sidebar.classList.add('translate-x-0');
+                if (mobileHideTimer) {
+                    clearTimeout(mobileHideTimer);
+                    mobileHideTimer = null;
+                }
+                sidebar.style.setProperty('display', 'flex');
+                desktopCollapsed = false;
+                sidebar.style.setProperty('position', 'fixed');
+                sidebar.style.setProperty('top', '0');
+                sidebar.style.setProperty('bottom', '0');
+                sidebar.style.setProperty('left', '0');
+                sidebar.style.setProperty('right', 'auto');
+                sidebar.style.setProperty('z-index', '9999');
+                sidebar.style.setProperty('width', window.innerWidth <= 640 ? '100vw' : 'min(22rem, 92vw)');
+                sidebar.style.setProperty('max-width', '100vw');
+                labels.forEach(el => el.classList.remove('hidden'));
+                if (headerTitle) headerTitle.classList.remove('hidden');
+                sidebar.classList.remove('opacity-0', 'invisible', 'pointer-events-none', '-translate-x-full');
+                sidebar.classList.add('opacity-100', 'visible', 'pointer-events-auto', 'translate-x-0');
+                sidebar.style.transform = 'translateX(0)';
+                document.body.classList.add('overflow-hidden');
 
                 if (backdrop) {
                     backdrop.classList.remove('opacity-0', 'pointer-events-none');
@@ -239,13 +201,24 @@
 
             function fecharSidebarMobile() {
                 if (!sidebar) return;
-                sidebar.classList.remove('translate-x-0');
-                sidebar.classList.add('-translate-x-full');
+                sidebar.classList.remove('opacity-100', 'visible', 'pointer-events-auto', 'translate-x-0');
+                sidebar.classList.add('opacity-0', 'invisible', 'pointer-events-none', '-translate-x-full');
+                sidebar.style.transform = 'translateX(-100%)';
 
                 if (backdrop) {
                     backdrop.classList.add('opacity-0', 'pointer-events-none');
                     backdrop.classList.remove('opacity-100');
                 }
+                document.body.classList.remove('overflow-hidden');
+
+                if (mobileHideTimer) {
+                    clearTimeout(mobileHideTimer);
+                }
+                mobileHideTimer = setTimeout(() => {
+                    if (isMobile()) {
+                        sidebar.style.setProperty('display', 'none');
+                    }
+                }, 220);
             }
 
             // --- DESKTOP: colapsar/expandir (ícones x texto) ---
@@ -272,10 +245,10 @@
                 btnToggleMob.addEventListener('click', function () {
                     if (!isMobile()) return;
 
-                    if (sidebar.classList.contains('-translate-x-full')) {
-                        abrirSidebarMobile();
-                    } else {
+                    if (isSidebarOpenMobile()) {
                         fecharSidebarMobile();
+                    } else {
+                        abrirSidebarMobile();
                     }
                 });
             }
@@ -314,9 +287,22 @@
             });
 
             // Estado inicial
-            if (isMobile()) {
+            if (sidebar && isMobile()) {
+                sidebar.style.setProperty('display', 'none');
                 fecharSidebarMobile();
-            } else {
+            } else if (sidebar) {
+                sidebar.style.setProperty('display', 'flex');
+                sidebar.classList.remove('opacity-0', 'invisible', 'pointer-events-none', '-translate-x-full');
+                sidebar.classList.add('opacity-100', 'visible', 'pointer-events-auto', 'translate-x-0');
+                sidebar.style.removeProperty('transform');
+                sidebar.style.removeProperty('position');
+                sidebar.style.removeProperty('top');
+                sidebar.style.removeProperty('bottom');
+                sidebar.style.removeProperty('left');
+                sidebar.style.removeProperty('right');
+                sidebar.style.removeProperty('z-index');
+                sidebar.style.removeProperty('max-width');
+                sidebar.style.removeProperty('width');
                 setDesktopCollapsed(false); // começa expandido no desktop
             }
 
@@ -327,8 +313,24 @@
                     setDesktopCollapsed(false);
                     fecharSidebarMobile();
                 } else {
+                    if (mobileHideTimer) {
+                        clearTimeout(mobileHideTimer);
+                        mobileHideTimer = null;
+                    }
+                    sidebar.style.setProperty('display', 'flex');
                     // Voltou para desktop: garante que não fique com translate-x-full
-                    sidebar.classList.remove('-translate-x-full', 'translate-x-0');
+                    sidebar.classList.remove('opacity-0', 'invisible', 'pointer-events-none', '-translate-x-full');
+                    sidebar.classList.add('opacity-100', 'visible', 'pointer-events-auto', 'translate-x-0');
+                    sidebar.style.removeProperty('transform');
+                    sidebar.style.removeProperty('position');
+                    sidebar.style.removeProperty('top');
+                    sidebar.style.removeProperty('bottom');
+                    sidebar.style.removeProperty('left');
+                    sidebar.style.removeProperty('right');
+                    sidebar.style.removeProperty('z-index');
+                    sidebar.style.removeProperty('max-width');
+                    sidebar.style.removeProperty('width');
+                    document.body.classList.remove('overflow-hidden');
                     if (backdrop) {
                         backdrop.classList.add('opacity-0', 'pointer-events-none');
                         backdrop.classList.remove('opacity-100');
@@ -469,3 +471,4 @@
 
 </body>
 </html>
+

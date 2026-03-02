@@ -39,78 +39,104 @@
             this.resetNome = payload.name || '';
             this.resetOpen = true;
         },
-    }" class="bg-white rounded-2xl shadow-sm border p-6">
+    }" class="rounded-3xl border border-slate-200 bg-gradient-to-b from-white to-slate-50/70 p-4 shadow-sm md:p-6">
+
+    @php
+        $usuariosCollection = $usuarios->getCollection();
+        $ativosCount = $usuariosCollection->where('ativo', true)->count();
+        $inativosCount = $usuariosCollection->where('ativo', false)->count();
+    @endphp
 
     {{-- Cabeçalho --}}
-    <div class="flex flex-col gap-4 mb-5 lg:flex-row lg:items-center lg:justify-between">
-        <div class="text-xl font-semibold">Usuários</div>
+    <div class="mb-5 rounded-2xl border border-slate-200/80 bg-white/90 p-4 md:p-5">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div class="space-y-1">
+                <div class="text-xl font-semibold text-slate-900">Usuários</div>
+                <p class="text-xs text-slate-500">Gerencie contas, perfis e status com segurança.</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2 text-xs">
+                <span class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 font-semibold text-emerald-700">
+                    <span class="h-2 w-2 rounded-full bg-emerald-500"></span>Ativos: {{ $ativosCount }}
+                </span>
+                <span class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-100 px-3 py-1.5 font-semibold text-slate-700">
+                    <span class="h-2 w-2 rounded-full bg-slate-500"></span>Inativos: {{ $inativosCount }}
+                </span>
+                <span class="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1.5 font-semibold text-indigo-700">
+                    Página: {{ $usuariosCollection->count() }}
+                </span>
+            </div>
+        </div>
 
         {{-- Filtros --}}
-        <form method="GET" action="{{ route('master.acessos') }}" class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+        <form method="GET" action="{{ route('master.acessos') }}" class="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-12">
             <input type="hidden" name="tab" value="usuarios">
-            <div class="relative w-full sm:w-64">
+            <div class="relative lg:col-span-4">
                 <input name="q" id="usuarios-autocomplete-input" value="{{ request('q') }}"
                        autocomplete="off"
                        placeholder="Buscar por nome ou e-mail..."
-                       class="w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:border-indigo-400 focus:ring-indigo-400 px-3 py-2">
+                       class="w-full rounded-xl border-slate-200 bg-slate-50/80 px-3 py-2 text-sm focus:bg-white focus:border-indigo-400 focus:ring-indigo-400">
                 <div id="usuarios-autocomplete-list"
-                     class="absolute z-20 mt-1 w-full max-h-64 overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg hidden"></div>
+                     class="absolute z-20 mt-1 hidden max-h-64 w-full overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg"></div>
             </div>
-            <select name="papel_id" class="w-full rounded-xl border-gray-200 bg-gray-50 px-3 py-2 pr-10 sm:w-52">
+            <select name="papel_id" class="w-full rounded-xl border-slate-200 bg-slate-50/80 px-3 py-2 pr-10 text-sm lg:col-span-2">
                 <option value="">Todos os perfis</option>
                 @foreach($papeis as $p)
                     @continue(in_array(strtolower($p->nome), ['cliente', 'parceiros'], true))
                     <option value="{{ $p->id }}" @selected(request('papel_id') == $p->id)>{{ $p->nome }}</option>
                 @endforeach
             </select>
-            <select name="status" class="w-full rounded-xl border-gray-200 bg-gray-50 px-3 py-2 pr-10 sm:w-40">
+            <select name="status" class="w-full rounded-xl border-slate-200 bg-slate-50/80 px-3 py-2 pr-10 text-sm lg:col-span-2">
                 <option value="">Todos</option>
                 <option value="ativos" @selected(request('status') === 'ativos')>Ativos</option>
                 <option value="inativos" @selected(request('status') === 'inativos')>Inativos</option>
             </select>
-            <button class="w-full px-4 py-2 rounded-xl bg-gray-900 text-white hover:bg-gray-800 sm:w-auto">Filtrar</button>
+            <button class="w-full rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 lg:col-span-1">Filtrar</button>
             <button type="button" @click="openCreate()"
-                    class="w-full px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 sm:w-auto">
+                    class="w-full rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 lg:col-span-2">
                 + Novo Usuário
             </button>
+            <a href="{{ route('master.acessos', ['tab' => 'usuarios']) }}"
+               class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 lg:col-span-1">
+                Limpar
+            </a>
         </form>
     </div>
 
-{{-- Tabela --}}
-    <div class="overflow-hidden rounded-xl border">
+    {{-- Tabela --}}
+    <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white">
         <table class="w-full text-sm">
-            <thead class="bg-gray-50 text-gray-500">
+            <thead class="bg-slate-50 text-slate-600">
             <tr>
-                <th class="text-left py-3 px-4">Nome</th>
-                <th class="text-left py-3 px-4">E-mail</th>
-                <th class="text-left py-3 px-4">Perfil</th>
-                <th class="text-left py-3 px-4">Status</th>
-                <th class="text-left py-3 px-4">Último Acesso</th>
-                <th class="py-3 px-4 text-right w-40">Ações</th>
+                <th class="px-4 py-3 text-left font-semibold">Nome</th>
+                <th class="px-4 py-3 text-left font-semibold">E-mail</th>
+                <th class="px-4 py-3 text-left font-semibold">Perfil</th>
+                <th class="px-4 py-3 text-left font-semibold">Status</th>
+                <th class="px-4 py-3 text-left font-semibold">&Uacute;ltimo acesso</th>
+                <th class="w-44 px-4 py-3 text-right font-semibold">A&ccedil;&otilde;es</th>
             </tr>
             </thead>
-            <tbody class="divide-y">
+            <tbody class="divide-y divide-slate-100">
             @forelse($usuarios as $u)
-                <tr class="hover:bg-gray-50">
-                    <td class="py-3 px-4 font-medium">{{ $u->name }}</td>
-                    <td class="py-3 px-4 text-gray-600">{{ $u->email }}</td>
-                    <td class="py-3 px-4">
-                        <span class="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-700">
+                <tr class="transition hover:bg-slate-50/70">
+                    <td class="px-4 py-3 font-medium text-slate-900">{{ $u->name }}</td>
+                    <td class="px-4 py-3 text-slate-600">{{ $u->email }}</td>
+                    <td class="px-4 py-3">
+                        <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
                             {{ optional($u->papel)->nome ?? '—' }}
                         </span>
                     </td>
-                    <td class="py-3 px-4">
-                        <span class="text-xs px-2 py-1 rounded-full {{ $u->ativo ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-700' }}">
+                    <td class="px-4 py-3">
+                        <span class="rounded-full px-2.5 py-1 text-xs font-semibold {{ $u->ativo ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-700' }}">
                             {{ $u->ativo ? 'ativo' : 'inativo' }}
                         </span>
                     </td>
-                    <td class="py-3 px-4">{{ $u->last_login_at?->format('d/m/Y H:i') ?? '—' }}</td>
+                    <td class="px-4 py-3 text-slate-600">{{ $u->last_login_at?->format('d/m/Y H:i') ?? '—' }}</td>
 
-                    <td class="py-3 px-4 text-right">
-                        <div class="inline-flex gap-2 text-gray-600">
-
-                            {{-- Editar (depois você liga ao seu modal) --}}
-                            <button type="button" class="hover:text-gray-900" title="Editar"
+                    <td class="px-4 py-3 text-right">
+                        <div class="inline-flex items-center gap-1.5">
+                            <button type="button"
+                                    class="inline-flex h-9 w-9 items-center justify-center rounded-xl border transition text-blue-700 bg-blue-50 border-blue-200 hover:bg-blue-100"
+                                    title="Editar"
                                     x-on:click="openEdit({
                                         action: '{{ route('master.usuarios.update', $u) }}',
                                         name: @js($u->name),
@@ -118,35 +144,35 @@
                                         telefone: @js($u->telefone),
                                         papel_id: {{ $u->papel_id ?? 'null' }},
                                         ativo: {{ $u->ativo ? 'true' : 'false' }},
-                                    })">✏️</button>
+                                    })">
+                                <i class="fa-regular fa-pen-to-square text-sm"></i>
+                            </button>
 
-                            {{-- Redefinir senha --}}
-                            <button type="button" class="hover:text-gray-900" title="Redefinir senha"
+                            <button type="button"
+                                    class="inline-flex h-9 w-9 items-center justify-center rounded-xl border transition text-indigo-700 bg-indigo-50 border-indigo-200 hover:bg-indigo-100"
+                                    title="Criar acesso"
                                     x-on:click="openReset({
                                         action: '{{ route('master.usuarios.password', $u) }}',
                                         name: @js($u->name),
-                                    })">🔑</button>
+                                    })">
+                                <i class="fa-solid fa-key text-sm"></i>
+                            </button>
 
                             <form method="POST" action="{{ route('master.usuarios.destroy', $u) }}" class="js-delete-user">
                                 @csrf
                                 @method('DELETE')
-                                <button type="submit" class="hover:text-red-700 text-gray-600" title="Excluir usuário" aria-label="Excluir usuário">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="#111827" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                                        <path d="M3 6h18"/>
-                                        <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/>
-                                        <path d="M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14"/>
-                                        <path d="M10 11v6"/>
-                                        <path d="M14 11v6"/>
-                                    </svg>
+                                <button type="submit"
+                                        class="inline-flex h-9 w-9 items-center justify-center rounded-xl border transition text-rose-700 bg-rose-50 border-rose-200 hover:bg-rose-100"
+                                        title="Excluir usuário"
+                                        aria-label="Excluir usuário">
+                                    <i class="fa-regular fa-trash-can text-sm"></i>
                                 </button>
                             </form>
-
-                            {{-- Ativar/Desativar agora fica no popup de edição --}}
                         </div>
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="6" class="py-8 text-center text-gray-500">Nenhum usuário cadastrado.</td></tr>
+                <tr><td colspan="6" class="py-8 text-center text-slate-500">Nenhum usuário cadastrado.</td></tr>
             @endforelse
             </tbody>
         </table>
@@ -158,12 +184,12 @@
     </div>
 
     {{-- Modal novo usuário --}}
-    <div x-cloak x-show="open" class="fixed inset-0 z-[90] bg-black/50 flex items-center justify-center p-4 overflow-y-auto"
+    <div x-cloak x-show="open" class="fixed inset-0 z-[90] flex items-center justify-center bg-black/50 p-4 overflow-y-auto"
          @keydown.escape.window="open=false">
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-semibold" x-text="editing ? 'Editar Usuário' : 'Criar Novo Usuário'"></h3>
-                <button class="text-gray-500" @click="open=false">&times;</button>
+        <div class="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
+            <div class="mb-4 flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-slate-900" x-text="editing ? 'Editar usuário' : 'Criar novo usuário'"></h3>
+                <button class="text-slate-500 hover:text-slate-700" @click="open=false">&times;</button>
             </div>
             <form method="POST" :action="formAction" class="space-y-3">
                 @csrf
@@ -175,18 +201,18 @@
                     x-model="form.ativo"
                     on-label="Usuário ativo"
                     off-label="Usuário inativo"
-                    text-class="text-sm text-gray-600"
+                    text-class="text-sm text-slate-600"
                 />
-                <input name="name" x-model="form.name" class="w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:border-indigo-400 focus:ring-indigo-400 px-3 py-2" placeholder="Nome Completo *" required>
-                <input name="email" x-model="form.email" type="email" class="w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:border-indigo-400 focus:ring-indigo-400 px-3 py-2" placeholder="E-mail corporativo *" required>
+                <input name="name" x-model="form.name" class="w-full rounded-xl border-slate-200 bg-slate-50 px-3 py-2 focus:bg-white focus:border-indigo-400 focus:ring-indigo-400" placeholder="Nome completo *" required>
+                <input name="email" x-model="form.email" type="email" class="w-full rounded-xl border-slate-200 bg-slate-50 px-3 py-2 focus:bg-white focus:border-indigo-400 focus:ring-indigo-400" placeholder="E-mail corporativo *" required>
                 <div class="relative" x-data="{ showPassword: false }" x-show="!editing">
                     <input name="password"
                            :type="showPassword ? 'text' : 'password'"
                            :required="!editing"
-                           class="w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:border-indigo-400 focus:ring-indigo-400 px-3 py-2 pr-11"
+                           class="w-full rounded-xl border-slate-200 bg-slate-50 px-3 py-2 pr-11 focus:bg-white focus:border-indigo-400 focus:ring-indigo-400"
                            placeholder="Senha">
                     <button type="button"
-                            class="absolute inset-y-0 right-2 inline-flex items-center justify-center rounded-lg px-2 text-gray-500 hover:text-gray-700"
+                            class="absolute inset-y-0 right-2 inline-flex items-center justify-center rounded-lg px-2 text-slate-500 hover:text-slate-700"
                             :aria-label="showPassword ? 'Ocultar senha' : 'Mostrar senha'"
                             @click="showPassword = !showPassword">
                         <svg x-show="!showPassword" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
@@ -197,8 +223,8 @@
                         </svg>
                     </button>
                 </div>
-                <input name="telefone" x-model="form.telefone" class="w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:border-indigo-400 focus:ring-indigo-400 px-3 py-2" placeholder="Telefone (opcional)">
-                <select name="papel_id" x-model="form.papel_id" class="w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:border-indigo-400 focus:ring-indigo-400 px-3 py-2" required>
+                <input name="telefone" x-model="form.telefone" class="w-full rounded-xl border-slate-200 bg-slate-50 px-3 py-2 focus:bg-white focus:border-indigo-400 focus:ring-indigo-400" placeholder="Telefone (opcional)">
+                <select name="papel_id" x-model="form.papel_id" class="w-full rounded-xl border-slate-200 bg-slate-50 px-3 py-2 focus:bg-white focus:border-indigo-400 focus:ring-indigo-400" required>
                     <option value="">Selecione o perfil</option>
                     @foreach($papeis as $p)
                         @continue(in_array(strtolower($p->nome), ['cliente', 'parceiros'], true))
@@ -206,23 +232,23 @@
                     @endforeach
                 </select>
                 <div class="flex items-center justify-end gap-2 pt-2">
-                    <button type="button" class="px-4 py-2 rounded-xl border" @click="open=false">Cancelar</button>
-                    <button class="px-4 py-2 rounded-xl bg-indigo-600 text-white"
-                            x-text="editing ? 'Salvar alterações' : 'Salvar e Criar'"></button>
+                    <button type="button" class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50" @click="open=false">Cancelar</button>
+                    <button class="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+                            x-text="editing ? 'Salvar alterações' : 'Salvar e criar'"></button>
                 </div>
             </form>
         </div>
     </div>
 
     {{-- Modal redefinir senha --}}
-    <div x-cloak x-show="resetOpen" class="fixed inset-0 z-[90] bg-black/50 flex items-center justify-center p-4 overflow-y-auto"
+    <div x-cloak x-show="resetOpen" class="fixed inset-0 z-[90] flex items-center justify-center bg-black/50 p-4 overflow-y-auto"
          @keydown.escape.window="resetOpen=false">
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-semibold">Redefinir senha</h3>
-                <button class="text-gray-500" @click="resetOpen=false">&times;</button>
+        <div class="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
+            <div class="mb-4 flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-slate-900">Redefinir senha</h3>
+                <button class="text-slate-500 hover:text-slate-700" @click="resetOpen=false">&times;</button>
             </div>
-            <p class="text-sm text-gray-600 mb-4">
+            <p class="mb-4 text-sm text-slate-600">
                 Defina uma nova senha para <span class="font-semibold" x-text="resetNome || 'usuário'"></span>.
             </p>
             <form method="POST" :action="resetAction" class="space-y-3">
@@ -232,17 +258,17 @@
                            name="password"
                            required
                            :type="showPassword ? 'text' : 'password'"
-                           class="w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:border-indigo-400 focus:ring-indigo-400 px-3 py-2 pr-11"
-                           placeholder="Nova Senha *">
+                           class="w-full rounded-xl border-slate-200 bg-slate-50 px-3 py-2 pr-11 focus:bg-white focus:border-indigo-400 focus:ring-indigo-400"
+                           placeholder="Nova senha *">
                     <button type="button"
-                            class="absolute inset-y-0 right-2 inline-flex items-center justify-center rounded-lg px-2 text-gray-500 hover:text-gray-700"
+                            class="absolute inset-y-0 right-2 inline-flex items-center justify-center rounded-lg px-2 text-slate-500 hover:text-slate-700"
                             :aria-label="showPassword ? 'Ocultar senha' : 'Mostrar senha'"
                             @click="showPassword = !showPassword">
                         <svg x-show="!showPassword" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                             <path d="M10 3c-4.5 0-8.1 3.2-9 7 0 0 2.9 7 9 7s9-7 9-7c-.9-3.8-4.5-7-9-7zm0 11a4 4 0 1 1 0-8 4 4 0 0 1 0 8z"/>
                         </svg>
                         <svg x-show="showPassword" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                            <path d="M4.03 3.97a.75.75 0 0 0-1.06 1.06l1.6 1.6C2.83 8.1 1.66 9.9 1 10c.9 3.8 4.5 7 9 7 1.7 0 3.3-.5 4.6-1.3l1.4 1.4a.75.75 0 1 0 1.06-1.06l-12-12zm5.97 10.53a4 4 0 0 1-4-4c0-.5.1-1 .3-1.5l5.2 5.2c-.5.2-1 .3-1.5.3zm4.9-1.4-1.1-1.1a4 4 0 0 0-5.2-5.2L7.5 5.7c.8-.4 1.6-.7 2.5-.7 4.5 0 8.1 3.2 9 7-.3 1.1-1  2.3-2.1 3.6z"/>
+                            <path d="M4.03 3.97a.75.75 0 0 0-1.06 1.06l1.6 1.6C2.83 8.1 1.66 9.9 1 10c.9 3.8 4.5 7 9 7 1.7 0 3.3-.5 4.6-1.3l1.4 1.4a.75.75 0 1 0 1.06-1.06l-12-12zm5.97 10.53a4 4 0 0 1-4-4c0-.5.1-1 .3-1.5l5.2 5.2c-.5.2-1 .3-1.5.3zm4.9-1.4-1.1-1.1a4 4 0 0 0-5.2-5.2L7.5 5.7c.8-.4 1.6-.7 2.5-.7 4.5 0 8.1 3.2 9 7-.3 1.1-1 2.3-2.1 3.6z"/>
                         </svg>
                     </button>
                 </div>
@@ -251,10 +277,10 @@
                            name="password_confirmation"
                            required
                            :type="showPassword ? 'text' : 'password'"
-                           class="w-full rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:border-indigo-400 focus:ring-indigo-400 px-3 py-2 pr-11"
-                           placeholder="Confirmar Senha *">
+                           class="w-full rounded-xl border-slate-200 bg-slate-50 px-3 py-2 pr-11 focus:bg-white focus:border-indigo-400 focus:ring-indigo-400"
+                           placeholder="Confirmar senha *">
                     <button type="button"
-                            class="absolute inset-y-0 right-2 inline-flex items-center justify-center rounded-lg px-2 text-gray-500 hover:text-gray-700"
+                            class="absolute inset-y-0 right-2 inline-flex items-center justify-center rounded-lg px-2 text-slate-500 hover:text-slate-700"
                             :aria-label="showPassword ? 'Ocultar senha' : 'Mostrar senha'"
                             @click="showPassword = !showPassword">
                         <svg x-show="!showPassword" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
@@ -266,8 +292,8 @@
                     </button>
                 </div>
                 <div class="flex items-center justify-end gap-2 pt-2">
-                    <button type="button" class="px-4 py-2 rounded-xl border" @click="resetOpen=false">Cancelar</button>
-                    <button class="px-4 py-2 rounded-xl bg-indigo-600 text-white">Salvar Senha</button>
+                    <button type="button" class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50" @click="resetOpen=false">Cancelar</button>
+                    <button class="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">Salvar senha</button>
                 </div>
             </form>
         </div>
