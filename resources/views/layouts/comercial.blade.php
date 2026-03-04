@@ -152,7 +152,7 @@
                 <span class="{{ $iconState($canPipeline, $activePipeline) }}">
                     <i class="fa-solid fa-chart-column w-4 text-center"></i>
                 </span>
-                <span data-sidebar-label>Acompanhamento</span>
+                <span data-sidebar-label>Gestão de Propostas</span>
             </a>
 
             @php $canTabela = $can('comercial.tabela-precos.view'); @endphp
@@ -549,4 +549,3 @@
 
 </body>
 </html>
-

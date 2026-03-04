@@ -721,7 +721,7 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
                     ->name('destroy');
             });
 
-            // Kanban de Propostas (Acompanhamento)
+            // Kanban de Propostas (Gestão de Propostas)
             Route::prefix('pipeline')->name('pipeline.')->group(function () {
                 Route::get('/', [\App\Http\Controllers\Comercial\PipelineController::class, 'index'])
                     ->name('index');

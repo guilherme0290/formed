@@ -1,5 +1,5 @@
 ﻿@extends('layouts.comercial')
-@section('title', 'Acompanhamento de Propostas')
+@section('title', 'Gestão de Propostas')
 @section('page-container', 'w-full p-0')
 
 @section('content')
@@ -764,6 +764,5 @@
         });
     </script>
 @endpush
-
 
 

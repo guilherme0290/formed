@@ -55,7 +55,8 @@
                     || request()->routeIs('master.agenda-vendedores.*')
                     || request()->routeIs('master.tabela-precos.*')
                     || request()->routeIs('master.comissoes*')
-                    || request()->routeIs('comercial.funcoes.*'),
+                    || request()->routeIs('comercial.funcoes.*')
+                    || request()->routeIs('comercial.pipeline.*'),
                 'children' => [
                     [
                         'label' => 'Tabela de Preços',
@@ -90,6 +91,12 @@
                         'icon' => 'fa-solid fa-display',
                         'route' => route('comercial.apresentacao.cliente'),
                         'active' => request()->routeIs('comercial.apresentacao.*'),
+                    ],
+                    [
+                        'label' => 'Gestão de Propostas',
+                        'icon' => 'fa-solid fa-chart-column',
+                        'route' => route('comercial.pipeline.index'),
+                        'active' => request()->routeIs('comercial.pipeline.*'),
                     ],
                 ],
             ],
@@ -211,7 +218,6 @@
         </form>
     </div>
 </aside>
-
 
 
 
