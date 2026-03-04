@@ -379,18 +379,18 @@
                 }
                 GHE.state.ghes.forEach(g=>{
                     const row = document.createElement('div');
-                    row.className = 'grid grid-cols-12 gap-2 items-center rounded-xl border border-slate-200 px-3 py-2';
+                    row.className = 'grid grid-cols-12 gap-2 md:gap-3 items-start md:items-center rounded-xl border border-slate-200 px-3 py-2.5';
 
                     const funcoesTxt = g.funcoes?.length ? g.funcoes.map(f => f.nome).filter(Boolean).join(', ') : 'Sem funções';
 
                     row.innerHTML = `
-                        <div class="col-span-5">
-                            <div class="font-semibold text-slate-800">${escapeHtml(g.nome)}</div>
+                        <div class="col-span-12 md:col-span-4 min-w-0">
+                            <div class="font-semibold text-slate-800 break-words">${escapeHtml(g.nome)}</div>
                         </div>
-                        <div class="col-span-6 text-xs text-slate-600">${escapeHtml(funcoesTxt)}</div>
-                        <div class="col-span-1 flex gap-2 justify-end">
-                            <button type="button" class="text-sm ${PERMS.update ? 'text-blue-600 hover:underline' : 'text-slate-400 cursor-not-allowed'}" data-action="edit" ${PERMS.update ? '' : 'disabled title=\"Usuário sem permissão\"'}>Editar</button>
-                            <button type="button" class="text-sm ${PERMS.delete ? 'text-red-600 hover:underline' : 'text-slate-400 cursor-not-allowed'}" data-action="del" ${PERMS.delete ? '' : 'disabled title=\"Usuário sem permissão\"'}>Excluir</button>
+                        <div class="col-span-12 md:col-span-6 min-w-0 text-xs text-slate-600 break-words">${escapeHtml(funcoesTxt)}</div>
+                        <div class="col-span-12 md:col-span-2 flex items-center justify-end gap-3 md:gap-2 pt-1 md:pt-0">
+                            <button type="button" class="text-sm font-medium ${PERMS.update ? 'text-blue-600 hover:underline' : 'text-slate-400 cursor-not-allowed'}" data-action="edit" ${PERMS.update ? '' : 'disabled title=\"Usuário sem permissão\"'}>Editar</button>
+                            <button type="button" class="text-sm font-medium ${PERMS.delete ? 'text-red-600 hover:underline' : 'text-slate-400 cursor-not-allowed'}" data-action="del" ${PERMS.delete ? '' : 'disabled title=\"Usuário sem permissão\"'}>Excluir</button>
                         </div>
                     `;
 

@@ -40,7 +40,7 @@
             <div class="flex items-center gap-3">
                     {{-- Botão abrir/fechar sidebar (MOBILE) --}}
                     <button type="button"
-                            class="inline-flex md:hidden items-center justify-center p-2 rounded-lg text-blue-50 hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-white"
+                            class="inline-flex items-center justify-center p-2 rounded-lg text-blue-50 hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-white"
                             data-sidebar-toggle>
                         <span class="sr-only">Abrir menu</span>
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
@@ -137,8 +137,6 @@
                 }
             }
 
-            const MOBILE_BREAKPOINT = 768;
-
             const sidebarId = @json($isMaster ? 'master-sidebar' : 'operacional-sidebar');
             const backdropId = @json($isMaster ? 'master-sidebar-backdrop' : 'operacional-sidebar-backdrop');
 
@@ -149,10 +147,23 @@
             const btnCollapse   = document.querySelector('[data-sidebar-collapse]');
             const labels        = document.querySelectorAll('[data-sidebar-label]');
             const headerTitle   = document.querySelector('[data-sidebar-label-header]');
+            const submenuWraps  = document.querySelectorAll('[data-sidebar-children]');
+            const submenuToggles = document.querySelectorAll('[data-sidebar-chevron]');
             const overlayRoot   = document.getElementById('app-overlay-root');
+            const userAgent = String(window.navigator?.userAgent || '');
+            const viewportW = Math.max(window.screen?.width || 0, window.screen?.height || 0);
+            const viewportH = Math.min(window.screen?.width || 0, window.screen?.height || 0);
+            const isNestViewport = (viewportW === 1280 && viewportH === 800) || (viewportW === 1024 && viewportH === 600);
+            const isNestDevice = /CrKey|Fuchsia|Android.*wv/i.test(userAgent) || isNestViewport;
 
             let desktopCollapsed = false;
-            let mobileHideTimer = null;
+
+            if (isNestDevice) {
+                sidebar?.classList.remove('lg:static', 'lg:translate-x-0', 'lg:opacity-100', 'lg:visible', 'lg:pointer-events-auto');
+                backdrop?.classList.remove('lg:hidden');
+                btnToggleMob?.classList.remove('lg:hidden');
+                btnCloses.forEach((btn) => btn.classList.remove('lg:hidden'));
+            }
 
             function mountOverlayModals() {
                 if (!overlayRoot) return;
@@ -166,24 +177,13 @@
             mountOverlayModals();
 
             function isMobile() {
-                return window.innerWidth < MOBILE_BREAKPOINT;
+                const isTouch = window.matchMedia('(pointer: coarse)').matches || window.matchMedia('(hover: none)').matches;
+                const byWidth = window.matchMedia('(max-width: 1279.98px)').matches;
+                return isNestDevice || isTouch || byWidth;
             }
 
-            // --- MOBILE: abrir/fechar overlay ---
-
-            function isSidebarOpenMobile() {
-                if (!sidebar) return false;
-                return sidebar.classList.contains('translate-x-0');
-            }
-
-            function abrirSidebarMobile() {
+            function applyMobileDrawerStyles() {
                 if (!sidebar) return;
-                if (mobileHideTimer) {
-                    clearTimeout(mobileHideTimer);
-                    mobileHideTimer = null;
-                }
-                sidebar.style.setProperty('display', 'flex');
-                desktopCollapsed = false;
                 sidebar.style.setProperty('position', 'fixed');
                 sidebar.style.setProperty('top', '0');
                 sidebar.style.setProperty('bottom', '0');
@@ -192,11 +192,24 @@
                 sidebar.style.setProperty('z-index', '9999');
                 sidebar.style.setProperty('width', window.innerWidth <= 640 ? '100vw' : 'min(22rem, 92vw)');
                 sidebar.style.setProperty('max-width', '100vw');
+            }
+
+            function isSidebarOpenMobile() {
+                if (!sidebar) return false;
+                return !sidebar.classList.contains('-translate-x-full');
+            }
+
+            function abrirSidebarMobile() {
+                if (!sidebar) return;
+                desktopCollapsed = false;
+                applyMobileDrawerStyles();
                 labels.forEach(el => el.classList.remove('hidden'));
                 if (headerTitle) headerTitle.classList.remove('hidden');
-                sidebar.classList.remove('opacity-0', 'invisible', 'pointer-events-none', '-translate-x-full');
+                submenuWraps.forEach(el => el.classList.remove('hidden'));
+                submenuToggles.forEach(el => el.classList.remove('hidden'));
+                sidebar.classList.remove('opacity-0', 'invisible', 'pointer-events-none', '-translate-x-full', 'w-16');
                 sidebar.classList.add('opacity-100', 'visible', 'pointer-events-auto', 'translate-x-0');
-                sidebar.style.transform = 'translateX(0)';
+                sidebar.classList.add('w-64');
                 document.body.classList.add('overflow-hidden');
 
                 if (backdrop) {
@@ -207,24 +220,14 @@
 
             function fecharSidebarMobile() {
                 if (!sidebar) return;
+                applyMobileDrawerStyles();
                 sidebar.classList.remove('opacity-100', 'visible', 'pointer-events-auto', 'translate-x-0');
                 sidebar.classList.add('opacity-0', 'invisible', 'pointer-events-none', '-translate-x-full');
-                sidebar.style.transform = 'translateX(-100%)';
-
                 if (backdrop) {
                     backdrop.classList.add('opacity-0', 'pointer-events-none');
                     backdrop.classList.remove('opacity-100');
                 }
                 document.body.classList.remove('overflow-hidden');
-
-                if (mobileHideTimer) {
-                    clearTimeout(mobileHideTimer);
-                }
-                mobileHideTimer = setTimeout(() => {
-                    if (isMobile()) {
-                        sidebar.style.setProperty('display', 'none');
-                    }
-                }, 220);
             }
 
             // --- DESKTOP: colapsar/expandir (ícones x texto) ---
@@ -234,28 +237,71 @@
                 desktopCollapsed = collapsed;
 
                 if (collapsed) {
-                    // encolhe a largura e esconde labels
-                    sidebar.style.width = 'clamp(3.5rem, 6vw, 4rem)';
+                    sidebar.classList.remove('w-64');
+                    sidebar.classList.add('w-16');
                     labels.forEach(el => el.classList.add('hidden'));
+                    submenuWraps.forEach(el => el.classList.add('hidden'));
+                    submenuToggles.forEach(el => el.classList.add('hidden'));
                     if (headerTitle) headerTitle.classList.add('hidden');
                 } else {
-                    // volta ao normal (usa w-64 do Tailwind)
-                    sidebar.style.width = 'clamp(14rem, 18vw, 18rem)';
+                    sidebar.classList.remove('w-16');
+                    sidebar.classList.add('w-64');
                     labels.forEach(el => el.classList.remove('hidden'));
+                    submenuWraps.forEach(el => el.classList.remove('hidden'));
+                    submenuToggles.forEach(el => el.classList.remove('hidden'));
                     if (headerTitle) headerTitle.classList.remove('hidden');
                 }
+            }
+
+            function syncSidebarState() {
+                if (!sidebar) return;
+
+                if (isMobile()) {
+                    setDesktopCollapsed(false);
+                    applyMobileDrawerStyles();
+                    const isOpen = !sidebar.classList.contains('-translate-x-full')
+                        && sidebar.classList.contains('visible')
+                        && !sidebar.classList.contains('invisible');
+                    if (isOpen) {
+                        abrirSidebarMobile();
+                    } else {
+                        fecharSidebarMobile();
+                    }
+                    return;
+                }
+
+                sidebar.style.removeProperty('position');
+                sidebar.style.removeProperty('top');
+                sidebar.style.removeProperty('bottom');
+                sidebar.style.removeProperty('left');
+                sidebar.style.removeProperty('right');
+                sidebar.style.removeProperty('z-index');
+                sidebar.style.removeProperty('max-width');
+                sidebar.style.removeProperty('width');
+
+                sidebar.classList.remove('opacity-0', 'invisible', 'pointer-events-none', '-translate-x-full', 'translate-x-0');
+                sidebar.classList.add('opacity-100', 'visible', 'pointer-events-auto');
+                if (backdrop) {
+                    backdrop.classList.add('opacity-0', 'pointer-events-none');
+                    backdrop.classList.remove('opacity-100');
+                }
+                document.body.classList.remove('overflow-hidden');
+                setDesktopCollapsed(desktopCollapsed);
             }
 
             // --- Clique no botão do header (MOBILE) ---
             if (btnToggleMob) {
                 btnToggleMob.addEventListener('click', function () {
-                    if (!isMobile()) return;
+                    if (!sidebar) return;
+                    const isHidden = sidebar.classList.contains('-translate-x-full')
+                        || sidebar.classList.contains('invisible')
+                        || sidebar.classList.contains('opacity-0');
 
-                    if (isSidebarOpenMobile()) {
-                        fecharSidebarMobile();
-                    } else {
+                    if (isHidden) {
                         abrirSidebarMobile();
+                        return;
                     }
+                    fecharSidebarMobile();
                 });
             }
 
@@ -267,7 +313,7 @@
                 });
             }
 
-            // Botões de fechar (só mobile, já estão md:hidden)
+            // Botões de fechar (só mobile, já estão lg:hidden)
             btnCloses.forEach(btn => {
                 btn.addEventListener('click', function () {
                     if (isMobile()) {
@@ -279,69 +325,33 @@
             // Clicar no backdrop fecha (mobile)
             if (backdrop) {
                 backdrop.addEventListener('click', function () {
-                    if (isMobile()) {
-                        fecharSidebarMobile();
-                    }
+                    fecharSidebarMobile();
                 });
             }
 
             // ESC fecha (mobile)
             document.addEventListener('keydown', function (e) {
-                if (e.key === 'Escape' && isMobile()) {
+                if (e.key === 'Escape') {
                     fecharSidebarMobile();
                 }
             });
 
-            // Estado inicial
-            if (sidebar && isMobile()) {
-                sidebar.style.setProperty('display', 'none');
-                fecharSidebarMobile();
-            } else if (sidebar) {
-                sidebar.style.setProperty('display', 'flex');
-                sidebar.classList.remove('opacity-0', 'invisible', 'pointer-events-none', '-translate-x-full');
-                sidebar.classList.add('opacity-100', 'visible', 'pointer-events-auto', 'translate-x-0');
-                sidebar.style.removeProperty('transform');
-                sidebar.style.removeProperty('position');
-                sidebar.style.removeProperty('top');
-                sidebar.style.removeProperty('bottom');
-                sidebar.style.removeProperty('left');
-                sidebar.style.removeProperty('right');
-                sidebar.style.removeProperty('z-index');
-                sidebar.style.removeProperty('max-width');
-                sidebar.style.removeProperty('width');
-                setDesktopCollapsed(false); // começa expandido no desktop
+            if (sidebar) {
+                sidebar.querySelectorAll('a[href]').forEach((link) => {
+                    link.addEventListener('click', () => {
+                        if (!isMobile()) return;
+                        fecharSidebarMobile();
+                    });
+                });
             }
 
-            // Se a tela for redimensionada, ajusta comportamento
-            window.addEventListener('resize', function () {
-                if (isMobile()) {
-                    // Voltou para mobile: garante expandido internamente e fecha overlay
-                    setDesktopCollapsed(false);
-                    fecharSidebarMobile();
-                } else {
-                    if (mobileHideTimer) {
-                        clearTimeout(mobileHideTimer);
-                        mobileHideTimer = null;
-                    }
-                    sidebar.style.setProperty('display', 'flex');
-                    // Voltou para desktop: garante que não fique com translate-x-full
-                    sidebar.classList.remove('opacity-0', 'invisible', 'pointer-events-none', '-translate-x-full');
-                    sidebar.classList.add('opacity-100', 'visible', 'pointer-events-auto', 'translate-x-0');
-                    sidebar.style.removeProperty('transform');
-                    sidebar.style.removeProperty('position');
-                    sidebar.style.removeProperty('top');
-                    sidebar.style.removeProperty('bottom');
-                    sidebar.style.removeProperty('left');
-                    sidebar.style.removeProperty('right');
-                    sidebar.style.removeProperty('z-index');
-                    sidebar.style.removeProperty('max-width');
-                    sidebar.style.removeProperty('width');
-                    document.body.classList.remove('overflow-hidden');
-                    if (backdrop) {
-                        backdrop.classList.add('opacity-0', 'pointer-events-none');
-                        backdrop.classList.remove('opacity-100');
-                    }
-                }
+            syncSidebarState();
+            window.addEventListener('resize', syncSidebarState);
+            window.addEventListener('orientationchange', syncSidebarState);
+            window.visualViewport?.addEventListener('resize', syncSidebarState);
+            const mediaMobile = window.matchMedia('(max-width: 1279.98px)');
+            mediaMobile.addEventListener?.('change', () => {
+                syncSidebarState();
             });
 
             // ------------------ MODAL DE FUNÇÃO (código original) ------------------ //

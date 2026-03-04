@@ -174,14 +174,13 @@
     @endphp
 
     <div id="cliente-sidebar-backdrop"
-         class="fixed inset-0 bg-black/50 z-[60] opacity-0 pointer-events-none transition-opacity duration-200 md:hidden"></div>
+         class="fixed inset-0 bg-black/50 z-[60] opacity-0 pointer-events-none transition-opacity duration-200 lg:hidden"></div>
 
     <aside id="cliente-sidebar"
            class="fixed inset-y-0 left-0 z-[70] w-64 bg-slate-950 text-slate-100 shadow-2xl
                   transform -translate-x-full transition-all duration-200 ease-in-out
                   opacity-0 invisible pointer-events-none
-                  flex flex-col relative overflow-hidden
-                  md:static md:translate-x-0 md:opacity-100 md:visible md:pointer-events-auto">
+                  flex flex-col relative overflow-hidden lg:static lg:translate-x-0 lg:opacity-100 lg:visible lg:pointer-events-auto">
         <div class="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.06]">
             <img src="{{ asset('storage/logo.svg') }}" alt="FORMED" class="w-40">
         </div>
@@ -189,7 +188,7 @@
         <div class="relative z-10 h-16 flex items-center justify-between px-4 border-b border-slate-800">
             <div class="flex items-center gap-2">
                 <button type="button"
-                        class="hidden md:inline-flex items-center justify-center p-1.5 rounded-lg text-slate-300 hover:bg-slate-800"
+                        class="hidden lg:inline-flex items-center justify-center p-1.5 rounded-lg text-slate-300 hover:bg-slate-800"
                         data-sidebar-collapse
                         title="Recolher/expandir">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
@@ -206,7 +205,7 @@
             </div>
 
             <button type="button"
-                    class="inline-flex items-center justify-center p-2 rounded-lg text-slate-300 hover:bg-slate-800 md:hidden"
+                    class="inline-flex items-center justify-center p-2 rounded-lg text-slate-300 hover:bg-slate-800 lg:hidden"
                     data-sidebar-close>
                 <i class="fa-solid fa-xmark text-sm"></i>
             </button>
@@ -255,7 +254,7 @@
                 <div class="flex items-center gap-2 min-w-0">
                     <button type="button"
                             data-sidebar-toggle
-                            class="md:hidden inline-flex h-8 w-8 items-center justify-center rounded-lg border border-blue-300/60 text-blue-50 hover:bg-white/10 transition"
+                            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-blue-300/60 text-blue-50 hover:bg-white/10 transition"
                             aria-label="Abrir menu">
                         &#9776;
                     </button>
@@ -422,6 +421,11 @@ document.addEventListener('DOMContentLoaded', function () {
     const labels = document.querySelectorAll('[data-sidebar-label]');
     const headerTitle = document.querySelector('[data-sidebar-label-header]');
     const overlayRoot = document.getElementById('app-overlay-root');
+    const userAgent = String(window.navigator?.userAgent || '');
+    const viewportW = Math.max(window.screen?.width || 0, window.screen?.height || 0);
+            const viewportH = Math.min(window.screen?.width || 0, window.screen?.height || 0);
+            const isNestViewport = (viewportW === 1280 && viewportH === 800) || (viewportW === 1024 && viewportH === 600);
+            const isNestDevice = /CrKey|Fuchsia|Android.*wv/i.test(userAgent) || isNestViewport;
     const storageKey = 'clienteSidebarCollapsed';
     const lgpdCheck = document.getElementById('cliente-lgpd-check');
     const lgpdSubmit = document.getElementById('cliente-lgpd-submit');
@@ -437,8 +441,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
     mountOverlayModals();
 
+    if (isNestDevice) {
+        sidebar?.classList.remove('lg:static', 'lg:translate-x-0', 'lg:opacity-100', 'lg:visible', 'lg:pointer-events-auto');
+        backdrop?.classList.remove('lg:hidden');
+        btnToggleMob?.classList.remove('lg:hidden');
+        btnCloses.forEach((btn) => btn.classList.remove('lg:hidden'));
+    }
+
     function isMobile() {
-        return window.matchMedia('(max-width: 767px)').matches;
+        const isTouch = window.matchMedia('(pointer: coarse)').matches || window.matchMedia('(hover: none)').matches;
+        const byWidth = window.matchMedia('(max-width: 1279.98px)').matches;
+        return isNestDevice || isTouch || byWidth;
     }
 
     function setCollapsed(collapsed) {
@@ -449,8 +462,13 @@ document.addEventListener('DOMContentLoaded', function () {
         if (headerTitle) headerTitle.classList.toggle('hidden', collapsed);
     }
 
+    function isSidebarOpenMobile() {
+        if (!sidebar) return false;
+        return !sidebar.classList.contains('-translate-x-full');
+    }
+
     function openSidebar() {
-        if (!sidebar || !backdrop) return;
+        if (!sidebar) return;
         if (isMobile()) {
             sidebar.style.setProperty('position', 'fixed');
             sidebar.style.setProperty('top', '0');
@@ -462,13 +480,13 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         sidebar.classList.remove('-translate-x-full', 'opacity-0', 'invisible', 'pointer-events-none');
         sidebar.classList.add('translate-x-0', 'opacity-100', 'visible', 'pointer-events-auto');
-        backdrop.classList.remove('opacity-0', 'pointer-events-none');
-        backdrop.classList.add('opacity-100', 'pointer-events-auto');
+        backdrop?.classList.remove('opacity-0', 'pointer-events-none');
+        backdrop?.classList.add('opacity-100', 'pointer-events-auto');
         document.body.classList.add('overflow-hidden');
     }
 
     function closeSidebar() {
-        if (!sidebar || !backdrop) return;
+        if (!sidebar) return;
         if (isMobile()) {
             sidebar.style.setProperty('position', 'fixed');
             sidebar.style.setProperty('top', '0');
@@ -477,21 +495,17 @@ document.addEventListener('DOMContentLoaded', function () {
             sidebar.style.setProperty('width', window.innerWidth <= 640 ? '100vw' : 'min(22rem, 92vw)');
             sidebar.style.setProperty('max-width', '100vw');
             sidebar.style.setProperty('z-index', '70');
-            sidebar.classList.remove('translate-x-0', 'opacity-100', 'visible', 'pointer-events-auto');
-            sidebar.classList.add('-translate-x-full', 'opacity-0', 'invisible', 'pointer-events-none');
-            backdrop.classList.remove('opacity-100', 'pointer-events-auto');
-            backdrop.classList.add('opacity-0', 'pointer-events-none');
-            document.body.classList.remove('overflow-hidden');
-            return;
         }
 
-        backdrop.classList.remove('opacity-100', 'pointer-events-auto');
-        backdrop.classList.add('opacity-0', 'pointer-events-none');
+        sidebar.classList.remove('translate-x-0', 'opacity-100', 'visible', 'pointer-events-auto');
+        sidebar.classList.add('-translate-x-full', 'opacity-0', 'invisible', 'pointer-events-none');
+        backdrop?.classList.remove('opacity-100', 'pointer-events-auto');
+        backdrop?.classList.add('opacity-0', 'pointer-events-none');
         document.body.classList.remove('overflow-hidden');
     }
 
     function syncSidebarForViewport() {
-        if (!sidebar || !backdrop) return;
+        if (!sidebar) return;
         if (isMobile()) {
             sidebar.style.setProperty('position', 'fixed');
             sidebar.style.setProperty('top', '0');
@@ -500,11 +514,14 @@ document.addEventListener('DOMContentLoaded', function () {
             sidebar.style.setProperty('width', window.innerWidth <= 640 ? '100vw' : 'min(22rem, 92vw)');
             sidebar.style.setProperty('max-width', '100vw');
             sidebar.style.setProperty('z-index', '70');
-            sidebar.classList.remove('translate-x-0', 'opacity-100', 'visible', 'pointer-events-auto');
-            sidebar.classList.add('-translate-x-full', 'opacity-0', 'invisible', 'pointer-events-none');
-            backdrop.classList.remove('opacity-100', 'pointer-events-auto');
-            backdrop.classList.add('opacity-0', 'pointer-events-none');
-            document.body.classList.remove('overflow-hidden');
+            const isOpen = !sidebar.classList.contains('-translate-x-full')
+                && sidebar.classList.contains('visible')
+                && !sidebar.classList.contains('invisible');
+            if (isOpen) {
+                openSidebar();
+            } else {
+                closeSidebar();
+            }
             return;
         }
 
@@ -517,15 +534,25 @@ document.addEventListener('DOMContentLoaded', function () {
         sidebar.style.removeProperty('z-index');
         sidebar.classList.remove('-translate-x-full', 'translate-x-0', 'opacity-0', 'invisible', 'pointer-events-none');
         sidebar.classList.add('opacity-100', 'visible', 'pointer-events-auto');
-        backdrop.classList.remove('opacity-100', 'pointer-events-auto');
-        backdrop.classList.add('opacity-0', 'pointer-events-none');
+        backdrop?.classList.remove('opacity-100', 'pointer-events-auto');
+        backdrop?.classList.add('opacity-0', 'pointer-events-none');
         document.body.classList.remove('overflow-hidden');
 
         const collapsed = localStorage.getItem(storageKey) === '1';
         setCollapsed(collapsed);
     }
 
-    btnToggleMob?.addEventListener('click', openSidebar);
+    btnToggleMob?.addEventListener('click', function () {
+        if (!sidebar) return;
+        const isHidden = sidebar.classList.contains('-translate-x-full')
+            || sidebar.classList.contains('invisible')
+            || sidebar.classList.contains('opacity-0');
+        if (isHidden) {
+            openSidebar();
+        } else {
+            closeSidebar();
+        }
+    });
     btnCloses.forEach((btn) => btn.addEventListener('click', closeSidebar));
     backdrop?.addEventListener('click', closeSidebar);
 
@@ -547,6 +574,12 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     window.addEventListener('resize', syncSidebarForViewport);
+    window.addEventListener('orientationchange', syncSidebarForViewport);
+    window.visualViewport?.addEventListener('resize', syncSidebarForViewport);
+    const mediaMobile = window.matchMedia('(max-width: 1023.98px)');
+    mediaMobile.addEventListener?.('change', () => {
+        syncSidebarForViewport();
+    });
     syncSidebarForViewport();
 
     if (lgpdCheck && lgpdSubmit) {

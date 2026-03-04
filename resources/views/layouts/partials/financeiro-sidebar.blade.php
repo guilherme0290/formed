@@ -1,13 +1,12 @@
 {{-- Sidebar Financeiro no mesmo modelo visual da Master --}}
 <div id="financeiro-sidebar-backdrop"
-     class="fixed inset-0 bg-black/50 z-[9998] opacity-0 pointer-events-none transition-opacity duration-200 md:hidden"></div>
+     class="fixed inset-0 bg-black/50 z-[9998] opacity-0 pointer-events-none transition-opacity duration-200 lg:hidden"></div>
 
 <aside id="financeiro-sidebar"
        class="fixed inset-y-0 left-0 z-[9999] w-64 bg-slate-950 text-slate-100 shadow-2xl
               transform -translate-x-full transition-all duration-200 ease-in-out
               opacity-0 invisible pointer-events-none
-              flex flex-col relative overflow-hidden
-              md:static md:translate-x-0 md:opacity-100 md:visible md:pointer-events-auto">
+              flex flex-col relative overflow-hidden lg:static lg:translate-x-0 lg:opacity-100 lg:visible lg:pointer-events-auto">
 
     <div class="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.06]">
         <img src="{{ asset('storage/logo.svg') }}" alt="FORMED" class="w-40">
@@ -16,7 +15,7 @@
     <div class="relative z-10 h-16 flex items-center justify-between px-4 border-b border-slate-800">
         <div class="flex items-center gap-2">
             <button type="button"
-                    class="hidden md:inline-flex items-center justify-center p-1.5 rounded-lg text-slate-300 hover:bg-slate-800"
+                    class="hidden lg:inline-flex items-center justify-center p-1.5 rounded-lg text-slate-300 hover:bg-slate-800"
                     data-sidebar-collapse
                     title="Recolher/expandir">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
@@ -33,7 +32,7 @@
         </div>
 
         <button type="button"
-                class="inline-flex items-center justify-center p-2 rounded-lg text-slate-300 hover:bg-slate-800 md:hidden"
+                class="inline-flex items-center justify-center p-2 rounded-lg text-slate-300 hover:bg-slate-800 lg:hidden"
                 data-sidebar-close>
             <i class="fa-solid fa-xmark text-sm"></i>
         </button>
