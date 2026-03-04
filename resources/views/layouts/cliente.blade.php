@@ -9,6 +9,11 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+          integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA=="
+          crossorigin="anonymous"
+          referrerpolicy="no-referrer">
 
     <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
     <link rel="shortcut icon" type="image/png" href="{{ asset('favicon.png') }}">
@@ -18,224 +23,224 @@
 
 <div class="min-h-screen flex">
 
-    {{-- SIDEBAR DO CLIENTE (vai até o topo) --}}
-    <aside class="hidden md:flex flex-col w-56 bg-slate-950 text-slate-100 relative overflow-hidden">
+    @php
+        $clienteSidebar = $cliente ?? null;
+        if (!$clienteSidebar) {
+            $clienteSidebarId = (int) (session('portal_cliente_id') ?: (auth()->user()->cliente_id ?? 0));
+            if ($clienteSidebarId > 0) {
+                $clienteSidebar = \App\Models\Cliente::query()->find($clienteSidebarId);
+            }
+        }
+
+        $temTabelaSidebar = $temTabela ?? false;
+        $precosSidebar = $precos ?? [];
+        $contratoAtivoSidebar = $contratoAtivo ?? null;
+        $servicosContratoSidebar = $servicosContrato ?? [];
+        $servicosIdsSidebar = $servicosIds ?? [];
+
+        if (!$contratoAtivoSidebar && $clienteSidebar) {
+            $contratoAtivoSidebar = app(\App\Services\ContratoClienteService::class)
+                ->getContratoAtivo((int) $clienteSidebar->id, (int) $clienteSidebar->empresa_id, null);
+            if ($contratoAtivoSidebar && !$contratoAtivoSidebar->relationLoaded('itens')) {
+                $contratoAtivoSidebar->load('itens');
+            }
+        }
+
+        if (empty($servicosContratoSidebar) && $contratoAtivoSidebar) {
+            $servicosContratoSidebar = $contratoAtivoSidebar->itens
+                ->pluck('servico_id')
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+        }
+
+        if (empty($servicosIdsSidebar) && $clienteSidebar) {
+            $servicosMap = [
+                'aso' => ['aso'],
+                'pgr' => ['pgr'],
+                'pcmso' => ['pcmso'],
+                'ltcat' => ['ltcat'],
+                'apr' => ['apr'],
+                'treinamentos' => ['treinamentos nrs', 'treinamentos nr'],
+            ];
+            $servicosEmpresa = \App\Models\Servico::query()
+                ->where('empresa_id', (int) $clienteSidebar->empresa_id)
+                ->get(['id', 'nome']);
+
+            foreach ($servicosMap as $slug => $nomes) {
+                $servico = $servicosEmpresa->first(function ($row) use ($nomes) {
+                    $nome = mb_strtolower(trim((string) $row->nome));
+                    return in_array($nome, $nomes, true);
+                });
+                $servicosIdsSidebar[$slug] = $servico?->id ? (int) $servico->id : null;
+            }
+        }
+
+        $temContratoAtivoSidebar = (bool) $contratoAtivoSidebar;
+        $permitidosSidebar = [
+            'aso' => $temContratoAtivoSidebar && in_array($servicosIdsSidebar['aso'] ?? null, $servicosContratoSidebar),
+            'pgr' => $temContratoAtivoSidebar && in_array($servicosIdsSidebar['pgr'] ?? null, $servicosContratoSidebar),
+            'pcmso' => $temContratoAtivoSidebar && in_array($servicosIdsSidebar['pcmso'] ?? null, $servicosContratoSidebar),
+            'ltcat' => $temContratoAtivoSidebar && in_array($servicosIdsSidebar['ltcat'] ?? null, $servicosContratoSidebar),
+            'apr' => $temContratoAtivoSidebar && in_array($servicosIdsSidebar['apr'] ?? null, $servicosContratoSidebar),
+            'treinamentos' => $temContratoAtivoSidebar && in_array($servicosIdsSidebar['treinamentos'] ?? null, $servicosContratoSidebar),
+        ];
+
+        $linksRapidos = [
+            [
+                'titulo' => 'Painel do Cliente',
+                'icone' => 'fa-solid fa-house',
+                'rota' => route('cliente.dashboard'),
+                'disabled' => false,
+                'active' => request()->routeIs('cliente.dashboard'),
+            ],
+            [
+                'titulo' => 'Funcionários',
+                'icone' => 'fa-regular fa-user',
+                'rota' => route('cliente.funcionarios.index'),
+                'disabled' => false,
+                'active' => request()->routeIs('cliente.funcionarios.*'),
+            ],
+            [
+                'titulo' => 'Agendar ASO',
+                'icone' => 'fa-regular fa-calendar',
+                'rota' => route('cliente.servicos.aso'),
+                'disabled' => !($permitidosSidebar['aso'] ?? false),
+                'active' => request()->routeIs('cliente.servicos.aso'),
+            ],
+            [
+                'titulo' => 'Solicitar PGR',
+                'icone' => 'fa-regular fa-file-lines',
+                'rota' => route('cliente.servicos.pgr'),
+                'disabled' => !($permitidosSidebar['pgr'] ?? false),
+                'active' => request()->routeIs('cliente.servicos.pgr'),
+            ],
+            [
+                'titulo' => 'Solicitar PCMSO',
+                'icone' => 'fa-regular fa-folder-open',
+                'rota' => route('cliente.servicos.pcmso'),
+                'disabled' => !($permitidosSidebar['pcmso'] ?? false),
+                'active' => request()->routeIs('cliente.servicos.pcmso'),
+            ],
+            [
+                'titulo' => 'Solicitar LTCAT',
+                'icone' => 'fa-regular fa-file',
+                'rota' => route('cliente.servicos.ltcat'),
+                'disabled' => !($permitidosSidebar['ltcat'] ?? false),
+                'active' => request()->routeIs('cliente.servicos.ltcat'),
+            ],
+            [
+                'titulo' => 'Solicitar APR',
+                'icone' => 'fa-solid fa-triangle-exclamation',
+                'rota' => route('cliente.servicos.apr'),
+                'disabled' => !($permitidosSidebar['apr'] ?? false),
+                'active' => request()->routeIs('cliente.servicos.apr'),
+            ],
+            [
+                'titulo' => 'Treinamentos',
+                'icone' => 'fa-solid fa-graduation-cap',
+                'rota' => route('cliente.servicos.treinamentos'),
+                'disabled' => !($permitidosSidebar['treinamentos'] ?? false),
+                'active' => request()->routeIs('cliente.servicos.treinamentos'),
+            ],
+            [
+                'titulo' => 'Meus Arquivos',
+                'icone' => 'fa-regular fa-folder-open',
+                'rota' => route('cliente.arquivos.index'),
+                'disabled' => false,
+                'active' => request()->routeIs('cliente.arquivos.*'),
+            ],
+        ];
+
+        $menuState = function (bool $active = false, bool $disabled = false): string {
+            if ($disabled) {
+                return 'text-slate-500 border-l-2 border-transparent cursor-not-allowed bg-slate-900/20';
+            }
+            if ($active) {
+                return 'bg-slate-800/80 text-white border-l-2 border-emerald-400';
+            }
+
+            return 'text-slate-300 hover:text-white hover:bg-slate-800/70 border-l-2 border-transparent';
+        };
+
+        $iconState = function (bool $active = false, bool $disabled = false): string {
+            if ($disabled) {
+                return 'text-slate-600';
+            }
+
+            return $active ? 'text-emerald-300' : 'text-slate-400 group-hover:text-slate-200';
+        };
+    @endphp
+
+    <div id="cliente-sidebar-backdrop"
+         class="fixed inset-0 bg-black/50 z-[60] opacity-0 pointer-events-none transition-opacity duration-200 md:hidden"></div>
+
+    <aside id="cliente-sidebar"
+           class="fixed inset-y-0 left-0 z-[70] w-64 bg-slate-950 text-slate-100 shadow-2xl
+                  transform -translate-x-full transition-all duration-200 ease-in-out
+                  opacity-0 invisible pointer-events-none
+                  flex flex-col relative overflow-hidden
+                  md:static md:translate-x-0 md:opacity-100 md:visible md:pointer-events-auto">
         <div class="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.06]">
-            <img src="{{ asset('storage/logo.svg') }}" alt="FORMED" class="w-36">
-        </div>
-        <div class="relative z-10 h-16 flex items-center px-6 text-lg font-semibold">
-            Portal do Cliente
+            <img src="{{ asset('storage/logo.svg') }}" alt="FORMED" class="w-40">
         </div>
 
-        @php
-            $clienteSidebar = $cliente ?? null;
-            if (!$clienteSidebar) {
-                $clienteSidebarId = (int) (session('portal_cliente_id') ?: (auth()->user()->cliente_id ?? 0));
-                if ($clienteSidebarId > 0) {
-                    $clienteSidebar = \App\Models\Cliente::query()->find($clienteSidebarId);
-                }
-            }
+        <div class="relative z-10 h-16 flex items-center justify-between px-4 border-b border-slate-800">
+            <div class="flex items-center gap-2">
+                <button type="button"
+                        class="hidden md:inline-flex items-center justify-center p-1.5 rounded-lg text-slate-300 hover:bg-slate-800"
+                        data-sidebar-collapse
+                        title="Recolher/expandir">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                         viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M15 19l-7-7 7-7"/>
+                    </svg>
+                </button>
 
-            $temTabelaSidebar = $temTabela ?? false;
-            $precosSidebar = $precos ?? [];
-            $contratoAtivoSidebar = $contratoAtivo ?? null;
-            $servicosContratoSidebar = $servicosContrato ?? [];
-            $servicosIdsSidebar = $servicosIds ?? [];
+                <div class="flex flex-col leading-tight">
+                    <span data-sidebar-label-header class="text-sm font-semibold text-slate-100">Cliente</span>
+                    <span class="text-[11px] text-slate-500" data-sidebar-label>Módulo</span>
+                </div>
+            </div>
 
-            if (!$contratoAtivoSidebar && $clienteSidebar) {
-                $contratoAtivoSidebar = app(\App\Services\ContratoClienteService::class)
-                    ->getContratoAtivo((int) $clienteSidebar->id, (int) $clienteSidebar->empresa_id, null);
-                if ($contratoAtivoSidebar && !$contratoAtivoSidebar->relationLoaded('itens')) {
-                    $contratoAtivoSidebar->load('itens');
-                }
-            }
+            <button type="button"
+                    class="inline-flex items-center justify-center p-2 rounded-lg text-slate-300 hover:bg-slate-800 md:hidden"
+                    data-sidebar-close>
+                <i class="fa-solid fa-xmark text-sm"></i>
+            </button>
+        </div>
 
-            if (empty($servicosContratoSidebar) && $contratoAtivoSidebar) {
-                $servicosContratoSidebar = $contratoAtivoSidebar->itens
-                    ->pluck('servico_id')
-                    ->filter()
-                    ->unique()
-                    ->values()
-                    ->all();
-            }
-
-            if (empty($servicosIdsSidebar) && $clienteSidebar) {
-                $servicosMap = [
-                    'aso' => ['aso'],
-                    'pgr' => ['pgr'],
-                    'pcmso' => ['pcmso'],
-                    'ltcat' => ['ltcat'],
-                    'apr' => ['apr'],
-                    'treinamentos' => ['treinamentos nrs', 'treinamentos nr'],
-                ];
-                $servicosEmpresa = \App\Models\Servico::query()
-                    ->where('empresa_id', (int) $clienteSidebar->empresa_id)
-                    ->get(['id', 'nome']);
-
-                foreach ($servicosMap as $slug => $nomes) {
-                    $servico = $servicosEmpresa->first(function ($row) use ($nomes) {
-                        $nome = mb_strtolower(trim((string) $row->nome));
-                        return in_array($nome, $nomes, true);
-                    });
-                    $servicosIdsSidebar[$slug] = $servico?->id ? (int) $servico->id : null;
-                }
-            }
-
-            $temContratoAtivoSidebar = (bool) $contratoAtivoSidebar;
-            $permitidosSidebar = [
-                'aso' => $temContratoAtivoSidebar && in_array($servicosIdsSidebar['aso'] ?? null, $servicosContratoSidebar),
-                'pgr' => $temContratoAtivoSidebar && in_array($servicosIdsSidebar['pgr'] ?? null, $servicosContratoSidebar),
-                'pcmso' => $temContratoAtivoSidebar && in_array($servicosIdsSidebar['pcmso'] ?? null, $servicosContratoSidebar),
-                'ltcat' => $temContratoAtivoSidebar && in_array($servicosIdsSidebar['ltcat'] ?? null, $servicosContratoSidebar),
-                'apr' => $temContratoAtivoSidebar && in_array($servicosIdsSidebar['apr'] ?? null, $servicosContratoSidebar),
-                'treinamentos' => $temContratoAtivoSidebar && in_array($servicosIdsSidebar['treinamentos'] ?? null, $servicosContratoSidebar),
-            ];
-            $linksRapidos = [
-                [
-                    'titulo' => 'Painel do Cliente',
-                    'icone' => '&#127968;',
-                    'rota' => route('cliente.dashboard'),
-                    'disabled' => false,
-                    'principal' => true,
-                ],
-                [
-                    'titulo' => 'Funcionários',
-                    'icone' => '&#128101;',
-                    'rota' => route('cliente.funcionarios.index'),
-                    'disabled' => false,
-                ],
-                
-                [
-                    'titulo' => 'Agendar ASO',
-                    'icone' => '&#128197;',
-                    'rota' => route('cliente.servicos.aso'),
-                    'disabled' => !($permitidosSidebar['aso'] ?? false),
-                ],
-                [
-                    'titulo' => 'Solicitar PGR',
-                    'icone' => '&#128203;',
-                    'rota' => route('cliente.servicos.pgr'),
-                    'disabled' => !($permitidosSidebar['pgr'] ?? false),
-                ],
-                [
-                    'titulo' => 'Solicitar PCMSO',
-                    'icone' => '&#128209;',
-                    'rota' => route('cliente.servicos.pcmso'),
-                    'disabled' => !($permitidosSidebar['pcmso'] ?? false),
-                ],
-                [
-                    'titulo' => 'Solicitar LTCAT',
-                    'icone' => '&#128196;',
-                    'rota' => route('cliente.servicos.ltcat'),
-                    'disabled' => !($permitidosSidebar['ltcat'] ?? false),
-                ],
-                [
-                    'titulo' => 'Solicitar APR',
-                    'icone' => '&#9888;&#65039;',
-                    'rota' => route('cliente.servicos.apr'),
-                    'disabled' => !($permitidosSidebar['apr'] ?? false),
-                ],
-                [
-                    'titulo' => 'Treinamentos',
-                    'icone' => '&#127891;',
-                    'rota' => route('cliente.servicos.treinamentos'),
-                    'disabled' => !($permitidosSidebar['treinamentos'] ?? false),
-                ],
-                [
-                    'titulo' => 'Meus Arquivos',
-                    'icone' => '&#128450;&#65039;',
-                    'rota' => route('cliente.arquivos.index'),
-                    'disabled' => false,
-                ],
-            ];
-        @endphp
-
-        <nav class="relative z-10 flex-1 px-3 mt-4 space-y-1">
+        <nav class="relative z-10 flex-1 px-3 mt-4 space-y-1 overflow-y-auto">
             @foreach($linksRapidos as $link)
                 @php
                     $disabled = $link['disabled'] ?? false;
-                    $classes = $link['principal'] ?? false
-                        ? 'bg-slate-800 text-slate-50 font-medium'
-                        : 'text-slate-100 hover:bg-slate-800/80';
-                    $opacity = $disabled ? 'opacity-60' : '';
+                    $active = $link['active'] ?? false;
                     $hint = $disabled ? 'Servico nao disponivel no contrato ativo.' : null;
+                    $href = $disabled ? 'javascript:void(0)' : $link['rota'];
                 @endphp
-                <a href="{{ $link['rota'] }}"
-                   @if($hint) title="{{ $hint }}" @endif
-                   class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition {{ $classes }} {{ $opacity }}">
-                    <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800">
-                        {!! $link['icone'] !!}
+                <a href="{{ $href }}"
+                   @if($hint) title="{{ $hint }}" aria-disabled="true" @endif
+                   class="group flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition min-w-0 {{ $menuState($active, $disabled) }}">
+                    <span class="{{ $iconState($active, $disabled) }}">
+                        <i class="{{ $link['icone'] }} w-4 text-center"></i>
                     </span>
-                    <span>{{ $link['titulo'] }}</span>
+                    <span data-sidebar-label class="truncate">{{ $link['titulo'] }}</span>
                 </a>
             @endforeach
-
-
         </nav>
 
-        <div class="relative z-10 px-4 py-4 border-t border-slate-800 space-y-2 text-sm">
+        <div class="relative z-10 px-3 py-4 border-t border-slate-800 text-sm">
             <form method="POST" action="{{ route('logout') }}">
                 @csrf
-                <button class="flex items-center gap-2 text-rose-400 hover:text-rose-300">
-                    <span>&#128682;</span>
-                    Sair
+                <button class="group w-full flex items-center gap-3 px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/70 transition">
+                    <span class="text-slate-400 group-hover:text-slate-200">
+                        <i class="fa-solid fa-right-from-bracket w-4 text-center"></i>
+                    </span>
+                    <span data-sidebar-label>Sair</span>
                 </button>
             </form>
-        </div>
-    </aside>
-    {{-- SIDEBAR MOBILE --}}
-    <div id="cliente-mobile-sidebar-backdrop"
-         class="fixed inset-0 z-[60] bg-black/50 hidden md:hidden"
-         aria-hidden="true"></div>
-
-    <aside id="cliente-mobile-sidebar"
-           class="fixed inset-y-0 left-0 z-[70] w-72 max-w-[88vw] bg-slate-950 text-slate-100 shadow-2xl transform -translate-x-full transition-transform duration-200 ease-out md:hidden"
-           aria-hidden="true">
-        <div class="h-full flex flex-col relative overflow-hidden">
-            <div class="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.06]">
-                <img src="{{ asset('storage/logo.svg') }}" alt="FORMED" class="w-36">
-            </div>
-
-            <div class="relative z-10 h-16 flex items-center justify-between px-4 border-b border-slate-800">
-                <span class="text-sm font-semibold">Portal do Cliente</span>
-                <button type="button"
-                        id="cliente-mobile-sidebar-close"
-                        class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 text-slate-200 hover:bg-slate-800"
-                        aria-label="Fechar menu">
-                    &times;
-                </button>
-            </div>
-
-            <nav class="relative z-10 flex-1 px-3 py-3 space-y-1 overflow-y-auto">
-                @foreach($linksRapidos as $link)
-                    @php
-                        $disabled = $link['disabled'] ?? false;
-                        $classes = $link['principal'] ?? false
-                            ? 'bg-slate-800 text-slate-50 font-medium'
-                            : 'text-slate-100 hover:bg-slate-800/80';
-                        $opacity = $disabled ? 'opacity-60' : '';
-                        $hint = $disabled ? 'Servico nao disponivel no contrato ativo.' : null;
-                    @endphp
-                    <a href="{{ $link['rota'] }}"
-                       @if($hint) title="{{ $hint }}" @endif
-                       class="flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition {{ $classes }} {{ $opacity }}">
-                        <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800">
-                            {!! $link['icone'] !!}
-                        </span>
-                        <span>{{ $link['titulo'] }}</span>
-                    </a>
-                @endforeach
-            </nav>
-
-            <div class="relative z-10 px-4 py-4 border-t border-slate-800">
-                <form method="POST" action="{{ route('logout') }}">
-                    @csrf
-                    <button class="flex items-center gap-2 text-rose-400 hover:text-rose-300">
-                        <span>&#128682;</span>
-                        Sair
-                    </button>
-                </form>
-            </div>
         </div>
     </aside>
 
@@ -249,7 +254,7 @@
                 {{-- Lado esquerdo: FORMED + subtítulo --}}
                 <div class="flex items-center gap-2 min-w-0">
                     <button type="button"
-                            id="cliente-mobile-sidebar-open"
+                            data-sidebar-toggle
                             class="md:hidden inline-flex h-8 w-8 items-center justify-center rounded-lg border border-blue-300/60 text-blue-50 hover:bg-white/10 transition"
                             aria-label="Abrir menu">
                         &#9776;
@@ -386,11 +391,15 @@
 @stack('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const openBtn = document.getElementById('cliente-mobile-sidebar-open');
-    const closeBtn = document.getElementById('cliente-mobile-sidebar-close');
-    const sidebar = document.getElementById('cliente-mobile-sidebar');
-    const backdrop = document.getElementById('cliente-mobile-sidebar-backdrop');
+    const sidebar = document.getElementById('cliente-sidebar');
+    const backdrop = document.getElementById('cliente-sidebar-backdrop');
+    const btnToggleMob = document.querySelector('[data-sidebar-toggle]');
+    const btnCloses = document.querySelectorAll('[data-sidebar-close]');
+    const btnCollapse = document.querySelector('[data-sidebar-collapse]');
+    const labels = document.querySelectorAll('[data-sidebar-label]');
+    const headerTitle = document.querySelector('[data-sidebar-label-header]');
     const overlayRoot = document.getElementById('app-overlay-root');
+    const storageKey = 'clienteSidebarCollapsed';
 
     function mountOverlayModals() {
         if (!overlayRoot) return;
@@ -403,37 +412,118 @@ document.addEventListener('DOMContentLoaded', function () {
 
     mountOverlayModals();
 
+    function isMobile() {
+        return window.matchMedia('(max-width: 767px)').matches;
+    }
+
+    function setCollapsed(collapsed) {
+        if (!sidebar || isMobile()) return;
+        sidebar.classList.toggle('w-64', !collapsed);
+        sidebar.classList.toggle('w-16', collapsed);
+        labels.forEach((el) => el.classList.toggle('hidden', collapsed));
+        if (headerTitle) headerTitle.classList.toggle('hidden', collapsed);
+    }
+
     function openSidebar() {
         if (!sidebar || !backdrop) return;
-        sidebar.classList.remove('-translate-x-full');
-        sidebar.setAttribute('aria-hidden', 'false');
-        backdrop.classList.remove('hidden');
+        if (isMobile()) {
+            sidebar.style.setProperty('position', 'fixed');
+            sidebar.style.setProperty('top', '0');
+            sidebar.style.setProperty('bottom', '0');
+            sidebar.style.setProperty('left', '0');
+            sidebar.style.setProperty('width', window.innerWidth <= 640 ? '100vw' : 'min(22rem, 92vw)');
+            sidebar.style.setProperty('max-width', '100vw');
+            sidebar.style.setProperty('z-index', '70');
+        }
+        sidebar.classList.remove('-translate-x-full', 'opacity-0', 'invisible', 'pointer-events-none');
+        sidebar.classList.add('translate-x-0', 'opacity-100', 'visible', 'pointer-events-auto');
+        backdrop.classList.remove('opacity-0', 'pointer-events-none');
+        backdrop.classList.add('opacity-100', 'pointer-events-auto');
         document.body.classList.add('overflow-hidden');
     }
 
     function closeSidebar() {
         if (!sidebar || !backdrop) return;
-        sidebar.classList.add('-translate-x-full');
-        sidebar.setAttribute('aria-hidden', 'true');
-        backdrop.classList.add('hidden');
+        if (isMobile()) {
+            sidebar.style.setProperty('position', 'fixed');
+            sidebar.style.setProperty('top', '0');
+            sidebar.style.setProperty('bottom', '0');
+            sidebar.style.setProperty('left', '0');
+            sidebar.style.setProperty('width', window.innerWidth <= 640 ? '100vw' : 'min(22rem, 92vw)');
+            sidebar.style.setProperty('max-width', '100vw');
+            sidebar.style.setProperty('z-index', '70');
+            sidebar.classList.remove('translate-x-0', 'opacity-100', 'visible', 'pointer-events-auto');
+            sidebar.classList.add('-translate-x-full', 'opacity-0', 'invisible', 'pointer-events-none');
+            backdrop.classList.remove('opacity-100', 'pointer-events-auto');
+            backdrop.classList.add('opacity-0', 'pointer-events-none');
+            document.body.classList.remove('overflow-hidden');
+            return;
+        }
+
+        backdrop.classList.remove('opacity-100', 'pointer-events-auto');
+        backdrop.classList.add('opacity-0', 'pointer-events-none');
         document.body.classList.remove('overflow-hidden');
     }
 
-    openBtn?.addEventListener('click', openSidebar);
-    closeBtn?.addEventListener('click', closeSidebar);
-    backdrop?.addEventListener('click', closeSidebar);
-    document.addEventListener('keydown', function (event) {
-        if (event.key === 'Escape') {
-            closeSidebar();
+    function syncSidebarForViewport() {
+        if (!sidebar || !backdrop) return;
+        if (isMobile()) {
+            sidebar.style.setProperty('position', 'fixed');
+            sidebar.style.setProperty('top', '0');
+            sidebar.style.setProperty('bottom', '0');
+            sidebar.style.setProperty('left', '0');
+            sidebar.style.setProperty('width', window.innerWidth <= 640 ? '100vw' : 'min(22rem, 92vw)');
+            sidebar.style.setProperty('max-width', '100vw');
+            sidebar.style.setProperty('z-index', '70');
+            sidebar.classList.remove('translate-x-0', 'opacity-100', 'visible', 'pointer-events-auto');
+            sidebar.classList.add('-translate-x-full', 'opacity-0', 'invisible', 'pointer-events-none');
+            backdrop.classList.remove('opacity-100', 'pointer-events-auto');
+            backdrop.classList.add('opacity-0', 'pointer-events-none');
+            document.body.classList.remove('overflow-hidden');
+            return;
         }
+
+        sidebar.style.removeProperty('position');
+        sidebar.style.removeProperty('top');
+        sidebar.style.removeProperty('bottom');
+        sidebar.style.removeProperty('left');
+        sidebar.style.removeProperty('width');
+        sidebar.style.removeProperty('max-width');
+        sidebar.style.removeProperty('z-index');
+        sidebar.classList.remove('-translate-x-full', 'translate-x-0', 'opacity-0', 'invisible', 'pointer-events-none');
+        sidebar.classList.add('opacity-100', 'visible', 'pointer-events-auto');
+        backdrop.classList.remove('opacity-100', 'pointer-events-auto');
+        backdrop.classList.add('opacity-0', 'pointer-events-none');
+        document.body.classList.remove('overflow-hidden');
+
+        const collapsed = localStorage.getItem(storageKey) === '1';
+        setCollapsed(collapsed);
+    }
+
+    btnToggleMob?.addEventListener('click', openSidebar);
+    btnCloses.forEach((btn) => btn.addEventListener('click', closeSidebar));
+    backdrop?.addEventListener('click', closeSidebar);
+
+    btnCollapse?.addEventListener('click', function () {
+        if (isMobile()) return;
+        const collapsedNow = !(localStorage.getItem(storageKey) === '1');
+        localStorage.setItem(storageKey, collapsedNow ? '1' : '0');
+        setCollapsed(collapsedNow);
     });
 
     sidebar?.querySelectorAll('a').forEach((link) => {
-        link.addEventListener('click', closeSidebar);
+        link.addEventListener('click', function () {
+            if (isMobile()) closeSidebar();
+        });
     });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') closeSidebar();
+    });
+
+    window.addEventListener('resize', syncSidebarForViewport);
+    syncSidebarForViewport();
 });
 </script>
 </body>
 </html>
-
-
