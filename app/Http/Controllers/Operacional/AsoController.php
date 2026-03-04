@@ -109,16 +109,7 @@ class AsoController extends Controller
                     $funcionario->save();
                 }
             } else {
-                $funcionario = Funcionario::create([
-                    'empresa_id' => $empresaId,
-                    'cliente_id' => $cliente->id,
-                    'nome' => $data['nome'],
-                    'cpf' => $data['cpf'] ?? null,
-                    'rg' => $data['rg'],
-                    'celular' => $data['celular'] ?? null,
-                    'data_nascimento' => $data['data_nascimento'],
-                    'funcao_id' => $data['funcao_id'] ?? null,
-                ]);
+                $funcionario = $this->upsertFuncionarioByCpf($empresaId, $cliente->id, $data);
             }
 
             // 2) Coluna inicial do Kanban
@@ -454,20 +445,20 @@ class AsoController extends Controller
                     $funcionario->save();
                 }
             } else {
-                $funcionario = $tarefa->funcionario ?: new Funcionario([
-                    'empresa_id' => $empresaId,
-                    'cliente_id' => $cliente->id,
-                ]);
-
-                $funcionario->fill([
-                    'nome' => $data['nome'],
-                    'cpf' => $data['cpf'] ?? null,
-                    'rg' => $data['rg'],
-                    'celular' => $data['celular'] ?? null,
-                    'data_nascimento' => $data['data_nascimento'],
-                    'funcao_id' => $data['funcao_id'] ?? null,
-                ]);
-                $funcionario->save();
+                if ($tarefa->funcionario) {
+                    $funcionario = $tarefa->funcionario;
+                    $funcionario->fill([
+                        'nome' => $data['nome'],
+                        'cpf' => $data['cpf'] ?? null,
+                        'rg' => $data['rg'],
+                        'celular' => $data['celular'] ?? null,
+                        'data_nascimento' => $data['data_nascimento'],
+                        'funcao_id' => $data['funcao_id'] ?? null,
+                    ]);
+                    $funcionario->save();
+                } else {
+                    $funcionario = $this->upsertFuncionarioByCpf($empresaId, $cliente->id, $data);
+                }
             }
 
             // monta descrição "bonita"
@@ -1169,6 +1160,51 @@ class AsoController extends Controller
         }
 
         return app(AsoGheService::class)->resolveTiposAsoContrato($contrato);
+    }
+
+    private function upsertFuncionarioByCpf(int $empresaId, int $clienteId, array $data): Funcionario
+    {
+        $cpfNormalizado = $this->normalizarCpf((string) ($data['cpf'] ?? ''));
+
+        if ($cpfNormalizado !== '') {
+            $existente = Funcionario::query()
+                ->where('empresa_id', $empresaId)
+                ->where('cliente_id', $clienteId)
+                ->get()
+                ->first(function (Funcionario $funcionario) use ($cpfNormalizado) {
+                    return $this->normalizarCpf((string) ($funcionario->cpf ?? '')) === $cpfNormalizado;
+                });
+
+            if ($existente) {
+                $existente->fill([
+                    'nome' => $data['nome'],
+                    'cpf' => $data['cpf'] ?? null,
+                    'rg' => $data['rg'],
+                    'celular' => $data['celular'] ?? null,
+                    'data_nascimento' => $data['data_nascimento'],
+                    'funcao_id' => $data['funcao_id'] ?? null,
+                ]);
+                $existente->save();
+
+                return $existente;
+            }
+        }
+
+        return Funcionario::create([
+            'empresa_id' => $empresaId,
+            'cliente_id' => $clienteId,
+            'nome' => $data['nome'],
+            'cpf' => $data['cpf'] ?? null,
+            'rg' => $data['rg'],
+            'celular' => $data['celular'] ?? null,
+            'data_nascimento' => $data['data_nascimento'],
+            'funcao_id' => $data['funcao_id'] ?? null,
+        ]);
+    }
+
+    private function normalizarCpf(string $cpf): string
+    {
+        return preg_replace('/\D+/', '', $cpf) ?? '';
     }
 
     private function mensagensValidacao(): array

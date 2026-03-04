@@ -140,11 +140,16 @@ window.initTailwindAutocomplete = (inputRef, listRef, options = [], config = {})
         });
     };
 
+    const handleSelect = typeof config.onSelect === 'function' ? config.onSelect : null;
+
     const selectItem = (value) => {
         input.value = value;
         closeList();
         input.dispatchEvent(new Event('input', { bubbles: true }));
         input.dispatchEvent(new Event('change', { bubbles: true }));
+        if (handleSelect) {
+            handleSelect(value, { input, list });
+        }
     };
 
     const render = (items) => {

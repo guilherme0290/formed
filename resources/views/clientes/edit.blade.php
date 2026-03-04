@@ -27,24 +27,6 @@
         $canSave = $cliente->exists ? $canUpdate : $canCreate;
     @endphp
 
-    {{-- MENSAGENS --}}
-    @if (session('ok'))
-        <div class="mb-4 rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700">
-            {{ session('ok') }}
-        </div>
-    @endif
-
-    @if (session('erro'))
-        <div class="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-            {{ session('erro') }}
-        </div>
-    @endif
-    @if (session('error'))
-        <div class="mb-4 rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-700">
-            {{ session('error') }}
-        </div>
-    @endif
-
     <div class="w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div class="mb-2">
             <a href="{{ route($routePrefix.'.index') }}"
@@ -790,6 +772,34 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+            const flashOk = @json(session('ok'));
+            const flashErr = @json(session('error') ?? session('erro'));
+
+            if (typeof window.uiAlert !== 'function') {
+                return;
+            }
+
+            if (flashOk) {
+                window.uiAlert(flashOk, {
+                    icon: 'success',
+                    title: 'Sucesso',
+                    confirmText: 'OK',
+                });
+                return;
+            }
+
+            if (flashErr) {
+                window.uiAlert(flashErr, {
+                    icon: 'error',
+                    title: 'Atenção',
+                    confirmText: 'OK',
+                });
+            }
+        });
+    </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
             const radios = Array.from(document.querySelectorAll('input[name="tipo_cliente"]'));
             const observacao = document.getElementById('observacao');
             const star = document.getElementById('obs-required-star');
@@ -845,7 +855,6 @@
         });
     </script>
 @endsection
-
 
 
 
