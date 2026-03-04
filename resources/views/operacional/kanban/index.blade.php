@@ -1551,7 +1551,9 @@
 
     {{-- Modal de Exclusão da Tarefa --}}
     <div id="tarefa-excluir-modal"
-         class="fixed inset-0 z-[95] hidden items-center justify-center bg-black/60 p-4">
+         data-overlay-root="true"
+         style="z-index: 1100;"
+         class="fixed inset-0 z-[110] hidden items-center justify-center bg-black/60 p-4">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
             <div class="flex items-center justify-between px-5 py-4 bg-red-600 text-white">
                 <h3 class="text-sm font-semibold">Excluir Tarefa</h3>
