@@ -344,30 +344,6 @@
         {{-- FIM FAIXA CLIENTE --}}
 
         {{-- ALERTAS --}}
-        @php($suppressInlineAlerts = trim($__env->yieldContent('suppress-inline-alerts')) === '1')
-        @if (!$suppressInlineAlerts && session('ok'))
-            <div class="w-full mt-4 px-4 sm:px-6 lg:px-8">
-                <div class="rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700 shadow">
-                    {{ session('ok') }}
-                </div>
-            </div>
-        @endif
-
-        @if (!$suppressInlineAlerts && session('erro'))
-            <div class="w-full mt-4 px-4 sm:px-6 lg:px-8">
-                <div class="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 shadow">
-                    {{ session('erro') }}
-                </div>
-            </div>
-        @endif
-        @if (!$suppressInlineAlerts && session('error'))
-            <div class="w-full mt-4 px-4 sm:px-6 lg:px-8">
-                <div class="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-700 shadow">
-                    {{ session('error') }}
-                </div>
-            </div>
-        @endif
-
         {{-- CONTEUDO COM MARCA D'AGUA (IGUAL ESTAVA) --}}
         <main class="flex-1 relative overflow-hidden">
             <div class="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.06]">
@@ -388,9 +364,56 @@
 
 <div id="app-overlay-root" class="fixed inset-0 z-[20000] pointer-events-none"></div>
 
+@php($showLgpdModal = (auth()->check() && auth()->user()->isCliente() && !auth()->user()->lgpd_accepted_at))
+@if($showLgpdModal)
+    <div id="cliente-lgpd-modal" class="fixed inset-0 z-[21000] bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="w-full max-w-2xl rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100">
+                <h2 class="text-lg font-semibold text-slate-900">Termos de Privacidade (LGPD)</h2>
+                <p class="text-sm text-slate-500 mt-1">Para continuar no portal, confirme a leitura e o aceite dos termos.</p>
+            </div>
+            <form method="POST" action="{{ route('cliente.lgpd.aceitar') }}" class="p-6 space-y-4">
+                @csrf
+                <div class="max-h-64 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 leading-relaxed">
+                    <p>A FORMED realiza o tratamento de dados pessoais para execução dos serviços de medicina e segurança do trabalho, cumprimento de obrigações legais e atendimento ao cliente.</p>
+                    <p class="mt-3">Ao aceitar, você confirma que está ciente do tratamento de dados conforme a Lei Geral de Proteção de Dados (Lei nº 13.709/2018), incluindo uso, armazenamento e compartilhamento quando necessário para prestação do serviço e obrigações regulatórias.</p>
+                    <p class="mt-3">Você pode solicitar esclarecimentos e exercer seus direitos de titular de dados pelos canais oficiais da empresa.</p>
+                </div>
+
+                @error('aceito_lgpd')
+                    <p class="text-sm text-rose-600">{{ $message }}</p>
+                @enderror
+
+                <label class="inline-flex items-start gap-2 text-sm text-slate-700">
+                    <input type="checkbox" id="cliente-lgpd-check" name="aceito_lgpd" value="1" class="mt-0.5 rounded border-slate-300 text-blue-600">
+                    <span>Li e aceito os termos de privacidade e tratamento de dados (LGPD).</span>
+                </label>
+
+                <div class="flex items-center justify-end">
+                    <button type="submit" id="cliente-lgpd-submit" disabled
+                            class="inline-flex items-center justify-center rounded-xl bg-blue-600 text-white px-5 py-2.5 text-sm font-semibold disabled:opacity-60 disabled:cursor-not-allowed hover:bg-blue-700">
+                        Aceitar e Continuar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+@endif
+
 @stack('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    const flashOk = @json(session('ok'));
+    const flashErr = @json(session('error') ?? session('erro'));
+    if (typeof window.uiAlert === 'function' && !window.__clienteFlashShown) {
+        window.__clienteFlashShown = true;
+        if (flashOk) {
+            window.uiAlert(flashOk, { icon: 'success', title: 'Sucesso' });
+        } else if (flashErr) {
+            window.uiAlert(flashErr);
+        }
+    }
+
     const sidebar = document.getElementById('cliente-sidebar');
     const backdrop = document.getElementById('cliente-sidebar-backdrop');
     const btnToggleMob = document.querySelector('[data-sidebar-toggle]');
@@ -400,6 +423,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const headerTitle = document.querySelector('[data-sidebar-label-header]');
     const overlayRoot = document.getElementById('app-overlay-root');
     const storageKey = 'clienteSidebarCollapsed';
+    const lgpdCheck = document.getElementById('cliente-lgpd-check');
+    const lgpdSubmit = document.getElementById('cliente-lgpd-submit');
 
     function mountOverlayModals() {
         if (!overlayRoot) return;
@@ -523,6 +548,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
     window.addEventListener('resize', syncSidebarForViewport);
     syncSidebarForViewport();
+
+    if (lgpdCheck && lgpdSubmit) {
+        const toggleLgpdSubmit = function () {
+            lgpdSubmit.disabled = !lgpdCheck.checked;
+        };
+        lgpdCheck.addEventListener('change', toggleLgpdSubmit);
+        toggleLgpdSubmit();
+    }
 });
 </script>
 </body>

@@ -21,6 +21,7 @@ use App\Models\Venda;
 use App\Models\VendaItem;
 use App\Services\AsoGheService;
 use App\Services\ContaReceberService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
@@ -78,6 +79,30 @@ class ClienteDashboardController extends Controller
             'vendedorTelefone' => $vendedorTelefone,
             'servicosExecutados' => $servicosExecutados,
         ]);
+    }
+
+    public function aceitarLgpd(Request $request): RedirectResponse
+    {
+        $contexto = $this->resolverCliente($request);
+        if ($contexto instanceof RedirectResponse) {
+            return $contexto;
+        }
+
+        [$user] = $contexto;
+
+        $data = $request->validate([
+            'aceito_lgpd' => ['required', 'accepted'],
+        ], [
+            'aceito_lgpd.accepted' => 'É necessário aceitar os termos da LGPD para continuar.',
+        ]);
+
+        if (($data['aceito_lgpd'] ?? null) && !$user->lgpd_accepted_at) {
+            $user->forceFill([
+                'lgpd_accepted_at' => now(),
+            ])->save();
+        }
+
+        return redirect()->back()->with('ok', 'Termos da LGPD aceitos com sucesso.');
     }
 
     /**
@@ -161,6 +186,7 @@ class ClienteDashboardController extends Controller
                 $join->on('v.id', '=', 'cri.venda_id')
                     ->orOn('v.id', '=', 'vi.venda_id');
             })
+            ->leftJoin('contas_receber as cr', 'cr.id', '=', 'cri.conta_receber_id')
             ->leftJoinSub($baixasSub, 'baixas', function ($join) {
                 $join->on('cri.id', '=', 'baixas.conta_receber_item_id');
             })
@@ -169,6 +195,8 @@ class ClienteDashboardController extends Controller
             ->where('cri.status', '!=', 'CANCELADO')
             ->selectRaw("'conta' as origem")
             ->selectRaw('cri.id as ref_id')
+            ->selectRaw('cri.conta_receber_id as conta_receber_id')
+            ->selectRaw('cr.id as fatura_numero')
             ->selectRaw('COALESCE(s.nome, cri.descricao, vi.descricao_snapshot, "Serviço") as servico')
             ->selectRaw('v.tarefa_id as tarefa_id')
             ->selectRaw('cri.data_realizacao as data_realizacao')
@@ -210,6 +238,8 @@ class ClienteDashboardController extends Controller
             })
             ->selectRaw("'venda' as origem")
             ->selectRaw('vi.id as ref_id')
+            ->selectRaw('NULL as conta_receber_id')
+            ->selectRaw('NULL as fatura_numero')
             ->selectRaw('COALESCE(s.nome, vi.descricao_snapshot, "Serviço") as servico')
             ->selectRaw('t.id as tarefa_id')
             ->selectRaw('COALESCE(DATE(t.finalizado_em), DATE(v.created_at)) as data_realizacao')
@@ -291,6 +321,22 @@ class ClienteDashboardController extends Controller
             'servicosContrato' => $servicosContrato,
             'servicosIds' => $servicosIds,
         ]);
+    }
+
+    public function visualizarFatura(Request $request, ContaReceber $contaReceber)
+    {
+        $contaReceber = $this->resolverFaturaDoCliente($request, $contaReceber);
+        $pdf = $this->buildFaturaPdf($contaReceber);
+
+        return $pdf->stream('fatura-' . $contaReceber->id . '.pdf');
+    }
+
+    public function downloadFatura(Request $request, ContaReceber $contaReceber)
+    {
+        $contaReceber = $this->resolverFaturaDoCliente($request, $contaReceber);
+        $pdf = $this->buildFaturaPdf($contaReceber);
+
+        return $pdf->download('fatura-' . $contaReceber->id . '.pdf');
     }
 
     /**
@@ -490,6 +536,38 @@ class ClienteDashboardController extends Controller
 
             return ['ok' => true];
         });
+    }
+
+    private function resolverFaturaDoCliente(Request $request, ContaReceber $contaReceber): ContaReceber
+    {
+        $contexto = $this->resolverCliente($request);
+        if ($contexto instanceof RedirectResponse) {
+            abort(403);
+        }
+
+        [, $cliente] = $contexto;
+
+        abort_unless((int) $contaReceber->empresa_id === (int) $cliente->empresa_id, 403);
+        abort_unless((int) $contaReceber->cliente_id === (int) $cliente->id, 403);
+
+        $contaReceber->loadMissing([
+            'cliente.cidade',
+            'empresa.cidade',
+            'itens.venda.contrato.propostaOrigem',
+            'itens.venda.tarefa.funcionario',
+            'itens.vendaItem',
+            'itens.servico',
+            'baixas',
+        ]);
+
+        return $contaReceber;
+    }
+
+    private function buildFaturaPdf(ContaReceber $contaReceber)
+    {
+        return Pdf::loadView('financeiro.contas-receber.print', [
+            'conta' => $contaReceber,
+        ])->setPaper('a4', 'portrait');
     }
 
     private function tabelaAtiva(Cliente $cliente): ?ClienteTabelaPreco
@@ -890,6 +968,8 @@ class ClienteDashboardController extends Controller
             return (object) [
                 'origem' => 'andamento',
                 'tarefa_id' => $tarefa->id,
+                'conta_receber_id' => null,
+                'fatura_numero' => null,
                 'servico' => $tarefa->servico?->nome ?? 'Serviço',
                 'status' => 'EM ANDAMENTO',
                 'data_realizacao' => $tarefa->created_at,
