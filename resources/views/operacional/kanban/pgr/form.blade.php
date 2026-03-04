@@ -22,6 +22,21 @@
 
             /** @var string $modo */ // 'create' ou 'edit'
             $modo = $modo ?? 'create';
+            $funcoesForm = old('funcoes');
+            if (!is_array($funcoesForm)) {
+                $funcoesForm = (isset($pgr) && is_array($pgr->funcoes ?? null))
+                    ? $pgr->funcoes
+                    : [[
+                        'funcao_id' => null,
+                        'quantidade' => 1,
+                        'cbo' => null,
+                        'descricao' => null,
+                        'nr_altura' => 0,
+                        'nr_eletricidade' => 0,
+                        'nr_espaco_confinado' => 0,
+                        'nr_definido' => 0,
+                    ]];
+            }
     @endphp
 
     <div class="w-full px-2 sm:px-3 md:px-4 xl:px-5 py-4 md:py-6">
@@ -37,7 +52,8 @@
 
 
 
-            <form method="POST"
+            <form id="pgr-form"
+              method="POST"
               enctype="multipart/form-data"
               action="{{ $modo === 'edit'
                     ? route('operacional.kanban.pgr.update', ['tarefa' => $tarefa, 'origem' => $origem])
@@ -63,18 +79,6 @@
                 </div>
 
                 <div class="px-4 sm:px-5 md:px-6 py-5 md:py-6">
-                    {{-- ERROS --}}
-                    @if($errors->any())
-                        <div class="mb-4 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-700">
-                            <p class="font-medium mb-1">Ocorreram alguns erros ao salvar:</p>
-                            <ul class="list-disc list-inside space-y-0.5">
-                                @foreach($errors->all() as $err)
-                                    <li>{{ $err }}</li>
-                                @endforeach
-                            </ul>
-                        </div>
-                    @endif
-
                     {{-- NAV DAS ABAS --}}
                     <div class="border-b border-slate-200 mb-4">
                         <nav class="flex gap-6 text-sm">
@@ -94,13 +98,13 @@
 
                     {{-- ABA 1: DADOS DO PGR --}}
                     <div id="tab-dados" class="space-y-6">
+                        @php
+                            $clienteSemTreinamentosNr = !($clienteTemTreinamentosNr ?? true);
+                        @endphp
                         {{-- 1. ART --}}
                         <section>
                             <h2 class="text-sm font-semibold text-slate-800 mb-3">1. ART</h2>
 
-                            @php
-                                $comArtOld = old('com_art', isset($pgr) ? (string) (int) $pgr->com_art : null);
-                            @endphp
                             <div class="grid grid-cols-1 gap-3 mb-3">
                                 <label
                                     class="relative flex items-center gap-2 text-sm font-semibold text-slate-700 @if(!($artDisponivel ?? true)) cursor-not-allowed @endif"
@@ -110,7 +114,7 @@
                                            name="com_art"
                                            value="1"
                                            class="h-4 w-4 text-slate-900"
-                                           @if($comArtOld === '1') checked @endif
+                                           @if(old('com_art', isset($pgr) ? (string) (int) $pgr->com_art : null) === '1') checked @endif
                                            @if(!($artDisponivel ?? true)) disabled @endif
                                            required>
                                     <span>Com ART</span>
@@ -125,7 +129,7 @@
                                            name="com_art"
                                            value="0"
                                            class="h-4 w-4 text-slate-900"
-                                           @if($comArtOld === '0') checked @endif>
+                                           @if(old('com_art', isset($pgr) ? (string) (int) $pgr->com_art : null) === '0') checked @endif>
                                     <span>Sem ART</span>
                                 </label>
                             </div>
@@ -259,29 +263,6 @@
                                 </div>
                             </div>
 
-                            @php
-                                $funcoesForm = old('funcoes');
-
-                                if ($funcoesForm === null) {
-                                    if (isset($pgr) && is_array($pgr->funcoes)) {
-                                        $funcoesForm = $pgr->funcoes;
-                                    } else {
-                                        $funcoesForm = [
-                                            [
-                                                'funcao_id' => null,
-                                                'quantidade' => 1,
-                                                'cbo' => null,
-                                                'descricao' => null,
-                                                'nr_altura' => 0,
-                                                'nr_eletricidade' => 0,
-                                                'nr_espaco_confinado' => 0,
-                                                'nr_definido' => 0,
-                                            ],
-                                        ];
-                                    }
-                                }
-                            @endphp
-
                             <div id="funcoes-wrapper" class="space-y-3">
                                 @foreach($funcoesForm as $idx => $f)
                                     <div class="funcao-item rounded-xl border border-slate-200 bg-slate-50 px-4 py-3"
@@ -357,32 +338,34 @@
 
                                         <div class="col-span-12">
                                             @php
-                                                $nrAltura = (int) old('funcoes.'.$idx.'.nr_altura', $f['nr_altura'] ?? 0);
-                                                $nrEletricidade = (int) old('funcoes.'.$idx.'.nr_eletricidade', $f['nr_eletricidade'] ?? 0);
-                                                $nrEspacoConfinado = (int) old('funcoes.'.$idx.'.nr_espaco_confinado', $f['nr_espaco_confinado'] ?? 0);
-                                                $nrNenhuma = $nrAltura !== 1 && $nrEletricidade !== 1 && $nrEspacoConfinado !== 1;
+                                                $nrAltura = $clienteSemTreinamentosNr ? 0 : (int) old('funcoes.'.$idx.'.nr_altura', $f['nr_altura'] ?? 0);
+                                                $nrEletricidade = $clienteSemTreinamentosNr ? 0 : (int) old('funcoes.'.$idx.'.nr_eletricidade', $f['nr_eletricidade'] ?? 0);
+                                                $nrEspacoConfinado = $clienteSemTreinamentosNr ? 0 : (int) old('funcoes.'.$idx.'.nr_espaco_confinado', $f['nr_espaco_confinado'] ?? 0);
+                                                $nrNenhuma = $clienteSemTreinamentosNr || ($nrAltura !== 1 && $nrEletricidade !== 1 && $nrEspacoConfinado !== 1);
                                             @endphp
 
                                             <div class="flex flex-wrap items-center gap-3 text-xs">
-                                                <span class="text-slate-500 font-medium">Atividades especiais (NR):</span>
+                                                <span class="text-slate-500 font-medium">Riscos (NR):</span>
 
-                                                <label class="inline-flex items-center gap-1.5 text-slate-700">
-                                                    <input type="checkbox" class="rounded border-slate-300 text-emerald-600"
-                                                           data-nr-checkbox="altura" @checked($nrAltura === 1)>
-                                                    <span>NR-35 (altura)</span>
-                                                </label>
+                                                @if(!$clienteSemTreinamentosNr)
+                                                    <label class="inline-flex items-center gap-1.5 text-slate-700">
+                                                        <input type="checkbox" class="rounded border-slate-300 text-emerald-600"
+                                                               data-nr-checkbox="altura" @checked($nrAltura === 1)>
+                                                        <span>NR-35 (altura)</span>
+                                                    </label>
 
-                                                <label class="inline-flex items-center gap-1.5 text-slate-700">
-                                                    <input type="checkbox" class="rounded border-slate-300 text-emerald-600"
-                                                           data-nr-checkbox="eletricidade" @checked($nrEletricidade === 1)>
-                                                    <span>NR-10 (eletricidade)</span>
-                                                </label>
+                                                    <label class="inline-flex items-center gap-1.5 text-slate-700">
+                                                        <input type="checkbox" class="rounded border-slate-300 text-emerald-600"
+                                                               data-nr-checkbox="eletricidade" @checked($nrEletricidade === 1)>
+                                                        <span>NR-10 (eletricidade)</span>
+                                                    </label>
 
-                                                <label class="inline-flex items-center gap-1.5 text-slate-700">
-                                                    <input type="checkbox" class="rounded border-slate-300 text-emerald-600"
-                                                           data-nr-checkbox="espaco_confinado" @checked($nrEspacoConfinado === 1)>
-                                                    <span>NR-33 (espaço confinado)</span>
-                                                </label>
+                                                    <label class="inline-flex items-center gap-1.5 text-slate-700">
+                                                        <input type="checkbox" class="rounded border-slate-300 text-emerald-600"
+                                                               data-nr-checkbox="espaco_confinado" @checked($nrEspacoConfinado === 1)>
+                                                        <span>NR-33 (espaço confinado)</span>
+                                                    </label>
+                                                @endif
 
                                                 <label class="inline-flex items-center gap-1.5 text-slate-700">
                                                     <input type="checkbox" class="rounded border-slate-300 text-emerald-600"
@@ -392,16 +375,16 @@
                                             </div>
                                             <input type="hidden"
                                                    name="funcoes[{{ $idx }}][nr_altura]"
-                                                   value="{{ old('funcoes.'.$idx.'.nr_altura', $f['nr_altura'] ?? 0) }}">
+                                                   value="{{ $nrAltura }}">
                                             <input type="hidden"
                                                    name="funcoes[{{ $idx }}][nr_eletricidade]"
-                                                   value="{{ old('funcoes.'.$idx.'.nr_eletricidade', $f['nr_eletricidade'] ?? 0) }}">
+                                                   value="{{ $nrEletricidade }}">
                                             <input type="hidden"
                                                    name="funcoes[{{ $idx }}][nr_espaco_confinado]"
-                                                   value="{{ old('funcoes.'.$idx.'.nr_espaco_confinado', $f['nr_espaco_confinado'] ?? 0) }}">
+                                                   value="{{ $nrEspacoConfinado }}">
                                             <input type="hidden"
                                                    name="funcoes[{{ $idx }}][nr_definido]"
-                                                   value="{{ old('funcoes.'.$idx.'.nr_definido', $f['nr_definido'] ?? 0) }}">
+                                                   value="1">
                                         </div>
                                     </div>
                                 </div>
@@ -416,9 +399,6 @@
                             </button>
                         </div>
 
-                        @error('funcoes')
-                        <p class="mt-2 text-xs text-red-600">{{ $message }}</p>
-                        @enderror
                     </section>
 
                     {{-- Rodapé --}}
@@ -580,6 +560,14 @@
     @push('scripts')
         <script>
             document.addEventListener('DOMContentLoaded', function () {
+                const serverErrors = @json(array_values(array_unique($errors->all())));
+                if (Array.isArray(serverErrors) && serverErrors.length > 0 && typeof window.uiAlert === 'function') {
+                    if (!window.__pgrErrorModalShown) {
+                        window.__pgrErrorModalShown = true;
+                        window.uiAlert(serverErrors[0]);
+                    }
+                }
+
                 // ========= ABA TABS =========
                 const tabButtons = document.querySelectorAll('.tab-btn');
                 const tabDados = document.getElementById('tab-dados');
@@ -671,11 +659,13 @@
                 }
 
                 // ========= FUNCOES DINAMICAS =========
+                const pgrForm = document.getElementById('pgr-form');
                 const wrapper = document.getElementById('funcoes-wrapper');
                 const btnAdd = document.getElementById('btn-add-funcao');
                 const btnAddAllFuncoes = document.getElementById('btn-add-all-funcoes');
                 const totalFuncoesEl = document.getElementById('total-funcionarios-funcoes');
                 const funcaoQtdMap = @json($funcaoQtdMap ?? []);
+                const clienteSemTreinamentosNr = @json($clienteSemTreinamentosNr);
                 const templateFuncao = wrapper ? wrapper.querySelector('.funcao-item')?.cloneNode(true) : null;
 
                 function atualizarTotalFuncionariosFuncoes() {
@@ -776,6 +766,13 @@
                     const checks = getNrCheckboxes(item);
                     if (!inputs.altura || !inputs.eletricidade || !inputs.espacoConfinado || !inputs.definido) {
                         return;
+                    }
+
+                    if (clienteSemTreinamentosNr) {
+                        if (checks.altura) checks.altura.checked = false;
+                        if (checks.eletricidade) checks.eletricidade.checked = false;
+                        if (checks.espacoConfinado) checks.espacoConfinado.checked = false;
+                        if (checks.nenhuma) checks.nenhuma.checked = true;
                     }
 
                     // fallback: se nada estiver marcado, mantem "Nenhuma" ativo
@@ -971,6 +968,41 @@
                                 el.id = 'funcoes_' + idx + '_funcao_id';
                             }
                         });
+                    });
+                }
+
+                if (pgrForm && wrapper) {
+                    pgrForm.addEventListener('submit', function (event) {
+                        const selects = wrapper.querySelectorAll('select[name^="funcoes"][name$="[funcao_id]"]');
+                        const primeiroSemFuncao = Array.from(selects).find(function (sel) {
+                            return String(sel.value || '').trim() === '';
+                        });
+
+                        if (primeiroSemFuncao) {
+                            event.preventDefault();
+                            if (typeof window.uiAlert === 'function') {
+                                window.uiAlert('Selecione a função.');
+                            }
+                            primeiroSemFuncao.focus();
+                            return;
+                        }
+
+                        const totalTrabalhadores =
+                            parseInt(inputHomens?.value || '0', 10) +
+                            parseInt(inputMulheres?.value || '0', 10);
+
+                        let totalFuncoes = 0;
+                        wrapper.querySelectorAll('input[name^="funcoes"][name$="[quantidade]"]').forEach(function (input) {
+                            const qtd = parseInt(input.value || '0', 10);
+                            if (!Number.isNaN(qtd) && qtd > 0) totalFuncoes += qtd;
+                        });
+
+                        if (totalFuncoes !== totalTrabalhadores) {
+                            event.preventDefault();
+                            if (typeof window.uiAlert === 'function') {
+                                window.uiAlert(`A soma das quantidades das funções (${totalFuncoes}) deve ser igual ao total de trabalhadores (${totalTrabalhadores}).`);
+                            }
+                        }
                     });
                 }
 

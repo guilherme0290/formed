@@ -10,12 +10,39 @@ Alpine.start();
 
 window.Sortable = Sortable;
 
-if (!window.Swal) {
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/sweetalert2@11';
-    script.defer = true;
-    document.head.appendChild(script);
-}
+const ensureSwalLoaded = (() => {
+    let promise = null;
+
+    return () => {
+        if (window.Swal) return Promise.resolve(window.Swal);
+        if (promise) return promise;
+
+        promise = new Promise((resolve) => {
+            let settled = false;
+            const finish = () => {
+                if (settled) return;
+                settled = true;
+                resolve(window.Swal || null);
+            };
+
+            let script = document.getElementById('swal-cdn-script');
+            if (!script) {
+                script = document.createElement('script');
+                script.id = 'swal-cdn-script';
+                script.src = 'https://cdn.jsdelivr.net/npm/sweetalert2@11';
+                script.async = true;
+                document.head.appendChild(script);
+            }
+
+            script.addEventListener('load', finish, { once: true });
+            script.addEventListener('error', finish, { once: true });
+
+            window.setTimeout(finish, 2500);
+        });
+
+        return promise;
+    };
+})();
 
 window.renderLucideIcons = (root = document) => {
     if (!window.lucide || typeof window.lucide.createIcons !== 'function') return false;
@@ -46,9 +73,10 @@ const ensureLucideLoaded = () => {
     document.head.appendChild(script);
 };
 
-window.uiAlert = (message, options = {}) => {
-    if (window.Swal) {
-        return window.Swal.fire({
+window.uiAlert = async (message, options = {}) => {
+    const swal = await ensureSwalLoaded();
+    if (swal) {
+        return swal.fire({
             icon: options.icon || 'info',
             title: options.title || 'Atenção',
             text: message,
@@ -60,9 +88,10 @@ window.uiAlert = (message, options = {}) => {
     return Promise.resolve();
 };
 
-window.uiConfirm = (message, options = {}) => {
-    if (window.Swal) {
-        return window.Swal.fire({
+window.uiConfirm = async (message, options = {}) => {
+    const swal = await ensureSwalLoaded();
+    if (swal) {
+        return swal.fire({
             icon: options.icon || 'warning',
             title: options.title || 'Confirmar ação',
             text: message,

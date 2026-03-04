@@ -64,6 +64,7 @@ class PgrController extends Controller
         $artInfo = $this->artInfoParaCliente($cliente);
         $valorArt  = $artInfo['valor'] ?? 500.00;
         $artDisponivel = $artInfo['disponivel'];
+        $clienteTemTreinamentosNr = $this->clienteTemTreinamentosNr($cliente);
         $funcaoQtdMap = $this->funcionarioCountByFuncao($cliente, $empresaId);
 
         return view('operacional.kanban.pgr.form', [
@@ -77,6 +78,7 @@ class PgrController extends Controller
             'modo'      => 'create',
             'origem'    => $origem,
             'artDisponivel' => $artDisponivel,
+            'clienteTemTreinamentosNr' => $clienteTemTreinamentosNr,
             'funcaoQtdMap' => $funcaoQtdMap,
         ]);
     }
@@ -109,6 +111,7 @@ class PgrController extends Controller
         $artInfo = $this->artInfoParaCliente($cliente);
         $valorArt = $pgr->valor_art ?? ($artInfo['valor'] ?? 500.00);
         $artDisponivel = $artInfo['disponivel'];
+        $clienteTemTreinamentosNr = $this->clienteTemTreinamentosNr($cliente);
         $funcaoQtdMap = $this->funcionarioCountByFuncao($cliente, $empresaId);
 
         return view('operacional.kanban.pgr.form', [
@@ -123,6 +126,7 @@ class PgrController extends Controller
             'pgr'       => $pgr,
             'modo'      => 'edit',
             'artDisponivel' => $artDisponivel,
+            'clienteTemTreinamentosNr' => $clienteTemTreinamentosNr,
             'funcaoQtdMap' => $funcaoQtdMap,
         ]);
     }
@@ -158,7 +162,7 @@ class PgrController extends Controller
             'funcoes.required' => 'Adicione ao menos uma funcao.',
             'funcoes.array' => 'Formato invalido para funcoes.',
             'funcoes.min' => 'Adicione ao menos uma funcao.',
-            'funcoes.*.funcao_id.required' => 'Selecione a funcao.',
+            'funcoes.*.funcao_id.required' => 'Selecione a função.',
             'funcoes.*.funcao_id.exists' => 'Funcao invalida.',
             'funcoes.*.quantidade.required' => 'Informe a quantidade da funcao.',
             'funcoes.*.quantidade.integer' => 'Informe um numero valido para a quantidade.',
@@ -195,6 +199,8 @@ class PgrController extends Controller
                 ->withInput()
                 ->withErrors(['com_art' => 'ART não está disponível no contrato do cliente.']);
         }
+
+        $data['funcoes'] = $this->normalizarFuncoesNr($data['funcoes'], $this->clienteTemTreinamentosNr($cliente));
 
         $totalTrabalhadores = (int)$data['qtd_homens'] + (int)$data['qtd_mulheres'];
 
@@ -316,7 +322,7 @@ class PgrController extends Controller
             'funcoes.required' => 'Adicione ao menos uma funcao.',
             'funcoes.array' => 'Formato invalido para funcoes.',
             'funcoes.min' => 'Adicione ao menos uma funcao.',
-            'funcoes.*.funcao_id.required' => 'Selecione a funcao.',
+            'funcoes.*.funcao_id.required' => 'Selecione a função.',
             'funcoes.*.funcao_id.exists' => 'Funcao invalida.',
             'funcoes.*.quantidade.required' => 'Informe a quantidade da funcao.',
             'funcoes.*.quantidade.integer' => 'Informe um numero valido para a quantidade.',
@@ -354,6 +360,8 @@ class PgrController extends Controller
                 ->withInput()
                 ->withErrors(['com_art' => 'ART não está disponível no contrato do cliente.']);
         }
+
+        $data['funcoes'] = $this->normalizarFuncoesNr($data['funcoes'], $this->clienteTemTreinamentosNr($cliente));
 
         // valida soma das quantidades x total trabalhadores
         $totalTrabalhadores = (int)$data['qtd_homens'] + (int)$data['qtd_mulheres'];
@@ -654,5 +662,54 @@ class PgrController extends Controller
                 return (int) $total;
             })
             ->toArray();
+    }
+
+    private function clienteTemTreinamentosNr(Cliente $cliente): bool
+    {
+        $contrato = app(ContratoClienteService::class)
+            ->getContratoAtivo($cliente->id, $cliente->empresa_id, null);
+
+        if (!$contrato) {
+            return false;
+        }
+
+        $servicoTreinamentosId = Servico::query()
+            ->where('empresa_id', $cliente->empresa_id)
+            ->where('nome', 'Treinamentos NRs')
+            ->value('id');
+
+        if (!$servicoTreinamentosId) {
+            return false;
+        }
+
+        return $contrato->itens()
+            ->where('servico_id', $servicoTreinamentosId)
+            ->where('ativo', true)
+            ->exists();
+    }
+
+    private function normalizarFuncoesNr(array $funcoes, bool $clienteTemTreinamentosNr): array
+    {
+        return collect($funcoes)
+            ->map(function (array $funcao) use ($clienteTemTreinamentosNr) {
+                $altura = (int) ($funcao['nr_altura'] ?? 0) === 1 ? 1 : 0;
+                $eletricidade = (int) ($funcao['nr_eletricidade'] ?? 0) === 1 ? 1 : 0;
+                $espacoConfinado = (int) ($funcao['nr_espaco_confinado'] ?? 0) === 1 ? 1 : 0;
+
+                if (!$clienteTemTreinamentosNr) {
+                    $altura = 0;
+                    $eletricidade = 0;
+                    $espacoConfinado = 0;
+                }
+
+                $funcao['nr_altura'] = $altura;
+                $funcao['nr_eletricidade'] = $eletricidade;
+                $funcao['nr_espaco_confinado'] = $espacoConfinado;
+                $funcao['nr_definido'] = 1;
+
+                return $funcao;
+            })
+            ->values()
+            ->all();
     }
 }

@@ -97,11 +97,6 @@
         <main class="flex-1 relative bg-slate-50 overflow-x-hidden overflow-y-auto">
             <div class="relative z-10">
                 <div class="@yield('page-container', 'w-full px-4 sm:px-6 lg:px-8 py-6')">
-                    @if(session('error') || session('erro'))
-                        <div class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                            {{ session('error') ?? session('erro') }}
-                        </div>
-                    @endif
                     @yield('content')
                 </div>
             </div>
@@ -110,6 +105,17 @@
 </div>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+        const flashOk = @json(session('ok'));
+        const flashErr = @json(session('error') ?? session('erro'));
+        if (typeof window.uiAlert === 'function' && !window.__financeiroFlashShown) {
+            window.__financeiroFlashShown = true;
+            if (flashOk) {
+                window.uiAlert(flashOk, { icon: 'success', title: 'Sucesso' });
+            } else if (flashErr) {
+                window.uiAlert(flashErr);
+            }
+        }
+
         const MOBILE_BREAKPOINT = 768;
 
         const sidebarId = @json($isMaster ? 'master-sidebar' : 'financeiro-sidebar');
@@ -296,4 +302,3 @@
 @stack('scripts')
 </body>
 </html>
-

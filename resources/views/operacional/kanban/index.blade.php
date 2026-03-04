@@ -40,21 +40,6 @@
             || isset($permissionMap['operacional.treinamentos.delete']);
     @endphp
 
-    @if (session('ok'))
-        <div class="mb-4 rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700">
-            {{ session('ok') }}
-        </div>
-    @endif
-
-    @if (session('erro'))
-        <div class="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-            {{ session('erro') }}
-        </div>
-    @endif
-
-
-
-
     @if ($errors->any())
         <div class="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
             <p class="font-medium mb-1">Ocorreram alguns erros ao salvar:</p>
