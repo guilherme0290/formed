@@ -16,12 +16,16 @@
     <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
     <link rel="shortcut icon" type="image/png" href="{{ asset('favicon.png') }}">
 </head>
-<body class="bg-slate-900 comercial-layout">
-<div class="min-h-screen flex relative">
+<body class="bg-slate-50 comercial-layout">
+<div class="min-h-screen md:flex relative overflow-x-hidden">
     @php
         $authUser = auth()->user();
         $isMaster = $authUser?->isMaster();
-        $permissionMap = $authUser?->papel?->permissoes?->pluck('chave')->flip()->all() ?? [];
+        $permissionMap = collect()
+            ->merge($authUser?->papel?->permissoes?->pluck('chave')->all() ?? [])
+            ->merge($authUser?->permissoesDiretas?->pluck('chave')->all() ?? [])
+            ->flip()
+            ->all();
         $can = function (string $key) use ($isMaster, $permissionMap): bool {
             return $isMaster || isset($permissionMap[$key]);
         };
@@ -119,17 +123,6 @@
                 <span data-sidebar-label>Minhas Comissões</span>
             </a>
 
-            @php $canAgenda = $can('comercial.agenda.view'); @endphp
-            @php $activeAgenda = request()->routeIs('comercial.agenda.*'); @endphp
-            <a href="{{ $canAgenda ? route($isMaster ? 'master.agenda-vendedores.index' : 'comercial.agenda.index') : 'javascript:void(0)' }}"
-               @if(!$canAgenda) title="Usuário sem permissão" aria-disabled="true" @endif
-               class="group flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition {{ $menuState($canAgenda, $activeAgenda) }}">
-                <span class="{{ $iconState($canAgenda, $activeAgenda) }}">
-                    <i class="fa-regular fa-calendar w-4 text-center"></i>
-                </span>
-                <span data-sidebar-label>Agenda</span>
-            </a>
-
             @php $canPropostas = $can('comercial.propostas.view'); @endphp
             @php $activePropostas = request()->routeIs('comercial.propostas.*'); @endphp
             <a href="{{ $canPropostas ? route('comercial.propostas.index') : 'javascript:void(0)' }}"
@@ -171,6 +164,18 @@
                         <i class="fa-solid fa-tags w-4 text-center"></i>
                     </span>
                     <span data-sidebar-label>Tabela de Preços</span>
+                </a>
+            @endif
+
+            @php $canFuncoes = $can('comercial.funcoes.view'); @endphp
+            @php $activeFuncoes = request()->routeIs('comercial.funcoes.*'); @endphp
+            @if($canFuncoes)
+                <a href="{{ route('comercial.funcoes.index') }}"
+                   class="group flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition {{ $menuState(true, $activeFuncoes) }}">
+                    <span class="{{ $iconState(true, $activeFuncoes) }}">
+                        <i class="fa-solid fa-puzzle-piece w-4 text-center"></i>
+                    </span>
+                    <span data-sidebar-label>Funções</span>
                 </a>
             @endif
 
@@ -358,6 +363,7 @@
                 clearTimeout(mobileHideTimer);
                 mobileHideTimer = null;
             }
+            sidebar.style.setProperty('display', 'flex');
             desktopCollapsed = false;
             sidebar.style.setProperty('position', 'fixed');
             sidebar.style.setProperty('top', '0');
@@ -403,6 +409,7 @@
                 if (isMobile()) {
                     sidebar.classList.remove('translate-x-0');
                     sidebar.classList.add('-translate-x-full');
+                    sidebar.style.setProperty('display', 'none');
                 }
             }, 220);
         }
@@ -480,8 +487,10 @@
 
         // Estado inicial
         if (sidebar && isMobile()) {
+            sidebar.style.setProperty('display', 'none');
             fecharSidebarMobile();
         } else if (sidebar) {
+            sidebar.style.setProperty('display', 'flex');
             sidebar.classList.remove('opacity-0', 'invisible', 'pointer-events-none');
             sidebar.classList.add('opacity-100', 'visible', 'pointer-events-auto');
             sidebar.classList.remove('-translate-x-full');
@@ -509,6 +518,7 @@
                     clearTimeout(mobileHideTimer);
                     mobileHideTimer = null;
                 }
+                sidebar.style.setProperty('display', 'flex');
                 sidebar.classList.remove('opacity-0', 'invisible', 'pointer-events-none');
                 sidebar.classList.add('opacity-100', 'visible', 'pointer-events-auto');
                 sidebar.classList.remove('-translate-x-full');

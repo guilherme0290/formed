@@ -127,21 +127,110 @@ class ClienteController extends Controller
      */
     public function consultaCnpj($cnpj)
     {
-        $cnpjLimpo = preg_replace('/\D/', '', $cnpj);
+        $cnpjLimpo = preg_replace('/\D/', '', (string) $cnpj);
 
-        $resp = Http::get("https://www.receitaws.com.br/v1/cnpj/{$cnpjLimpo}");
-
-        if ($resp->failed()) {
-            return response()->json(['error' => 'Não foi possível consultar'], 500);
+        if (strlen($cnpjLimpo) !== 14) {
+            return response()->json(['error' => 'CNPJ invalido.'], 422);
         }
 
-        $dados = $resp->json();
+        $dados = $this->consultaCnpjLocal($cnpjLimpo);
+        if ($dados !== null) {
+            return response()->json($dados);
+        }
 
-        if (isset($dados['status']) && $dados['status'] === 'ERROR') {
-            return response()->json(['error' => $dados['message'] ?? 'CNPJ não encontrado'], 404);
+        $dados = $this->consultaCnpjReceitaWs($cnpjLimpo);
+        if ($dados !== null) {
+            return response()->json($dados);
+        }
+
+        $dados = $this->consultaCnpjBrasilApi($cnpjLimpo);
+        if ($dados !== null) {
+            return response()->json($dados);
         }
 
         return response()->json([
+            'error' => 'Nao foi possivel consultar o CNPJ no momento. Tente novamente.',
+        ], 502);
+    }
+
+    private function consultaCnpjLocal(string $cnpjLimpo): ?array
+    {
+        $cnpjMascarado = substr($cnpjLimpo, 0, 2) . '.'
+            . substr($cnpjLimpo, 2, 3) . '.'
+            . substr($cnpjLimpo, 5, 3) . '/'
+            . substr($cnpjLimpo, 8, 4) . '-'
+            . substr($cnpjLimpo, 12, 2);
+
+        $cliente = Cliente::query()
+            ->where(function ($q) use ($cnpjLimpo, $cnpjMascarado) {
+                $q->where('cnpj', $cnpjLimpo)
+                    ->orWhere('cnpj', $cnpjMascarado)
+                    ->orWhereRaw("REPLACE(REPLACE(REPLACE(REPLACE(TRIM(cnpj), '.', ''), '-', ''), '/', ''), ' ', '') = ?", [$cnpjLimpo]);
+            })
+            ->first();
+
+        if (!$cliente) {
+            $sufixo = substr($cnpjLimpo, -8);
+            $candidatos = Cliente::query()
+                ->where('cnpj', 'like', "%{$sufixo}%")
+                ->get();
+
+            $cliente = $candidatos->first(function ($item) use ($cnpjLimpo) {
+                $normalizado = preg_replace('/\D+/', '', (string) ($item->cnpj ?? ''));
+                if ($normalizado === '') {
+                    return false;
+                }
+
+                return $normalizado === $cnpjLimpo
+                    || ltrim($normalizado, '0') === ltrim($cnpjLimpo, '0');
+            });
+        }
+
+        if (!$cliente) {
+            return null;
+        }
+
+        return [
+            'razao_social'  => $cliente->razao_social,
+            'nome_fantasia' => $cliente->nome_fantasia,
+            'contato'       => $cliente->nome_fantasia ?: $cliente->razao_social,
+            'telefone'      => $cliente->telefone,
+            'cep'           => $cliente->cep,
+            'endereco'      => $cliente->endereco,
+            'bairro'        => $cliente->bairro,
+            'complemento'   => $cliente->complemento,
+            'uf'            => $cliente->uf,
+            'municipio'     => null,
+        ];
+    }
+
+    private function consultaCnpjReceitaWs(string $cnpjLimpo): ?array
+    {
+        try {
+            $http = Http::timeout(10)->retry(1, 250);
+            if (app()->environment('local')) {
+                $http = $http->withOptions(['verify' => false]);
+            }
+            $resp = $http->get("https://www.receitaws.com.br/v1/cnpj/{$cnpjLimpo}");
+        } catch (\Throwable $e) {
+            report($e);
+            return null;
+        }
+
+        if ($resp->failed()) {
+            return null;
+        }
+
+        $dados = $resp->json();
+        if (!is_array($dados)) {
+            return null;
+        }
+
+        if (($dados['status'] ?? null) === 'ERROR') {
+            return null;
+        }
+
+        return [
             'razao_social'  => $dados['nome'] ?? null,
             'nome_fantasia' => $dados['fantasia'] ?? null,
             'contato'       => $dados['fantasia'] ?? null,
@@ -152,9 +241,53 @@ class ClienteController extends Controller
             'complemento'   => $dados['complemento'] ?? null,
             'uf'            => $dados['uf'] ?? null,
             'municipio'     => $dados['municipio'] ?? null,
-        ]);
+        ];
     }
 
+    private function consultaCnpjBrasilApi(string $cnpjLimpo): ?array
+    {
+        try {
+            $http = Http::timeout(10)->retry(1, 250);
+            if (app()->environment('local')) {
+                $http = $http->withOptions(['verify' => false]);
+            }
+            $resp = $http->get("https://brasilapi.com.br/api/cnpj/v1/{$cnpjLimpo}");
+        } catch (\Throwable $e) {
+            report($e);
+            return null;
+        }
+
+        if ($resp->failed()) {
+            return null;
+        }
+
+        $dados = $resp->json();
+        if (!is_array($dados)) {
+            return null;
+        }
+
+        $telefone = null;
+        $ddd1 = trim((string) ($dados['ddd_telefone_1'] ?? ''));
+        $ddd2 = trim((string) ($dados['ddd_telefone_2'] ?? ''));
+        if ($ddd1 !== '') {
+            $telefone = $ddd1;
+        } elseif ($ddd2 !== '') {
+            $telefone = $ddd2;
+        }
+
+        return [
+            'razao_social'  => $dados['razao_social'] ?? null,
+            'nome_fantasia' => $dados['nome_fantasia'] ?? null,
+            'contato'       => $dados['nome_fantasia'] ?? null,
+            'telefone'      => $telefone,
+            'cep'           => $dados['cep'] ?? null,
+            'endereco'      => $dados['logradouro'] ?? null,
+            'bairro'        => $dados['bairro'] ?? null,
+            'complemento'   => $dados['complemento'] ?? null,
+            'uf'            => $dados['uf'] ?? null,
+            'municipio'     => $dados['municipio'] ?? null,
+        ];
+    }
     public function cnpjExists(Request $request, string $cnpj)
     {
         $empresaId = $request->user()->empresa_id ?? 1;

@@ -118,6 +118,37 @@
                     cnpjMsg?.classList.add('hidden');
                 }
 
+                function maskCnpj(value) {
+                    const digits = String(value || '').replace(/\D+/g, '').slice(0, 14);
+                    if (digits.length <= 2) return digits;
+                    if (digits.length <= 5) return `${digits.slice(0, 2)}.${digits.slice(2)}`;
+                    if (digits.length <= 8) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5)}`;
+                    if (digits.length <= 12) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8)}`;
+                    return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12)}`;
+                }
+
+                function maskTelefone(value) {
+                    const digits = String(value || '').replace(/\D+/g, '').slice(0, 11);
+                    if (digits.length <= 2) return digits;
+                    if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+                    if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+                    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+                }
+
+                if (cnpj) {
+                    cnpj.value = maskCnpj(cnpj.value);
+                    cnpj.addEventListener('input', () => {
+                        cnpj.value = maskCnpj(cnpj.value);
+                    });
+                }
+
+                if (telefone) {
+                    telefone.value = maskTelefone(telefone.value);
+                    telefone.addEventListener('input', () => {
+                        telefone.value = maskTelefone(telefone.value);
+                    });
+                }
+
                 btnBuscar?.addEventListener('click', async () => {
                     clearMsg();
                     const raw = (cnpj?.value || '').trim();
@@ -137,7 +168,7 @@
                         }
 
                         if (razao && json?.razao_social) razao.value = json.razao_social;
-                        if (telefone && json?.telefone) telefone.value = json.telefone;
+                        if (telefone && json?.telefone) telefone.value = maskTelefone(json.telefone);
                         setMsg('ok', 'Dados preenchidos com sucesso.');
                     } catch (e) {
                         console.error(e);
@@ -151,6 +182,4 @@
         </script>
     @endpush
 @endsection
-
-
 

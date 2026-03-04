@@ -82,6 +82,7 @@ class DashboardController extends Controller
 
         $agendaKpis = [
             'aberto_total' => (clone $agendaQuery)
+                ->whereBetween('data', [$agendaInicioMes->toDateString(), $agendaFimMes->toDateString()])
                 ->where('status', 'PENDENTE')
                 ->count(),
             'pendentes_dia' => (clone $agendaQuery)

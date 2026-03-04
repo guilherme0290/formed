@@ -37,7 +37,12 @@
         if ($scopeName !== '' && str_starts_with($resourceKey, $scopeName . '.')) {
             $resourceName = (string) \Illuminate\Support\Str::after($resourceKey, $scopeName . '.');
         }
-        return \Illuminate\Support\Str::title(str_replace(['.', '_', '-'], ' ', $resourceName));
+        $label = \Illuminate\Support\Str::title(str_replace(['.', '_', '-'], ' ', $resourceName));
+        return str_replace(
+            ['Funcoes', 'Comissoes', 'Precos', 'Permissoes', 'Usuarios', 'Papeis'],
+            ['Funções', 'Comissões', 'Preços', 'Permissões', 'Usuários', 'Papéis'],
+            $label
+        );
     };
 @endphp
 
@@ -45,12 +50,12 @@
     <div class="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 px-5 py-4 text-white">
         <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
-                <h2 class="text-xl font-semibold">Permissoes</h2>
-                <p class="text-xs text-slate-200">Defina acessos por papel ou por usuario.</p>
+                <h2 class="text-xl font-semibold">Permissões</h2>
+                <p class="text-xs text-slate-200">Defina acessos por papel ou por usuário.</p>
             </div>
             <div class="flex items-center gap-2 text-xs">
-                <span class="rounded-full bg-white/10 px-3 py-1">Papeis: {{ $papeisEditaveis->count() }}</span>
-                <span class="rounded-full bg-white/10 px-3 py-1">Usuarios: {{ $usuariosEditaveis->count() }}</span>
+                <span class="rounded-full bg-white/10 px-3 py-1">Papéis: {{ $papeisEditaveis->count() }}</span>
+                <span class="rounded-full bg-white/10 px-3 py-1">Usuários: {{ $usuariosEditaveis->count() }}</span>
             </div>
         </div>
     </div>
@@ -113,7 +118,7 @@
                         <div class="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
                             <div>
                                 <div class="text-sm font-semibold text-slate-800">{{ $papel->nome }}</div>
-                                <div class="text-xs text-slate-500">{{ $papel->descricao ?: 'Sem descricao' }}</div>
+                                <div class="text-xs text-slate-500">{{ $papel->descricao ?: 'Sem descrição' }}</div>
                             </div>
                             <button class="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-700 shadow-sm">
                                 Salvar
@@ -173,7 +178,7 @@
                                 @empty
                                     <tr>
                                         <td colspan="{{ 1 + count($actionOrder) }}" class="px-4 py-6 text-center text-slate-500">
-                                            Nenhuma permissao encontrada para este papel.
+                                            Nenhuma permissão encontrada para este papel.
                                         </td>
                                     </tr>
                                 @endforelse
@@ -184,14 +189,14 @@
                 </div>
             @endforeach
         @else
-            <div class="text-sm text-slate-500">Nao ha papeis editaveis.</div>
+            <div class="text-sm text-slate-500">Não há papéis editáveis.</div>
         @endif
     </div>
 
     <div data-scope-panel="usuario" class="hidden space-y-3">
         @if($usuariosEditaveis->isNotEmpty())
             <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 flex flex-wrap items-center gap-3">
-                <label for="permissoes-usuario-select" class="text-xs font-semibold text-slate-700">Usuario</label>
+                <label for="permissoes-usuario-select" class="text-xs font-semibold text-slate-700">Usuário</label>
                 <select
                     id="permissoes-usuario-select"
                     class="min-w-[260px] rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400"
@@ -202,7 +207,7 @@
                         </option>
                     @endforeach
                 </select>
-                <span class="text-xs text-slate-500">Configuracao individual do usuario selecionado.</span>
+                <span class="text-xs text-slate-500">Configuração individual do usuário selecionado.</span>
             </div>
 
             @foreach($usuariosEditaveis as $usuario)
@@ -290,7 +295,7 @@
                                 @empty
                                     <tr>
                                         <td colspan="{{ 1 + count($actionOrder) }}" class="px-4 py-6 text-center text-slate-500">
-                                            Nenhuma permissao encontrada para este usuario.
+                                            Nenhuma permissão encontrada para este usuário.
                                         </td>
                                     </tr>
                                 @endforelse
@@ -301,7 +306,7 @@
                 </div>
             @endforeach
         @else
-            <div class="text-sm text-slate-500">Nao ha usuarios elegiveis para configuracao por usuario.</div>
+            <div class="text-sm text-slate-500">Não há usuários elegíveis para configuração por usuário.</div>
         @endif
 </div>
 </div>
@@ -438,3 +443,5 @@ document.addEventListener('DOMContentLoaded', function () {
     setScope('{{ $defaultScope }}');
 });
 </script>
+
+

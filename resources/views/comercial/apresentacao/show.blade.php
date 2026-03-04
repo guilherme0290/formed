@@ -1,5 +1,5 @@
-@extends('layouts.comercial')
-@section('title', 'Apresentação da Proposta')
+﻿@extends('layouts.comercial')
+@section('title', 'ApresentaÃ§Ã£o da Proposta')
 @section('page-container', 'w-full p-0')
 
 @section('content')
@@ -9,25 +9,25 @@
                 'headerBg' => 'bg-amber-700',
                 'apresentacaoBg' => 'bg-amber-50',
                 'apresentacaoBar' => 'bg-amber-600',
-                'titulo' => 'CONSTRUÇÃO CIVIL',
+                'titulo' => 'CONSTRUÃ‡ÃƒO CIVIL',
             ],
             'industria' => [
                 'headerBg' => 'bg-blue-600',
                 'apresentacaoBg' => 'bg-blue-50',
                 'apresentacaoBar' => 'bg-blue-600',
-                'titulo' => 'INDÚSTRIA',
+                'titulo' => 'INDÃšSTRIA',
             ],
             'comercio' => [
                 'headerBg' => 'bg-emerald-600',
                 'apresentacaoBg' => 'bg-emerald-50',
                 'apresentacaoBar' => 'bg-emerald-600',
-                'titulo' => 'COMÉRCIO / VAREJO / SUPERMERCADOS',
+                'titulo' => 'COMÃ‰RCIO / VAREJO / SUPERMERCADOS',
             ],
             'restaurante' => [
                 'headerBg' => 'bg-red-600',
                 'apresentacaoBg' => 'bg-rose-50',
                 'apresentacaoBar' => 'bg-red-600',
-                'titulo' => 'RESTAURANTE / ALIMENTAÇÃO',
+                'titulo' => 'RESTAURANTE / ALIMENTAÃ‡ÃƒO',
             ],
         ];
 
@@ -48,7 +48,7 @@
                 <div class="{{ $theme['headerBg'] }} px-6 py-4 flex items-center justify-between gap-3">
                     <div class="text-white">
                         <div class="text-lg font-semibold leading-tight">FORMED</div>
-                        <div class="text-xs text-white/80">Medicina e Segurança do Trabalho</div>
+                        <div class="text-xs text-white/80">Medicina e SeguranÃ§a do Trabalho</div>
                     </div>
 
                     <div class="flex items-center gap-3">
@@ -91,7 +91,7 @@
                         <div class="flex items-center justify-between gap-3">
                             <div>
                                 <div class="text-sm font-semibold text-slate-800">Atualizar dados do cliente</div>
-                                <p class="text-xs text-slate-500">Buscar CNPJ e preencher razão social, contato e telefone.</p>
+                                <p class="text-xs text-slate-500">Buscar CNPJ e preencher razÃ£o social, contato e telefone.</p>
                             </div>
                             <span id="cnpjMsg" class="text-[11px] text-slate-500 hidden"></span>
                         </div>
@@ -101,7 +101,7 @@
                                 <label class="text-xs font-semibold text-slate-600">Logo do cliente</label>
                                 <input id="clienteLogoInput" type="file" accept="image/*"
                                        class="mt-1 w-full rounded-xl border border-slate-200 text-sm px-3 py-2">
-                                <p class="mt-1 text-[11px] text-slate-500">A logo aparece apenas nesta apresentação.</p>
+                                <p class="mt-1 text-[11px] text-slate-500">A logo aparece apenas nesta apresentaÃ§Ã£o.</p>
                             </div>
                             <div>
                                 <label class="text-xs font-semibold text-slate-600">CNPJ</label>
@@ -117,7 +117,7 @@
                                 </div>
                             </div>
                             <div>
-                                <label class="text-xs font-semibold text-slate-600">Razão Social</label>
+                                <label class="text-xs font-semibold text-slate-600">RazÃ£o Social</label>
                                 <input id="razao_social" type="text"
                                        value="{{ $cliente['razao_social'] ?? '' }}"
                                        class="mt-1 w-full rounded-xl border border-slate-200 text-sm px-3 py-2">
@@ -137,17 +137,17 @@
                         </div>
                     </div>
 
-                    {{-- Apresentação para --}}
+                    {{-- ApresentaÃ§Ã£o para --}}
                     <div class="rounded-2xl {{ $theme['apresentacaoBg'] }} border border-slate-200 overflow-hidden">
                         <div class="grid grid-cols-[6px,1fr]">
                             <div class="{{ $theme['apresentacaoBar'] }}"></div>
                             <div class="p-5">
-                                <div class="font-semibold text-slate-900">Apresentação para:</div>
+                                <div class="font-semibold text-slate-900">ApresentaÃ§Ã£o para:</div>
                                 <div class="mt-2 space-y-1 text-sm text-slate-700">
-                                    <div><span class="text-slate-500">Razão Social:</span> <span id="view_razao_social" class="font-semibold">{{ $cliente['razao_social'] ?? '—' }}</span></div>
-                                    <div><span class="text-slate-500">CNPJ:</span> <span id="view_cnpj" class="font-semibold">{{ $cliente['cnpj'] ?? '—' }}</span></div>
-                                    <div><span class="text-slate-500">Contato:</span> <span id="view_contato" class="font-semibold">{{ $cliente['contato'] ?? '—' }}</span></div>
-                                    <div><span class="text-slate-500">Telefone:</span> <span id="view_telefone" class="font-semibold">{{ $cliente['telefone'] ?? '—' }}</span></div>
+                                    <div><span class="text-slate-500">RazÃ£o Social:</span> <span id="view_razao_social" class="font-semibold">{{ $cliente['razao_social'] ?? 'â€”' }}</span></div>
+                                    <div><span class="text-slate-500">CNPJ:</span> <span id="view_cnpj" class="font-semibold">{{ $cliente['cnpj'] ?? 'â€”' }}</span></div>
+                                    <div><span class="text-slate-500">Contato:</span> <span id="view_contato" class="font-semibold">{{ $cliente['contato'] ?? 'â€”' }}</span></div>
+                                    <div><span class="text-slate-500">Telefone:</span> <span id="view_telefone" class="font-semibold">{{ $cliente['telefone'] ?? 'â€”' }}</span></div>
                                 </div>
                             </div>
                         </div>
@@ -168,13 +168,13 @@
                         </div>
                     </div>
 
-                    {{-- Serviços Essenciais --}}
+                    {{-- ServiÃ§os Essenciais --}}
                     <div class="rounded-2xl bg-white border border-slate-200 p-6">
                         <div class="flex items-center gap-2">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5h6m-6 4h6m-7 4h8m-10 6h12V4H6v16z"/>
                             </svg>
-                            <h3 class="text-sm font-semibold text-slate-900">Serviços Essenciais</h3>
+                            <h3 class="text-sm font-semibold text-slate-900">ServiÃ§os Essenciais</h3>
                         </div>
 
                         <ul class="mt-4 space-y-2 text-sm text-slate-700">
@@ -195,7 +195,7 @@
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h18M3 12h18M3 17h18"/>
                                 </svg>
-                                <h3 class="text-sm font-semibold text-slate-900">Serviços</h3>
+                                <h3 class="text-sm font-semibold text-slate-900">ServiÃ§os</h3>
                             </div>
 
                             <div class="mt-4 overflow-x-auto rounded-2xl border border-slate-200">
@@ -220,7 +220,7 @@
                                             <td class="px-4 py-3">
                                                 <div class="font-semibold text-slate-900">{{ $item?->codigo }}</div>
 
-                                                    <div class="text-xs text-slate-500">Código: {{ $descricao }}</div>
+                                                    <div class="text-xs text-slate-500">CÃ³digo: {{ $descricao }}</div>
 
                                             </td>
                                             <td class="px-4 py-3 text-right">{{ number_format($qtd, 2, ',', '.') }}</td>
@@ -310,7 +310,7 @@
                                         @endphp
                                         <tr>
                                             <td class="px-4 py-3">
-                                                <div class="font-semibold text-slate-900">{{ $treinamento?->codigo ?? 'NR' }} — {{ $treinamento?->titulo ?? 'Treinamento' }}</div>
+                                                <div class="font-semibold text-slate-900">{{ $treinamento?->codigo ?? 'NR' }} â€” {{ $treinamento?->titulo ?? 'Treinamento' }}</div>
                                             </td>
                                             <td class="px-4 py-3 text-right">{{ number_format($qtd, 2, ',', '.') }}</td>
                                             <td class="px-4 py-3 text-right">R$ {{ number_format($total, 2, ',', '.') }}</td>
@@ -342,7 +342,7 @@
                                     <thead class="bg-slate-50 text-xs text-slate-500">
                                     <tr>
                                         <th class="px-4 py-3 text-left font-semibold">Faixa</th>
-                                        <th class="px-4 py-3 text-left font-semibold">Descrição</th>
+                                        <th class="px-4 py-3 text-left font-semibold">DescriÃ§Ã£o</th>
                                         <th class="px-4 py-3 text-right font-semibold">Valor</th>
                                     </tr>
                                     </thead>
@@ -362,7 +362,7 @@
                         </div>
                     @endif
 
-                    {{-- Benefícios --}}
+                    {{-- BenefÃ­cios --}}
                     <div class="rounded-2xl bg-emerald-50 border border-emerald-200 overflow-hidden">
                         <div class="grid grid-cols-[6px,1fr]">
                             <div class="bg-emerald-500"></div>
@@ -371,7 +371,7 @@
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 6L9 17l-5-5"/>
                                     </svg>
-                                    <h3 class="text-sm font-semibold text-emerald-800">Benefícios</h3>
+                                    <h3 class="text-sm font-semibold text-emerald-800">BenefÃ­cios</h3>
                                 </div>
                                 <p class="mt-3 text-sm text-emerald-900/80">
                                     {{ $conteudo['beneficios'] ?? '' }}
@@ -380,13 +380,13 @@
                         </div>
                     </div>
 
-                    {{-- Rodapé --}}
+                    {{-- RodapÃ© --}}
                     <div class="pt-4">
                         <div class="h-px bg-blue-600/30"></div>
                         <div class="mt-4 text-center text-sm">
                             <div class="font-semibold text-blue-700">FORMED</div>
-                            <div class="text-slate-600 text-xs mt-0.5">Medicina e Segurança do Trabalho</div>
-                            <div class="text-slate-500 text-xs mt-2">{{ $conteudo['rodape'] ?? 'comercial@formed.com.br • (00) 0000-0000' }}</div>
+                            <div class="text-slate-600 text-xs mt-0.5">Medicina e SeguranÃ§a do Trabalho</div>
+                            <div class="text-slate-500 text-xs mt-2">{{ $conteudo['rodape'] ?? 'comercial@formed.com.br â€¢ (00) 0000-0000' }}</div>
                         </div>
                     </div>
                 </div>
@@ -427,11 +427,44 @@
                     cnpjMsg?.classList.add('hidden');
                 }
 
+
+                function maskCnpj(value) {
+                    const digits = String(value || '').replace(/\D+/g, '').slice(0, 14);
+                    if (digits.length <= 2) return digits;
+                    if (digits.length <= 5) return `${digits.slice(0, 2)}.${digits.slice(2)}`;
+                    if (digits.length <= 8) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5)}`;
+                    if (digits.length <= 12) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8)}`;
+                    return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12)}`;
+                }
+                function maskTelefone(value) {
+                    const digits = String(value || '').replace(/\D+/g, '').slice(0, 11);
+                    if (digits.length <= 2) return digits;
+                    if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+                    if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+                    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+                }
+
                 function syncPreview() {
-                    if (viewRazao && razao) viewRazao.textContent = razao.value || '—';
-                    if (viewCnpj && cnpj) viewCnpj.textContent = cnpj.value || '—';
-                    if (viewContato && contato) viewContato.textContent = contato.value || '—';
-                    if (viewTelefone && telefone) viewTelefone.textContent = telefone.value || '—';
+                    if (viewRazao && razao) viewRazao.textContent = razao.value || 'â€”';
+                    if (viewCnpj && cnpj) viewCnpj.textContent = cnpj.value || 'â€”';
+                    if (viewContato && contato) viewContato.textContent = contato.value || 'â€”';
+                    if (viewTelefone && telefone) viewTelefone.textContent = telefone.value || 'â€”';
+                }
+
+                if (cnpj) {
+                    cnpj.value = maskCnpj(cnpj.value);
+                    cnpj.addEventListener('input', () => {
+                        cnpj.value = maskCnpj(cnpj.value);
+                        syncPreview();
+                    });
+                }
+
+                if (telefone) {
+                    telefone.value = maskTelefone(telefone.value);
+                    telefone.addEventListener('input', () => {
+                        telefone.value = maskTelefone(telefone.value);
+                        syncPreview();
+                    });
                 }
 
                 [cnpj, razao, contato, telefone].forEach((el) => {
@@ -462,7 +495,7 @@
                             contato.value = json?.contato || json?.nome_fantasia;
                         }
                         if (telefone && (json?.telefone || json?.telefone1 || json?.telefone2)) {
-                            telefone.value = json?.telefone || json?.telefone1 || json?.telefone2;
+                            telefone.value = maskTelefone(json?.telefone || json?.telefone1 || json?.telefone2);
                         }
                         syncPreview();
                         setMsg('ok', 'Dados preenchidos com sucesso.');
@@ -530,3 +563,4 @@
         </script>
     @endpush
 @endsection
+
