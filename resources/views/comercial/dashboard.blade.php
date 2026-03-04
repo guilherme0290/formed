@@ -133,7 +133,7 @@
 
         <section class="grid grid-cols-1 md:grid-cols-3 gap-3">
             <article class="rounded-xl border border-indigo-100 bg-indigo-50/60 px-4 py-2.5">
-                <p class="text-[11px] uppercase tracking-wide text-indigo-700 font-semibold">Total de compromissos em aberto</p>
+                <p class="text-[11px] uppercase tracking-wide text-indigo-700 font-semibold">Total de compromissos em aberto no m&ecirc;s</p>
                 <p class="text-xl font-bold text-indigo-900 mt-1">{{ $agendaKpis['aberto_total'] ?? 0 }}</p>
             </article>
             <article class="rounded-xl border border-amber-100 bg-amber-50/70 px-4 py-2.5">

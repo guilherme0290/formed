@@ -19,16 +19,16 @@
             <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 @php
                     $cards = [
-                        ['titulo' => 'Contratos Ativos', 'valor' => $cards['contratos_ativos'] ?? 0, 'sub' => 'Empresas em carteira', 'cor' => 'from-indigo-500 to-blue-600', 'icone' => '&#128196;'],
-//                        ['titulo' => 'Faturamento Mensal', 'valor' => 'R$ '.number_format($cards['faturamento_mensal'] ?? 0, 2, ',', '.'), 'sub' => 'Receita recorrente', 'cor' => 'from-emerald-500 to-emerald-600', 'icone' => '&#128176;'],
-                        ['titulo' => 'Aprovados', 'valor' => $cards['aprovados'] ?? 0, 'sub' => 'Faturamentos confirmados', 'cor' => 'from-purple-500 to-indigo-600', 'icone' => '&#9989;'],
-                        ['titulo' => 'Pendentes', 'valor' => $cards['pendentes'] ?? 0, 'sub' => 'Aguardando aprova&ccedil;&atilde;o', 'cor' => 'from-amber-500 to-orange-600', 'icone' => '&#9203;'],
+                        ['titulo' => 'Contratos Ativos', 'valor' => $cards['contratos_ativos'] ?? 0, 'sub' => 'Empresas em carteira', 'cor' => 'from-indigo-500 to-blue-600', 'icone' => 'fa-regular fa-file-lines'],
+//                        ['titulo' => 'Faturamento Mensal', 'valor' => 'R$ '.number_format($cards['faturamento_mensal'] ?? 0, 2, ',', '.'), 'sub' => 'Receita recorrente', 'cor' => 'from-emerald-500 to-emerald-600', 'icone' => 'fa-solid fa-money-bill-trend-up'],
+                        ['titulo' => 'Aprovados', 'valor' => $cards['aprovados'] ?? 0, 'sub' => 'Faturamentos confirmados', 'cor' => 'from-purple-500 to-indigo-600', 'icone' => 'fa-regular fa-circle-check'],
+                        ['titulo' => 'Pendentes', 'valor' => $cards['pendentes'] ?? 0, 'sub' => 'Aguardando aprova&ccedil;&atilde;o', 'cor' => 'from-amber-500 to-orange-600', 'icone' => 'fa-regular fa-hourglass-half'],
                         [
                             'titulo' => 'Itens em Aberto',
                             'valor' => 'R$ '.number_format($cards['total_aberto'] ?? 0, 2, ',', '.'),
                             'sub' => 'Total pendente a receber',
                             'cor' => 'from-slate-600 to-slate-800',
-                            'icone' => '&#128204;',
+                            'icone' => 'fa-solid fa-file-circle-exclamation',
                             'link' => route('financeiro.faturamento-detalhado', [
                                 'status' => 'pendente',
                                 'filtrar' => 1,
@@ -41,7 +41,7 @@
                             'valor' => 'R$ '.number_format($cards['total_recebido'] ?? 0, 2, ',', '.'),
                             'sub' => 'Baixas registradas',
                             'cor' => 'from-teal-500 to-emerald-700',
-                            'icone' => '&#127974;',
+                            'icone' => 'fa-solid fa-building-columns',
                             'link' => route('financeiro.faturamento-detalhado', [
                                 'status' => 'recebido',
                                 'filtrar' => 1,
@@ -60,8 +60,8 @@
                     @endphp
                     <{{ $tag }} {!! $attrs !!}
                         class="rounded-3xl bg-gradient-to-br {{ $card['cor'] }} text-white shadow-lg shadow-slate-900/20 p-5 flex flex-col gap-3 animate-[fadeIn_0.4s_ease] {{ !empty($card['link']) ? 'hover:opacity-95 transition' : '' }}">
-                        <div class="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-white/15 text-xl">
-                            {!! $card['icone'] !!}
+                        <div class="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/20">
+                            <i class="{{ $card['icone'] }} text-base"></i>
                         </div>
                         <div>
                             <p class="text-sm font-semibold opacity-90">{{ $card['titulo'] }}</p>
@@ -95,7 +95,9 @@
                     <div class="rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition">
                         <div class="px-5 py-4 flex items-center justify-between gap-4">
                             <div class="flex items-center gap-3">
-                                <div class="h-11 w-11 rounded-2xl bg-indigo-50 text-indigo-600 grid place-items-center text-xl">📄</div>
+                                <div class="h-11 w-11 rounded-2xl bg-indigo-50 text-indigo-600 grid place-items-center">
+                                    <i class="fa-regular fa-file-lines text-lg"></i>
+                                </div>
                                 <div>
                                     <p class="text-sm font-semibold text-slate-900">{{ $contrato->cliente->razao_social ?? 'Cliente' }}</p>
                                     <div class="text-xs text-slate-500 flex flex-wrap gap-3">
@@ -120,3 +122,4 @@
         </section>
     </div>
 @endsection
+
