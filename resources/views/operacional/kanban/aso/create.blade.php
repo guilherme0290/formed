@@ -550,7 +550,7 @@
                                               focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400 js-date-text"
                                                data-date-target="campo_data_aso">
                                         <button type="button"
-                                                class="absolute right-0 top-0 h-full w-8 flex items-center justify-center text-slate-400 hover:text-slate-600 date-picker-btn z-10"
+                                                class="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 flex items-center justify-center text-slate-400 hover:text-slate-600 date-picker-btn z-10"
                                                 data-date-target="campo_data_aso"
                                                 aria-label="Abrir calendário">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" viewBox="0 0 24 24" fill="currentColor">
@@ -1351,9 +1351,158 @@
                         ? 'anexos'
                         : 'colaborador'
                 );
+                let currentStep = initialStep;
+
+                const ERROR_CLASS = ['aso-step-invalid', 'border-red-400', 'ring-2', 'ring-red-100', 'bg-red-50/40'];
+
+                const clearFieldError = (field) => {
+                    if (!field) return;
+                    field.classList.remove(...ERROR_CLASS);
+                    field.removeAttribute('aria-invalid');
+
+                    const errorId = field.dataset.errorId || '';
+                    const msg = errorId ? document.getElementById(errorId) : null;
+                    if (msg) {
+                        msg.remove();
+                    }
+                    delete field.dataset.errorId;
+                };
+
+                const markFieldError = (field, message) => {
+                    if (!field) return;
+                    clearFieldError(field);
+                    field.classList.add(...ERROR_CLASS);
+                    field.setAttribute('aria-invalid', 'true');
+
+                    const wrapper = field.closest('div');
+                    if (!wrapper) return;
+
+                    // Se o wrapper do campo for "relative" (caso do input com ícone de calendário),
+                    // insere a mensagem fora dele para não deslocar o ícone.
+                    const target = wrapper.classList.contains('relative')
+                        ? (wrapper.parentElement || wrapper)
+                        : wrapper;
+
+                    const msg = document.createElement('p');
+                    const errorId = `aso-step-error-${Math.random().toString(36).slice(2, 10)}`;
+                    msg.id = errorId;
+                    msg.className = 'aso-step-error mt-1 text-xs text-red-600';
+                    msg.textContent = message;
+
+                    target.insertAdjacentElement('beforeend', msg);
+                    field.dataset.errorId = errorId;
+                };
+
+                const clearAllStepErrors = () => {
+                    document.querySelectorAll('.aso-step-invalid').forEach((el) => clearFieldError(el));
+                };
+
+                const focusInvalid = (field) => {
+                    if (!field) return;
+                    field.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    setTimeout(() => field.focus({ preventScroll: true }), 100);
+                };
+
+                const requiredField = (field, label, options = {}) => {
+                    if (!field || field.disabled) return null;
+                    const value = (field.value ?? '').toString().trim();
+                    if (value !== '') {
+                        clearFieldError(field);
+                        return null;
+                    }
+                    return {
+                        field,
+                        message: options.message || `Preencha o campo "${label}".`,
+                    };
+                };
+
+                const validateColaboradorStep = () => {
+                    clearAllStepErrors();
+
+                    const tipoAso = document.querySelector('select[name="tipo_aso"]');
+                    const funcionario = document.getElementById('funcionario_id');
+                    const nome = document.getElementById('campo_nome');
+                    const cpf = document.getElementById('campo_cpf');
+                    const rg = document.getElementById('campo_rg');
+                    const dataNascimentoHidden = document.getElementById('campo_data_nascimento');
+                    const dataNascimentoVisible = document.querySelector('.js-date-text[data-date-target="campo_data_nascimento"]');
+                    const funcao = document.getElementById('campo_funcao');
+
+                    const erros = [];
+                    const erroTipo = requiredField(tipoAso, 'Tipo de ASO');
+                    if (erroTipo) erros.push(erroTipo);
+
+                    if (funcionario && !funcionario.value) {
+                        const erroNome = requiredField(nome, 'Nome Completo');
+                        if (erroNome) erros.push(erroNome);
+                        const erroCpf = requiredField(cpf, 'CPF');
+                        if (erroCpf) erros.push(erroCpf);
+                        const erroRg = requiredField(rg, 'RG');
+                        if (erroRg) erros.push(erroRg);
+                        const erroDataNasc = requiredField(
+                            dataNascimentoHidden,
+                            'Data de Nascimento',
+                            { message: 'Preencha o campo "Data de Nascimento".' }
+                        );
+                        if (erroDataNasc) {
+                            erroDataNasc.field = dataNascimentoVisible || dataNascimentoHidden;
+                            erros.push(erroDataNasc);
+                        }
+                    }
+
+                    if (funcao && !funcao.disabled) {
+                        const erroFuncao = requiredField(funcao, 'Função');
+                        if (erroFuncao) erros.push(erroFuncao);
+                    }
+
+                    if (!erros.length) return true;
+
+                    erros.forEach((erro) => markFieldError(erro.field, erro.message));
+                    const primeiro = erros[0];
+                    focusInvalid(primeiro.field);
+                    window.uiAlert?.(primeiro.message, {
+                        icon: 'warning',
+                        title: 'Campo obrigatório',
+                    });
+                    return false;
+                };
+
+                const validateAgendaStep = () => {
+                    clearAllStepErrors();
+
+                    const dataAsoHidden = document.getElementById('campo_data_aso');
+                    const dataAsoVisible = document.querySelector('.js-date-text[data-date-target="campo_data_aso"]');
+                    const unidade = document.querySelector('select[name="unidade_id"]');
+
+                    const erros = [];
+                    const erroDataAso = requiredField(
+                        dataAsoHidden,
+                        'Data de Realização',
+                        { message: 'Preencha o campo "Data de Realização".' }
+                    );
+                    if (erroDataAso) {
+                        erroDataAso.field = dataAsoVisible || dataAsoHidden;
+                        erros.push(erroDataAso);
+                    }
+
+                    const erroUnidade = requiredField(unidade, 'Unidade');
+                    if (erroUnidade) erros.push(erroUnidade);
+
+                    if (!erros.length) return true;
+
+                    erros.forEach((erro) => markFieldError(erro.field, erro.message));
+                    const primeiro = erros[0];
+                    focusInvalid(primeiro.field);
+                    window.uiAlert?.(primeiro.message, {
+                        icon: 'warning',
+                        title: 'Campo obrigatório',
+                    });
+                    return false;
+                };
 
                 const setStep = (step) => {
                     const isAnexos = step === 'anexos';
+                    currentStep = step;
 
                     tabDados.classList.toggle('hidden', isAnexos);
                     tabAnexos.classList.toggle('hidden', !isAnexos);
@@ -1382,13 +1531,29 @@
 
                 stepButtons.forEach((btn) => {
                     btn.addEventListener('click', function () {
+                        clearAllStepErrors();
                         setStep(this.dataset.step || 'colaborador');
                     });
                 });
 
                 stepNavButtons.forEach((btn) => {
                     btn.addEventListener('click', function () {
-                        setStep(this.dataset.stepNav || 'colaborador');
+                        const nextStep = this.dataset.stepNav || 'colaborador';
+
+                        if (currentStep === 'colaborador' && nextStep === 'agenda') {
+                            if (!validateColaboradorStep()) {
+                                return;
+                            }
+                        }
+
+                        if (currentStep === 'agenda' && nextStep === 'anexos') {
+                            if (!validateAgendaStep()) {
+                                return;
+                            }
+                        }
+
+                        clearAllStepErrors();
+                        setStep(nextStep);
                     });
                 });
 
