@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Financeiro;
 
 use App\Http\Controllers\Controller;
 use App\Models\ClienteContrato;
+use App\Models\ProtocoloExame;
 use Illuminate\Http\Request;
 use Illuminate\Contracts\View\View;
 
@@ -44,6 +45,23 @@ class ContratoController extends Controller
 
         $contrato->load(['cliente', 'itens.servico']);
 
-        return view('financeiro.contratos-show', compact('contrato'));
+        $asoItens = $contrato->itens->filter(fn ($item) => !empty($item->regras_snapshot['aso_tipo']));
+        $grupoIds = $asoItens
+            ->map(fn ($item) => (int) ($item->regras_snapshot['grupo_id'] ?? 0))
+            ->filter()
+            ->unique()
+            ->values();
+
+        $protocolosAso = collect();
+        if ($grupoIds->isNotEmpty()) {
+            $protocolosAso = ProtocoloExame::query()
+                ->where('empresa_id', $empresaId)
+                ->whereIn('id', $grupoIds)
+                ->with('itens.exame')
+                ->get()
+                ->keyBy('id');
+        }
+
+        return view('financeiro.contratos-show', compact('contrato', 'protocolosAso'));
     }
 }

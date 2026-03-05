@@ -50,7 +50,7 @@
                         <button type="button"
                                 id="btn-novo-funcionario-toggle"
                                 class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-500 text-white text-xs font-semibold hover:bg-emerald-600">
-                            + Cadastrar Novo
+                            +Cadastrar novo funcionario
                         </button>
                     </div>
                     <div class="p-4 md:p-5 space-y-4">
