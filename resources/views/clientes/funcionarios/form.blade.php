@@ -70,6 +70,20 @@
                         @enderror
                     </div>
 
+                    {{-- RG --}}
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">
+                            RG *
+                        </label>
+                        <input type="text" name="rg" value="{{ old('rg', $funcionario->rg ?? '') }}"
+                               maxlength="20"
+                               class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"
+                               required>
+                        @error('rg')
+                        <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+
                     {{-- Celular (apenas visual por enquanto) --}}
                     <div>
                         <label class="block text-xs font-medium text-slate-600 mb-1">
@@ -110,6 +124,38 @@
                                class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
                     </div>
 
+                    {{-- Data de Nascimento --}}
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">
+                            Data de Nascimento *
+                        </label>
+                        <div class="relative">
+                            <input type="text"
+                                   inputmode="numeric"
+                                   placeholder="dd/mm/aaaa"
+                                   value="{{ old('data_nascimento_br', '') }}"
+                                   class="w-full border border-slate-300 rounded-lg pl-3 pr-10 py-2 text-sm js-date-text"
+                                   required
+                                   data-date-target="campo_data_nascimento">
+                            <button type="button"
+                                    class="absolute right-0 top-0 h-full w-8 flex items-center justify-center text-slate-400 hover:text-slate-600 date-picker-btn z-10"
+                                    data-date-target="campo_data_nascimento"
+                                    aria-label="Abrir calendário">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v2H2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 2 0v1zm15 8H2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V10z"/>
+                                </svg>
+                            </button>
+                            <input type="date"
+                                   id="campo_data_nascimento"
+                                   name="data_nascimento"
+                                   value="{{ old('data_nascimento', ($funcionario && $funcionario->data_nascimento) ? \Carbon\Carbon::parse($funcionario->data_nascimento)->format('Y-m-d') : '') }}"
+                                   class="absolute right-0 top-0 h-full w-10 opacity-0 pointer-events-none js-date-hidden">
+                        </div>
+                        @error('data_nascimento')
+                        <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+
                     {{-- Data de Admissão --}}
                     <div>
                         <label class="block text-xs font-medium text-slate-600 mb-1">
@@ -121,6 +167,7 @@
                                    placeholder="dd/mm/aaaa"
                                    value="{{ old('data_admissao_br', '') }}"
                                    class="w-full border border-slate-300 rounded-lg pl-3 pr-10 py-2 text-sm js-date-text"
+                                   required
                                    data-date-target="campo_data_admissao">
                             <button type="button"
                                     class="absolute right-0 top-0 h-full w-8 flex items-center justify-center text-slate-400 hover:text-slate-600 date-picker-btn z-10"
@@ -338,5 +385,3 @@
     });
 </script>
 @endpush
-
-

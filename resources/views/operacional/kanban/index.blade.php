@@ -318,11 +318,21 @@
                                         $funcionario   = optional($tarefa->funcionario);
                                         $funcionarioNome   = $funcionario->nome ?? null;
                                         $funcionarioCpf    = $funcionario->cpf ?? null;
+                                        $funcionarioRg     = $funcionario->rg ?? null;
                                         $funcionarioFuncao = $funcionario->funcao_nome ?? null;
+                                        $funcionarioSetor  = $funcionario->setor ?? null;
                                         $funcionarioCelular = $funcionario->celular ?? null;
-                                        $funcionarioNascimento = $funcionario->data_nascimento
-                                            ? \Carbon\Carbon::parse($funcionario->data_nascimento)->format('d/m/Y')
+                                        $funcionarioNascimentoRaw = $funcionario->data_nascimento
+                                            ?? optional(optional($tarefa->asoSolicitacao)->funcionario)->data_nascimento;
+                                        $funcionarioNascimento = $funcionarioNascimentoRaw
+                                            ? \Carbon\Carbon::parse($funcionarioNascimentoRaw)->format('d/m/Y')
                                             : null;
+                                        $funcionarioAdmissao = $funcionario->data_admissao
+                                            ? \Carbon\Carbon::parse($funcionario->data_admissao)->format('d/m/Y')
+                                            : null;
+                                        $funcionarioAtivo = is_null($funcionario->ativo ?? null)
+                                            ? null
+                                            : ((bool) $funcionario->ativo ? 'Ativo' : 'Inativo');
 
                                         $slaData      = $tarefa->fim_previsto
                                                         ? \Carbon\Carbon::parse($tarefa->fim_previsto)->format('d/m/Y')
@@ -339,6 +349,8 @@
                                         $aso                  = $tarefa->asoSolicitacao;
                                         $asoTipoLabel         = '';
                                         $asoDataFormatada     = '';
+                                        $asoDataAdmissaoFormatada = '';
+                                        $asoDataDemissaoFormatada = '';
                                         $asoUnidadeNome       = '';
                                         $asoTreinamentoFlag   = '';
                                         $asoTreinamentosLista = '';
@@ -358,6 +370,12 @@
                                             $asoTipoLabel     = $mapTiposAso[$aso->tipo_aso] ?? ucfirst($aso->tipo_aso);
                                             $asoDataFormatada = $aso->data_aso
                                                 ? \Carbon\Carbon::parse($aso->data_aso)->format('d/m/Y')
+                                                : '';
+                                            $asoDataAdmissaoFormatada = ($funcionario && $funcionario->data_admissao)
+                                                ? \Carbon\Carbon::parse($funcionario->data_admissao)->format('d/m/Y')
+                                                : '';
+                                            $asoDataDemissaoFormatada = $aso->data_demissao
+                                                ? \Carbon\Carbon::parse($aso->data_demissao)->format('d/m/Y')
                                                 : '';
 
                                             $asoUnidadeNome   = optional($aso->unidade)->nome ?? '';
@@ -506,11 +524,17 @@
                                     "
                                     data-funcionario-funcao="{{ $funcionarioFuncao }}"
                                     data-funcionario-cpf="{{ $funcionarioCpf }}"
+                                    data-funcionario-rg="{{ $funcionarioRg }}"
                                     data-funcionario-celular="{{ $funcionarioCelular }}"
                                     data-funcionario-nascimento="{{ $funcionarioNascimento }}"
+                                    data-funcionario-admissao="{{ $funcionarioAdmissao }}"
+                                    data-funcionario-setor="{{ $funcionarioSetor }}"
+                                    data-funcionario-ativo="{{ $funcionarioAtivo }}"
 
                                     data-aso-tipo="{{ $asoTipoLabel }}"
                                     data-aso-data="{{ $asoDataFormatada }}"
+                                    data-aso-data-admissao="{{ $asoDataAdmissaoFormatada }}"
+                                    data-aso-data-demissao="{{ $asoDataDemissaoFormatada }}"
                                     data-aso-unidade="{{ $asoUnidadeNome }}"
                                     data-aso-treinamento="{{ $asoTreinamentoFlag }}"
                                     data-aso-treinamentos="{{ $asoTreinamentosLista }}"
@@ -968,6 +992,10 @@
                                         <dd class="font-medium" id="modal-funcionario-cpf">—</dd>
                                     </div>
                                     <div>
+                                        <dt class="text-[11px] text-slate-500">RG</dt>
+                                        <dd class="font-medium" id="modal-funcionario-rg">—</dd>
+                                    </div>
+                                    <div>
                                         <dt class="text-[11px] text-slate-500">Celular</dt>
                                         <dd class="font-medium" id="modal-funcionario-celular">—</dd>
                                     </div>
@@ -979,6 +1007,18 @@
                                         <dt class="text-[11px] text-slate-500">Data de Nascimento</dt>
                                         <dd class="font-medium" id="modal-funcionario-nascimento">—</dd>
                                     </div>
+                                    <div>
+                                        <dt class="text-[11px] text-slate-500">Data de Admissão</dt>
+                                        <dd class="font-medium" id="modal-funcionario-admissao">—</dd>
+                                    </div>
+                                    <div>
+                                        <dt class="text-[11px] text-slate-500">Setor</dt>
+                                        <dd class="font-medium" id="modal-funcionario-setor">—</dd>
+                                    </div>
+                                    <div>
+                                        <dt class="text-[11px] text-slate-500">Status</dt>
+                                        <dd class="font-medium" id="modal-funcionario-ativo">—</dd>
+                                    </div>
                                 </div>
 
                                 <div class="space-y-1">
@@ -989,6 +1029,14 @@
                                     <div>
                                         <dt class="text-[11px] text-slate-500">Data de Realização</dt>
                                         <dd class="font-medium" id="modal-aso-data">—</dd>
+                                    </div>
+                                    <div>
+                                        <dt class="text-[11px] text-slate-500">Data de Admissão</dt>
+                                        <dd class="font-medium" id="modal-aso-data-admissao">—</dd>
+                                    </div>
+                                    <div>
+                                        <dt class="text-[11px] text-slate-500">Data de Demissão</dt>
+                                        <dd class="font-medium" id="modal-aso-data-demissao">—</dd>
                                     </div>
                                     <div>
                                         <dt class="text-[11px] text-slate-500">Unidade</dt>
@@ -1663,10 +1711,16 @@
             const spanFuncionario = document.getElementById('modal-funcionario');
             const spanFuncionarioFuncao = document.getElementById('modal-funcionario-funcao');
             const spanFuncionarioCpf = document.getElementById('modal-funcionario-cpf');
+            const spanFuncionarioRg = document.getElementById('modal-funcionario-rg');
             const spanFuncionarioCelular = document.getElementById('modal-funcionario-celular');
             const spanFuncionarioNascimento = document.getElementById('modal-funcionario-nascimento');
+            const spanFuncionarioAdmissao = document.getElementById('modal-funcionario-admissao');
+            const spanFuncionarioSetor = document.getElementById('modal-funcionario-setor');
+            const spanFuncionarioAtivo = document.getElementById('modal-funcionario-ativo');
             const spanAsoTipo = document.getElementById('modal-aso-tipo');
             const spanAsoData = document.getElementById('modal-aso-data');
+            const spanAsoDataAdmissao = document.getElementById('modal-aso-data-admissao');
+            const spanAsoDataDemissao = document.getElementById('modal-aso-data-demissao');
             const spanAsoUnidade = document.getElementById('modal-aso-unidade');
             const spanAsoTreinamento = document.getElementById('modal-aso-treinamento');
             const spanAsoTreinamentos = document.getElementById('modal-aso-treinamentos');
@@ -2090,8 +2144,20 @@
                         if (spanFuncionarioCpf) {
                             spanFuncionarioCpf.textContent = card.dataset.funcionarioCpf || '—';
                         }
+                        if (spanFuncionarioRg) {
+                            spanFuncionarioRg.textContent = card.dataset.funcionarioRg || '—';
+                        }
                         if (spanFuncionarioNascimento) {
                             spanFuncionarioNascimento.textContent = card.dataset.funcionarioNascimento || '—';
+                        }
+                        if (spanFuncionarioAdmissao) {
+                            spanFuncionarioAdmissao.textContent = card.dataset.funcionarioAdmissao || '—';
+                        }
+                        if (spanFuncionarioSetor) {
+                            spanFuncionarioSetor.textContent = card.dataset.funcionarioSetor || '—';
+                        }
+                        if (spanFuncionarioAtivo) {
+                            spanFuncionarioAtivo.textContent = card.dataset.funcionarioAtivo || '—';
                         }
                         if (spanFuncionarioCelular) {
                             spanFuncionarioCelular.textContent = formatTelefone(card.dataset.funcionarioCelular || '');
@@ -2101,6 +2167,12 @@
                         }
                         if (spanAsoData) {
                             spanAsoData.textContent = card.dataset.asoData || '—';
+                        }
+                        if (spanAsoDataAdmissao) {
+                            spanAsoDataAdmissao.textContent = card.dataset.asoDataAdmissao || '—';
+                        }
+                        if (spanAsoDataDemissao) {
+                            spanAsoDataDemissao.textContent = card.dataset.asoDataDemissao || '—';
                         }
                         if (spanAsoUnidade) {
                             spanAsoUnidade.textContent = card.dataset.asoUnidade || '—';
@@ -2122,9 +2194,16 @@
                         spanFuncionario.textContent = '—';
                         spanFuncionarioFuncao.textContent = '—';
                         if (spanFuncionarioCpf) spanFuncionarioCpf.textContent = '—';
+                        if (spanFuncionarioRg) spanFuncionarioRg.textContent = '—';
+                        if (spanFuncionarioNascimento) spanFuncionarioNascimento.textContent = '—';
+                        if (spanFuncionarioAdmissao) spanFuncionarioAdmissao.textContent = '—';
+                        if (spanFuncionarioSetor) spanFuncionarioSetor.textContent = '—';
+                        if (spanFuncionarioAtivo) spanFuncionarioAtivo.textContent = '—';
                         if (spanFuncionarioCelular) spanFuncionarioCelular.textContent = '—';
                         if (spanAsoTipo) spanAsoTipo.textContent = '—';
                         if (spanAsoData) spanAsoData.textContent = '—';
+                        if (spanAsoDataAdmissao) spanAsoDataAdmissao.textContent = '—';
+                        if (spanAsoDataDemissao) spanAsoDataDemissao.textContent = '—';
                         if (spanAsoUnidade) spanAsoUnidade.textContent = '—';
                         if (spanAsoTreinamento) spanAsoTreinamento.textContent = '—';
                         if (spanAsoTreinamentos) spanAsoTreinamentos.textContent = '—';
