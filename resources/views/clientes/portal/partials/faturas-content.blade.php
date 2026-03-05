@@ -62,6 +62,8 @@
         })
         ->values();
     $faturaSelecionadaPadrao = $faturasResumo->first();
+    $faturaFiltroSelecionado = (string) ($filtros['fatura_id'] ?? '');
+    $faturasFiltroOptions = collect($faturasFiltroOptions ?? []);
     $totalRegistros = $listaFaturas->count();
     $totalAndamento = collect($itensEmAberto ?? [])->count();
 @endphp
@@ -129,8 +131,8 @@
 
         <div class="p-3 md:p-4">
             <div class="rounded-xl border border-blue-200 bg-white p-3 md:p-4 shadow-sm space-y-4 max-h-[65vh] md:max-h-[72vh] flex flex-col overflow-hidden">
-                <form method="GET" action="{{ route('cliente.faturas') }}" class="flex flex-col gap-3 shrink-0">
-                    <div class="grid gap-3 md:grid-cols-4">
+                <form id="faturas-filter-form" method="GET" action="{{ route('cliente.faturas') }}" class="flex flex-col gap-3 shrink-0">
+                    <div class="grid gap-3 md:grid-cols-5">
                         <div class="md:col-span-2">
                             <label class="text-[11px] font-bold text-slate-600">Período</label>
                             <div class="mt-1 flex flex-col sm:flex-row sm:items-center gap-2">
@@ -172,7 +174,7 @@
 
                         <div>
                             <label class="text-[11px] font-bold text-slate-600">Status</label>
-                            <select name="status" class="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2 text-xs text-slate-700">
+                            <select id="faturas-status-filter" name="status" data-auto-submit-filter class="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2 text-xs text-slate-700">
                                 <option value="">Todos</option>
                                 <option value="ABERTO" @selected(($filtros['status'] ?? '') === 'ABERTO')>Em aberto</option>
                                 <option value="VENCIDO" @selected(($filtros['status'] ?? '') === 'VENCIDO')>Vencidos</option>
@@ -180,7 +182,20 @@
                             </select>
                         </div>
 
-                        <div class="flex flex-wrap items-end gap-2 md:justify-end">
+                        <div>
+                            <label class="text-[11px] font-bold text-slate-600">Fatura</label>
+                            <select id="faturas-fatura-filter" name="fatura_id" data-auto-submit-filter class="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2 text-xs text-slate-700">
+                                <option value="">Todas</option>
+                                <option value="sem_fatura" @selected($faturaFiltroSelecionado === 'sem_fatura')>Não faturado</option>
+                                @foreach($faturasFiltroOptions as $fat)
+                                    <option value="{{ $fat->id }}" @selected($faturaFiltroSelecionado !== '' && $faturaFiltroSelecionado !== 'sem_fatura' && (int) $faturaFiltroSelecionado === (int) $fat->id)>
+                                        FAT-{{ str_pad((string) $fat->numero, 6, '0', STR_PAD_LEFT) }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="flex flex-wrap items-end gap-2 md:justify-end md:col-span-1">
                             <button type="submit" class="inline-flex w-full sm:w-auto items-center justify-center px-4 py-2 rounded-xl bg-blue-700 text-white text-sm font-semibold hover:bg-blue-800 transition">
                                 Filtrar
                             </button>
@@ -197,10 +212,9 @@
                             <div class="min-w-[980px]">
                                 <div class="sticky top-0 z-10 grid grid-cols-12 gap-3 bg-blue-50 border-b border-blue-200 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-blue-700">
                                     <div class="col-span-2">Data</div>
-                                    <div class="col-span-4">Serviços</div>
+                                    <div class="col-span-5">Serviços</div>
                                     <div class="col-span-2">Status</div>
                                     <div class="col-span-1">Venc.</div>
-                                    <div class="col-span-1">Fatura</div>
                                     <div class="col-span-2 text-right">Valor</div>
                                 </div>
 
@@ -241,18 +255,9 @@
                                                 <div class="col-span-2">
                                                     {{ $item->data_realizacao ? \Carbon\Carbon::parse($item->data_realizacao)->format('d/m/Y') : 'N/A' }}
                                                 </div>
-                                                <div class="col-span-4">
+                                                <div class="col-span-5">
                                                     <p class="font-semibold text-slate-900">{{ $servicoDisplay }}</p>
                                                     <p class="text-[11px] text-slate-500">{{ $servicoNome }}</p>
-                                                    @if($faturaId > 0)
-                                                        <p class="mt-1 text-[11px] font-semibold text-indigo-700">
-                                                            Dentro da fatura #{{ str_pad((string) $faturaNumero, 6, '0', STR_PAD_LEFT) }}
-                                                        </p>
-                                                    @else
-                                                        <p class="mt-1 text-[11px] font-semibold text-slate-500">
-                                                            Não faturado
-                                                        </p>
-                                                    @endif
                                                 </div>
                                                 <div class="col-span-2">
                                                     <span class="inline-flex items-center px-2 py-0.5 rounded-full border text-[11px] font-semibold {{ $badge }}">
@@ -262,17 +267,19 @@
                                                 <div class="col-span-1">
                                                     {{ $vencimento?->format('d/m/Y') ?? '-' }}
                                                 </div>
-                                                <div class="col-span-1">
+                                                <div class="col-span-2 text-right">
+                                                    <p class="font-semibold text-slate-900">
+                                                        R$ {{ number_format($valorReal, 2, ',', '.') }}
+                                                    </p>
                                                     @if($faturaId > 0)
-                                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full border border-indigo-100 bg-indigo-50 text-[11px] font-semibold text-indigo-700">
+                                                        <p class="mt-1 text-[11px] font-semibold text-indigo-700">
                                                             FAT-{{ str_pad((string) $faturaNumero, 6, '0', STR_PAD_LEFT) }}
-                                                        </span>
+                                                        </p>
                                                     @else
-                                                        <span class="text-[11px] text-slate-400">-</span>
+                                                        <p class="mt-1 text-[11px] font-semibold text-slate-500">
+                                                            Não faturado
+                                                        </p>
                                                     @endif
-                                                </div>
-                                                <div class="col-span-2 text-right font-semibold text-slate-900">
-                                                    R$ {{ number_format($valorReal, 2, ',', '.') }}
                                                 </div>
                                             </div>
                                     @endforeach
@@ -390,6 +397,16 @@
                 };
                 faturaSelect.addEventListener('change', updateDownloadLink);
                 updateDownloadLink();
+            }
+
+            const filtrosForm = document.getElementById('faturas-filter-form');
+            if (filtrosForm) {
+                const autoSubmitFields = filtrosForm.querySelectorAll('[data-auto-submit-filter]');
+                autoSubmitFields.forEach((field) => {
+                    field.addEventListener('change', () => {
+                        filtrosForm.submit();
+                    });
+                });
             }
         });
     </script>

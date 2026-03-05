@@ -344,7 +344,9 @@
                                     <div class="col-span-2 text-right">Total</div>
                                     <div class="col-span-1 text-center">Ação</div>
                                 </div>
-                                <div id="lista-itens" class="space-y-2 bg-slate-50/40 p-2 md:p-3"></div>
+                                <div class="min-h-[18rem] max-h-[58vh] overflow-y-auto bg-slate-50/40">
+                                    <div id="lista-itens" class="space-y-2 p-2 md:p-3"></div>
+                                </div>
                             </div>
                         </div>
                     </section>

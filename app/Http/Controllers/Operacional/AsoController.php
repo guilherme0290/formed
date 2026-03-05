@@ -206,7 +206,7 @@ class AsoController extends Controller
                 'funcionario_id' => $funcionario->id,
                 'unidade_id' => $data['unidade_id'],
                 'tipo_aso' => $data['tipo_aso'],
-                'data_admissao' => $data['data_admissao'] ?? null,
+                'data_admissao' => $this->resolverDataAdmissaoAso($data, $funcionario),
                 'data_demissao' => $data['data_demissao'] ?? null,
                 'data_aso' => $data['data_aso'],
                 'email_aso' => $data['email_aso'] ?? null,
@@ -549,7 +549,7 @@ class AsoController extends Controller
                 'funcionario_id' => $funcionario->id,
                 'unidade_id' => $data['unidade_id'],
                 'tipo_aso' => $data['tipo_aso'],
-                'data_admissao' => $data['data_admissao'] ?? null,
+                'data_admissao' => $this->resolverDataAdmissaoAso($data, $funcionario),
                 'data_demissao' => $data['data_demissao'] ?? null,
                 'data_aso' => $data['data_aso'],
                 'email_aso' => $data['email_aso'] ?? null,
@@ -1169,6 +1169,30 @@ class AsoController extends Controller
         }
 
         return app(AsoGheService::class)->resolveTiposAsoContrato($contrato);
+    }
+
+    private function resolverDataAdmissaoAso(array $data, Funcionario $funcionario): ?string
+    {
+        if (($data['tipo_aso'] ?? null) !== 'admissional') {
+            return null;
+        }
+
+        $dataAdmissaoFuncionario = $funcionario->data_admissao?->format('Y-m-d');
+        if ($dataAdmissaoFuncionario) {
+            return $dataAdmissaoFuncionario;
+        }
+
+        $dataAdmissaoInformada = $data['data_admissao'] ?? null;
+        if (!$dataAdmissaoInformada) {
+            throw ValidationException::withMessages([
+                'data_admissao' => 'A data de admissão do funcionário não foi encontrada. Atualize o cadastro do funcionário para continuar.',
+            ]);
+        }
+
+        $funcionario->data_admissao = $dataAdmissaoInformada;
+        $funcionario->save();
+
+        return $dataAdmissaoInformada;
     }
 
     private function upsertFuncionarioByCpf(int $empresaId, int $clienteId, array $data): Funcionario

@@ -348,9 +348,11 @@
                                                data-date-target="campo_data_nascimento"
                                             {{ $temFuncionario ? 'disabled' : '' }}>
                                         <button type="button"
+                                                id="btn_data_nascimento"
                                                 class="absolute right-0 top-0 h-full w-8 flex items-center justify-center text-slate-400 hover:text-slate-600 date-picker-btn z-10"
                                                 data-date-target="campo_data_nascimento"
-                                                aria-label="Abrir calendário">
+                                                aria-label="Abrir calendário"
+                                            {{ $temFuncionario ? 'disabled' : '' }}>
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" viewBox="0 0 24 24" fill="currentColor">
                                                 <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v2H2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 2 0v1zm15 8H2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V10z"/>
                                             </svg>
@@ -378,16 +380,21 @@
                                     </label>
                                     <div class="relative">
                                         <input type="text"
+                                               id="campo_data_admissao_br"
                                                inputmode="numeric"
                                                placeholder="dd/mm/aaaa"
                                                value="{{ old('data_admissao_br', '') }}"
                                                class="w-full rounded-xl border border-slate-200 text-sm py-2.5 pl-3 pr-10
-                                              focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400 js-date-text"
-                                               data-date-target="campo_data_admissao">
+                                              focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400 js-date-text
+                                              {{ $temFuncionario ? 'bg-slate-100 cursor-not-allowed' : 'bg-white' }}"
+                                               data-date-target="campo_data_admissao"
+                                            {{ $temFuncionario ? 'readonly' : '' }}>
                                         <button type="button"
+                                                id="btn_data_admissao"
                                                 class="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 flex items-center justify-center text-slate-400 hover:text-slate-600 date-picker-btn z-10"
                                                 data-date-target="campo_data_admissao"
-                                                aria-label="Abrir calendário">
+                                                aria-label="Abrir calendário"
+                                            {{ $temFuncionario ? 'disabled' : '' }}>
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" viewBox="0 0 24 24" fill="currentColor">
                                                 <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v2H2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 2 0v1zm15 8H2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V10z"/>
                                             </svg>
@@ -974,6 +981,10 @@
                 const selectFuncao = document.getElementById('campo_funcao');
                 const wrapDataAdmissao = document.getElementById('wrap_data_admissao');
                 const wrapDataDemissao = document.getElementById('wrap_data_demissao');
+                const campoDataNascimentoTexto = document.getElementById('campo_data_nascimento_br');
+                const botaoDataNascimento = document.getElementById('btn_data_nascimento');
+                const campoDataAdmissaoTexto = document.getElementById('campo_data_admissao_br');
+                const botaoDataAdmissao = document.getElementById('btn_data_admissao');
                 const resumoEl = document.getElementById('asoResumo');
                 const btnSubmitAso = document.getElementById('btnSubmitAso');
 
@@ -1012,6 +1023,27 @@
                         selectFuncao.classList.toggle('bg-slate-100', deveDesabilitarFuncao);
                         selectFuncao.classList.toggle('cursor-not-allowed', deveDesabilitarFuncao);
                         selectFuncao.classList.toggle('bg-white', !deveDesabilitarFuncao);
+                    }
+
+                    if (campoDataNascimentoTexto) {
+                        campoDataNascimentoTexto.readOnly = temFuncionario;
+                        campoDataNascimentoTexto.disabled = temFuncionario;
+                        campoDataNascimentoTexto.classList.toggle('bg-slate-100', temFuncionario);
+                        campoDataNascimentoTexto.classList.toggle('cursor-not-allowed', temFuncionario);
+                        campoDataNascimentoTexto.classList.toggle('bg-white', !temFuncionario);
+                    }
+                    if (botaoDataNascimento) {
+                        botaoDataNascimento.disabled = temFuncionario;
+                    }
+
+                    if (campoDataAdmissaoTexto) {
+                        campoDataAdmissaoTexto.readOnly = temFuncionario;
+                        campoDataAdmissaoTexto.classList.toggle('bg-slate-100', temFuncionario);
+                        campoDataAdmissaoTexto.classList.toggle('cursor-not-allowed', temFuncionario);
+                        campoDataAdmissaoTexto.classList.toggle('bg-white', !temFuncionario);
+                    }
+                    if (botaoDataAdmissao) {
+                        botaoDataAdmissao.disabled = temFuncionario;
                     }
                 }
 

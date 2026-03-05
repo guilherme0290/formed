@@ -171,9 +171,27 @@ class ClienteDashboardController extends Controller
             )
             ->value('total');
 
+        $faturasFiltroOptions = DB::table('contas_receber as cr')
+            ->join('contas_receber_itens as cri', 'cri.conta_receber_id', '=', 'cr.id')
+            ->where('cr.empresa_id', $cliente->empresa_id)
+            ->where('cr.cliente_id', $cliente->id)
+            ->where('cri.status', '!=', 'CANCELADO')
+            ->select('cr.id')
+            ->distinct()
+            ->orderByDesc('cr.id')
+            ->get()
+            ->map(fn ($row) => (object) [
+                'id' => (int) $row->id,
+                'numero' => (int) $row->id,
+            ])
+            ->values();
+
         $dataInicio = $request->input('data_inicio');
         $dataFim = $request->input('data_fim');
         $status = $request->input('status');
+        $faturaIdFiltro = trim((string) $request->input('fatura_id', ''));
+        $filtroSemFatura = $faturaIdFiltro === 'sem_fatura';
+        $filtroFaturaEspecifica = ctype_digit($faturaIdFiltro) && (int) $faturaIdFiltro > 0;
 
         $baixasSub = DB::table('contas_receber_baixas')
             ->selectRaw('conta_receber_item_id, SUM(valor) as total_baixado')
@@ -223,6 +241,11 @@ class ClienteDashboardController extends Controller
         if ($dataFim) {
             $contaQuery->whereDate('cri.data_realizacao', '<=', $dataFim);
         }
+        if ($filtroSemFatura) {
+            $contaQuery->whereNull('cri.conta_receber_id');
+        } elseif ($filtroFaturaEspecifica) {
+            $contaQuery->where('cri.conta_receber_id', (int) $faturaIdFiltro);
+        }
 
         $vendaQuery = DB::table('venda_itens as vi')
             ->join('vendas as v', 'v.id', '=', 'vi.venda_id')
@@ -261,6 +284,9 @@ class ClienteDashboardController extends Controller
         if ($dataFim) {
             $vendaQuery->whereDate(DB::raw('COALESCE(t.finalizado_em, v.created_at)'), '<=', $dataFim);
         }
+        if ($filtroFaturaEspecifica) {
+            $vendaQuery->whereRaw('1=0');
+        }
 
         $union = $contaQuery->unionAll($vendaQuery);
 
@@ -272,12 +298,15 @@ class ClienteDashboardController extends Controller
         $itens = $this->anexarDetalhesServicos($itens);
         $itensEmAberto = $this->anexarDetalhesServicos($itensEmAberto);
         $itensEmAberto = $itensEmAberto
-            ->filter(function ($item) use ($status, $dataInicio, $dataFim) {
+            ->filter(function ($item) use ($status, $dataInicio, $dataFim, $filtroFaturaEspecifica) {
                 $statusFiltro = strtoupper((string) $status);
                 if ($statusFiltro === 'BAIXADO' || $statusFiltro === 'VENCIDO') {
                     return false;
                 }
                 if ($statusFiltro !== '' && $statusFiltro !== 'ABERTO') {
+                    return false;
+                }
+                if ($filtroFaturaEspecifica) {
                     return false;
                 }
 
@@ -312,10 +341,12 @@ class ClienteDashboardController extends Controller
             'totalVencido' => $totalVencido,
             'itens'        => $itens,
             'itensEmAberto' => $itensEmAberto,
+            'faturasFiltroOptions' => $faturasFiltroOptions,
             'filtros' => [
                 'data_inicio' => $dataInicio,
                 'data_fim' => $dataFim,
                 'status' => $status,
+                'fatura_id' => $faturaIdFiltro,
             ],
             'contratoAtivo' => $contratoAtivo,
             'servicosContrato' => $servicosContrato,
