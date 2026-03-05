@@ -33,7 +33,7 @@
             <div class="px-6 py-5 space-y-5">
 
                 {{-- Busca --}}
-                <form method="GET" class="mb-4 flex flex-col sm:flex-row gap-2 sm:items-center">
+                <form method="GET" id="kanban-clientes-form" class="mb-4 flex flex-col sm:flex-row gap-2 sm:items-center">
                     <div class="relative flex-1">
                         <span class="absolute inset-y-0 left-3 flex items-center text-slate-400 text-sm">🔍</span>
                         <input type="text"
@@ -152,7 +152,18 @@
                 'kanban-clientes-input',
                 'kanban-clientes-list',
                 @json($clienteAutocomplete ?? []),
-                { maxItems: 200 }
+                {
+                    maxItems: 200,
+                    onSelect: () => {
+                        const form = document.getElementById('kanban-clientes-form');
+                        if (!form) return;
+                        if (typeof form.requestSubmit === 'function') {
+                            form.requestSubmit();
+                        } else {
+                            form.submit();
+                        }
+                    }
+                }
             );
         });
     </script>

@@ -6,7 +6,7 @@
 @php($canUpdate = $canUpdate ?? false)
 @php($canDelete = $canDelete ?? false)
 
-<div id="modalGhe" data-overlay-root="true" class="fixed inset-0 z-[90] hidden bg-black/50 overflow-y-auto">
+<div id="modalGhe" data-overlay-root="true" class="fixed inset-0 z-[10050] hidden bg-black/50 overflow-y-auto" style="z-index: 10050;">
     <div class="min-h-full w-full flex items-center justify-center p-4 md:p-6">
         <div class="bg-white w-full max-w-6xl rounded-2xl shadow-xl overflow-hidden max-h-[88vh] flex flex-col text-base">
             <div class="px-6 py-4 bg-amber-700 text-white flex items-center justify-between">
@@ -45,7 +45,7 @@
 </div>
 
 {{-- Modal interno: Form criar/editar --}}
-<div id="modalGheForm" data-overlay-root="true" class="fixed inset-0 z-[100] hidden bg-black/50 overflow-y-auto">
+<div id="modalGheForm" data-overlay-root="true" class="fixed inset-0 z-[10060] hidden bg-black/50 overflow-y-auto" style="z-index: 10060;">
     <div class="min-h-full w-full flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-5xl rounded-2xl shadow-xl overflow-hidden text-base max-h-[90vh] overflow-y-auto">
             <div class="px-6 py-4 border-b border-slate-800/30 bg-gradient-to-r from-slate-900 to-slate-700 text-white flex items-center justify-between">
@@ -244,6 +244,25 @@
                 }
             };
 
+            function ensureModalOverSidebar(modalEl, zIndexValue) {
+                if (!modalEl) return;
+                if (modalEl.parentElement !== document.body) {
+                    document.body.appendChild(modalEl);
+                }
+                modalEl.style.position = 'fixed';
+                modalEl.style.inset = '0';
+                modalEl.style.top = '0';
+                modalEl.style.left = '0';
+                modalEl.style.right = '0';
+                modalEl.style.bottom = '0';
+                modalEl.style.width = '100vw';
+                modalEl.style.height = '100vh';
+                modalEl.style.zIndex = String(zIndexValue);
+            }
+
+            ensureModalOverSidebar(GHE.dom.modal, 10050);
+            ensureModalOverSidebar(GHE.dom.modalForm, 10060);
+
             function brl(n){ return Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
             function escapeHtml(str){
                 return String(str||'')
@@ -360,18 +379,18 @@
                 }
                 GHE.state.ghes.forEach(g=>{
                     const row = document.createElement('div');
-                    row.className = 'grid grid-cols-12 gap-2 items-center rounded-xl border border-slate-200 px-3 py-2';
+                    row.className = 'grid grid-cols-12 gap-2 md:gap-3 items-start md:items-center rounded-xl border border-slate-200 px-3 py-2.5';
 
                     const funcoesTxt = g.funcoes?.length ? g.funcoes.map(f => f.nome).filter(Boolean).join(', ') : 'Sem funções';
 
                     row.innerHTML = `
-                        <div class="col-span-5">
-                            <div class="font-semibold text-slate-800">${escapeHtml(g.nome)}</div>
+                        <div class="col-span-12 md:col-span-4 min-w-0">
+                            <div class="font-semibold text-slate-800 break-words">${escapeHtml(g.nome)}</div>
                         </div>
-                        <div class="col-span-6 text-xs text-slate-600">${escapeHtml(funcoesTxt)}</div>
-                        <div class="col-span-1 flex gap-2 justify-end">
-                            <button type="button" class="text-sm ${PERMS.update ? 'text-blue-600 hover:underline' : 'text-slate-400 cursor-not-allowed'}" data-action="edit" ${PERMS.update ? '' : 'disabled title=\"Usuário sem permissão\"'}>Editar</button>
-                            <button type="button" class="text-sm ${PERMS.delete ? 'text-red-600 hover:underline' : 'text-slate-400 cursor-not-allowed'}" data-action="del" ${PERMS.delete ? '' : 'disabled title=\"Usuário sem permissão\"'}>Excluir</button>
+                        <div class="col-span-12 md:col-span-6 min-w-0 text-xs text-slate-600 break-words">${escapeHtml(funcoesTxt)}</div>
+                        <div class="col-span-12 md:col-span-2 flex items-center justify-end gap-3 md:gap-2 pt-1 md:pt-0">
+                            <button type="button" class="text-sm font-medium ${PERMS.update ? 'text-blue-600 hover:underline' : 'text-slate-400 cursor-not-allowed'}" data-action="edit" ${PERMS.update ? '' : 'disabled title=\"Usuário sem permissão\"'}>Editar</button>
+                            <button type="button" class="text-sm font-medium ${PERMS.delete ? 'text-red-600 hover:underline' : 'text-slate-400 cursor-not-allowed'}" data-action="del" ${PERMS.delete ? '' : 'disabled title=\"Usuário sem permissão\"'}>Excluir</button>
                         </div>
                     `;
 
@@ -587,6 +606,7 @@
             }
 
             window.openGheModal = async function(){
+                ensureModalOverSidebar(GHE.dom.modal, 10050);
                 GHE.dom.modal?.classList.remove('hidden');
                 await loadProtocolos();
                 renderFuncoesList();
@@ -597,6 +617,7 @@
             window.openGheForm = async function(ghe){
                 if (ghe && !PERMS.update) return deny('Usuário sem permissão para editar.');
                 if (!ghe && !PERMS.create) return deny('Usuário sem permissão para criar.');
+                ensureModalOverSidebar(GHE.dom.modalForm, 10060);
                 GHE.dom.modalForm?.classList.remove('hidden');
                 GHE.dom.title.textContent = ghe ? 'Editar GHE' : 'Novo GHE';
                 GHE.dom.id.value = ghe?.id || '';

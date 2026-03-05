@@ -573,7 +573,7 @@
                                                            class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-xs font-semibold {{ $whatsUrlLinha ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed pointer-events-none' }}"
                                                            title="{{ $whatsUrlLinha ? 'Enviar fatura via WhatsApp' : 'Telefone 1 do cliente não informado.' }}"
                                                            aria-label="WhatsApp">
-                                                            <i data-lucide="message-circle" class="h-4 w-4"></i>
+                                                            <i class="fa-brands fa-whatsapp text-sm"></i>
                                                         </a>
 
                                                         <a href="{{ $detalheUrlLinha }}#cr-open-modal-email"
@@ -836,7 +836,7 @@
                                    class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm {{ $whatsUrl ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white hover:from-emerald-600 hover:to-emerald-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed pointer-events-none' }}"
                                    @if(!$whatsUrl) title="Telefone 1 do cliente não informado." @endif>
                                     <span class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/20">
-                                        <i data-lucide="message-circle" class="h-3.5 w-3.5"></i>
+                                        <i class="fa-brands fa-whatsapp text-xs"></i>
                                     </span>
                                     WhatsApp
                                 </a>

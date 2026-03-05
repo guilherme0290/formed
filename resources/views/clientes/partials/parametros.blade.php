@@ -718,7 +718,7 @@
                 // Hydrate (edit)
                 // =========================
                 if (INITIAL?.isEdit) {
-                    state.itens = Array.isArray(INITIAL.itens) ? INITIAL.itens : [];
+                    state.itens = normalizeItens(Array.isArray(INITIAL.itens) ? INITIAL.itens : []);
                     state.itens.forEach(it => recalcItemTotal(it));
                     removeEsocialItens();
 
@@ -729,7 +729,7 @@
                     }
 
                     if (Array.isArray(INITIAL.gheConfigs)) {
-                        state.gheConfigs = INITIAL.gheConfigs;
+                        state.gheConfigs = normalizeGheConfigs(INITIAL.gheConfigs);
                     }
                 }
 
@@ -1079,6 +1079,76 @@
                     return cfg?._key || uid();
                 }
 
+                function normalizeItens(items) {
+                    if (!Array.isArray(items)) return [];
+                    const normalized = [];
+                    const asoByKey = new Map();
+                    const usedIds = new Set();
+
+                    items.forEach((raw) => {
+                        if (!raw || typeof raw !== 'object') return;
+
+                        const item = {
+                            ...raw,
+                            meta: (raw.meta && typeof raw.meta === 'object') ? { ...raw.meta } : {},
+                        };
+
+                        item.id = item.id || uid();
+                        while (usedIds.has(String(item.id))) {
+                            item.id = uid();
+                        }
+                        usedIds.add(String(item.id));
+
+                        const isAsoTipo = String(item.tipo || '').toUpperCase() === 'ASO_TIPO';
+                        const asoKey = String(item?.meta?.aso_key || '').trim();
+                        if (!isAsoTipo) {
+                            normalized.push(item);
+                            return;
+                        }
+
+                        if (!asoKey) {
+                            return;
+                        }
+
+                        asoByKey.set(asoKey, item);
+                    });
+
+                    asoByKey.forEach((item) => normalized.push(item));
+                    return normalized;
+                }
+
+                function normalizeGheConfigs(configs) {
+                    if (!Array.isArray(configs)) return [];
+                    const grouped = new Map();
+
+                    configs.forEach((raw) => {
+                        if (!raw || typeof raw !== 'object') return;
+                        const key = getGheConfigKey(raw);
+                        if (!grouped.has(key)) {
+                            grouped.set(key, {
+                                cliente_ghe_id: raw.cliente_ghe_id || null,
+                                ghe_id: raw.ghe_id || null,
+                                ghe_nome: raw.ghe_nome || '',
+                                tipos: {},
+                            });
+                        }
+
+                        const cfg = grouped.get(key);
+                        const tipos = (raw.tipos && typeof raw.tipos === 'object') ? raw.tipos : {};
+                        ASO_TYPES.forEach(({ key: tipoKey }) => {
+                            const row = tipos[tipoKey];
+                            if (!row?.grupo_id) return;
+                            cfg.tipos[tipoKey] = {
+                                grupo_id: Number(row.grupo_id || 0),
+                                grupo_titulo: row.grupo_titulo || '',
+                                total_exames: Number(row.total_exames || 0),
+                            };
+                        });
+                    });
+
+                    return Array.from(grouped.values());
+                }
+
                 function renderGheConfigsTable() {
                     if (!el.gheConfigsGrid) return;
                     el.gheConfigsGrid.innerHTML = '';
@@ -1201,6 +1271,7 @@
                     } else {
                         state.gheConfigs.push(cfg);
                     }
+                    state.gheConfigs = normalizeGheConfigs(state.gheConfigs);
 
                     syncAsoTipoItems();
                     renderGheConfigsTable();
@@ -1221,13 +1292,24 @@
                         });
                     });
 
-                    state.itens = state.itens.filter(it => {
-                        const asoKey = it?.meta?.aso_key;
-                        return !asoKey || selected.has(asoKey);
+                    const fixedItems = [];
+                    const asoByKey = new Map();
+                    state.itens.forEach(it => {
+                        const isAsoTipo = String(it?.tipo || '').toUpperCase() === 'ASO_TIPO';
+                        const asoKey = String(it?.meta?.aso_key || '').trim();
+                        if (!isAsoTipo) {
+                            fixedItems.push(it);
+                            return;
+                        }
+                        if (!asoKey || !selected.has(asoKey)) {
+                            return;
+                        }
+                        asoByKey.set(asoKey, it);
                     });
+                    state.itens = fixedItems;
 
                     selected.forEach(({ cfg, row, tipo, label }, asoKey) => {
-                        let item = state.itens.find(it => it?.meta?.aso_key === asoKey);
+                        let item = asoByKey.get(asoKey);
                         if (!item) {
                             item = {
                                 id: uid(),
@@ -1340,7 +1422,7 @@
                                 total_exames: Number(r.total_exames || 0),
                             };
                         });
-                        state.gheConfigs = Array.from(grouped.values());
+                        state.gheConfigs = normalizeGheConfigs(Array.from(grouped.values()));
                         syncAsoTipoItems();
                         renderGheConfigsTable();
                         resetCurrentGheConfig();

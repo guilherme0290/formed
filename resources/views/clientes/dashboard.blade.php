@@ -44,8 +44,8 @@
             {{-- Card: Seu Comercial (azul) --}}
             <div class="rounded-3xl bg-[#1554d9] text-white shadow-lg shadow-blue-900/20 p-4 md:p-6 flex flex-col justify-between">
                 <div class="flex items-start gap-3 mb-4">
-                    <div class="h-9 w-9 rounded-2xl bg-white/15 flex items-center justify-center text-[10px] font-semibold">
-                        📞
+                    <div class="h-9 w-9 rounded-2xl bg-white/15 flex items-center justify-center text-sm font-semibold">
+                        <i class="fa-solid fa-headset"></i>
                     </div>
                     <div>
                         <p class="text-xs uppercase tracking-[0.18em] text-blue-100/90">
@@ -69,7 +69,7 @@
                     class="mt-2 inline-flex items-center justify-center w-full rounded-full
                            bg-emerald-500 hover:bg-emerald-400 text-xs md:text-sm font-semibold
                            text-white py-2.5 transition">
-                    <span class="mr-1.5 text-[10px] font-semibold">💬</span>
+                    <span class="mr-1.5 text-[10px] font-semibold"><i class="fa-brands fa-whatsapp"></i></span>
                     Falar no WhatsApp
                 </a>
             </div>
@@ -79,7 +79,7 @@
                 <div>
                     <div class="flex items-start gap-3 mb-4">
                         <div class="h-9 w-9 rounded-2xl bg-white/15 flex items-center justify-center text-base font-semibold">
-                            💰
+                            <i class="fa-solid fa-sack-dollar"></i>
                         </div>
                         <div>
                             <p class="text-xs uppercase tracking-[0.18em] text-emerald-50/90">
@@ -125,7 +125,7 @@
             {{-- Pericia Medica --}}
             <article class="bg-white rounded-3xl shadow-md border border-slate-200 overflow-hidden">
                 <header class="bg-[#c0145f] text-white px-6 py-3 flex items-center gap-2 text-sm font-semibold">
-                    <span>PM</span>
+                    <span><i class="fa-solid fa-user-doctor"></i></span>
                     <span>Per&iacute;cia M&eacute;dica</span>
                 </header>
                 <div class="px-6 py-4 text-sm text-slate-600 space-y-2">
@@ -143,7 +143,7 @@
                         class="w-full inline-flex items-center justify-center gap-2 rounded-md
                                bg-emerald-600 hover:bg-emerald-500 text-xs md:text-sm font-semibold
                                text-white py-2.5">
-                        <span class="text-[10px] font-semibold">💬</span>
+                        <span class="text-[10px] font-semibold"><i class="fa-brands fa-whatsapp"></i></span>
                         Consultar Valor no WhatsApp
                     </a>
                 </div>
@@ -152,7 +152,7 @@
             {{-- Pericia Tecnica --}}
             <article class="bg-white rounded-3xl shadow-md border border-slate-200 overflow-hidden">
                 <header class="bg-[#046c82] text-white px-6 py-3 flex items-center gap-2 text-sm font-semibold">
-                    <span>PT</span>
+                    <span><i class="fa-solid fa-helmet-safety"></i></span>
                     <span>Per&iacute;cia T&eacute;cnica</span>
                 </header>
                 <div class="px-6 py-4 text-sm text-slate-600 space-y-2">
@@ -170,7 +170,7 @@
                         class="w-full inline-flex items-center justify-center gap-2 rounded-md
                                bg-emerald-600 hover:bg-emerald-500 text-xs md:text-sm font-semibold
                                text-white py-2.5">
-                        <span class="text-[10px] font-semibold">💬</span>
+                        <span class="text-[10px] font-semibold"><i class="fa-brands fa-whatsapp"></i></span>
                         Consultar Valor no WhatsApp
                     </a>
                 </div>

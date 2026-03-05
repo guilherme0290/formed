@@ -61,6 +61,8 @@ class AsoController extends Controller
             'celular' => ['nullable', 'string', 'max:30'],
             'funcao_id' => ['nullable', 'integer', 'exists:funcoes,id'],
             'tipo_aso' => ['required', 'in:admissional,periodico,demissional,mudanca_funcao,retorno_trabalho'],
+            'data_admissao' => ['nullable', 'date_format:Y-m-d', 'required_if:tipo_aso,admissional'],
+            'data_demissao' => ['nullable', 'date_format:Y-m-d', 'required_if:tipo_aso,demissional'],
             'data_aso' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
             'unidade_id' => ['required', 'integer', Rule::in($unidadesPermitidasIds)],
             'vai_fazer_treinamento' => ['nullable', 'boolean'],
@@ -109,16 +111,7 @@ class AsoController extends Controller
                     $funcionario->save();
                 }
             } else {
-                $funcionario = Funcionario::create([
-                    'empresa_id' => $empresaId,
-                    'cliente_id' => $cliente->id,
-                    'nome' => $data['nome'],
-                    'cpf' => $data['cpf'] ?? null,
-                    'rg' => $data['rg'],
-                    'celular' => $data['celular'] ?? null,
-                    'data_nascimento' => $data['data_nascimento'],
-                    'funcao_id' => $data['funcao_id'] ?? null,
-                ]);
+                $funcionario = $this->upsertFuncionarioByCpf($empresaId, $cliente->id, $data);
             }
 
             // 2) Coluna inicial do Kanban
@@ -213,6 +206,8 @@ class AsoController extends Controller
                 'funcionario_id' => $funcionario->id,
                 'unidade_id' => $data['unidade_id'],
                 'tipo_aso' => $data['tipo_aso'],
+                'data_admissao' => $data['data_admissao'] ?? null,
+                'data_demissao' => $data['data_demissao'] ?? null,
                 'data_aso' => $data['data_aso'],
                 'email_aso' => $data['email_aso'] ?? null,
                 'pcmso_elaborado_formed' => $pcmsoElaboradoFormed,
@@ -406,6 +401,8 @@ class AsoController extends Controller
             'celular' => ['nullable', 'string', 'max:30'],
             'funcao_id' => ['nullable', 'integer', 'exists:funcoes,id'],
             'tipo_aso' => ['required', 'in:admissional,periodico,demissional,mudanca_funcao,retorno_trabalho'],
+            'data_admissao' => ['nullable', 'date_format:Y-m-d', 'required_if:tipo_aso,admissional'],
+            'data_demissao' => ['nullable', 'date_format:Y-m-d', 'required_if:tipo_aso,demissional'],
             'data_aso' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
             'unidade_id' => ['required', 'integer', Rule::in($unidadesPermitidasIds)],
             'vai_fazer_treinamento' => ['nullable', 'boolean'],
@@ -454,20 +451,20 @@ class AsoController extends Controller
                     $funcionario->save();
                 }
             } else {
-                $funcionario = $tarefa->funcionario ?: new Funcionario([
-                    'empresa_id' => $empresaId,
-                    'cliente_id' => $cliente->id,
-                ]);
-
-                $funcionario->fill([
-                    'nome' => $data['nome'],
-                    'cpf' => $data['cpf'] ?? null,
-                    'rg' => $data['rg'],
-                    'celular' => $data['celular'] ?? null,
-                    'data_nascimento' => $data['data_nascimento'],
-                    'funcao_id' => $data['funcao_id'] ?? null,
-                ]);
-                $funcionario->save();
+                if ($tarefa->funcionario) {
+                    $funcionario = $tarefa->funcionario;
+                    $funcionario->fill([
+                        'nome' => $data['nome'],
+                        'cpf' => $data['cpf'] ?? null,
+                        'rg' => $data['rg'],
+                        'celular' => $data['celular'] ?? null,
+                        'data_nascimento' => $data['data_nascimento'],
+                        'funcao_id' => $data['funcao_id'] ?? null,
+                    ]);
+                    $funcionario->save();
+                } else {
+                    $funcionario = $this->upsertFuncionarioByCpf($empresaId, $cliente->id, $data);
+                }
             }
 
             // monta descrição "bonita"
@@ -552,6 +549,8 @@ class AsoController extends Controller
                 'funcionario_id' => $funcionario->id,
                 'unidade_id' => $data['unidade_id'],
                 'tipo_aso' => $data['tipo_aso'],
+                'data_admissao' => $data['data_admissao'] ?? null,
+                'data_demissao' => $data['data_demissao'] ?? null,
                 'data_aso' => $data['data_aso'],
                 'email_aso' => $data['email_aso'] ?? null,
                 'pcmso_elaborado_formed' => $pcmsoElaboradoFormed,
@@ -762,6 +761,7 @@ class AsoController extends Controller
                 'cpf' => $funcionario->cpf,
                 'rg' => $funcionario->rg,
                 'data_nascimento' => $funcionario->data_nascimento?->format('Y-m-d'),
+                'data_admissao' => $funcionario->data_admissao?->format('Y-m-d'),
                 'celular' => $funcionario->celular,
                 'funcao_id' => $funcionario->funcao_id,
             ],
@@ -1171,6 +1171,51 @@ class AsoController extends Controller
         return app(AsoGheService::class)->resolveTiposAsoContrato($contrato);
     }
 
+    private function upsertFuncionarioByCpf(int $empresaId, int $clienteId, array $data): Funcionario
+    {
+        $cpfNormalizado = $this->normalizarCpf((string) ($data['cpf'] ?? ''));
+
+        if ($cpfNormalizado !== '') {
+            $existente = Funcionario::query()
+                ->where('empresa_id', $empresaId)
+                ->where('cliente_id', $clienteId)
+                ->get()
+                ->first(function (Funcionario $funcionario) use ($cpfNormalizado) {
+                    return $this->normalizarCpf((string) ($funcionario->cpf ?? '')) === $cpfNormalizado;
+                });
+
+            if ($existente) {
+                $existente->fill([
+                    'nome' => $data['nome'],
+                    'cpf' => $data['cpf'] ?? null,
+                    'rg' => $data['rg'],
+                    'celular' => $data['celular'] ?? null,
+                    'data_nascimento' => $data['data_nascimento'],
+                    'funcao_id' => $data['funcao_id'] ?? null,
+                ]);
+                $existente->save();
+
+                return $existente;
+            }
+        }
+
+        return Funcionario::create([
+            'empresa_id' => $empresaId,
+            'cliente_id' => $clienteId,
+            'nome' => $data['nome'],
+            'cpf' => $data['cpf'] ?? null,
+            'rg' => $data['rg'],
+            'celular' => $data['celular'] ?? null,
+            'data_nascimento' => $data['data_nascimento'],
+            'funcao_id' => $data['funcao_id'] ?? null,
+        ]);
+    }
+
+    private function normalizarCpf(string $cpf): string
+    {
+        return preg_replace('/\D+/', '', $cpf) ?? '';
+    }
+
     private function mensagensValidacao(): array
     {
         return [
@@ -1181,6 +1226,7 @@ class AsoController extends Controller
             'date' => 'Informe uma data válida para :attribute.',
             'date_format' => 'Informe a data de :attribute no formato correto.',
             'after_or_equal' => 'O campo :attribute não pode ser uma data anterior a hoje.',
+            'required_if' => 'O campo :attribute é obrigatório.',
             'exists' => 'O valor selecionado para :attribute é inválido.',
             'in' => 'O valor selecionado para :attribute é inválido.',
             'array' => 'O campo :attribute deve ser uma lista válida.',
@@ -1200,6 +1246,8 @@ class AsoController extends Controller
             'data_nascimento' => 'data de nascimento',
             'funcao_id' => 'função',
             'tipo_aso' => 'tipo de ASO',
+            'data_admissao' => 'data de admissão',
+            'data_demissao' => 'data de demissão',
             'data_aso' => 'data do ASO',
             'unidade_id' => 'unidade',
             'vai_fazer_treinamento' => 'vai fazer treinamento',

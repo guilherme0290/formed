@@ -23,6 +23,10 @@
                         <p class="text-xs md:text-sm text-blue-100 mt-1">
                             {{ $funcionario->funcao->nome ?? 'Função não informada' }}
                         </p>
+                        <p class="text-[11px] md:text-xs text-blue-100/90 mt-1">
+                            Data de Nascimento:
+                            {{ $funcionario->data_nascimento ? \Carbon\Carbon::parse($funcionario->data_nascimento)->format('d/m/Y') : '-' }}
+                        </p>
                     </div>
 
                     <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold {{ $funcionario->ativo ? 'bg-emerald-200 text-emerald-800 border border-emerald-300' : 'bg-slate-100 text-slate-700 border border-slate-200' }}">
@@ -94,6 +98,11 @@
                                 </div>
 
                                 <div>
+                                    <dt class="text-[11px] uppercase tracking-wide text-slate-500 font-semibold">RG</dt>
+                                    <dd class="mt-0.5">{{ $funcionario->rg ?: '-' }}</dd>
+                                </div>
+
+                                <div>
                                     <dt class="text-[11px] uppercase tracking-wide text-slate-500 font-semibold">Celular</dt>
                                     <dd class="mt-0.5">{{ $funcionario->celular ?: '-' }}</dd>
                                 </div>
@@ -104,8 +113,8 @@
                                 </div>
 
                                 <div>
-                                    <dt class="text-[11px] uppercase tracking-wide text-slate-500 font-semibold">Vaga atual</dt>
-                                    <dd class="mt-0.5">{{ $funcionario->vaga_atual ?: '-' }}</dd>
+                                    <dt class="text-[11px] uppercase tracking-wide text-slate-500 font-semibold">Função</dt>
+                                    <dd class="mt-0.5">{{ $funcionario->funcao->nome ?? 'Função não informada' }}</dd>
                                 </div>
 
                                 <div>
@@ -322,4 +331,3 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 @endpush
-

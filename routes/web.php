@@ -431,9 +431,16 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
 
             Route::get('/faturas', [ClienteDashboardController::class, 'faturas'])
                 ->name('faturas');
+            Route::get('/faturas/{contaReceber}/visualizar', [ClienteDashboardController::class, 'visualizarFatura'])
+                ->name('faturas.visualizar');
+            Route::get('/faturas/{contaReceber}/download', [ClienteDashboardController::class, 'downloadFatura'])
+                ->name('faturas.download');
 
             Route::get('/agendamentos', [ClienteDashboardController::class, 'agendamentos'])
                 ->name('agendamentos');
+
+            Route::post('/lgpd/aceitar', [ClienteDashboardController::class, 'aceitarLgpd'])
+                ->name('lgpd.aceitar');
 
             Route::delete('/agendamentos/{tarefa}', [ClienteDashboardController::class, 'destroyAgendamento'])
                 ->name('agendamentos.destroy');
@@ -721,7 +728,7 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
                     ->name('destroy');
             });
 
-            // Kanban de Propostas (Acompanhamento)
+            // Kanban de Propostas (Gestão de Propostas)
             Route::prefix('pipeline')->name('pipeline.')->group(function () {
                 Route::get('/', [\App\Http\Controllers\Comercial\PipelineController::class, 'index'])
                     ->name('index');

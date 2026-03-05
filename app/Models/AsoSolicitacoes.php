@@ -19,6 +19,8 @@ class AsoSolicitacoes extends Model
         'unidade_id',
         'tipo_aso',
         'data_aso',
+        'data_admissao',
+        'data_demissao',
         'email_aso',
         'pcmso_elaborado_formed',
         'pcmso_externo_anexo_id',
@@ -29,6 +31,8 @@ class AsoSolicitacoes extends Model
 
     protected $casts = [
         'data_aso'              => 'date',
+        'data_admissao'         => 'date',
+        'data_demissao'         => 'date',
         'pcmso_elaborado_formed' => 'boolean',
         'vai_fazer_treinamento' => 'boolean',
         'treinamentos'          => 'array',

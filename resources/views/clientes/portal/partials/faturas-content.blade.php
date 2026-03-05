@@ -3,6 +3,65 @@
         ? $itens->getCollection()
         : collect($itens ?? []);
     $listaFaturas = collect($itensEmAberto ?? [])->concat($itensPaginados);
+    $hoje = \Carbon\Carbon::now()->startOfDay();
+    $faturasResumo = $listaFaturas
+        ->filter(fn ($item) => (int) ($item->conta_receber_id ?? 0) > 0)
+        ->groupBy(fn ($item) => (int) ($item->conta_receber_id ?? 0))
+        ->map(function ($grupo, $contaId) use ($hoje) {
+            $grupo = collect($grupo);
+            $primeiro = $grupo->first();
+            $numero = (int) (($primeiro->fatura_numero ?? 0) ?: $contaId);
+            $total = (float) $grupo->sum(function ($item) {
+                return isset($item->valor_real) ? (float) $item->valor_real : (float) ($item->valor ?? 0);
+            });
+
+            $vencimentoPrincipal = $grupo
+                ->pluck('vencimento')
+                ->filter()
+                ->map(fn ($v) => \Carbon\Carbon::parse($v)->startOfDay())
+                ->sort()
+                ->first();
+
+            $statusItens = $grupo
+                ->pluck('status')
+                ->map(fn ($s) => strtoupper((string) $s))
+                ->filter()
+                ->values();
+
+            $todosBaixados = $statusItens->isNotEmpty() && $statusItens->every(fn ($s) => $s === 'BAIXADO');
+            $vencida = !$todosBaixados && $vencimentoPrincipal && $vencimentoPrincipal->lt($hoje);
+
+            $statusLabel = $todosBaixados ? 'Paga' : ($vencida ? 'Vencida' : 'Em aberto');
+            $statusClass = $todosBaixados
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                : ($vencida ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-amber-50 text-amber-700 border-amber-200');
+            $prioridade = $vencida ? 0 : ($todosBaixados ? 2 : 1);
+
+            return (object) [
+                'id' => (int) $contaId,
+                'numero' => $numero,
+                'vencimento' => $vencimentoPrincipal,
+                'total' => $total,
+                'status_label' => $statusLabel,
+                'status_class' => $statusClass,
+                'prioridade' => $prioridade,
+            ];
+        })
+        ->sort(function ($a, $b) {
+            if ($a->prioridade !== $b->prioridade) {
+                return $a->prioridade <=> $b->prioridade;
+            }
+
+            $aV = $a->vencimento ? $a->vencimento->timestamp : PHP_INT_MAX;
+            $bV = $b->vencimento ? $b->vencimento->timestamp : PHP_INT_MAX;
+            if ($aV !== $bV) {
+                return $aV <=> $bV;
+            }
+
+            return $b->numero <=> $a->numero;
+        })
+        ->values();
+    $faturaSelecionadaPadrao = $faturasResumo->first();
     $totalRegistros = $listaFaturas->count();
     $totalAndamento = collect($itensEmAberto ?? [])->count();
 @endphp
@@ -19,15 +78,47 @@
         </div>
     </div>
 
-    <div class="mb-6 grid gap-3 md:grid-cols-2">
-        <div class="rounded-xl border border-blue-200 bg-blue-50/80 px-4 py-3">
-            <p class="text-[11px] uppercase tracking-wide text-blue-700">Faturas em Aberto</p>
-            <p class="mt-1 text-2xl font-semibold text-blue-800">R$ {{ number_format($totalFaturaAberto ?? 0, 2, ',', '.') }}</p>
+    <div class="mb-6 grid gap-3 md:grid-cols-3">
+        <div class="md:col-span-1 flex flex-col gap-3">
+            <div class="rounded-xl border border-blue-200 bg-blue-50/80 px-4 py-3">
+                <p class="text-[11px] uppercase tracking-wide text-blue-700">Faturas em Aberto</p>
+                <p class="mt-1 text-2xl font-semibold text-blue-800">R$ {{ number_format($totalFaturaAberto ?? 0, 2, ',', '.') }}</p>
+            </div>
+
+            <div class="rounded-xl border border-blue-200 bg-blue-50/80 px-4 py-3">
+                <p class="text-[11px] uppercase tracking-wide text-blue-700">Vencidos</p>
+                <p class="mt-1 text-2xl font-semibold text-blue-800">R$ {{ number_format($totalVencido ?? 0, 2, ',', '.') }}</p>
+            </div>
         </div>
 
-        <div class="rounded-xl border border-blue-200 bg-blue-50/80 px-4 py-3">
-            <p class="text-[11px] uppercase tracking-wide text-blue-700">Vencidos</p>
-            <p class="mt-1 text-2xl font-semibold text-blue-800">R$ {{ number_format($totalVencido ?? 0, 2, ',', '.') }}</p>
+        <div class="rounded-xl border border-indigo-200 bg-indigo-50/80 px-4 py-3 flex flex-col max-h-[240px] overflow-hidden md:col-span-2">
+            <p class="text-[11px] uppercase tracking-wide text-indigo-700">Boletos e Faturas para Download</p>
+            @if($faturasResumo->isNotEmpty())
+                <div class="mt-2 grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-end">
+                    <div>
+                        <label for="fatura-download-select" class="text-[11px] font-semibold text-indigo-700">Escolher fatura</label>
+                        <select id="fatura-download-select"
+                                class="mt-1 w-full rounded-lg border border-indigo-200 bg-white px-2.5 py-1.5 text-xs text-slate-700">
+                            @foreach($faturasResumo as $fat)
+                                <option value="{{ $fat->id }}" @selected($faturaSelecionadaPadrao && (int) $fat->id === (int) $faturaSelecionadaPadrao->id)>
+                                    FAT-{{ str_pad((string) $fat->numero, 6, '0', STR_PAD_LEFT) }}
+                                    {{ $fat->vencimento ? ' • ' . $fat->vencimento->format('d/m/Y') : '' }}
+                                    • {{ $fat->status_label }}
+                                    • R$ {{ number_format((float) $fat->total, 2, ',', '.') }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <a id="fatura-download-btn"
+                       href="{{ $faturaSelecionadaPadrao ? route('cliente.faturas.download', $faturaSelecionadaPadrao->id) : '#' }}"
+                       data-url-template="{{ route('cliente.faturas.download', ['contaReceber' => '__ID__']) }}"
+                       class="inline-flex items-center justify-center rounded-lg border border-indigo-200 bg-white px-3 py-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-100">
+                        Baixar PDF
+                    </a>
+                </div>
+            @else
+                <p class="mt-2 text-xs text-indigo-700/80">Nenhuma fatura gerada ainda.</p>
+            @endif
         </div>
     </div>
 
@@ -101,14 +192,15 @@
                 </form>
 
                 @if($listaFaturas->isNotEmpty())
-                    <div class="flex-1 min-h-0 overflow-y-auto pr-1">
+                    <div id="lista-faturas" class="flex-1 min-h-0 overflow-y-auto pr-1">
                         <div class="overflow-x-auto rounded-xl border border-blue-200">
-                            <div class="min-w-[880px]">
+                            <div class="min-w-[980px]">
                                 <div class="sticky top-0 z-10 grid grid-cols-12 gap-3 bg-blue-50 border-b border-blue-200 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-blue-700">
                                     <div class="col-span-2">Data</div>
-                                    <div class="col-span-5">Serviços</div>
+                                    <div class="col-span-4">Serviços</div>
                                     <div class="col-span-2">Status</div>
                                     <div class="col-span-1">Venc.</div>
+                                    <div class="col-span-1">Fatura</div>
                                     <div class="col-span-2 text-right">Valor</div>
                                 </div>
 
@@ -133,6 +225,8 @@
                                                 $isAndamento = $status === '' || $status === 'EM ANDAMENTO';
                                                 $vencido = !$isAndamento && ($vencimento?->lt(now()->startOfDay()) ?? false);
                                                 $valorReal = isset($item->valor_real) ? (float) $item->valor_real : (float) ($item->valor ?? 0);
+                                                $faturaId = (int) ($item->conta_receber_id ?? 0);
+                                                $faturaNumero = (int) ($item->fatura_numero ?? 0);
 
                                                 $badge = match (true) {
                                                     $isAndamento => 'bg-sky-50 text-sky-700 border-sky-100',
@@ -147,9 +241,18 @@
                                                 <div class="col-span-2">
                                                     {{ $item->data_realizacao ? \Carbon\Carbon::parse($item->data_realizacao)->format('d/m/Y') : 'N/A' }}
                                                 </div>
-                                                <div class="col-span-5">
+                                                <div class="col-span-4">
                                                     <p class="font-semibold text-slate-900">{{ $servicoDisplay }}</p>
                                                     <p class="text-[11px] text-slate-500">{{ $servicoNome }}</p>
+                                                    @if($faturaId > 0)
+                                                        <p class="mt-1 text-[11px] font-semibold text-indigo-700">
+                                                            Dentro da fatura #{{ str_pad((string) $faturaNumero, 6, '0', STR_PAD_LEFT) }}
+                                                        </p>
+                                                    @else
+                                                        <p class="mt-1 text-[11px] font-semibold text-slate-500">
+                                                            Não faturado
+                                                        </p>
+                                                    @endif
                                                 </div>
                                                 <div class="col-span-2">
                                                     <span class="inline-flex items-center px-2 py-0.5 rounded-full border text-[11px] font-semibold {{ $badge }}">
@@ -158,6 +261,15 @@
                                                 </div>
                                                 <div class="col-span-1">
                                                     {{ $vencimento?->format('d/m/Y') ?? '-' }}
+                                                </div>
+                                                <div class="col-span-1">
+                                                    @if($faturaId > 0)
+                                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full border border-indigo-100 bg-indigo-50 text-[11px] font-semibold text-indigo-700">
+                                                            FAT-{{ str_pad((string) $faturaNumero, 6, '0', STR_PAD_LEFT) }}
+                                                        </span>
+                                                    @else
+                                                        <span class="text-[11px] text-slate-400">-</span>
+                                                    @endif
                                                 </div>
                                                 <div class="col-span-2 text-right font-semibold text-slate-900">
                                                     R$ {{ number_format($valorReal, 2, ',', '.') }}
@@ -263,7 +375,22 @@
                     }
                 });
             });
+
+            const faturaSelect = document.getElementById('fatura-download-select');
+            const faturaDownloadBtn = document.getElementById('fatura-download-btn');
+            if (faturaSelect && faturaDownloadBtn) {
+                const template = faturaDownloadBtn.dataset.urlTemplate || '';
+                const updateDownloadLink = () => {
+                    const id = (faturaSelect.value || '').trim();
+                    if (!id || !template.includes('__ID__')) {
+                        faturaDownloadBtn.setAttribute('href', '#');
+                        return;
+                    }
+                    faturaDownloadBtn.setAttribute('href', template.replace('__ID__', id));
+                };
+                faturaSelect.addEventListener('change', updateDownloadLink);
+                updateDownloadLink();
+            }
         });
     </script>
 @endpush
-

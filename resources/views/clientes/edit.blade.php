@@ -27,24 +27,6 @@
         $canSave = $cliente->exists ? $canUpdate : $canCreate;
     @endphp
 
-    {{-- MENSAGENS --}}
-    @if (session('ok'))
-        <div class="mb-4 rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700">
-            {{ session('ok') }}
-        </div>
-    @endif
-
-    @if (session('erro'))
-        <div class="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-            {{ session('erro') }}
-        </div>
-    @endif
-    @if (session('error'))
-        <div class="mb-4 rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-700">
-            {{ session('error') }}
-        </div>
-    @endif
-
     <div class="w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div class="mb-2">
             <a href="{{ route($routePrefix.'.index') }}"
@@ -65,42 +47,42 @@
             <div class="mb-1 w-full mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex flex-wrap gap-2" data-tabs="cliente">
                     <button type="button"
-                            class="px-4 py-2 rounded-full text-sm font-semibold text-slate-600 hover:bg-slate-100"
+                            class="px-4 py-2 rounded-full border border-slate-200 bg-white text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
                             data-tab="dados">
                         Dados do Cliente
                     </button>
                     <button type="button"
-                            class="px-4 py-2 rounded-full text-sm font-semibold text-slate-600 hover:bg-slate-100"
+                            class="px-4 py-2 rounded-full border border-slate-200 bg-white text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
                             data-tab="parametros">
                         Par&acirc;metros
                     </button>
                     <button type="button"
-                            class="px-4 py-2 rounded-full text-sm font-semibold text-slate-600 hover:bg-slate-100"
+                            class="px-4 py-2 rounded-full border border-slate-200 bg-white text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
                             data-tab="unidades-permitidas">
                         Unidades Permitidas
                     </button>
                     <button type="button"
-                            class="px-4 py-2 rounded-full text-sm font-semibold text-slate-600 hover:bg-slate-100"
+                            class="px-4 py-2 rounded-full border border-slate-200 bg-white text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
                             data-tab="esocial">
                         eSocial
                     </button>
                     <button type="button"
-                            class="px-4 py-2 rounded-full text-sm font-semibold text-slate-600 hover:bg-slate-100"
+                            class="px-4 py-2 rounded-full border border-slate-200 bg-white text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
                             data-tab="forma-pagamento">
                         Pagamento
                     </button>
                     <button type="button"
-                            class="px-4 py-2 rounded-full text-sm font-semibold text-slate-600 hover:bg-slate-100"
+                            class="px-4 py-2 rounded-full border border-slate-200 bg-white text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
                             data-tab="vendedor">
                         Vendedor
                     </button>
                     <button type="button"
-                            class="px-4 py-2 rounded-full text-sm font-semibold text-slate-600 hover:bg-slate-100"
+                            class="px-4 py-2 rounded-full border border-slate-200 bg-white text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
                             data-tab="arquivos">
                         Arquivos
                     </button>
                     <button type="button"
-                            class="px-4 py-2 rounded-full text-sm font-semibold text-slate-600 hover:bg-slate-100"
+                            class="px-4 py-2 rounded-full border border-slate-200 bg-white text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
                             data-tab="acesso">
                         Acesso
                     </button>
@@ -398,24 +380,31 @@
             const panels = Array.from(scope.querySelectorAll('[data-tab-panel-root="cliente"]'));
 
             function activate(tabName) {
-                const activeClasses = {
-                    'dados': ['bg-blue-600', 'text-white'],
-                    'parametros': ['bg-emerald-600', 'text-white'],
-                    'esocial': ['bg-amber-600', 'text-white'],
-                    'forma-pagamento': ['bg-indigo-600', 'text-white'],
-                    'vendedor': ['bg-slate-900', 'text-white'],
-                    'arquivos': ['bg-indigo-700', 'text-white'],
-                    'acesso': ['bg-violet-600', 'text-white'],
+                const activeColors = {
+                    'dados': '#2563eb',
+                    'parametros': '#059669',
+                    'unidades-permitidas': '#0f766e',
+                    'esocial': '#d97706',
+                    'forma-pagamento': '#4f46e5',
+                    'vendedor': '#0f172a',
+                    'arquivos': '#4338ca',
+                    'acesso': '#7c3aed',
                 };
 
                 tabs.forEach(btn => {
                     const active = btn.dataset.tab === tabName;
-                    const classes = activeClasses[btn.dataset.tab] || ['bg-blue-600', 'text-white'];
-                    btn.classList.remove('bg-blue-600', 'bg-emerald-600', 'bg-amber-600', 'bg-indigo-600', 'bg-indigo-700', 'bg-slate-900', 'bg-violet-600', 'text-white');
                     if (active) {
-                        btn.classList.add(...classes);
+                        const color = activeColors[btn.dataset.tab] || '#2563eb';
+                        btn.style.backgroundColor = color;
+                        btn.style.color = '#ffffff';
+                        btn.style.borderColor = color;
+                        btn.style.boxShadow = '0 4px 12px rgba(15, 23, 42, 0.18)';
+                    } else {
+                        btn.style.backgroundColor = '';
+                        btn.style.color = '';
+                        btn.style.borderColor = '';
+                        btn.style.boxShadow = '';
                     }
-                    btn.classList.toggle('text-slate-600', !active);
                 });
                 panels.forEach(panel => {
                     if (!panel.dataset.tabPanel) return;
@@ -790,6 +779,34 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+            const flashOk = @json(session('ok'));
+            const flashErr = @json(session('error') ?? session('erro'));
+
+            if (typeof window.uiAlert !== 'function') {
+                return;
+            }
+
+            if (flashOk) {
+                window.uiAlert(flashOk, {
+                    icon: 'success',
+                    title: 'Sucesso',
+                    confirmText: 'OK',
+                });
+                return;
+            }
+
+            if (flashErr) {
+                window.uiAlert(flashErr, {
+                    icon: 'error',
+                    title: 'Atenção',
+                    confirmText: 'OK',
+                });
+            }
+        });
+    </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
             const radios = Array.from(document.querySelectorAll('input[name="tipo_cliente"]'));
             const observacao = document.getElementById('observacao');
             const star = document.getElementById('obs-required-star');
@@ -845,7 +862,5 @@
         });
     </script>
 @endsection
-
-
 
 

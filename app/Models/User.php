@@ -28,6 +28,7 @@ class User extends Authenticatable
         'is_active',
         'ativo',            // ✅ para toggle de status (legado)
         'must_change_password',
+        'lgpd_accepted_at',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -41,6 +42,7 @@ class User extends Authenticatable
             'last_login_at'     => 'datetime',  // ✅
             'is_active'         => 'boolean',
             'must_change_password' => 'boolean',
+            'lgpd_accepted_at' => 'datetime',
         ];
     }
 

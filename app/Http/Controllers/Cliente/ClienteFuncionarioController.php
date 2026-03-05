@@ -161,9 +161,9 @@ class ClienteFuncionarioController extends Controller
                 'max:14',
                 Rule::unique('funcionarios', 'cpf')->where('cliente_id', $cliente->id),
             ],
-            'rg'              => ['nullable', 'string', 'max:20'],
-            'data_nascimento' => ['nullable', 'date'],
-            'data_admissao'   => ['nullable', 'date'],
+            'rg'              => ['required', 'string', 'max:20'],
+            'data_nascimento' => ['required', 'date'],
+            'data_admissao'   => ['required', 'date'],
             'celular'         => ['nullable', 'string', 'max:20'],
             'setor'           => ['nullable', 'string', 'max:100'],
 
@@ -176,6 +176,14 @@ class ClienteFuncionarioController extends Controller
             'exame_demissional'      => ['nullable', 'boolean'],
             'exame_mudanca_funcao'   => ['nullable', 'boolean'],
             'exame_retorno_trabalho' => ['nullable', 'boolean'],
+        ], [
+            'rg.required' => 'Informe o RG.',
+            'rg.string' => 'Informe um RG válido.',
+            'rg.max' => 'O RG deve ter no máximo 20 caracteres.',
+            'data_nascimento.required' => 'Informe a data de nascimento.',
+            'data_nascimento.date' => 'Informe uma data de nascimento válida.',
+            'data_admissao.required' => 'Informe a data de admissão.',
+            'data_admissao.date' => 'Informe uma data de admissão válida.',
         ]);
 
         // checkboxes
@@ -227,9 +235,9 @@ class ClienteFuncionarioController extends Controller
                     ->where('cliente_id', $cliente->id)
                     ->ignore($funcionario->id),
             ],
-            'rg'              => ['nullable', 'string', 'max:20'],
-            'data_nascimento' => ['nullable', 'date'],
-            'data_admissao'   => ['nullable', 'date'],
+            'rg'              => ['required', 'string', 'max:20'],
+            'data_nascimento' => ['required', 'date'],
+            'data_admissao'   => ['required', 'date'],
             'celular'         => ['nullable', 'string', 'max:20'],
             'setor'           => ['nullable', 'string', 'max:100'],
             'funcao_id'       => ['nullable', 'integer', 'exists:funcoes,id'],
@@ -239,6 +247,14 @@ class ClienteFuncionarioController extends Controller
             'exame_demissional'      => ['nullable', 'boolean'],
             'exame_mudanca_funcao'   => ['nullable', 'boolean'],
             'exame_retorno_trabalho' => ['nullable', 'boolean'],
+        ], [
+            'rg.required' => 'Informe o RG.',
+            'rg.string' => 'Informe um RG válido.',
+            'rg.max' => 'O RG deve ter no máximo 20 caracteres.',
+            'data_nascimento.required' => 'Informe a data de nascimento.',
+            'data_nascimento.date' => 'Informe uma data de nascimento válida.',
+            'data_admissao.required' => 'Informe a data de admissão.',
+            'data_admissao.date' => 'Informe uma data de admissão válida.',
         ]);
 
         $dados['cpf']                   = !empty($dados['cpf'])

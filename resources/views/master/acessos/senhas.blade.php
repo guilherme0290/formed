@@ -1,39 +1,32 @@
-{{-- ALERTAS --}}
-@if(session('ok') || session('status'))
-    <div x-data="{show:true}" x-show="show" class="mb-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 flex items-start justify-between">
-        <div class="mr-3">
-            <div class="font-semibold">Tudo certo</div>
-            <div class="text-sm">
-                {{ session('ok') ?? (session('status') === 'password-updated' ? 'Senha alterada com sucesso.' : __(session('status'))) }}
-            </div>
-        </div>
-        <button x-on:click="show=false" class="text-emerald-700/70 hover:text-emerald-900">✕</button>
-    </div>
-@endif
+@php
+    $senhaFlashOk = session('ok')
+        ?? (session('status') === 'password-updated' ? 'Senha alterada com sucesso.' : (session('status') ? __(session('status')) : null));
+    $senhaFlashErr = session('err') ?? session('error');
+    $senhaFlashValidation = $errors->any() ? $errors->first() : null;
+@endphp
 
-@if(session('err'))
-    <div x-data="{show:true}" x-show="show" class="mb-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 flex items-start justify-between">
-        <div class="mr-3">
-            <div class="font-semibold">Ops, algo falhou</div>
-            <div class="text-sm">{{ session('err') }}</div>
-        </div>
-        <button x-on:click="show=false" class="text-rose-700/70 hover:text-rose-900">✕</button>
-    </div>
-@endif
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        if (window.__acessosSenhasFlashShown) return;
+        window.__acessosSenhasFlashShown = true;
 
-@if ($errors->any())
-    <div x-data="{show:true}" x-show="show" class="mb-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3">
-        <div class="font-semibold mb-1">Verifique os campos</div>
-        <ul class="text-sm list-disc ml-5 space-y-1">
-            @foreach ($errors->all() as $error)
-                <li>{{ $error }}</li>
-            @endforeach
-        </ul>
-        <div class="text-right mt-2">
-            <button x-on:click="show=false" class="text-amber-800/80 hover:text-amber-900">Fechar</button>
-        </div>
-    </div>
-@endif
+        const okMessage = @json($senhaFlashOk);
+        const errMessage = @json($senhaFlashErr);
+        const validationMessage = @json($senhaFlashValidation);
+
+        if (okMessage) {
+            window.uiAlert?.(okMessage, { icon: 'success', title: 'Sucesso' });
+            return;
+        }
+        if (errMessage) {
+            window.uiAlert?.(errMessage, { icon: 'error', title: 'Atenção' });
+            return;
+        }
+        if (validationMessage) {
+            window.uiAlert?.(validationMessage, { icon: 'error', title: 'Atenção' });
+        }
+    });
+</script>
 
 {{-- SENHAS (visual moderno) --}}
 @php

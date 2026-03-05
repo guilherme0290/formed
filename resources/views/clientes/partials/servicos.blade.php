@@ -40,7 +40,7 @@
                 'slug' => 'funcionarios',
                 'titulo' => 'Meus Funcionários',
                 'desc' => 'Gerencie seus colaboradores e documentação.',
-                'icone' => '👥',
+                'icone' => 'fa-solid fa-users',
                 'badge' => 'Gestão',
                 'rota' => route('cliente.funcionarios.index'),
                 'disabled' => false,
@@ -49,7 +49,7 @@
                 'slug' => 'aso',
                 'titulo' => 'Agendar ASO',
                 'desc' => 'Agende exames ocupacionais para seus colaboradores.',
-                'icone' => '📅',
+                'icone' => 'fa-regular fa-calendar-check',
                 'preco' => $precos['aso'] ?? null,
                 'permitido' => $permitidos['aso'] ?? false,
                 'rota' => route('cliente.servicos.aso'),
@@ -59,7 +59,7 @@
                 'slug' => 'pgr',
                 'titulo' => 'Solicitar PGR',
                 'desc' => 'Programa de Gerenciamento de Riscos.',
-                'icone' => '📋',
+                'icone' => 'fa-regular fa-clipboard',
                 'preco' => $precos['pgr'] ?? null,
                 'permitido' => $permitidos['pgr'] ?? false,
                 'rota' => route('cliente.servicos.pgr'),
@@ -69,7 +69,7 @@
                 'slug' => 'pcmso',
                 'titulo' => 'Solicitar PCMSO',
                 'desc' => 'Programa de Controle Médico de Saúde Ocupacional.',
-                'icone' => '📑',
+                'icone' => 'fa-regular fa-folder-open',
                 'preco' => $precos['pcmso'] ?? null,
                 'permitido' => $permitidos['pcmso'] ?? false,
                 'rota' => route('cliente.servicos.pcmso'),
@@ -79,7 +79,7 @@
                 'slug' => 'ltcat',
                 'titulo' => 'Solicitar LTCAT',
                 'desc' => 'Laudo Técnico das Condições Ambientais do Trabalho.',
-                'icone' => '📄',
+                'icone' => 'fa-regular fa-file-lines',
                 'preco' => $precos['ltcat'] ?? null,
                 'permitido' => $permitidos['ltcat'] ?? false,
                 'rota' => route('cliente.servicos.ltcat'),
@@ -89,7 +89,7 @@
                 'slug' => 'apr',
                 'titulo' => 'Solicitar APR',
                 'desc' => 'Análise Preliminar de Riscos.',
-                'icone' => '⚠️',
+                'icone' => 'fa-solid fa-triangle-exclamation',
                 'preco' => $precos['apr'] ?? null,
                 'permitido' => $permitidos['apr'] ?? false,
                 'rota' => route('cliente.servicos.apr'),
@@ -99,7 +99,7 @@
                 'slug' => 'treinamentos',
                 'titulo' => 'Solicitar Treinamentos',
                 'desc' => 'Treinamentos de Normas Regulamentadoras.',
-                'icone' => '🎓',
+                'icone' => 'fa-solid fa-graduation-cap',
                 'preco' => $precos['treinamentos'] ?? null,
                 'permitido' => $permitidos['treinamentos'] ?? false,
                 'rota' => route('cliente.servicos.treinamentos'),
@@ -109,7 +109,7 @@
                 'slug' => 'arquivos',
                 'titulo' => 'Meus Arquivos',
                 'desc' => 'Acesse todos os documentos e certificados liberados.',
-                'icone' => '📁',
+                'icone' => 'fa-regular fa-folder',
                 'badge' => 'Downloads',
                 'rota' => route('cliente.arquivos.index'),
                 'disabled' => false,
@@ -200,8 +200,8 @@
                    @if($cardRel) rel="{{ $cardRel }}" @endif
                    class="group rounded-2xl border shadow-sm p-4 flex flex-col justify-between transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg {{ $style['card'] }}">
                     <div>
-                        <div class="inline-flex items-center justify-center h-9 w-9 rounded-2xl mb-3 text-lg transition {{ $style['icon'] }}">
-                            {{ $card['icone'] }}
+                        <div class="inline-flex items-center justify-center h-9 w-9 rounded-2xl mb-3 text-base transition {{ $style['icon'] }}">
+                            <i class="{{ $card['icone'] }}"></i>
                         </div>
                         <h2 class="text-sm font-semibold text-slate-800">
                             {{ $card['titulo'] }}
@@ -220,7 +220,7 @@
 
                         @if($showComercial)
                             <span class="inline-flex items-center gap-1 text-emerald-700 font-semibold">
-                                💬 Conversar com o comercial
+                                <i class="fa-brands fa-whatsapp"></i> Conversar com o comercial
                             </span>
                         @else
                             <span class="{{ $style['link'] }} font-medium group-hover:opacity-100 opacity-80">
