@@ -6,7 +6,7 @@
 @php($canUpdate = $canUpdate ?? false)
 @php($canDelete = $canDelete ?? false)
 
-<div id="modalGhe" data-overlay-root="true" class="fixed inset-0 z-[10050] hidden bg-black/50 overflow-y-auto" style="z-index: 10050;">
+<div id="modalGhe" data-overlay-root="true" class="fixed inset-0 z-[220] hidden bg-black/50 overflow-y-auto" style="z-index: 220;">
     <div class="min-h-full w-full flex items-center justify-center p-4 md:p-6">
         <div class="bg-white w-full max-w-6xl rounded-2xl shadow-xl overflow-hidden max-h-[88vh] flex flex-col text-base">
             <div class="px-6 py-4 bg-amber-700 text-white flex items-center justify-between">
@@ -45,7 +45,7 @@
 </div>
 
 {{-- Modal interno: Form criar/editar --}}
-<div id="modalGheForm" data-overlay-root="true" class="fixed inset-0 z-[10060] hidden bg-black/50 overflow-y-auto" style="z-index: 10060;">
+<div id="modalGheForm" data-overlay-root="true" class="fixed inset-0 z-[230] hidden bg-black/50 overflow-y-auto" style="z-index: 230;">
     <div class="min-h-full w-full flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-5xl rounded-2xl shadow-xl overflow-hidden text-base max-h-[90vh] overflow-y-auto">
             <div class="px-6 py-4 border-b border-slate-800/30 bg-gradient-to-r from-slate-900 to-slate-700 text-white flex items-center justify-between">
@@ -246,9 +246,12 @@
 
             function ensureModalOverSidebar(modalEl, zIndexValue) {
                 if (!modalEl) return;
-                if (modalEl.parentElement !== document.body) {
-                    document.body.appendChild(modalEl);
+                const overlayRoot = document.getElementById('app-overlay-root');
+                const mountTarget = overlayRoot || document.body;
+                if (modalEl.parentElement !== mountTarget) {
+                    mountTarget.appendChild(modalEl);
                 }
+                modalEl.classList.add('pointer-events-auto');
                 modalEl.style.position = 'fixed';
                 modalEl.style.inset = '0';
                 modalEl.style.top = '0';
@@ -260,8 +263,8 @@
                 modalEl.style.zIndex = String(zIndexValue);
             }
 
-            ensureModalOverSidebar(GHE.dom.modal, 10050);
-            ensureModalOverSidebar(GHE.dom.modalForm, 10060);
+            ensureModalOverSidebar(GHE.dom.modal, 220);
+            ensureModalOverSidebar(GHE.dom.modalForm, 230);
 
             function brl(n){ return Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
             function escapeHtml(str){
@@ -606,7 +609,7 @@
             }
 
             window.openGheModal = async function(){
-                ensureModalOverSidebar(GHE.dom.modal, 10050);
+                ensureModalOverSidebar(GHE.dom.modal, 220);
                 GHE.dom.modal?.classList.remove('hidden');
                 await loadProtocolos();
                 renderFuncoesList();
@@ -617,7 +620,7 @@
             window.openGheForm = async function(ghe){
                 if (ghe && !PERMS.update) return deny('Usuário sem permissão para editar.');
                 if (!ghe && !PERMS.create) return deny('Usuário sem permissão para criar.');
-                ensureModalOverSidebar(GHE.dom.modalForm, 10060);
+                ensureModalOverSidebar(GHE.dom.modalForm, 230);
                 GHE.dom.modalForm?.classList.remove('hidden');
                 GHE.dom.title.textContent = ghe ? 'Editar GHE' : 'Novo GHE';
                 GHE.dom.id.value = ghe?.id || '';

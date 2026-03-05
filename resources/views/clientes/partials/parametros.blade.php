@@ -545,7 +545,6 @@
         'canUpdate' => true,
         'canDelete' => true,
     ])
-    @include('comercial.tabela-precos.itens.modal-protocolos', ['routePrefix' => 'comercial'])
     {{--
     MODAL PACOTE EXAMES (dinamico)
     <div id="modalExames" class="fixed inset-0 z-[90] hidden bg-black/50 overflow-y-auto">
@@ -2822,17 +2821,68 @@
                 // =========================
                 // Modais click fora / ESC
                 // =========================
+                function closeModalById(id, fnName) {
+                    return () => {
+                        const fn = window[fnName];
+                        if (typeof fn === 'function') {
+                            fn();
+                            return;
+                        }
+                        document.getElementById(id)?.classList.add('hidden');
+                    };
+                }
+
+                function parseModalZIndex(modalEl) {
+                    if (!modalEl) return 0;
+                    const computed = window.getComputedStyle(modalEl).zIndex;
+                    const parsed = Number.parseInt(computed, 10);
+                    return Number.isFinite(parsed) ? parsed : 0;
+                }
+
+                function getOpenModalStack() {
+                    const closers = [
+                        { id: 'modalTreinamentos', close: closeModalById('modalTreinamentos', 'closeTreinamentosModal') },
+                        { id: 'modalExames', close: closeModalById('modalExames', 'closeExamesModal') },
+                        { id: 'modalMedicoes', close: closeModalById('modalMedicoes', 'closeMedicoesModal') },
+                        { id: 'modalPacoteTreinamentos', close: closeModalById('modalPacoteTreinamentos', 'closePacoteTreinamentosModal') },
+                        { id: 'modalEsocial', close: closeModalById('modalEsocial', 'closeEsocialModal') },
+                        { id: 'modalEsocialForm', close: closeModalById('modalEsocialForm', 'closeEsocialForm') },
+                        { id: 'modalGhe', close: closeModalById('modalGhe', 'closeGheModal') },
+                        { id: 'modalGheForm', close: closeModalById('modalGheForm', 'closeGheForm') },
+                        { id: 'modalProtocolos', close: closeModalById('modalProtocolos', 'closeProtocolosModal') },
+                        { id: 'modalProtocoloForm', close: closeModalById('modalProtocoloForm', 'closeProtocoloForm') },
+                    ];
+
+                    return closers
+                        .map((entry, index) => ({ ...entry, index, el: document.getElementById(entry.id) }))
+                        .filter((entry) => entry.el && !entry.el.classList.contains('hidden'))
+                        .sort((a, b) => {
+                            const zDiff = parseModalZIndex(a.el) - parseModalZIndex(b.el);
+                            if (zDiff !== 0) return zDiff;
+                            return a.index - b.index;
+                        });
+                }
+
+                function closeTopOpenModal() {
+                    const stack = getOpenModalStack();
+                    const top = stack[stack.length - 1];
+                    if (!top) return false;
+                    top.close();
+                    return true;
+                }
+
                 document.addEventListener('click', (e) => {
-                    if (el.modalTrein && !el.modalTrein.classList.contains('hidden') && e.target === el.modalTrein) closeTreinamentosModal();
-                    if (el.modalExames && !el.modalExames.classList.contains('hidden') && e.target === el.modalExames) closeExamesModal();
-                    if (el.modalMedicoes && !el.modalMedicoes.classList.contains('hidden') && e.target === el.modalMedicoes) closeMedicoesModal();
+                    const stack = getOpenModalStack();
+                    const top = stack[stack.length - 1];
+                    if (!top) return;
+                    if (e.target === top.el) {
+                        top.close();
+                    }
                 });
 
                 document.addEventListener('keydown', (e) => {
-                    if (e.key === 'Escape') {
-                        if (el.modalTrein && !el.modalTrein.classList.contains('hidden')) closeTreinamentosModal();
-                        if (el.modalExames && !el.modalExames.classList.contains('hidden')) closeExamesModal();
-                        if (el.modalMedicoes && !el.modalMedicoes.classList.contains('hidden')) closeMedicoesModal();
+                    if (e.key === 'Escape' && closeTopOpenModal()) {
+                        e.preventDefault();
                     }
                 });
 

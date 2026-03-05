@@ -3,7 +3,7 @@
 @php($canUpdate = $canUpdate ?? false)
 @php($canDelete = $canDelete ?? false)
 
-<div id="modalProtocolos" data-overlay-root="true" class="fixed inset-0 z-[200] hidden bg-black/50 overflow-y-auto">
+<div id="modalProtocolos" data-overlay-root="true" class="fixed inset-0 z-[240] hidden bg-black/50 overflow-y-auto" style="z-index: 240;">
     <div class="min-h-full w-full flex items-center justify-center p-4 md:p-6">
         <div class="bg-white w-full max-w-5xl rounded-2xl shadow-xl overflow-hidden max-h-[85vh] flex flex-col">
             <div class="px-6 py-4 bg-slate-800 text-white flex items-center justify-between">
@@ -42,7 +42,7 @@
 </div>
 
 {{-- Modal interno: Form criar/editar --}}
-<div id="modalProtocoloForm" data-overlay-root="true" class="fixed inset-0 z-[210] hidden bg-black/50 overflow-y-auto">
+<div id="modalProtocoloForm" data-overlay-root="true" class="fixed inset-0 z-[250] hidden bg-black/50 overflow-y-auto" style="z-index: 250;">
     <div class="min-h-full w-full flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-2xl rounded-2xl shadow-xl overflow-hidden max-h-[90vh] overflow-y-auto">
             <div class="px-6 py-4 border-b flex items-center justify-between">
@@ -139,6 +139,28 @@
                     examesCount: document.getElementById('protocoloExamesCount'),
                 }
             };
+
+            function ensureModalOverSidebar(modalEl, zIndexValue) {
+                if (!modalEl) return;
+                const overlayRoot = document.getElementById('app-overlay-root');
+                const mountTarget = overlayRoot || document.body;
+                if (modalEl.parentElement !== mountTarget) {
+                    mountTarget.appendChild(modalEl);
+                }
+                modalEl.classList.add('pointer-events-auto');
+                modalEl.style.position = 'fixed';
+                modalEl.style.inset = '0';
+                modalEl.style.top = '0';
+                modalEl.style.left = '0';
+                modalEl.style.right = '0';
+                modalEl.style.bottom = '0';
+                modalEl.style.width = '100vw';
+                modalEl.style.height = '100vh';
+                modalEl.style.zIndex = String(zIndexValue);
+            }
+
+            ensureModalOverSidebar(PROTOCOLOS.dom.modal, 240);
+            ensureModalOverSidebar(PROTOCOLOS.dom.modalForm, 250);
 
             function brl(n){ return Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
             function escapeHtml(str){
@@ -306,6 +328,7 @@
             }
 
             window.openProtocolosModal = async function(){
+                ensureModalOverSidebar(PROTOCOLOS.dom.modal, 240);
                 PROTOCOLOS.dom.modal?.classList.remove('hidden');
                 await loadProtocolos();
             };
@@ -315,6 +338,7 @@
                 if (protocolo && !PERMS.update) return deny('Usuário sem permissão para editar.');
                 if (!protocolo && !PERMS.create) return deny('Usuário sem permissão para criar.');
                 await loadExames();
+                ensureModalOverSidebar(PROTOCOLOS.dom.modalForm, 250);
                 PROTOCOLOS.dom.modalForm?.classList.remove('hidden');
                 PROTOCOLOS.dom.title.textContent = protocolo ? 'Editar Grupo' : 'Novo Grupo';
                 PROTOCOLOS.dom.id.value = protocolo?.id || '';
@@ -327,6 +351,25 @@
             window.closeProtocoloForm = () => PROTOCOLOS.dom.modalForm?.classList.add('hidden');
 
             PROTOCOLOS.dom.form?.addEventListener('submit', saveProtocolo);
+            document.addEventListener('click', (e) => {
+                if (PROTOCOLOS.dom.modalForm && !PROTOCOLOS.dom.modalForm.classList.contains('hidden') && e.target === PROTOCOLOS.dom.modalForm) {
+                    window.closeProtocoloForm?.();
+                    return;
+                }
+                if (PROTOCOLOS.dom.modal && !PROTOCOLOS.dom.modal.classList.contains('hidden') && e.target === PROTOCOLOS.dom.modal) {
+                    window.closeProtocolosModal?.();
+                }
+            });
+            document.addEventListener('keydown', (e) => {
+                if (e.key !== 'Escape') return;
+                if (PROTOCOLOS.dom.modalForm && !PROTOCOLOS.dom.modalForm.classList.contains('hidden')) {
+                    window.closeProtocoloForm?.();
+                    return;
+                }
+                if (PROTOCOLOS.dom.modal && !PROTOCOLOS.dom.modal.classList.contains('hidden')) {
+                    window.closeProtocolosModal?.();
+                }
+            });
         })();
     </script>
 @endpush

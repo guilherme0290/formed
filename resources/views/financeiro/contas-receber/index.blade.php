@@ -181,7 +181,7 @@
                 </article>
 
                 <article class="rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-4 shadow-sm">
-                    <p class="text-xs uppercase tracking-wide font-semibold text-indigo-700">Valor sem faturar</p>
+                    <p class="text-xs uppercase tracking-wide font-semibold text-indigo-700">Valores a faturar</p>
                     <p class="mt-1 text-2xl font-semibold text-indigo-900">
                         R$ {{ number_format($valorTotalVendasSemFatura, 2, ',', '.') }}
                     </p>
