@@ -12,6 +12,7 @@ use App\Models\ContaReceber;
 use App\Models\ContaReceberBaixa;
 
 use App\Models\ContaReceberItem;
+use App\Models\PcmsoSolicitacoes;
 use App\Models\PgrSolicitacoes;
 use App\Models\Servico;
 use App\Models\Tarefa;
@@ -1193,6 +1194,8 @@ class ClienteDashboardController extends Controller
                 'treinamento_unidade',
                 'treinamento_participantes',
                 'treinamento_qtd',
+                'pcmso_tipo',
+                'pcmso_obra',
             ] as $campo) {
                 if (property_exists($detalhes, $campo)) {
                     $tarefa->setAttribute($campo, $detalhes->{$campo});
@@ -1231,6 +1234,11 @@ class ClienteDashboardController extends Controller
             ->get()
             ->keyBy('tarefa_id');
 
+        $dadosPcmso = PcmsoSolicitacoes::query()
+            ->whereIn('tarefa_id', $tarefaIds)
+            ->get()
+            ->keyBy('tarefa_id');
+
         $treinamentoDetalhes = TreinamentoNrDetalhes::query()
             ->whereIn('tarefa_id', $tarefaIds)
             ->with('unidade:id,nome')
@@ -1251,7 +1259,7 @@ class ClienteDashboardController extends Controller
             'retorno_trabalho' => 'Retorno ao Trabalho',
         ];
 
-        return $itens->map(function ($item) use ($dadosAso, $dadosPgr, $treinamentoDetalhes, $treinamentoParticipantes, $mapTipo) {
+        return $itens->map(function ($item) use ($dadosAso, $dadosPgr, $dadosPcmso, $treinamentoDetalhes, $treinamentoParticipantes, $mapTipo) {
             $tarefaId = (int) ($item->tarefa_id ?? 0);
             if ($tarefaId > 0 && $dadosAso->has($tarefaId)) {
                 $aso = $dadosAso->get($tarefaId);
@@ -1302,6 +1310,25 @@ class ClienteDashboardController extends Controller
                 } elseif (str_contains($servicoAtual, 'art')) {
                     if ($pgr->obra_nome) {
                         $item->servico_detalhe = 'ART - ' . $pgr->obra_nome;
+                    }
+                }
+            }
+
+            if ($tarefaId > 0 && $dadosPcmso->has($tarefaId)) {
+                $pcmso = $dadosPcmso->get($tarefaId);
+                $tipoLabel = $pcmso->tipo === 'especifico'
+                    ? 'Específico'
+                    : ($pcmso->tipo === 'matriz' ? 'Matriz' : ($pcmso->tipo ? ucfirst($pcmso->tipo) : null));
+
+                $item->pcmso_tipo = $tipoLabel;
+                $item->pcmso_obra = $pcmso->obra_nome;
+
+                $servicoAtual = mb_strtolower((string) ($item->servico ?? ''));
+                if (str_contains($servicoAtual, 'pcms')) {
+                    if ($tipoLabel === 'Específico' && $pcmso->obra_nome) {
+                        $item->servico_detalhe = 'PCMSO - Específico - ' . $pcmso->obra_nome;
+                    } elseif ($tipoLabel) {
+                        $item->servico_detalhe = 'PCMSO | ' . $tipoLabel;
                     }
                 }
             }

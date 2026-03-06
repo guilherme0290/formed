@@ -63,11 +63,6 @@
                     </button>
                     <button type="button"
                             class="px-4 py-2 rounded-full border border-slate-200 bg-white text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
-                            data-tab="esocial">
-                        eSocial
-                    </button>
-                    <button type="button"
-                            class="px-4 py-2 rounded-full border border-slate-200 bg-white text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
                             data-tab="forma-pagamento">
                         Pagamento
                     </button>
@@ -384,7 +379,6 @@
                     'dados': '#2563eb',
                     'parametros': '#059669',
                     'unidades-permitidas': '#0f766e',
-                    'esocial': '#d97706',
                     'forma-pagamento': '#4f46e5',
                     'vendedor': '#0f172a',
                     'arquivos': '#4338ca',
@@ -862,5 +856,4 @@
         });
     </script>
 @endsection
-
 

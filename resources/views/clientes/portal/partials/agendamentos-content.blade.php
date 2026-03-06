@@ -82,6 +82,7 @@
                                         ?: ($tarefa->aso_colaborador ?? '')
                                     ));
                                     $temDetalhePgr = !empty($tarefa->pgr_tipo) || !empty($tarefa->pgr_obra) || !empty($tarefa->pgr_contratante) || !empty($tarefa->pgr_total);
+                                    $temDetalhePcmso = !empty($tarefa->pcmso_tipo) || !empty($tarefa->pcmso_obra);
                                     $temDetalheTrein = !empty($tarefa->treinamento_modo) || !empty($tarefa->treinamento_codigos) || !empty($tarefa->treinamento_pacote) || !empty($tarefa->treinamento_participantes);
                                     $temDetalheApr = $apr && (
                                         !empty($apr->obra_nome)
@@ -91,7 +92,7 @@
                                         || !empty($apr->funcoes_envolvidas)
                                         || !empty($apr->etapas_atividade)
                                     );
-                                    $temDetalhe = $temDetalheAso || $temDetalhePgr || $temDetalheTrein || $temDetalheApr;
+                                    $temDetalhe = $temDetalheAso || $temDetalhePgr || $temDetalhePcmso || $temDetalheTrein || $temDetalheApr;
                                     $editUrl = null;
                                     $servicoNomeLower = mb_strtolower((string) $servicoNome);
                                     if (str_contains($servicoNomeLower, 'aso')) {
@@ -163,6 +164,16 @@
                                                         @endif
                                                         <div><span class="font-semibold">{{ $rotuloComplementarPgr }}:</span> {{ !empty($tarefa->pgr_com_pcms0) ? 'Com ' . $rotuloComplementarPgr : 'Sem ' . $rotuloComplementarPgr }}</div>
                                                         <div><span class="font-semibold">ART:</span> {{ !empty($tarefa->pgr_com_art) ? 'Com ART' : 'Sem ART' }}</div>
+                                                    @endif
+                                                    @if($temDetalhePcmso)
+                                                        <div class="pt-1"></div>
+                                                        <div class="font-semibold text-slate-700">PCMSO</div>
+                                                        @if(!empty($tarefa->pcmso_tipo))
+                                                            <div><span class="font-semibold">Tipo:</span> {{ $tarefa->pcmso_tipo }}</div>
+                                                        @endif
+                                                        @if(!empty($tarefa->pcmso_obra))
+                                                            <div><span class="font-semibold">Obra:</span> {{ $tarefa->pcmso_obra }}</div>
+                                                        @endif
                                                     @endif
                                                     @if($temDetalheApr)
                                                         <div class="pt-1"></div>
@@ -360,6 +371,5 @@
         });
     </script>
 @endpush
-
 
 

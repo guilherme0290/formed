@@ -128,7 +128,7 @@
                                         if (keys.some(k => k === 'forma_pagamento' || k === 'vencimento_servicos' || k === 'email_envio_fatura')) {
                                             targetTab = 'forma-pagamento';
                                         } else if (keys.some(k => k === 'incluir_esocial' || k.startsWith('esocial_'))) {
-                                            targetTab = 'esocial';
+                                            targetTab = 'parametros';
                                         }
 
                                         const tabButton = document.querySelector(`[data-tabs="cliente"] [data-tab="${targetTab}"]`);
@@ -184,6 +184,16 @@
                                         $servicoTreinamentoId = (int) config('services.treinamento_id');
                                         $servicoExameId = (int) config('services.exame_id');
                                         $servicoAsoId = (int) (config('services.aso_id') ?? 0);
+                                        $serviceButtonStyles = [
+                                            'aso' => 'border-slate-200 border-l-4 border-l-sky-500 bg-white text-sky-900 hover:bg-sky-50',
+                                            'pgr' => 'border-slate-200 border-l-4 border-l-emerald-500 bg-white text-emerald-900 hover:bg-emerald-50',
+                                            'pcmso' => 'border-slate-200 border-l-4 border-l-purple-500 bg-white text-purple-900 hover:bg-purple-50',
+                                            'ltcat' => 'border-slate-200 border-l-4 border-l-orange-500 bg-white text-orange-900 hover:bg-orange-50',
+                                            'ltip' => 'border-slate-200 border-l-4 border-l-red-600 bg-white text-red-900 hover:bg-red-50',
+                                            'apr' => 'border-slate-200 border-l-4 border-l-amber-600 bg-white text-amber-900 hover:bg-amber-50',
+                                            'pae' => 'border-slate-200 border-l-4 border-l-rose-600 bg-white text-rose-900 hover:bg-rose-50',
+                                            'default' => 'border-slate-200 border-l-4 border-l-slate-500 bg-white text-slate-700 hover:bg-slate-50',
+                                        ];
                                     @endphp
                                     @foreach($servicos as $servico)
                                         @if(
@@ -193,14 +203,67 @@
                                         )
                                             @continue
                                         @endif
+                                        @php
+                                            $nomeServico = mb_strtolower((string) $servico->nome, 'UTF-8');
+                                            $colorKey = 'default';
+                                            if (str_contains($nomeServico, 'aso')) {
+                                                $colorKey = 'aso';
+                                            } elseif (str_contains($nomeServico, 'pgr')) {
+                                                $colorKey = 'pgr';
+                                            } elseif (str_contains($nomeServico, 'pcmso')) {
+                                                $colorKey = 'pcmso';
+                                            } elseif (str_contains($nomeServico, 'ltcat')) {
+                                                $colorKey = 'ltcat';
+                                            } elseif (str_contains($nomeServico, 'ltip')) {
+                                                $colorKey = 'ltip';
+                                            } elseif (str_contains($nomeServico, 'apr')) {
+                                                $colorKey = 'apr';
+                                            } elseif (str_contains($nomeServico, 'pae')) {
+                                                $colorKey = 'pae';
+                                            }
+                                            $btnServiceClass = $serviceButtonStyles[$colorKey] ?? $serviceButtonStyles['default'];
+                                        @endphp
                                         <button type="button"
-                                                class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white hover:bg-slate-50"
+                                                class="w-full px-3 py-2 rounded-xl border text-sm {{ $btnServiceClass }}"
                                                 data-action="add-servico"
                                                 data-servico-id="{{ $servico->id }}"
                                                 data-servico-nome="{{ e($servico->nome) }}">
                                             + {{ $servico->nome }}
                                         </button>
                                     @endforeach
+                                    <button type="button"
+                                            id="btnToggleEsocial"
+                                            class="w-full px-3 py-2 rounded-xl border border-slate-200 border-l-4 border-l-violet-600 bg-white text-violet-800 text-sm hover:bg-violet-50">
+                                        + eSocial
+                                    </button>
+                                </div>
+
+                                <div class="mt-4 space-y-3">
+                                    <input type="checkbox" id="chkEsocial" name="incluir_esocial" value="1"
+                                           class="hidden"
+                                           @checked(old('incluir_esocial', $isEdit ? $parametro->incluir_esocial : false))>
+
+                                    <div id="esocialBox" class="hidden rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                                        <div class="grid md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label class="text-xs font-semibold text-slate-700">Qtd colaboradores</label>
+                                                <input id="esocialQtd" type="number" min="1"
+                                                       class="mt-1 w-full rounded-xl border border-slate-200 text-sm px-3 py-2"
+                                                       placeholder="Ex.: 12"
+                                                       value="{{ old('esocial_qtd_funcionarios', $isEdit ? $parametro->esocial_qtd_funcionarios : '') }}">
+                                            </div>
+                                            <div>
+                                                <label class="text-xs font-semibold text-slate-700">Valor mensal</label>
+                                                <input id="esocialValorView" type="text" readonly
+                                                       class="mt-1 w-full rounded-xl border border-slate-200 text-sm px-3 py-2 bg-white"
+                                                       value="R$ 0,00">
+                                                <input type="hidden" name="esocial_qtd_funcionarios" id="esocialQtdHidden">
+                                                <input type="hidden" name="esocial_valor_mensal" id="esocialValorHidden"
+                                                       value="{{ old('esocial_valor_mensal', $isEdit ? $parametro->esocial_valor_mensal : '0.00') }}">
+                                            </div>
+                                        </div>
+                                        <p id="esocialAviso" class="mt-3 text-sm text-amber-700 hidden"></p>
+                                    </div>
                                 </div>
                             </div>
 
@@ -284,10 +347,10 @@
 
                                 <div class="rounded-xl border border-slate-200 overflow-hidden">
                                     <div class="px-3 py-2 bg-slate-50">
-                                        <div class="text-sm font-semibold text-slate-800">Protocolos de ASO Configurados</div>
-                                        <div class="text-xs text-slate-500">Resumo dos GHEs com seus grupos por tipo.</div>
+                                        <div class="text-sm font-semibold text-slate-800">Valores de ASO por GHE</div>
+                                        <div class="text-xs text-slate-500">Visualização dos valores por tipo de ASO para todos os GHEs configurados.</div>
                                     </div>
-                                    <div id="gheConfigsGrid" class="p-3 grid gap-3 md:grid-cols-2"></div>
+                                    <div id="asoGheValoresGrid" class="p-3 grid gap-3 md:grid-cols-2"></div>
                                     <div class="px-3 py-2 text-xs text-slate-500 bg-emerald-50/60">
                                         O sistema aplicará automaticamente esses protocolos conforme o GHE do funcionário no momento da criação do ASO.
                                     </div>
@@ -413,53 +476,6 @@
                     </div>
                 </div>
 
-            <div data-tab-panel="esocial" data-tab-panel-root="cliente" class="hidden">
-                <div class="bg-white rounded-2xl shadow border border-slate-200 overflow-hidden">
-                    <div class="px-6 py-4 border-b bg-amber-600 text-white">
-                        <h1 class="text-lg font-semibold">eSocial</h1>
-                    </div>
-                    <div class="p-6 space-y-8">
-                        <section class="space-y-3">
-                            <label class="inline-flex items-center gap-2 text-sm font-semibold text-black">
-                                <input type="checkbox" id="chkEsocial" name="incluir_esocial" value="1"
-                                       class="rounded border-slate-300"
-                                       @checked(old('incluir_esocial', $isEdit ? $parametro->incluir_esocial : false))>
-                                Incluir eSocial (mensal)
-                            </label>
-
-                            <div id="esocialBox" class="hidden rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                                <div class="grid md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label class="text-xs font-semibold text-slate-700">Qtd colaboradores</label>
-                                        <input id="esocialQtd" type="number" min="1"
-                                               class="mt-1 w-full rounded-xl border border-slate-200 text-sm px-3 py-2"
-                                               placeholder="Ex.: 12"
-                                               value="{{ old('esocial_qtd_funcionarios', $isEdit ? $parametro->esocial_qtd_funcionarios : '') }}">
-                                    </div>
-                                    <div>
-                                        <label class="text-xs font-semibold text-slate-700">Valor mensal</label>
-                                        <input id="esocialValorView" type="text" readonly
-                                               class="mt-1 w-full rounded-xl border border-slate-200 text-sm px-3 py-2 bg-white"
-                                               value="R$ 0,00">
-                                        <input type="hidden" name="esocial_qtd_funcionarios" id="esocialQtdHidden">
-                                        <input type="hidden" name="esocial_valor_mensal" id="esocialValorHidden"
-                                               value="{{ old('esocial_valor_mensal', $isEdit ? $parametro->esocial_valor_mensal : '0.00') }}">
-                                    </div>
-                                </div>
-
-                                <p id="esocialAviso" class="mt-3 text-sm text-amber-700 hidden"></p>
-                            </div>
-                        </section>
-
-                        <section class="pt-4 border-t">
-                            <button type="submit"
-                                    class="w-full rounded-2xl bg-amber-600 hover:bg-amber-700 text-white text-base font-semibold py-3 shadow-md shadow-amber-200">
-                                Salvar Parâmetros
-                            </button>
-                        </section>
-                    </div>
-                </div>
-            </div>
 
             <div data-tab-panel="forma-pagamento" data-tab-panel-root="cliente" class="hidden">
                 <div class="bg-white rounded-2xl shadow border border-slate-200 overflow-hidden">
@@ -672,6 +688,7 @@
                     itemAlertText: document.getElementById('itemAlertText'),
 
                     chkEsocial: document.getElementById('chkEsocial'),
+                    btnToggleEsocial: document.getElementById('btnToggleEsocial'),
                     esocialBox: document.getElementById('esocialBox'),
                     esocialQtd: document.getElementById('esocialQtd'),
                     esocialValorView: document.getElementById('esocialValorView'),
@@ -700,6 +717,7 @@
                     gheSelect: document.getElementById('gheSelect'),
                     asoTipoRows: document.getElementById('asoTipoRows'),
                     gheConfigsGrid: document.getElementById('gheConfigsGrid'),
+                    asoGheValoresGrid: document.getElementById('asoGheValoresGrid'),
                     asoGheTitle: document.getElementById('asoGheTitle'),
                     btnAddGheConfig: document.getElementById('btnAddGheConfig'),
                     btnGheGlobal: document.getElementById('btnGheGlobal'),
@@ -1151,11 +1169,16 @@
                 }
 
                 function renderGheConfigsTable() {
-                    if (!el.gheConfigsGrid) return;
-                    el.gheConfigsGrid.innerHTML = '';
+                    const hasLegacyGrid = !!el.gheConfigsGrid;
+                    if (hasLegacyGrid) {
+                        el.gheConfigsGrid.innerHTML = '';
+                    }
 
                     if (!state.gheConfigs.length) {
-                        el.gheConfigsGrid.innerHTML = '<div class="px-3 py-3 text-sm text-slate-500">Nenhum GHE configurado.</div>';
+                        if (hasLegacyGrid) {
+                            el.gheConfigsGrid.innerHTML = '<div class="px-3 py-3 text-sm text-slate-500">Nenhum GHE configurado.</div>';
+                        }
+                        renderAsoValoresPorGhe();
                         return;
                     }
 
@@ -1208,26 +1231,90 @@
                             </div>
                         `;
 
-                        card.querySelector('[data-action="edit"]').addEventListener('click', () => {
-                            state.currentGhe = JSON.parse(JSON.stringify(cfg));
-                            if (el.gheSelect) {
-                                const opt = cfg.cliente_ghe_id ? String(cfg.cliente_ghe_id) : (cfg.ghe_id ? String(cfg.ghe_id) : '');
-                                el.gheSelect.value = opt;
-                            }
-                            if (el.asoGheTitle) el.asoGheTitle.textContent = cfg.ghe_nome || '—';
-                            if (el.btnAddGheConfig) el.btnAddGheConfig.textContent = 'Atualizar este GHE';
-                            renderAsoTipoRows();
-                        });
+                        card.querySelector('[data-action="edit"]').addEventListener('click', () => editGheConfig(cfg));
+                        card.querySelector('[data-action="del"]').addEventListener('click', () => deleteGheConfig(cfg));
 
-                        card.querySelector('[data-action="del"]').addEventListener('click', () => {
-                            const key = getGheConfigKey(cfg);
-                            state.gheConfigs = state.gheConfigs.filter(c => getGheConfigKey(c) !== key);
-                            syncAsoTipoItems();
-                            renderGheConfigsTable();
-                            updateTabBadges();
-                        });
+                        if (hasLegacyGrid) {
+                            el.gheConfigsGrid.appendChild(card);
+                        }
+                    });
 
-                        el.gheConfigsGrid.appendChild(card);
+                    renderAsoValoresPorGhe();
+                }
+
+                function editGheConfig(cfg) {
+                    state.currentGhe = JSON.parse(JSON.stringify(cfg));
+                    if (el.gheSelect) {
+                        const opt = cfg.cliente_ghe_id ? String(cfg.cliente_ghe_id) : (cfg.ghe_id ? String(cfg.ghe_id) : '');
+                        el.gheSelect.value = opt;
+                    }
+                    if (el.asoGheTitle) el.asoGheTitle.textContent = cfg.ghe_nome || '—';
+                    if (el.btnAddGheConfig) el.btnAddGheConfig.textContent = 'Atualizar este GHE';
+                    renderAsoTipoRows();
+                }
+
+                function deleteGheConfig(cfg) {
+                    const key = getGheConfigKey(cfg);
+                    state.gheConfigs = state.gheConfigs.filter(c => getGheConfigKey(c) !== key);
+                    syncAsoTipoItems();
+                    renderGheConfigsTable();
+                    updateTabBadges();
+                }
+
+                function renderAsoValoresPorGhe() {
+                    if (!el.asoGheValoresGrid) return;
+                    el.asoGheValoresGrid.innerHTML = '';
+
+                    if (!state.gheConfigs.length) {
+                        el.asoGheValoresGrid.innerHTML = '<div class="px-3 py-3 text-sm text-slate-500">Nenhum GHE configurado.</div>';
+                        return;
+                    }
+
+                    state.gheConfigs.forEach((cfg) => {
+                        const card = document.createElement('div');
+                        card.className = 'rounded-xl border border-slate-200 bg-white overflow-hidden';
+                        const tipos = cfg.tipos || {};
+
+                        const rowsHtml = ASO_TYPES.map(({ key, label }) => {
+                            const row = tipos[key];
+                            const valor = Number(row?.total_exames || 0);
+                            const grupoTitulo = row?.grupo_titulo ? escapeHtml(row.grupo_titulo) : '—';
+                            return `
+                                <div class="grid grid-cols-12 gap-2 px-3 py-2 border-t border-slate-100">
+                                    <div class="col-span-7">
+                                        <div class="text-sm text-slate-700">${escapeHtml(label)}</div>
+                                        <div class="text-[11px] text-slate-500">${grupoTitulo}</div>
+                                    </div>
+                                    <div class="col-span-5 text-right text-sm font-semibold text-slate-800">${row?.grupo_id ? brl(valor) : '—'}</div>
+                                </div>
+                            `;
+                        }).join('');
+
+                        const totalGhe = ASO_TYPES.reduce((sum, { key }) => {
+                            const row = tipos[key];
+                            if (!row?.grupo_id) return sum;
+                            return sum + Number(row.total_exames || 0);
+                        }, 0);
+
+                        card.innerHTML = `
+                            <div class="px-3 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-3">
+                                <div class="text-sm font-semibold text-slate-800">${escapeHtml(cfg.ghe_nome || 'GHE')}</div>
+                                <div class="flex items-center gap-3">
+                                    <button type="button" class="text-blue-600 text-xs font-semibold" data-action="edit">Editar</button>
+                                    <button type="button" class="text-red-600 text-xs font-semibold" data-action="del">Excluir</button>
+                                </div>
+                            </div>
+                            ${rowsHtml}
+                            <div class="grid grid-cols-12 gap-2 px-3 py-2 bg-emerald-50/60 border-t border-emerald-100">
+                                <div class="col-span-7 text-sm font-semibold text-emerald-900">Total ASO (GHE)</div>
+                                <div class="col-span-5 text-right text-sm font-semibold text-emerald-900">${brl(totalGhe)}</div>
+                            </div>
+                        `;
+
+                        card.querySelector('[data-action="edit"]')?.addEventListener('click', () => editGheConfig(cfg));
+                        card.querySelector('[data-action="del"]')?.addEventListener('click', () => deleteGheConfig(cfg));
+
+                        el.asoGheValoresGrid.appendChild(card);
                     });
                 }
 
@@ -2481,6 +2568,13 @@
                 }
 
                 function applyEsocialUI() {
+                    if (el.btnToggleEsocial) {
+                        el.btnToggleEsocial.textContent = '+ eSocial';
+                        el.btnToggleEsocial.classList.toggle('font-semibold', state.esocial.enabled);
+                        el.btnToggleEsocial.classList.toggle('ring-2', state.esocial.enabled);
+                        el.btnToggleEsocial.classList.toggle('ring-violet-300', state.esocial.enabled);
+                    }
+
                     el.esocialValorView.value = brl(state.esocial.valor);
                     el.esocialQtdHidden.value = state.esocial.enabled ? state.esocial.qtd : '';
                     el.esocialValorHidden.value = state.esocial.enabled ? Number(state.esocial.valor || 0).toFixed(2) : '0.00';
@@ -2648,6 +2742,12 @@
                 // =========================
                 // eSocial UI toggles
                 // =========================
+                el.btnToggleEsocial?.addEventListener('click', () => {
+                    if (!el.chkEsocial) return;
+                    el.chkEsocial.checked = !el.chkEsocial.checked;
+                    el.chkEsocial.dispatchEvent(new Event('change'));
+                });
+
                 el.chkEsocial?.addEventListener('change', () => {
                     state.esocial.enabled = el.chkEsocial.checked;
                     el.esocialBox.classList.toggle('hidden', !state.esocial.enabled);
@@ -2710,7 +2810,7 @@
                     if (fieldName === 'forma_pagamento' || fieldName === 'vencimento_servicos') {
                         targetTab = 'forma-pagamento';
                     } else if (fieldName === 'incluir_esocial' || String(fieldName || '').startsWith('esocial_')) {
-                        targetTab = 'esocial';
+                        targetTab = 'parametros';
                     }
                     const tabButton = document.querySelector(`[data-tabs="cliente"] [data-tab="${targetTab}"]`);
                     tabButton?.click();

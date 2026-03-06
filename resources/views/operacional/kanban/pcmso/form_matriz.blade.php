@@ -67,39 +67,6 @@
                     </nav>
                 </div>
                 <div id="pcmso-tab-dados" class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">
-                            Inserir PGR / Inventário de Risco {{ $isEdit ? '' : '*' }}
-                        </label>
-
-                        <input type="file" name="pgr_arquivo" accept="application/pdf"
-                               class="w-full text-sm rounded-lg border border-slate-200 px-3 py-2
-                      file:mr-3 file:px-3 file:py-2 file:rounded-lg
-                      file:border-0 file:bg-purple-600 file:text-white
-                      hover:file:bg-purple-700">
-
-                        @if($isEdit && !empty($pcmso->pgr_arquivo_path))
-
-                            <div class="mt-2 text-xs text-slate-600">
-                                <p>
-                                    Arquivo atual:
-                                    <a href="{{ $pcmso->pgr_arquivo_path ? S3Helper::url($pcmso->pgr_arquivo_path) : '#' }}"
-                                       target="_blank"
-                                       class="text-purple-600 underline">
-                                        Abrir PGR atual
-                                    </a>
-                                </p>
-
-                                <label class="inline-flex items-center gap-2 mt-1 text-[11px] text-red-600">
-                                    <input type="checkbox" name="remover_arquivo" value="1"
-                                           class="rounded border-slate-300">
-                                    <span>Remover arquivo atual</span>
-                                </label>
-                            </div>
-                        @endif
-                    </div>
-
-
                     <section>
                         <div class="flex items-center justify-between gap-3 mb-3">
                             <h2 class="text-sm font-semibold text-slate-800">
@@ -240,38 +207,79 @@
                     </div>
                 </div>
                 <div id="pcmso-tab-anexos" class="space-y-4 hidden">
-                    <p class="text-xs text-slate-600">
-                        Anexe aqui documentos relacionados ao PCMSO (PDF, DOC, DOCX).
-                        Você pode arrastar e soltar ou clicar na área abaixo.
-                    </p>
+                    @php
+                        $inserirPgrSelecionado = old('inserir_pgr', '1');
+                    @endphp
 
-                    {{-- Dropzone --}}
-                    <div id="pcmso-dropzone-anexos"
-                         class="flex flex-col items-center justify-center px-6 py-10 border-2 border-dashed rounded-2xl
-                border-slate-300 bg-slate-50 text-center cursor-pointer
-                hover:border-sky-400 hover:bg-sky-50 transition">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mb-2" fill="none" viewBox="0 0 24 24"
-                             stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                  d="M3 15.75V18a3 3 0 003 3h12a3 3 0 003-3v-2.25M16.5 9.75L12 5.25m0 0L7.5 9.75M12 5.25V15"/>
-                        </svg>
-                        <p class="text-sm text-slate-700">
-                            Arraste arquivos aqui
-                        </p>
-                        <p class="text-[11px] text-slate-400 mt-1">
-                            ou clique para selecionar
-                        </p>
-
-                        <input id="pcmso-input-anexos"
-                               type="file"
-                               name="anexos[]"
-                               multiple
-                               accept=".pdf,.doc,.docx"
-                               class="hidden">
+                    <div class="rounded-xl border border-slate-200 bg-white px-4 py-3">
+                        <p class="text-sm font-medium text-slate-700 mb-2">Inserir PGR / Inventário de Risco {{ $isEdit ? '' : '*' }}</p>
+                        <div class="flex flex-wrap items-center gap-4 text-sm">
+                            <label class="inline-flex items-center gap-2 text-slate-700">
+                                <input type="radio"
+                                       name="inserir_pgr"
+                                       value="1"
+                                       class="h-4 w-4 text-purple-600"
+                                       @checked((string) $inserirPgrSelecionado === '1')>
+                                <span>Sim</span>
+                            </label>
+                            <label class="inline-flex items-center gap-2 text-slate-700">
+                                <input type="radio"
+                                       name="inserir_pgr"
+                                       value="0"
+                                       class="h-4 w-4 text-purple-600"
+                                       @checked((string) $inserirPgrSelecionado === '0')>
+                                <span>Não</span>
+                            </label>
+                        </div>
                     </div>
 
-                    {{-- Lista de arquivos selecionados (novos) --}}
-                    <ul id="pcmso-lista-anexos" class="mt-3 text-xs text-slate-600 space-y-1"></ul>
+                    <div id="pcmso-anexos-upload-wrapper" class="space-y-3">
+                        @if($isEdit && !empty($pcmso->pgr_arquivo_path))
+                            <div class="text-xs text-slate-600">
+                                <p>
+                                    Arquivo PGR atual:
+                                    <a href="{{ $pcmso->pgr_arquivo_path ? S3Helper::url($pcmso->pgr_arquivo_path) : '#' }}"
+                                       target="_blank"
+                                       class="text-purple-600 underline">
+                                        Abrir PGR atual
+                                    </a>
+                                </p>
+                            </div>
+                        @endif
+
+                        <p class="text-xs text-slate-600">
+                            Anexe aqui documentos relacionados ao PCMSO (PDF, DOC, DOCX).
+                            Você pode arrastar e soltar ou clicar na área abaixo.
+                        </p>
+
+                        {{-- Dropzone --}}
+                        <div id="pcmso-dropzone-anexos"
+                             class="flex flex-col items-center justify-center px-6 py-10 border-2 border-dashed rounded-2xl
+                border-slate-300 bg-slate-50 text-center cursor-pointer
+                hover:border-sky-400 hover:bg-sky-50 transition">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mb-2" fill="none" viewBox="0 0 24 24"
+                                 stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                      d="M3 15.75V18a3 3 0 003 3h12a3 3 0 003-3v-2.25M16.5 9.75L12 5.25m0 0L7.5 9.75M12 5.25V15"/>
+                            </svg>
+                            <p class="text-sm text-slate-700">
+                                Arraste arquivos aqui
+                            </p>
+                            <p class="text-[11px] text-slate-400 mt-1">
+                                ou clique para selecionar
+                            </p>
+
+                            <input id="pcmso-input-anexos"
+                                   type="file"
+                                   name="anexos[]"
+                                   multiple
+                                   accept=".pdf,.doc,.docx"
+                                   class="hidden">
+                        </div>
+
+                        {{-- Lista de arquivos selecionados (novos) --}}
+                        <ul id="pcmso-lista-anexos" class="mt-3 text-xs text-slate-600 space-y-1"></ul>
+                    </div>
 
                     {{-- Anexos já salvos --}}
                     @if($isEdit)
@@ -379,6 +387,14 @@
                 const tabButtons = document.querySelectorAll('.pcmso-tab-btn');
                 const tabDados = document.getElementById('pcmso-tab-dados');
                 const tabAnexos = document.getElementById('pcmso-tab-anexos');
+                const anexosUploadWrapper = document.getElementById('pcmso-anexos-upload-wrapper');
+
+                function aplicarVisibilidadePgrUpload() {
+                    if (!anexosUploadWrapper) return;
+                    const radioSelecionado = document.querySelector('input[name="inserir_pgr"]:checked');
+                    const deveExibir = (radioSelecionado?.value ?? '1') === '1';
+                    anexosUploadWrapper.classList.toggle('hidden', !deveExibir);
+                }
 
                 tabButtons.forEach(btn => {
                     btn.addEventListener('click', function () {
@@ -401,6 +417,11 @@
                         this.classList.add('border-b-2', 'border-sky-500', 'text-sky-600', 'font-semibold');
                     });
                 });
+
+                document.querySelectorAll('input[name="inserir_pgr"]').forEach(function (radio) {
+                    radio.addEventListener('change', aplicarVisibilidadePgrUpload);
+                });
+                aplicarVisibilidadePgrUpload();
 
                 // ----- FUNCOES DINAMICAS -----
                 const funcoesWrapper = document.getElementById('pcmso-funcoes-wrapper');

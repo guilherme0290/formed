@@ -8,6 +8,7 @@ use App\Models\ProtocoloExame;
 use App\Models\ProtocoloExameItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class ProtocolosExamesController extends Controller
 {
@@ -59,6 +60,9 @@ class ProtocolosExamesController extends Controller
         ]);
 
         return DB::transaction(function () use ($data, $empresaId) {
+            $validIds = $this->resolveValidExameIds($data['exames'] ?? [], $empresaId);
+            $this->assertNoExamOverlap($validIds, $empresaId, null);
+
             $protocolo = ProtocoloExame::create([
                 'empresa_id' => $empresaId,
                 'titulo' => $data['titulo'],
@@ -66,7 +70,7 @@ class ProtocolosExamesController extends Controller
                 'ativo' => $data['ativo'] ?? true,
             ]);
 
-            $this->syncExames($protocolo, $data['exames'] ?? []);
+            $this->syncExames($protocolo, $validIds);
 
             return response()->json(['data' => $protocolo->fresh()], 201);
         });
@@ -85,13 +89,17 @@ class ProtocolosExamesController extends Controller
         ]);
 
         return DB::transaction(function () use ($data, $protocolo) {
+            $empresaId = auth()->user()->empresa_id;
+            $validIds = $this->resolveValidExameIds($data['exames'] ?? [], $empresaId);
+            $this->assertNoExamOverlap($validIds, $empresaId, $protocolo->id);
+
             $protocolo->update([
                 'titulo' => $data['titulo'],
                 'descricao' => $data['descricao'] ?? null,
                 'ativo' => $data['ativo'] ?? false,
             ]);
 
-            $this->syncExames($protocolo, $data['exames'] ?? []);
+            $this->syncExames($protocolo, $validIds);
 
             return response()->json(['data' => $protocolo->fresh()]);
         });
@@ -106,21 +114,8 @@ class ProtocolosExamesController extends Controller
         return response()->json(['ok' => true]);
     }
 
-    private function syncExames(ProtocoloExame $protocolo, array $examesIds): void
+    private function syncExames(ProtocoloExame $protocolo, array $validIds): void
     {
-        $empresaId = auth()->user()->empresa_id;
-        $ids = array_values(array_unique(array_map('intval', $examesIds)));
-
-        if (!empty($ids)) {
-            $validIds = ExamesTabPreco::query()
-                ->where('empresa_id', $empresaId)
-                ->whereIn('id', $ids)
-                ->pluck('id')
-                ->all();
-        } else {
-            $validIds = [];
-        }
-
         ProtocoloExameItem::where('protocolo_id', $protocolo->id)
             ->whereNotIn('exame_id', $validIds)
             ->delete();
@@ -135,6 +130,53 @@ class ProtocolosExamesController extends Controller
             ProtocoloExameItem::create([
                 'protocolo_id' => $protocolo->id,
                 'exame_id' => $exameId,
+            ]);
+        }
+    }
+
+    private function resolveValidExameIds(array $examesIds, int $empresaId): array
+    {
+        $ids = array_values(array_unique(array_map('intval', $examesIds)));
+
+        if (!empty($ids)) {
+            return ExamesTabPreco::query()
+                ->where('empresa_id', $empresaId)
+                ->whereIn('id', $ids)
+                ->pluck('id')
+                ->all();
+        }
+
+        return [];
+    }
+
+    private function assertNoExamOverlap(array $exameIds, int $empresaId, ?int $currentProtocoloId): void
+    {
+        if (empty($exameIds)) {
+            return;
+        }
+
+        $query = ProtocoloExameItem::query()
+            ->select('exames_tab_preco.titulo')
+            ->join('protocolos_exames', 'protocolos_exames.id', '=', 'protocolo_exame_itens.protocolo_id')
+            ->join('exames_tab_preco', 'exames_tab_preco.id', '=', 'protocolo_exame_itens.exame_id')
+            ->where('protocolos_exames.empresa_id', $empresaId)
+            ->whereIn('protocolo_exame_itens.exame_id', $exameIds);
+
+        if ($currentProtocoloId) {
+            $query->where('protocolo_exame_itens.protocolo_id', '!=', $currentProtocoloId);
+        }
+
+        $duplicados = $query
+            ->distinct()
+            ->pluck('exames_tab_preco.titulo')
+            ->filter()
+            ->values()
+            ->all();
+
+        if (!empty($duplicados)) {
+            $lista = implode(', ', array_slice($duplicados, 0, 3));
+            throw ValidationException::withMessages([
+                'exames' => "Não é permitido repetir exame em outro grupo. Já vinculado: {$lista}.",
             ]);
         }
     }
