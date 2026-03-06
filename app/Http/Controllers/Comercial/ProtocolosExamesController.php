@@ -61,7 +61,7 @@ class ProtocolosExamesController extends Controller
 
         return DB::transaction(function () use ($data, $empresaId) {
             $validIds = $this->resolveValidExameIds($data['exames'] ?? [], $empresaId);
-            $this->assertNoExamOverlap($validIds, $empresaId, null);
+            $this->assertNoDuplicateExamGroup($validIds, $empresaId, null);
 
             $protocolo = ProtocoloExame::create([
                 'empresa_id' => $empresaId,
@@ -91,7 +91,7 @@ class ProtocolosExamesController extends Controller
         return DB::transaction(function () use ($data, $protocolo) {
             $empresaId = auth()->user()->empresa_id;
             $validIds = $this->resolveValidExameIds($data['exames'] ?? [], $empresaId);
-            $this->assertNoExamOverlap($validIds, $empresaId, $protocolo->id);
+            $this->assertNoDuplicateExamGroup($validIds, $empresaId, $protocolo->id);
 
             $protocolo->update([
                 'titulo' => $data['titulo'],
@@ -149,34 +149,40 @@ class ProtocolosExamesController extends Controller
         return [];
     }
 
-    private function assertNoExamOverlap(array $exameIds, int $empresaId, ?int $currentProtocoloId): void
+    private function assertNoDuplicateExamGroup(array $exameIds, int $empresaId, ?int $currentProtocoloId): void
     {
         if (empty($exameIds)) {
             return;
         }
 
-        $query = ProtocoloExameItem::query()
-            ->select('exames_tab_preco.titulo')
-            ->join('protocolos_exames', 'protocolos_exames.id', '=', 'protocolo_exame_itens.protocolo_id')
-            ->join('exames_tab_preco', 'exames_tab_preco.id', '=', 'protocolo_exame_itens.exame_id')
-            ->where('protocolos_exames.empresa_id', $empresaId)
-            ->whereIn('protocolo_exame_itens.exame_id', $exameIds);
+        $alvo = array_values(array_unique(array_map('intval', $exameIds)));
+        sort($alvo);
+
+        $query = ProtocoloExame::query()
+            ->where('empresa_id', $empresaId)
+            ->with('itens:protocolo_id,exame_id');
 
         if ($currentProtocoloId) {
-            $query->where('protocolo_exame_itens.protocolo_id', '!=', $currentProtocoloId);
+            $query->where('id', '!=', $currentProtocoloId);
         }
 
-        $duplicados = $query
-            ->distinct()
-            ->pluck('exames_tab_preco.titulo')
-            ->filter()
-            ->values()
-            ->all();
+        $grupoDuplicado = $query
+            ->get(['id', 'titulo'])
+            ->first(function (ProtocoloExame $protocolo) use ($alvo) {
+                $ids = $protocolo->itens
+                    ->pluck('exame_id')
+                    ->map(fn ($id) => (int) $id)
+                    ->unique()
+                    ->values()
+                    ->all();
 
-        if (!empty($duplicados)) {
-            $lista = implode(', ', array_slice($duplicados, 0, 3));
+                sort($ids);
+                return $ids === $alvo;
+            });
+
+        if ($grupoDuplicado) {
             throw ValidationException::withMessages([
-                'exames' => "Não é permitido repetir exame em outro grupo. Já vinculado: {$lista}.",
+                'exames' => "Já existe um grupo com a mesma combinação de exames: {$grupoDuplicado->titulo}.",
             ]);
         }
     }

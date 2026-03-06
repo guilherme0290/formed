@@ -8,9 +8,14 @@
         $permissionMap = $user?->papel?->permissoes?->pluck('chave')->flip()->all() ?? [];
         $isMaster = $user?->hasPapel('Master');
         $origem = request()->query('origem');
+        $returnUrl = request()->query('return_url');
+        $returnUrlValida = is_string($returnUrl) && (str_starts_with($returnUrl, url('/')) || str_starts_with($returnUrl, '/'));
         $estaNoPortalCliente = session('portal_cliente_id') || $origem === 'cliente';
         $rotaVoltar = $estaNoPortalCliente ? route('cliente.dashboard') : route('operacional.kanban');
-        $rotaListaClientes = route('operacional.kanban.aso.clientes', $origem ? ['origem' => $origem] : []);
+        $rotaListaClientes = $returnUrlValida
+            ? $returnUrl
+            : route('operacional.kanban.aso.clientes', $origem ? ['origem' => $origem] : []);
+        $rotaVoltar = $returnUrlValida ? $returnUrl : $rotaVoltar;
         $temContratoAtivo = (bool) ($contratoAtivo ?? false);
         $servicosContrato = $servicosContrato ?? [];
         $servicosIds = $servicosIds ?? [];
@@ -303,4 +308,3 @@
         </div>
     </div>
 @endsection
-

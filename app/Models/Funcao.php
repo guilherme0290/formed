@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use App\Models\ClienteGheFuncao;
 
 class Funcao extends Model
@@ -36,5 +37,15 @@ class Funcao extends Model
     public function gheFuncoes(): HasMany
     {
         return $this->hasMany(ClienteGheFuncao::class, 'funcao_id');
+    }
+
+    public function clientes(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            Cliente::class,
+            'cliente_funcoes',
+            'funcao_id',
+            'cliente_id'
+        )->withTimestamps();
     }
 }

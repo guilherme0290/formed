@@ -77,6 +77,14 @@
                 ->map(fn ($id) => (int) $id)
                 ->values();
         }
+        $funcoes = collect($funcoes ?? []);
+        $funcoesSelecionadas = collect(old('funcoes_cliente', $clienteFuncoesIds ?? []))
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->values();
+        $funcionariosPorFuncao = collect($funcionariosPorFuncao ?? []);
+        $ghesPorFuncao = collect($ghesPorFuncao ?? []);
+        $routeFuncoesStore = route($routePrefix . '.parametros.funcoes.store', $cliente);
     @endphp
 <div class="w-full mx-auto px-4 sm:px-6 lg:px-8 py-6" data-tabs-scope="parametro">
         <form id="parametroForm" method="POST" novalidate
@@ -174,6 +182,11 @@
                                         data-tab="treinamentos">
                                     Treinamentos
                                     <span id="badgeTabTreinamentos" class="hidden absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-emerald-400"></span>
+                                </button>
+                                <button type="button"
+                                        class="relative px-4 py-2 rounded-full text-sm font-semibold text-slate-600 hover:bg-slate-100"
+                                        data-tab="funcoes">
+                                    Funções
                                 </button>
                             </div>
 
@@ -380,6 +393,55 @@
                                             <div class="text-xs text-slate-500">#{{ $t->id }} — {{ $t->titulo }}</div>
                                         </button>
                                     @endforeach
+                                </div>
+                            </div>
+
+                            <div data-tab-panel="funcoes" class="hidden space-y-3">
+                                <div class="flex flex-wrap items-center justify-between gap-2">
+                                    <div>
+                                        <div class="text-sm font-semibold text-slate-800">Funções Vinculadas ao Cliente</div>
+                                        <div class="text-xs text-slate-500">Selecione quais funções podem ser usadas neste cliente.</div>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <input type="text"
+                                               id="novaFuncaoNome"
+                                               class="w-56 rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                                               placeholder="Nova função">
+                                        <button type="button"
+                                                id="btnNovaFuncaoParametro"
+                                                class="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-800 hover:bg-blue-100">
+                                            + Cadastrar
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="rounded-2xl border border-slate-200 bg-slate-50/60 p-3">
+                                    <div id="funcoesClienteGrid" class="max-h-[22rem] overflow-y-auto pr-1 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                                        @forelse($funcoes as $funcao)
+                                            @php
+                                                $funcaoId = (int) $funcao->id;
+                                                $qtdFuncionarios = (int) ($funcionariosPorFuncao->get($funcaoId) ?? 0);
+                                                $qtdGhes = (int) ($ghesPorFuncao->get($funcaoId) ?? 0);
+                                            @endphp
+                                            <label class="flex items-start gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2">
+                                                <input type="checkbox"
+                                                       name="funcoes_cliente[]"
+                                                       value="{{ $funcaoId }}"
+                                                       class="mt-1 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                                                       @checked($funcoesSelecionadas->contains($funcaoId))>
+                                                <span class="min-w-0">
+                                                    <span class="block truncate text-sm font-semibold text-slate-800">{{ $funcao->nome }}</span>
+                                                    <span class="mt-1 block text-[11px] text-slate-500">
+                                                        Funcionários: {{ $qtdFuncionarios }} | GHEs: {{ $qtdGhes }}
+                                                    </span>
+                                                </span>
+                                            </label>
+                                        @empty
+                                            <div class="col-span-full rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                                                Nenhuma função cadastrada para a empresa.
+                                            </div>
+                                        @endforelse
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -646,6 +708,7 @@
                     esocialStore: @json(route('comercial.esocial.faixas.store')),
                     esocialUpdate: (id) => @json(route('comercial.esocial.faixas.update', ['faixa' => '__ID__'])).replace('__ID__', id),
                     esocialDestroy: (id) => @json(route('comercial.esocial.faixas.destroy', ['faixa' => '__ID__'])).replace('__ID__', id),
+                    funcoesStore: @json($routeFuncoesStore),
                 };
 
                 const CSRF = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
@@ -721,6 +784,9 @@
                     asoGheTitle: document.getElementById('asoGheTitle'),
                     btnAddGheConfig: document.getElementById('btnAddGheConfig'),
                     btnGheGlobal: document.getElementById('btnGheGlobal'),
+                    novaFuncaoNome: document.getElementById('novaFuncaoNome'),
+                    btnNovaFuncaoParametro: document.getElementById('btnNovaFuncaoParametro'),
+                    funcoesClienteGrid: document.getElementById('funcoesClienteGrid'),
                 };
 
                 const ASO_TYPES = [
@@ -753,6 +819,7 @@
                 }
 
                 initTabs();
+                initFuncoesClienteTab();
                 updateTabBadges();
                 bindClienteAutoLoad();
                 bindAsoHandlers();
@@ -1563,6 +1630,85 @@
                     });
 
                     setActive(buttons[0].dataset.tab);
+                }
+
+                function initFuncoesClienteTab() {
+                    if (!el.btnNovaFuncaoParametro || !el.novaFuncaoNome || !el.funcoesClienteGrid) return;
+
+                    const addFuncaoCard = (id, nome, checked = true) => {
+                        const inputName = 'funcoes_cliente[]';
+                        const existing = el.funcoesClienteGrid.querySelector(`input[name="${inputName}"][value="${id}"]`);
+                        if (existing) {
+                            existing.checked = true;
+                            return;
+                        }
+                        const emptyState = el.funcoesClienteGrid.querySelector('.col-span-full');
+                        if (emptyState) {
+                            emptyState.remove();
+                        }
+
+                        const label = document.createElement('label');
+                        label.className = 'flex items-start gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2';
+                        label.innerHTML = `
+                            <input type="checkbox"
+                                   name="${inputName}"
+                                   value="${id}"
+                                   class="mt-1 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                                   ${checked ? 'checked' : ''}>
+                            <span class="min-w-0">
+                                <span class="block truncate text-sm font-semibold text-slate-800"></span>
+                                <span class="mt-1 block text-[11px] text-slate-500">Funcionários: 0 | GHEs: 0</span>
+                            </span>
+                        `;
+                        const title = label.querySelector('.text-sm.font-semibold');
+                        if (title) title.textContent = String(nome || '');
+                        el.funcoesClienteGrid.appendChild(label);
+                    };
+
+                    const submit = async () => {
+                        const nome = String(el.novaFuncaoNome.value || '').trim();
+                        if (!nome) {
+                            showItemAlert('Informe o nome da função.');
+                            return;
+                        }
+
+                        el.btnNovaFuncaoParametro.disabled = true;
+                        try {
+                            const res = await fetch(URLS.funcoesStore, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Accept': 'application/json',
+                                    'X-CSRF-TOKEN': CSRF,
+                                },
+                                body: JSON.stringify({ nome }),
+                            });
+
+                            const json = await res.json().catch(() => ({}));
+                            if (!res.ok || !json?.funcao?.id) {
+                                const msg = json?.message || 'Não foi possível cadastrar a função.';
+                                showItemAlert(msg);
+                                return;
+                            }
+
+                            addFuncaoCard(Number(json.funcao.id), json.funcao.nome || nome, true);
+                            el.novaFuncaoNome.value = '';
+                            showItemToast(json?.existing ? 'Função existente selecionada.' : `Função cadastrada: ${json.funcao.nome}`);
+                        } catch (e) {
+                            console.error(e);
+                            showItemAlert('Falha ao cadastrar função.');
+                        } finally {
+                            el.btnNovaFuncaoParametro.disabled = false;
+                        }
+                    };
+
+                    el.btnNovaFuncaoParametro.addEventListener('click', submit);
+                    el.novaFuncaoNome.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            submit();
+                        }
+                    });
                 }
 
                 function attachMoneyMask(viewEl, hiddenEl) {

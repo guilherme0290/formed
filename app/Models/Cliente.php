@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use App\Models\Cidade;
+use App\Models\Funcao;
 
 class Cliente extends Model
 {
@@ -60,7 +61,16 @@ class Cliente extends Model
             'unidade_id'
         )->withTimestamps();
     }
-}
 
+    public function funcoes(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            Funcao::class,
+            'cliente_funcoes',
+            'cliente_id',
+            'funcao_id'
+        )->withTimestamps();
+    }
+}
 
 
