@@ -8,8 +8,10 @@ use App\Models\ClienteContrato;
 use App\Models\ClienteContratoItem;
 use App\Models\ClienteContratoLog;
 use App\Models\ClienteGhe;
+use App\Models\ClienteFuncao;
 use App\Models\ClienteUnidadePermitida;
 use App\Models\Ghe;
+use App\Models\Funcao;
 use App\Models\ParametroCliente;
 use App\Models\ParametroClienteAsoGrupo;
 use App\Models\ParametroClienteItem;
@@ -99,6 +101,13 @@ class ClienteParametroController extends Controller
             'unidades_permitidas.*' => [
                 'integer',
                 Rule::exists('unidades_clinicas', 'id')->where(function ($q) use ($empresaId) {
+                    $q->where('empresa_id', $empresaId);
+                }),
+            ],
+            'funcoes_cliente' => ['nullable', 'array'],
+            'funcoes_cliente.*' => [
+                'integer',
+                Rule::exists('funcoes', 'id')->where(function ($q) use ($empresaId) {
                     $q->where('empresa_id', $empresaId);
                 }),
             ],
@@ -296,6 +305,12 @@ class ClienteParametroController extends Controller
             ->unique()
             ->values()
             ->all();
+        $funcoesClienteIds = collect($data['funcoes_cliente'] ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
 
         $isAsoItem = function (array $it): bool {
             if (strtoupper((string) ($it['tipo'] ?? '')) === 'ASO_TIPO') {
@@ -388,7 +403,7 @@ class ClienteParametroController extends Controller
         $valorTotal = $valorItens + $valorEsocial;
         $vencimentoServicos = $data['vencimento_servicos'];
 
-        return DB::transaction(function () use ($empresaId, $data, $valorTotal, $incluirEsocial, $valorEsocialCampo, $vencimentoServicos, $asoGrupos, $clienteAsoGrupos, $cliente, $unidadesPermitidasIds) {
+        return DB::transaction(function () use ($empresaId, $data, $valorTotal, $incluirEsocial, $valorEsocialCampo, $vencimentoServicos, $asoGrupos, $clienteAsoGrupos, $cliente, $unidadesPermitidasIds, $funcoesClienteIds) {
             $parametro = ParametroCliente::query()
                 ->where('empresa_id', $empresaId)
                 ->where('cliente_id', $cliente->id)
@@ -481,6 +496,25 @@ class ClienteParametroController extends Controller
                 }, $unidadesPermitidasIds);
 
                 ClienteUnidadePermitida::insert($rows);
+            }
+
+            ClienteFuncao::query()
+                ->where('empresa_id', $empresaId)
+                ->where('cliente_id', $cliente->id)
+                ->delete();
+
+            if (!empty($funcoesClienteIds)) {
+                $rows = array_map(function (int $funcaoId) use ($empresaId, $cliente) {
+                    return [
+                        'empresa_id' => $empresaId,
+                        'cliente_id' => $cliente->id,
+                        'funcao_id' => $funcaoId,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                }, $funcoesClienteIds);
+
+                ClienteFuncao::insert($rows);
             }
 
             $contrato = ClienteContrato::query()
@@ -689,6 +723,56 @@ class ClienteParametroController extends Controller
 
             return back()->with('ok', 'Parâmetros do cliente atualizados com sucesso.');
         });
+    }
+
+    public function storeFuncaoAjax(Request $request, Cliente $cliente)
+    {
+        $this->authorizeCliente($cliente);
+
+        $empresaId = auth()->user()->empresa_id;
+
+        $data = $request->validate([
+            'nome' => ['required', 'string', 'max:255'],
+        ]);
+
+        $nome = trim((string) $data['nome']);
+        if ($nome === '') {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Informe o nome da função.',
+            ], 422);
+        }
+
+        $existing = Funcao::query()
+            ->where('empresa_id', $empresaId)
+            ->whereRaw('LOWER(nome) = ?', [mb_strtolower($nome, 'UTF-8')])
+            ->first();
+
+        if ($existing) {
+            return response()->json([
+                'ok' => true,
+                'existing' => true,
+                'funcao' => [
+                    'id' => (int) $existing->id,
+                    'nome' => (string) $existing->nome,
+                ],
+            ]);
+        }
+
+        $funcao = Funcao::create([
+            'empresa_id' => $empresaId,
+            'nome' => $nome,
+            'ativo' => true,
+        ]);
+
+        return response()->json([
+            'ok' => true,
+            'existing' => false,
+            'funcao' => [
+                'id' => (int) $funcao->id,
+                'nome' => (string) $funcao->nome,
+            ],
+        ], 201);
     }
 
     private function buildRegrasSnapshotAso(array $item, ?array $asoSnapshot): ?array

@@ -63,11 +63,6 @@
                     </button>
                     <button type="button"
                             class="px-4 py-2 rounded-full border border-slate-200 bg-white text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
-                            data-tab="esocial">
-                        eSocial
-                    </button>
-                    <button type="button"
-                            class="px-4 py-2 rounded-full border border-slate-200 bg-white text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
                             data-tab="forma-pagamento">
                         Pagamento
                     </button>
@@ -85,6 +80,16 @@
                             class="px-4 py-2 rounded-full border border-slate-200 bg-white text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
                             data-tab="acesso">
                         Acesso
+                    </button>
+                    <button type="button"
+                            class="px-4 py-2 rounded-full border border-slate-200 bg-white text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
+                            data-tab="tarefa"
+                            data-tab-url="{{ route('operacional.kanban.servicos', [
+                                'cliente' => $cliente->id,
+                                'origem' => 'cliente-edit',
+                                'return_url' => route($routePrefix.'.edit', ['cliente' => $cliente->id, 'tab' => 'dados']),
+                            ]) }}">
+                        Criar Tarefa
                     </button>
                 </div>
             </div>
@@ -364,6 +369,7 @@
             @if($cliente->exists)
                 @include('clientes.partials.acesso-tab')
             @endif
+
         </div>
     </div>
 
@@ -384,11 +390,11 @@
                     'dados': '#2563eb',
                     'parametros': '#059669',
                     'unidades-permitidas': '#0f766e',
-                    'esocial': '#d97706',
                     'forma-pagamento': '#4f46e5',
                     'vendedor': '#0f172a',
                     'arquivos': '#4338ca',
                     'acesso': '#7c3aed',
+                    'tarefa': '#0e7490',
                 };
 
                 tabs.forEach(btn => {
@@ -413,7 +419,14 @@
             }
 
             tabs.forEach(btn => {
-                btn.addEventListener('click', () => activate(btn.dataset.tab));
+                btn.addEventListener('click', () => {
+                    const redirectUrl = btn.dataset.tabUrl;
+                    if (redirectUrl) {
+                        window.location.href = redirectUrl;
+                        return;
+                    }
+                    activate(btn.dataset.tab);
+                });
             });
 
             const urlTab = new URLSearchParams(window.location.search).get('tab');
@@ -862,5 +875,3 @@
         });
     </script>
 @endsection
-
-

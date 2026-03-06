@@ -200,7 +200,7 @@ class PgrController extends Controller
                 ->withErrors(['com_art' => 'ART não está disponível no contrato do cliente.']);
         }
 
-        $data['funcoes'] = $this->normalizarFuncoesNr($data['funcoes'], $this->clienteTemTreinamentosNr($cliente));
+        $data['funcoes'] = $this->normalizarFuncoesNr($data['funcoes']);
 
         $totalTrabalhadores = (int)$data['qtd_homens'] + (int)$data['qtd_mulheres'];
 
@@ -361,7 +361,7 @@ class PgrController extends Controller
                 ->withErrors(['com_art' => 'ART não está disponível no contrato do cliente.']);
         }
 
-        $data['funcoes'] = $this->normalizarFuncoesNr($data['funcoes'], $this->clienteTemTreinamentosNr($cliente));
+        $data['funcoes'] = $this->normalizarFuncoesNr($data['funcoes']);
 
         // valida soma das quantidades x total trabalhadores
         $totalTrabalhadores = (int)$data['qtd_homens'] + (int)$data['qtd_mulheres'];
@@ -688,19 +688,13 @@ class PgrController extends Controller
             ->exists();
     }
 
-    private function normalizarFuncoesNr(array $funcoes, bool $clienteTemTreinamentosNr): array
+    private function normalizarFuncoesNr(array $funcoes): array
     {
         return collect($funcoes)
-            ->map(function (array $funcao) use ($clienteTemTreinamentosNr) {
+            ->map(function (array $funcao) {
                 $altura = (int) ($funcao['nr_altura'] ?? 0) === 1 ? 1 : 0;
                 $eletricidade = (int) ($funcao['nr_eletricidade'] ?? 0) === 1 ? 1 : 0;
                 $espacoConfinado = (int) ($funcao['nr_espaco_confinado'] ?? 0) === 1 ? 1 : 0;
-
-                if (!$clienteTemTreinamentosNr) {
-                    $altura = 0;
-                    $eletricidade = 0;
-                    $espacoConfinado = 0;
-                }
 
                 $funcao['nr_altura'] = $altura;
                 $funcao['nr_eletricidade'] = $eletricidade;

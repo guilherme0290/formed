@@ -726,10 +726,17 @@
                                         // -------- PCMSO --------
                                         } elseif ($servicoNome === 'PCMSO') {
                                             $pcmso = $tarefa->pcmsoSolicitacao ?? null;
+                                            $pcmsoTipo = $pcmso?->tipo ?? null;
 
-                                            if ($pcmso && $pcmso->obra_nome) {
-                                                $tituloCard    = 'PCMSO - ' . $pcmso->obra_nome;
+                                            if ($pcmsoTipo === 'especifico') {
+                                                if ($pcmso && $pcmso->obra_nome) {
+                                                    $tituloCard = 'PCMSO - Específico - ' . $pcmso->obra_nome;
+                                                } else {
+                                                    $tituloCard = 'PCMSO - Específico - ' . $clienteNome;
+                                                }
                                                 $subtituloCard = $clienteNome;
+                                            } elseif ($pcmsoTipo === 'matriz') {
+                                                $tituloCard = 'PCMSO - Matriz - ' . $clienteNome;
                                             } else {
                                                 $tituloCard    = 'PCMSO - ' . $clienteNome;
                                             }

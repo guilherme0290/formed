@@ -4,12 +4,14 @@ namespace App\Http\Controllers\Cliente;
 
 use App\Http\Controllers\Controller;
 use App\Models\Cliente;
+use App\Models\ClienteFuncao;
 use App\Models\Funcionario;
 use App\Models\Tarefa;
 use App\Services\AsoGheService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class ClienteFuncionarioController extends Controller
 {
@@ -168,7 +170,13 @@ class ClienteFuncionarioController extends Controller
             'setor'           => ['nullable', 'string', 'max:100'],
 
             // vindo do componente
-            'funcao_id'       => ['nullable', 'integer', 'exists:funcoes,id'],
+            'funcao_id'       => [
+                'nullable',
+                'integer',
+                Rule::exists('funcoes', 'id')->where(function ($q) use ($cliente) {
+                    $q->where('empresa_id', $cliente->empresa_id);
+                }),
+            ],
 
             'treinamento_nr'          => ['nullable', 'boolean'],
             'exame_admissional'      => ['nullable', 'boolean'],
@@ -199,6 +207,7 @@ class ClienteFuncionarioController extends Controller
         $dados['exame_demissional']      = $r->boolean('exame_demissional');
         $dados['exame_mudanca_funcao']   = $r->boolean('exame_mudanca_funcao');
         $dados['exame_retorno_trabalho'] = $r->boolean('exame_retorno_trabalho');
+        $this->assertFuncaoVinculadaAoCliente($cliente->empresa_id, $cliente->id, $dados['funcao_id'] ?? null);
 
         // vínculo correto
         $dados['cliente_id'] = $cliente->id;
@@ -240,7 +249,13 @@ class ClienteFuncionarioController extends Controller
             'data_admissao'   => ['required', 'date'],
             'celular'         => ['nullable', 'string', 'max:20'],
             'setor'           => ['nullable', 'string', 'max:100'],
-            'funcao_id'       => ['nullable', 'integer', 'exists:funcoes,id'],
+            'funcao_id'       => [
+                'nullable',
+                'integer',
+                Rule::exists('funcoes', 'id')->where(function ($q) use ($cliente) {
+                    $q->where('empresa_id', $cliente->empresa_id);
+                }),
+            ],
             'treinamento_nr'          => ['nullable', 'boolean'],
             'exame_admissional'      => ['nullable', 'boolean'],
             'exame_periodico'        => ['nullable', 'boolean'],
@@ -269,6 +284,7 @@ class ClienteFuncionarioController extends Controller
         $dados['exame_demissional']      = $r->boolean('exame_demissional');
         $dados['exame_mudanca_funcao']   = $r->boolean('exame_mudanca_funcao');
         $dados['exame_retorno_trabalho'] = $r->boolean('exame_retorno_trabalho');
+        $this->assertFuncaoVinculadaAoCliente($cliente->empresa_id, $cliente->id, $dados['funcao_id'] ?? null);
 
         $funcionario->update($dados);
 
@@ -360,6 +376,31 @@ class ClienteFuncionarioController extends Controller
         return redirect()
             ->route('cliente.funcionarios.index')
             ->with('ok', 'Funcionário removido com sucesso.');
+    }
+
+    private function assertFuncaoVinculadaAoCliente(int $empresaId, int $clienteId, ?int $funcaoId): void
+    {
+        if (!$funcaoId) {
+            return;
+        }
+
+        $funcoesVinculadas = ClienteFuncao::query()
+            ->where('empresa_id', $empresaId)
+            ->where('cliente_id', $clienteId)
+            ->pluck('funcao_id')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+
+        if (empty($funcoesVinculadas)) {
+            return;
+        }
+
+        if (!in_array((int) $funcaoId, $funcoesVinculadas, true)) {
+            throw ValidationException::withMessages([
+                'funcao_id' => 'A função selecionada não está vinculada a este cliente em Parâmetros > Funções.',
+            ]);
+        }
     }
 
 }

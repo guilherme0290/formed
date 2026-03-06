@@ -26,9 +26,8 @@
 
                     <button type="button"
                             @if($canCreate) onclick="openProtocoloForm(null)" @endif
-                            class="inline-flex items-center justify-center gap-2 rounded-2xl
-                                   {{ $canCreate ? 'bg-slate-800 hover:bg-slate-900 active:bg-black text-white' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} px-5 py-2.5 text-sm font-semibold shadow-sm
-                                   ring-1 ring-slate-700/30 transition"
+                            class="inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold border shadow-sm transition
+                                   {{ $canCreate ? 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100' : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed' }}"
                             @if(!$canCreate) disabled title="Usuário sem permissão" @endif>
                         <span class="text-base leading-none">＋</span>
                         <span>Novo Grupo</span>
@@ -45,15 +44,16 @@
 <div id="modalProtocoloForm" data-overlay-root="true" class="fixed inset-0 z-[250] hidden bg-black/50 overflow-y-auto" style="z-index: 250;">
     <div class="min-h-full w-full flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-2xl rounded-2xl shadow-xl overflow-hidden max-h-[90vh] overflow-y-auto">
-            <div class="px-6 py-4 border-b flex items-center justify-between">
-                <h3 id="protocoloFormTitle" class="text-lg font-semibold text-slate-800">Novo Grupo</h3>
+            <div class="px-6 py-4 bg-indigo-600 text-white flex items-center justify-between">
+                <h3 id="protocoloFormTitle" class="text-lg font-semibold">Novo Grupo</h3>
                 <button type="button" onclick="closeProtocoloForm()"
-                        class="h-9 w-9 rounded-xl hover:bg-slate-100 text-slate-500 flex items-center justify-center">
+                        class="h-9 w-9 rounded-xl hover:bg-white/10 text-white flex items-center justify-center">
                     ✕
                 </button>
             </div>
 
             <form id="formProtocolo" class="p-6 space-y-4">
+                <div id="protocoloFormAlert" class="hidden"></div>
                 <input type="hidden" id="protocolo_id" value="">
                 <x-toggle-ativo
                     id="protocolo_ativo"
@@ -81,7 +81,22 @@
                 <div>
                     <div class="flex items-center justify-between">
                         <label class="text-xs font-semibold text-slate-600">Exames do grupo</label>
-                        <span class="text-xs text-slate-500" id="protocoloExamesCount">0 selecionados</span>
+                        <div class="flex items-center gap-2">
+                            <button type="button"
+                                    id="btnProtocoloReloadExames"
+                                    class="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold
+                                           text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100">
+                                Recarregar exames
+                            </button>
+                            <button type="button"
+                                    id="btnProtocoloNovoExame"
+                                    class="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold
+                                           {{ $canCreate ? 'bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100' : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed' }}"
+                                    @if(!$canCreate) disabled title="Usuário sem permissão" @endif>
+                                + Novo exame
+                            </button>
+                            <span class="text-xs text-slate-500" id="protocoloExamesCount">0 selecionados</span>
+                        </div>
                     </div>
                     <div id="protocoloExamesList" class="mt-2 max-h-48 overflow-y-auto border border-slate-200 rounded-xl p-3 space-y-2 text-sm">
                         <div class="text-slate-500">Carregando exames...</div>
@@ -95,7 +110,7 @@
                     </button>
 
                     <button type="submit"
-                            class="rounded-xl bg-slate-800 hover:bg-slate-900 text-white px-5 py-2 text-sm font-semibold">
+                            class="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 text-sm font-semibold shadow-sm ring-1 ring-indigo-600/30">
                         Salvar
                     </button>
                 </div>
@@ -131,12 +146,15 @@
                     modalForm: document.getElementById('modalProtocoloForm'),
                     form: document.getElementById('formProtocolo'),
                     title: document.getElementById('protocoloFormTitle'),
+                    formAlert: document.getElementById('protocoloFormAlert'),
                     id: document.getElementById('protocolo_id'),
                     titulo: document.getElementById('protocolo_titulo'),
                     descricao: document.getElementById('protocolo_descricao'),
                     ativo: document.getElementById('protocolo_ativo'),
                     examesList: document.getElementById('protocoloExamesList'),
                     examesCount: document.getElementById('protocoloExamesCount'),
+                    btnReloadExames: document.getElementById('btnProtocoloReloadExames'),
+                    btnNovoExame: document.getElementById('btnProtocoloNovoExame'),
                 }
             };
 
@@ -170,23 +188,31 @@
             }
 
             function alertBox(type,msg){
-                if(!PROTOCOLOS.dom.alert) return;
-                PROTOCOLOS.dom.alert.classList.remove('hidden');
-                PROTOCOLOS.dom.alert.className = 'rounded-xl border px-4 py-3 text-sm';
+                const formAberto = PROTOCOLOS.dom.modalForm && !PROTOCOLOS.dom.modalForm.classList.contains('hidden');
+                const alvo = formAberto ? PROTOCOLOS.dom.formAlert : PROTOCOLOS.dom.alert;
+                if(!alvo) return;
+                alvo.classList.remove('hidden');
+                alvo.className = 'rounded-xl border px-4 py-3 text-sm';
                 if(type==='ok'){
-                    PROTOCOLOS.dom.alert.classList.add('bg-emerald-50','border-emerald-200','text-emerald-800');
+                    alvo.classList.add('bg-emerald-50','border-emerald-200','text-emerald-800');
                 } else {
-                    PROTOCOLOS.dom.alert.classList.add('bg-red-50','border-red-200','text-red-800');
+                    alvo.classList.add('bg-red-50','border-red-200','text-red-800');
                 }
-                PROTOCOLOS.dom.alert.textContent = msg;
+                alvo.textContent = msg;
             }
             function alertHide(){
-                if(!PROTOCOLOS.dom.alert) return;
-                PROTOCOLOS.dom.alert.classList.add('hidden');
+                if(PROTOCOLOS.dom.alert) PROTOCOLOS.dom.alert.classList.add('hidden');
+                if(PROTOCOLOS.dom.formAlert) PROTOCOLOS.dom.formAlert.classList.add('hidden');
             }
 
-            async function loadExames(){
-                if (PROTOCOLOS.state.exames.length) return;
+            function selectedExameIdsFromChecklist(){
+                return Array.from(PROTOCOLOS.dom.examesList?.querySelectorAll('input[type="checkbox"]:checked') || [])
+                    .map((cb) => Number(cb.value))
+                    .filter((id) => Number.isFinite(id));
+            }
+
+            async function loadExames(force = false){
+                if (!force && PROTOCOLOS.state.exames.length) return;
                 const res = await fetch(PROTOCOLOS.urls.exames, { headers:{'Accept':'application/json'} });
                 const json = await res.json();
                 PROTOCOLOS.state.exames = json.data || [];
@@ -290,6 +316,7 @@
                 const method = id ? 'PUT' : 'POST';
 
                 try{
+                    alertHide();
                     const res = await fetch(url, {
                         method,
                         headers: {
@@ -299,13 +326,23 @@
                         },
                         body: JSON.stringify(payload)
                     });
-                    if(!res.ok) throw new Error('fail');
+
+                    const json = await res.json().catch(() => ({}));
+
+                    if(!res.ok) {
+                        if (json?.errors) {
+                            const first = Object.values(json.errors)[0]?.[0] || 'Erro ao salvar grupo.';
+                            return alertBox('err', first);
+                        }
+                        return alertBox('err', json?.message || 'Erro ao salvar grupo.');
+                    }
+
                     await loadProtocolos();
                     closeProtocoloForm();
                     window.dispatchEvent(new CustomEvent('protocolos:updated'));
                 } catch(e){
                     console.error(e);
-                    alertBox('err','Falha ao salvar grupo.');
+                    alertBox('err','Falha ao salvar grupo. Verifique sua conexão e tente novamente.');
                 }
             }
 
@@ -329,16 +366,21 @@
 
             window.openProtocolosModal = async function(){
                 ensureModalOverSidebar(PROTOCOLOS.dom.modal, 240);
+                alertHide();
                 PROTOCOLOS.dom.modal?.classList.remove('hidden');
                 await loadProtocolos();
             };
-            window.closeProtocolosModal = () => PROTOCOLOS.dom.modal?.classList.add('hidden');
+            window.closeProtocolosModal = () => {
+                alertHide();
+                PROTOCOLOS.dom.modal?.classList.add('hidden');
+            };
 
             window.openProtocoloForm = async function(protocolo){
                 if (protocolo && !PERMS.update) return deny('Usuário sem permissão para editar.');
                 if (!protocolo && !PERMS.create) return deny('Usuário sem permissão para criar.');
                 await loadExames();
                 ensureModalOverSidebar(PROTOCOLOS.dom.modalForm, 250);
+                alertHide();
                 PROTOCOLOS.dom.modalForm?.classList.remove('hidden');
                 PROTOCOLOS.dom.title.textContent = protocolo ? 'Editar Grupo' : 'Novo Grupo';
                 PROTOCOLOS.dom.id.value = protocolo?.id || '';
@@ -348,9 +390,31 @@
                 const selected = (protocolo?.exames || []).map(e => e.id);
                 renderExamesChecklist(selected);
             };
-            window.closeProtocoloForm = () => PROTOCOLOS.dom.modalForm?.classList.add('hidden');
+            window.closeProtocoloForm = () => {
+                alertHide();
+                PROTOCOLOS.dom.modalForm?.classList.add('hidden');
+            };
 
             PROTOCOLOS.dom.form?.addEventListener('submit', saveProtocolo);
+            PROTOCOLOS.dom.btnReloadExames?.addEventListener('click', async () => {
+                const selected = selectedExameIdsFromChecklist();
+                await loadExames(true);
+                renderExamesChecklist(selected);
+                alertBox('ok', 'Lista de exames atualizada.');
+            });
+            PROTOCOLOS.dom.btnNovoExame?.addEventListener('click', () => {
+                if (!PERMS.create) return deny('Usuário sem permissão para criar.');
+                if (typeof window.openExameForm !== 'function') {
+                    return alertBox('err', 'Modal de exames não está disponível.');
+                }
+                window.openExameForm(null);
+            });
+            window.addEventListener('exames:updated', async () => {
+                if (!PROTOCOLOS.dom.modalForm || PROTOCOLOS.dom.modalForm.classList.contains('hidden')) return;
+                const selected = selectedExameIdsFromChecklist();
+                await loadExames(true);
+                renderExamesChecklist(selected);
+            });
             document.addEventListener('click', (e) => {
                 if (PROTOCOLOS.dom.modalForm && !PROTOCOLOS.dom.modalForm.classList.contains('hidden') && e.target === PROTOCOLOS.dom.modalForm) {
                     window.closeProtocoloForm?.();

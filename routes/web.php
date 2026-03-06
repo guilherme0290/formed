@@ -698,6 +698,8 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
                     ->name('parametros.save');
                 Route::get('/{cliente}/parametros', [\App\Http\Controllers\ClienteParametroController::class, 'show'])
                     ->name('parametros.show');
+                Route::post('/{cliente}/parametros/funcoes', [\App\Http\Controllers\ClienteParametroController::class, 'storeFuncaoAjax'])
+                    ->name('parametros.funcoes.store');
                 Route::get('/{cliente}/acesso', [ClienteController::class, 'acessoForm'])->name('acesso.form');
                 Route::post('/{cliente}/acesso', [ClienteController::class, 'criarAcesso'])->name('acesso');
                 Route::get('/{cliente}/funcionarios/{funcionario}/arquivos/download-todos', [ClienteController::class, 'downloadArquivosFuncionario'])
@@ -970,6 +972,8 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
             ->name('parametros.save');
         Route::get('/{cliente}/parametros', [\App\Http\Controllers\ClienteParametroController::class, 'show'])
             ->name('parametros.show');
+        Route::post('/{cliente}/parametros/funcoes', [\App\Http\Controllers\ClienteParametroController::class, 'storeFuncaoAjax'])
+            ->name('parametros.funcoes.store');
         Route::get('/{cliente}/acesso', [ClienteController::class, 'acessoForm'])->name('acesso.form');
         Route::post('/{cliente}/acesso', [ClienteController::class, 'criarAcesso'])->name('acesso');
         Route::get('/{cliente}/funcionarios/{funcionario}/arquivos/download-todos', [ClienteController::class, 'downloadArquivosFuncionario'])

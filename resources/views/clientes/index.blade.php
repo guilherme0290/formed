@@ -422,13 +422,36 @@
             }
 
             let timer = null;
-            const delay = 350;
+            const delay = 900;
+            const minChars = 3;
+            let lastSubmittedQuery = (input.value || '').trim();
 
             input.addEventListener('input', () => {
                 clearTimeout(timer);
+                const query = (input.value || '').trim();
+
+                // Evita reload precoce para consultas curtas.
+                if (query !== '' && query.length < minChars) {
+                    return;
+                }
+
+                // Evita repetir submit com o mesmo termo.
+                if (query === lastSubmittedQuery) {
+                    return;
+                }
+
                 timer = setTimeout(() => {
-                    form.submit();
+                    lastSubmittedQuery = query;
+                    if (typeof form.requestSubmit === 'function') {
+                        form.requestSubmit();
+                    } else {
+                        form.submit();
+                    }
                 }, delay);
+            });
+
+            form.addEventListener('submit', () => {
+                lastSubmittedQuery = (input.value || '').trim();
             });
         })();
     </script>

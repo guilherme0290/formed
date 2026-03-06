@@ -143,8 +143,9 @@
                                     $servicoDisplay = $item->servico_detalhe ?? $servicoNome;
                                     $temDetalheAso = !empty($item->aso_colaborador) || !empty($item->aso_tipo) || !empty($item->aso_data) || !empty($item->aso_unidade) || !empty($item->aso_email);
                                     $temDetalhePgr = !empty($item->pgr_tipo) || !empty($item->pgr_obra) || !empty($item->pgr_contratante) || !empty($item->pgr_total);
+                                    $temDetalhePcmso = !empty($item->pcmso_tipo) || !empty($item->pcmso_obra);
                                     $temDetalheTrein = !empty($item->treinamento_modo) || !empty($item->treinamento_codigos) || !empty($item->treinamento_pacote) || !empty($item->treinamento_participantes);
-                                    $temDetalhe = $temDetalheAso || $temDetalhePgr || $temDetalheTrein;
+                                    $temDetalhe = $temDetalheAso || $temDetalhePgr || $temDetalhePcmso || $temDetalheTrein;
                                     $status = 'EM ANDAMENTO';
                                     $vencimento = null;
                                     $valorReal = isset($item->valor_real) ? (float) $item->valor_real : (float) $item->valor;
@@ -194,6 +195,16 @@
                                                         <div><span class="font-semibold">{{ $rotuloComplementarPgr }}:</span> {{ !empty($item->pgr_com_pcms0) ? 'Com ' . $rotuloComplementarPgr : 'Sem ' . $rotuloComplementarPgr }}</div>
                                                         <div><span class="font-semibold">ART:</span> {{ !empty($item->pgr_com_art) ? 'Com ART' : 'Sem ART' }}</div>
                                                     @endif
+                                                    @if($temDetalhePcmso)
+                                                        <div class="pt-1"></div>
+                                                        <div class="font-semibold text-slate-700">PCMSO</div>
+                                                        @if(!empty($item->pcmso_tipo))
+                                                            <div><span class="font-semibold">Tipo:</span> {{ $item->pcmso_tipo }}</div>
+                                                        @endif
+                                                        @if(!empty($item->pcmso_obra))
+                                                            <div><span class="font-semibold">Obra:</span> {{ $item->pcmso_obra }}</div>
+                                                        @endif
+                                                    @endif
                                                     @if($temDetalheTrein)
                                                         <div class="pt-1"></div>
                                                         <div><span class="font-semibold">Treinamento:</span> {{ $item->treinamento_modo === 'pacote' ? 'Pacote' : 'Avulso' }}</div>
@@ -240,8 +251,9 @@
                                     $servicoDisplay = $item->servico_detalhe ?? $servicoNome;
                                     $temDetalheAso = !empty($item->aso_colaborador) || !empty($item->aso_tipo) || !empty($item->aso_data) || !empty($item->aso_unidade) || !empty($item->aso_email);
                                     $temDetalhePgr = !empty($item->pgr_tipo) || !empty($item->pgr_obra) || !empty($item->pgr_contratante) || !empty($item->pgr_total);
+                                    $temDetalhePcmso = !empty($item->pcmso_tipo) || !empty($item->pcmso_obra);
                                     $temDetalheTrein = !empty($item->treinamento_modo) || !empty($item->treinamento_codigos) || !empty($item->treinamento_pacote) || !empty($item->treinamento_participantes);
-                                    $temDetalhe = $temDetalheAso || $temDetalhePgr || $temDetalheTrein;
+                                    $temDetalhe = $temDetalheAso || $temDetalhePgr || $temDetalhePcmso || $temDetalheTrein;
                                     $status = strtoupper((string) $item->status);
                                     $vencimento = $item->vencimento ? \Carbon\Carbon::parse($item->vencimento) : null;
                                     $vencido = $vencimento?->lt(now()->startOfDay()) ?? false;
@@ -295,6 +307,16 @@
                                                         @endif
                                                         <div><span class="font-semibold">{{ $rotuloComplementarPgr }}:</span> {{ !empty($item->pgr_com_pcms0) ? 'Com ' . $rotuloComplementarPgr : 'Sem ' . $rotuloComplementarPgr }}</div>
                                                         <div><span class="font-semibold">ART:</span> {{ !empty($item->pgr_com_art) ? 'Com ART' : 'Sem ART' }}</div>
+                                                    @endif
+                                                    @if($temDetalhePcmso)
+                                                        <div class="pt-1"></div>
+                                                        <div class="font-semibold text-slate-700">PCMSO</div>
+                                                        @if(!empty($item->pcmso_tipo))
+                                                            <div><span class="font-semibold">Tipo:</span> {{ $item->pcmso_tipo }}</div>
+                                                        @endif
+                                                        @if(!empty($item->pcmso_obra))
+                                                            <div><span class="font-semibold">Obra:</span> {{ $item->pcmso_obra }}</div>
+                                                        @endif
                                                     @endif
                                                     @if($temDetalheTrein)
                                                         <div class="pt-1"></div>
