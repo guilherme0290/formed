@@ -410,7 +410,7 @@
                 @json($autocompleteOptions),
                 {
                     maxItems: 200,
-                    minChars: 3,
+                    minChars: 1,
                     onSelect: () => {
                         if (!form) {
                             return;

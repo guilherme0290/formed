@@ -56,10 +56,19 @@ class ClienteController extends Controller
         }
         $qTerm = preg_replace('/\s+/', ' ', $q);
         $qTerm = trim((string) $qTerm);
+        $qCompact = preg_replace('/[^[:alnum:]]+/u', '', $qTerm);
+        $qCompact = mb_strtolower((string) $qCompact);
         $doc = preg_replace('/\D+/', '', $q);
+
+        $normalizedRazao = "LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(TRIM(razao_social), ' ', ''), '.', ''), '-', ''), '/', ''), '(', ''), ')', ''), ',', ''))";
+        $normalizedFantasia = "LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(TRIM(nome_fantasia), ' ', ''), '.', ''), '-', ''), '/', ''), '(', ''), ')', ''), ',', ''))";
+        $normalizedEmail = "LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(TRIM(email), ' ', ''), '.', ''), '-', ''), '_', ''), '@', ''))";
+        $normalizedCnpj = "REPLACE(REPLACE(REPLACE(REPLACE(TRIM(cnpj), '.', ''), '-', ''), '/', ''), ' ', '')";
+        $normalizedTelefone = "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(TRIM(telefone), ' ', ''), '-', ''), '(', ''), ')', ''), '+', '')";
 
         if ($q !== '' && mb_strlen($qTerm) < 3 && strlen($doc) < 3) {
             $qTerm = '';
+            $qCompact = '';
             $doc = '';
         }
 
@@ -71,50 +80,59 @@ class ClienteController extends Controller
             ->when($this->isComercialNaoMaster($r->user()), function ($q) use ($r) {
                 $q->where('vendedor_id', (int) $r->user()->id);
             })
-            ->when($qTerm !== '' || $doc !== '', function ($w) use ($qTerm, $doc) {
-                $w->where(function ($x) use ($qTerm, $doc) {
+            ->when($qTerm !== '' || $doc !== '', function ($w) use ($qTerm, $qCompact, $doc, $normalizedRazao, $normalizedFantasia, $normalizedEmail, $normalizedCnpj, $normalizedTelefone) {
+                $w->where(function ($x) use ($qTerm, $qCompact, $doc, $normalizedRazao, $normalizedFantasia, $normalizedEmail, $normalizedCnpj, $normalizedTelefone) {
                     if ($qTerm !== '') {
                         $x->where('razao_social', 'like', "%{$qTerm}%")
                             ->orWhere('nome_fantasia', 'like', "%{$qTerm}%")
                             ->orWhere('email', 'like', "%{$qTerm}%");
                     }
 
+                    if ($qCompact !== '' && mb_strlen($qCompact) >= 3) {
+                        $x->orWhereRaw("{$normalizedRazao} LIKE ?", ["%{$qCompact}%"])
+                            ->orWhereRaw("{$normalizedFantasia} LIKE ?", ["%{$qCompact}%"])
+                            ->orWhereRaw("{$normalizedEmail} LIKE ?", ["%{$qCompact}%"]);
+                    }
+
                     if (strlen($doc) >= 3) {
-                        $x->orWhereRaw(
-                            "REPLACE(REPLACE(REPLACE(REPLACE(TRIM(cnpj), '.', ''), '-', ''), '/', ''), ' ', '') LIKE ?",
-                            ["%{$doc}%"]
-                        )
-                            ->orWhere('telefone', 'like', "%{$doc}%");
+                        $x->orWhereRaw("{$normalizedCnpj} LIKE ?", ["%{$doc}%"])
+                            ->orWhereRaw("{$normalizedTelefone} LIKE ?", ["%{$doc}%"]);
                     }
                 });
             })
             ->when($status !== 'todos', fn($w) => $w->where('ativo', $status === 'ativo'))
             ->when(!empty($dataInicioNormalizada), fn($w) => $w->whereDate('clientes.created_at', '>=', $dataInicioNormalizada))
             ->when(!empty($dataFimNormalizada), fn($w) => $w->whereDate('clientes.created_at', '<=', $dataFimNormalizada))
-            ->when($qTerm !== '', function ($query) use ($qTerm) {
+            ->when($qTerm !== '', function ($query) use ($qTerm, $qCompact, $normalizedRazao, $normalizedFantasia, $normalizedEmail) {
                 $query->orderByRaw(
                     "CASE
                         WHEN razao_social LIKE ? THEN 0
                         WHEN nome_fantasia LIKE ? THEN 1
                         WHEN razao_social LIKE ? THEN 2
                         WHEN nome_fantasia LIKE ? THEN 3
-                        WHEN email LIKE ? THEN 4
-                        ELSE 5
+                        WHEN {$normalizedRazao} LIKE ? THEN 4
+                        WHEN {$normalizedFantasia} LIKE ? THEN 5
+                        WHEN email LIKE ? THEN 6
+                        WHEN {$normalizedEmail} LIKE ? THEN 7
+                        ELSE 8
                     END",
                     [
                         "{$qTerm}%",
                         "{$qTerm}%",
                         "%{$qTerm}%",
                         "%{$qTerm}%",
+                        "{$qCompact}%",
+                        "{$qCompact}%",
                         "%{$qTerm}%",
+                        "%{$qCompact}%",
                     ]
                 )->orderBy('razao_social');
             })
-            ->when($qTerm === '' && strlen($doc) >= 3, function ($query) use ($doc) {
+            ->when($qTerm === '' && strlen($doc) >= 3, function ($query) use ($doc, $normalizedCnpj, $normalizedTelefone) {
                 $query->orderByRaw(
                     "CASE
-                        WHEN REPLACE(REPLACE(REPLACE(REPLACE(TRIM(cnpj), '.', ''), '-', ''), '/', ''), ' ', '') LIKE ? THEN 0
-                        WHEN telefone LIKE ? THEN 1
+                        WHEN {$normalizedCnpj} LIKE ? THEN 0
+                        WHEN {$normalizedTelefone} LIKE ? THEN 1
                         ELSE 2
                     END",
                     [
