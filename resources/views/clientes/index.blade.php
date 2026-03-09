@@ -416,6 +416,7 @@
         (function () {
             const input = document.getElementById('cliente-search');
             const form = document.getElementById('clientes-filter-form');
+            const status = form?.querySelector('select[name="status"]');
 
             if (!input || !form) {
                 return;
@@ -452,6 +453,15 @@
 
             form.addEventListener('submit', () => {
                 lastSubmittedQuery = (input.value || '').trim();
+            });
+
+            status?.addEventListener('change', () => {
+                clearTimeout(timer);
+                if (typeof form.requestSubmit === 'function') {
+                    form.requestSubmit();
+                } else {
+                    form.submit();
+                }
             });
         })();
     </script>
