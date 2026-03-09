@@ -92,6 +92,16 @@
                     <div id="protocoloEscopoHint" class="text-xs text-slate-500"></div>
                 </div>
 
+                <div id="protocoloClienteWrap" class="hidden">
+                    <label class="text-xs font-semibold text-slate-600">Cliente do grupo exclusivo *</label>
+                    <input id="protocolo_cliente_search" type="text"
+                           class="w-full mt-1 rounded-xl border-slate-200 text-sm px-3 py-2"
+                           placeholder="Buscar por nome ou documento">
+                    <div id="protocoloClienteResults"
+                         class="mt-2 max-h-48 overflow-y-auto rounded-xl border border-slate-200 bg-white hidden"></div>
+                    <input type="hidden" id="protocolo_cliente_id" value="">
+                </div>
+
                 <div>
                     <div class="flex items-center justify-between">
                         <label class="text-xs font-semibold text-slate-600">Exames do grupo</label>
@@ -148,12 +158,13 @@
             const PROTOCOLOS = {
                 urls: {
                     list:   @json(route($routePrefix.'.protocolos-exames.indexJson')),
+                    clientes: @json(route($routePrefix.'.protocolos-exames.clientesJson')),
                     store:  @json(route($routePrefix.'.protocolos-exames.store')),
                     update: (id) => @json(route($routePrefix.'.protocolos-exames.update', ['protocolo' => '__ID__'])).replace('__ID__', id),
                     destroy:(id) => @json(route($routePrefix.'.protocolos-exames.destroy', ['protocolo' => '__ID__'])).replace('__ID__', id),
                     exames: @json(route($routePrefix.'.exames.indexJson')),
                 },
-                state: { protocolos: [], exames: [] },
+                state: { protocolos: [], exames: [], clientes: [] },
                 dom: {
                     modal: document.getElementById('modalProtocolos'),
                     list: document.getElementById('protocolosList'),
@@ -170,6 +181,10 @@
                     escopoGenerico: document.getElementById('protocolo_escopo_generico'),
                     escopoCliente: document.getElementById('protocolo_escopo_cliente'),
                     escopoHint: document.getElementById('protocoloEscopoHint'),
+                    clienteWrap: document.getElementById('protocoloClienteWrap'),
+                    clienteSearch: document.getElementById('protocolo_cliente_search'),
+                    clienteResults: document.getElementById('protocoloClienteResults'),
+                    clienteId: document.getElementById('protocolo_cliente_id'),
                     examesList: document.getElementById('protocoloExamesList'),
                     examesCount: document.getElementById('protocoloExamesCount'),
                     btnReloadExames: document.getElementById('btnProtocoloReloadExames'),
@@ -210,6 +225,18 @@
                 if (PROTOCOLOS.dom.escopoCliente) {
                     PROTOCOLOS.dom.escopoCliente.checked = scope === 'cliente';
                 }
+                if (PROTOCOLOS.dom.clienteWrap) {
+                    PROTOCOLOS.dom.clienteWrap.classList.toggle('hidden', scope !== 'cliente');
+                }
+                if (scope !== 'cliente' && PROTOCOLOS.dom.clienteId) {
+                    PROTOCOLOS.dom.clienteId.value = '';
+                }
+                if (scope !== 'cliente' && PROTOCOLOS.dom.clienteSearch) {
+                    PROTOCOLOS.dom.clienteSearch.value = '';
+                }
+                if (PROTOCOLOS.dom.clienteResults) {
+                    PROTOCOLOS.dom.clienteResults.classList.add('hidden');
+                }
             }
             function getCurrentClienteId(){
                 const el = getClienteInput();
@@ -224,24 +251,85 @@
                 if (!clienteId) return PROTOCOLOS.urls.list;
                 return `${PROTOCOLOS.urls.list}?cliente_id=${encodeURIComponent(clienteId)}`;
             }
+            function normalizeSearchTerm(value){
+                return String(value || '')
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '')
+                    .toLowerCase()
+                    .trim();
+            }
+            function renderClienteResults(selectedId = null){
+                if (!PROTOCOLOS.dom.clienteResults || !PROTOCOLOS.dom.clienteId || !PROTOCOLOS.dom.clienteSearch) return;
+                const query = normalizeSearchTerm(PROTOCOLOS.dom.clienteSearch?.value || '');
+                const current = String(selectedId || PROTOCOLOS.dom.clienteId.value || '');
+                const filtered = PROTOCOLOS.state.clientes
+                    .filter((cliente) => {
+                        if (!query) return true;
+                        const haystack = normalizeSearchTerm(`${cliente.nome} ${cliente.documento || ''}`);
+                        return haystack.includes(query);
+                    })
+                    .slice(0, 20);
+
+                const currentCliente = PROTOCOLOS.state.clientes.find((cliente) => String(cliente.id) === current);
+                if (selectedId && currentCliente) {
+                    PROTOCOLOS.dom.clienteId.value = String(currentCliente.id);
+                    PROTOCOLOS.dom.clienteSearch.value = currentCliente.nome;
+                }
+
+                if (!filtered.length || (current && !query)) {
+                    PROTOCOLOS.dom.clienteResults.classList.add('hidden');
+                    PROTOCOLOS.dom.clienteResults.innerHTML = '';
+                    return;
+                }
+
+                PROTOCOLOS.dom.clienteResults.innerHTML = '';
+                filtered.forEach((cliente) => {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'w-full px-3 py-2 text-left hover:bg-slate-50 border-b last:border-b-0 border-slate-100';
+                    button.innerHTML = `
+                        <div class="text-sm font-medium text-slate-800">${escapeHtml(cliente.nome)}</div>
+                        <div class="text-xs text-slate-500">${escapeHtml(cliente.documento || 'Sem documento')}</div>
+                    `;
+                    button.addEventListener('click', () => {
+                        PROTOCOLOS.dom.clienteId.value = String(cliente.id);
+                        PROTOCOLOS.dom.clienteSearch.value = cliente.nome;
+                        PROTOCOLOS.dom.clienteResults.classList.add('hidden');
+                    });
+                    PROTOCOLOS.dom.clienteResults.appendChild(button);
+                });
+                PROTOCOLOS.dom.clienteResults.classList.remove('hidden');
+            }
+            async function ensureClientesLoaded(selectedId = null){
+                if (!PROTOCOLOS.state.clientes.length) {
+                    const res = await fetch(PROTOCOLOS.urls.clientes, { headers:{'Accept':'application/json'} });
+                    const json = await res.json();
+                    PROTOCOLOS.state.clientes = json.data || [];
+                }
+                renderClienteResults(selectedId);
+            }
             function updateEscopoVisibility(protocolo = null){
                 const hasContext = hasClienteContext();
                 const isClienteScoped = !!(protocolo?.cliente_id);
+                const defaultClienteId = protocolo?.cliente_id || getCurrentClienteId() || null;
 
                 if (PROTOCOLOS.dom.escopoGenerico) {
                     PROTOCOLOS.dom.escopoGenerico.disabled = false;
                 }
 
                 if (PROTOCOLOS.dom.escopoCliente) {
-                    PROTOCOLOS.dom.escopoCliente.disabled = !hasContext && !isClienteScoped;
+                    PROTOCOLOS.dom.escopoCliente.disabled = false;
                 }
 
                 setEscopoSelection(isClienteScoped ? 'cliente' : 'generico');
+                if (PROTOCOLOS.dom.clienteId && defaultClienteId) {
+                    ensureClientesLoaded(defaultClienteId).catch((e) => console.error(e));
+                }
 
                 if (PROTOCOLOS.dom.escopoHint) {
                     PROTOCOLOS.dom.escopoHint.textContent = hasContext
-                        ? 'Com um cliente selecionado, você pode escolher entre grupo genérico ou exclusivo.'
-                        : 'Sem cliente selecionado, o grupo será genérico. Para criar exclusivo, abra este modal dentro de um cliente.';
+                        ? 'Você pode usar o cliente atual ou escolher outro cliente para um grupo exclusivo.'
+                        : 'Ao marcar exclusivo, escolha o cliente diretamente neste modal.';
                 }
             }
             function escapeHtml(str){
@@ -384,8 +472,9 @@
                 const clienteId = getCurrentClienteId();
 
                 if (PROTOCOLOS.dom.escopoCliente?.checked) {
-                    if (!clienteId) return alertBox('err','Selecione um cliente para criar grupo exclusivo.');
-                    payload.cliente_id = clienteId;
+                    const selectedClienteId = Number(PROTOCOLOS.dom.clienteId?.value || clienteId || 0);
+                    if (!selectedClienteId) return alertBox('err','Selecione o cliente do grupo exclusivo.');
+                    payload.cliente_id = selectedClienteId;
                 } else {
                     payload.cliente_id = null;
                 }
@@ -415,6 +504,22 @@
                             return alertBox('err', first);
                         }
                         return alertBox('err', json?.message || 'Erro ao salvar grupo.');
+                    }
+
+                    const isCliente = Number(payload.cliente_id || 0) > 0;
+                    const isEdicao = !!id;
+                    const mensagem = isEdicao
+                        ? (isCliente ? 'Grupo de exames exclusivo atualizado com sucesso.' : 'Grupo de exames genérico atualizado com sucesso.')
+                        : (isCliente ? 'Grupo de exames exclusivo cadastrado com sucesso.' : 'Grupo de exames genérico cadastrado com sucesso.');
+
+                    if (typeof window.uiAlert === 'function') {
+                        await window.uiAlert(mensagem, {
+                            title: 'Sucesso',
+                            icon: 'success',
+                            confirmText: 'Fechar',
+                        });
+                    } else {
+                        alertBox('ok', mensagem);
                     }
 
                     await loadProtocolos();
@@ -470,6 +575,12 @@
                 updateEscopoVisibility(protocolo || null);
                 if (!protocolo) {
                     setEscopoSelection('generico');
+                    if (PROTOCOLOS.dom.clienteId) {
+                        PROTOCOLOS.dom.clienteId.value = '';
+                    }
+                    if (PROTOCOLOS.dom.clienteSearch) {
+                        PROTOCOLOS.dom.clienteSearch.value = '';
+                    }
                 }
                 const selected = (protocolo?.exames || []).map(e => e.id);
                 renderExamesChecklist(selected);
@@ -496,15 +607,28 @@
             PROTOCOLOS.dom.escopoGenerico?.addEventListener('change', () => {
                 setEscopoSelection('generico');
             });
-            PROTOCOLOS.dom.escopoCliente?.addEventListener('change', () => {
-                if (PROTOCOLOS.dom.escopoCliente.disabled) {
-                    setEscopoSelection('generico');
-                    return;
-                }
+            PROTOCOLOS.dom.escopoCliente?.addEventListener('change', async () => {
+                await ensureClientesLoaded(getCurrentClienteId());
                 setEscopoSelection('cliente');
+            });
+            PROTOCOLOS.dom.clienteSearch?.addEventListener('input', () => {
+                if (!PROTOCOLOS.dom.clienteSearch.value.trim()) {
+                    PROTOCOLOS.dom.clienteId.value = '';
+                }
+                renderClienteResults();
+            });
+            PROTOCOLOS.dom.clienteSearch?.addEventListener('focus', () => {
+                if (PROTOCOLOS.dom.escopoCliente?.checked) {
+                    renderClienteResults();
+                }
             });
             getClienteInput()?.addEventListener('change', () => {
                 updateEscopoVisibility();
+            });
+            document.addEventListener('click', (e) => {
+                if (!PROTOCOLOS.dom.clienteWrap?.contains(e.target)) {
+                    PROTOCOLOS.dom.clienteResults?.classList.add('hidden');
+                }
             });
             window.addEventListener('exames:updated', async () => {
                 if (!PROTOCOLOS.dom.modalForm || PROTOCOLOS.dom.modalForm.classList.contains('hidden')) return;

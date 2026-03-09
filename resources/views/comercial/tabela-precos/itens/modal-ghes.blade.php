@@ -412,7 +412,9 @@
                     GHE.state.protocolos.forEach(p => {
                         const opt = document.createElement('option');
                         opt.value = p.id;
-                        opt.textContent = p.titulo;
+                        opt.textContent = p.escopo === 'cliente'
+                            ? `[Exclusivo] ${p.titulo}`
+                            : p.titulo;
                         selectEl.appendChild(opt);
                     });
                     if (current) selectEl.value = current;
@@ -706,6 +708,7 @@
             window.openGheForm = async function(ghe){
                 if (ghe && !PERMS.update) return deny('Usuário sem permissão para editar.');
                 if (!ghe && !PERMS.create) return deny('Usuário sem permissão para criar.');
+                await loadProtocolos();
                 const listWasOpen = !!GHE.dom.modal && !GHE.dom.modal.classList.contains('hidden');
                 GHE.state.reopenListAfterFormClose = listWasOpen;
                 if (listWasOpen) {

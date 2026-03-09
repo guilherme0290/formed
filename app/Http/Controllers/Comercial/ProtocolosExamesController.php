@@ -59,6 +59,24 @@ class ProtocolosExamesController extends Controller
         return response()->json(['data' => $protocolos]);
     }
 
+    public function clientesJson(Request $request)
+    {
+        $empresaId = $request->user()->empresa_id;
+
+        $clientes = Cliente::query()
+            ->where('empresa_id', $empresaId)
+            ->orderByRaw('COALESCE(NULLIF(nome_fantasia, \'\'), razao_social)')
+            ->get(['id', 'razao_social', 'nome_fantasia', 'cpf', 'cnpj', 'tipo_pessoa'])
+            ->map(fn (Cliente $cliente) => [
+                'id' => (int) $cliente->id,
+                'nome' => trim((string) ($cliente->nome_fantasia ?: $cliente->razao_social)),
+                'documento' => trim((string) ($cliente->documento_principal ?? '')),
+            ])
+            ->values();
+
+        return response()->json(['data' => $clientes]);
+    }
+
     public function store(Request $request)
     {
         $empresaId = auth()->user()->empresa_id;

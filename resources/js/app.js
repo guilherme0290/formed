@@ -81,6 +81,15 @@ window.uiAlert = async (message, options = {}) => {
             title: options.title || 'Atenção',
             text: message,
             confirmButtonText: options.confirmText || 'OK',
+            didOpen: () => {
+                const container = document.querySelector('.swal2-container');
+                if (container) {
+                    container.style.zIndex = '40000';
+                }
+                if (typeof options.didOpen === 'function') {
+                    options.didOpen();
+                }
+            },
         });
     }
 
@@ -98,6 +107,15 @@ window.uiConfirm = async (message, options = {}) => {
             showCancelButton: true,
             confirmButtonText: options.confirmText || 'Confirmar',
             cancelButtonText: options.cancelText || 'Cancelar',
+            didOpen: () => {
+                const container = document.querySelector('.swal2-container');
+                if (container) {
+                    container.style.zIndex = '40000';
+                }
+                if (typeof options.didOpen === 'function') {
+                    options.didOpen();
+                }
+            },
         }).then((result) => result.isConfirmed);
     }
 

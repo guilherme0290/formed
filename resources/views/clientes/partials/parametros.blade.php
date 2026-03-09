@@ -1106,7 +1106,9 @@
                         state.gruposExames.forEach(g => {
                             const opt = document.createElement('option');
                             opt.value = g.id;
-                            opt.textContent = g.titulo;
+                            opt.textContent = g.escopo === 'cliente'
+                                ? `[Exclusivo] ${g.titulo}`
+                                : g.titulo;
                             select.appendChild(opt);
                         });
                         if (row.grupo_id) {
