@@ -162,10 +162,7 @@ class ClienteParametroController extends Controller
         foreach ($data['itens'] as $idx => $it) {
             if (!array_key_exists('meta', $it) || $it['meta'] === null || $it['meta'] === '') {
                 $data['itens'][$idx]['meta'] = null;
-                continue;
-            }
-
-            if (is_string($it['meta'])) {
+            } elseif (is_string($it['meta'])) {
                 $decoded = json_decode($it['meta'], true);
                 $data['itens'][$idx]['meta'] = is_array($decoded) ? $decoded : null;
             }
@@ -179,6 +176,11 @@ class ClienteParametroController extends Controller
             }
 
             if (($data['itens'][$idx]['tipo'] ?? '') === 'ASO_TIPO' && $servicoAsoId > 0 && empty($data['itens'][$idx]['servico_id'])) {
+                $data['itens'][$idx]['servico_id'] = $servicoAsoId;
+            }
+
+            // Garante consistência: item ASO sempre aponta para o serviço ASO configurado.
+            if (($data['itens'][$idx]['tipo'] ?? '') === 'ASO_TIPO' && $servicoAsoId > 0) {
                 $data['itens'][$idx]['servico_id'] = $servicoAsoId;
             }
         }
@@ -388,7 +390,7 @@ class ClienteParametroController extends Controller
         $valorTotal = $valorItens + $valorEsocial;
         $vencimentoServicos = $data['vencimento_servicos'];
 
-        return DB::transaction(function () use ($empresaId, $data, $valorTotal, $incluirEsocial, $valorEsocialCampo, $vencimentoServicos, $asoGrupos, $clienteAsoGrupos, $cliente, $unidadesPermitidasIds) {
+        return DB::transaction(function () use ($empresaId, $data, $valorTotal, $incluirEsocial, $valorEsocialCampo, $vencimentoServicos, $asoGrupos, $clienteAsoGrupos, $cliente, $unidadesPermitidasIds, $servicoAsoId) {
             $parametro = ParametroCliente::query()
                 ->where('empresa_id', $empresaId)
                 ->where('cliente_id', $cliente->id)
@@ -448,9 +450,14 @@ class ClienteParametroController extends Controller
             }
 
             foreach ($data['itens'] as $it) {
+                $servicoId = $it['servico_id'] ?? null;
+                if (strtoupper((string) ($it['tipo'] ?? '')) === 'ASO_TIPO' && $servicoAsoId > 0) {
+                    $servicoId = $servicoAsoId;
+                }
+
                 ParametroClienteItem::create([
                     'parametro_cliente_id' => $parametro->id,
-                    'servico_id' => $it['servico_id'] ?? null,
+                    'servico_id' => $servicoId,
                     'tipo' => $it['tipo'],
                     'nome' => $it['nome'],
                     'descricao' => $it['descricao'] ?? null,
@@ -601,6 +608,11 @@ class ClienteParametroController extends Controller
                     $regrasSnapshot = $this->buildRegrasSnapshotAso($it, $asoSnapshot);
                 }
 
+                $servicoId = $it['servico_id'] ?? null;
+                if ($isAsoItemContrato($it) && $servicoAsoId > 0) {
+                    $servicoId = $servicoAsoId;
+                }
+
                 $descricaoSnapshot = $it['descricao'] ?? $it['nome'];
                 if (!empty($it['meta']['aso_tipo'])) {
                     $descricaoSnapshot = $it['nome'] ?? $it['descricao'];
@@ -608,7 +620,7 @@ class ClienteParametroController extends Controller
 
                 ClienteContratoItem::create([
                     'cliente_contrato_id' => $contrato->id,
-                    'servico_id' => $it['servico_id'] ?? null,
+                    'servico_id' => $servicoId,
                     'descricao_snapshot' => $descricaoSnapshot,
                     'preco_unitario_snapshot' => $it['valor_total'] ?? $it['valor_unitario'],
                     'unidade_cobranca' => 'unidade',

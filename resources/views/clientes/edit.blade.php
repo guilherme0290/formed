@@ -86,6 +86,11 @@
                             data-tab="acesso">
                         Acesso
                     </button>
+                    <button type="button"
+                            class="px-4 py-2 rounded-full border border-slate-200 bg-white text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
+                            data-tab="contrato">
+                        Contrato
+                    </button>
                 </div>
             </div>
         @endif
@@ -364,6 +369,62 @@
             @if($cliente->exists)
                 @include('clientes.partials.acesso-tab')
             @endif
+
+            @if($cliente->exists)
+                <div data-tab-panel="contrato" data-tab-panel-root="cliente" class="hidden">
+                    <div class="w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+                        <div class="bg-white rounded-2xl shadow border border-slate-200 overflow-hidden">
+                            <div class="px-6 py-4 border-b bg-emerald-600 text-white">
+                                <h1 class="text-lg font-semibold">Contrato do Cliente</h1>
+                            </div>
+                            <div class="p-6 space-y-4">
+                                @if(!empty($contratoAtivo))
+                                    <div class="grid sm:grid-cols-3 gap-3 text-sm">
+                                        <div class="rounded-lg border border-slate-200 p-3">
+                                            <div class="text-xs text-slate-500">Contrato ativo</div>
+                                            <div class="font-semibold text-slate-900">#{{ $contratoAtivo->id }}</div>
+                                        </div>
+                                        <div class="rounded-lg border border-slate-200 p-3">
+                                            <div class="text-xs text-slate-500">Itens ativos</div>
+                                            <div class="font-semibold text-slate-900">{{ $contratoAtivo->itens_ativos_count ?? 0 }}</div>
+                                        </div>
+                                        <div class="rounded-lg border border-slate-200 p-3">
+                                            <div class="text-xs text-slate-500">Valor mensal</div>
+                                            <div class="font-semibold text-slate-900">R$ {{ number_format((float) $contratoAtivo->valor_mensal, 2, ',', '.') }}</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="grid sm:grid-cols-3 gap-2">
+                                        <a href="{{ route('comercial.contratos.documento.edit', $contratoAtivo) }}"
+                                           class="px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-semibold text-center hover:bg-emerald-700">
+                                            Abrir contrato dinâmico
+                                        </a>
+                                        <form method="POST" action="{{ route('comercial.contratos.documento.gerar', $contratoAtivo) }}">
+                                            @csrf
+                                            <button type="submit"
+                                                    class="w-full px-4 py-2 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 text-sm font-semibold hover:bg-emerald-100">
+                                                Regerar template
+                                            </button>
+                                        </form>
+                                        <a href="{{ route('comercial.contratos.show', $contratoAtivo) }}"
+                                           class="px-4 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold text-center hover:bg-slate-50">
+                                            Ver contrato comercial
+                                        </a>
+                                    </div>
+                                @else
+                                    <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                                        Este cliente ainda não possui contrato ativo. Parametrize os serviços para gerar o contrato.
+                                    </div>
+                                    <a href="{{ route('comercial.clientes.parametros.show', $cliente) }}"
+                                       class="inline-flex px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700">
+                                        Parametrizar serviços
+                                    </a>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @endif
         </div>
     </div>
 
@@ -389,6 +450,7 @@
                     'vendedor': '#0f172a',
                     'arquivos': '#4338ca',
                     'acesso': '#7c3aed',
+                    'contrato': '#059669',
                 };
 
                 tabs.forEach(btn => {
@@ -862,5 +924,3 @@
         });
     </script>
 @endsection
-
-

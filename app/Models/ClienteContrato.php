@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class ClienteContrato extends Model
 {
@@ -69,6 +70,11 @@ class ClienteContrato extends Model
     public function logs(): HasMany
     {
         return $this->hasMany(ClienteContratoLog::class, 'cliente_contrato_id');
+    }
+
+    public function documento(): HasOne
+    {
+        return $this->hasOne(ClienteContratoDocumento::class, 'cliente_contrato_id');
     }
 
     public function getValorMensalAttribute(): float
