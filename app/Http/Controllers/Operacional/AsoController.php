@@ -274,12 +274,14 @@ class AsoController extends Controller
             $contratoAtivo->load('itens');
         }
 
-        $funcoes = app(AsoGheService::class)
-            ->funcoesDisponiveisParaContrato($contratoAtivo, $empresaId);
-        if ($funcoes->isEmpty()) {
-            $funcoes = app(AsoGheService::class)
-                ->funcoesDisponiveisParaCliente($empresaId, $cliente->id);
-        }
+        $asoGheService = app(AsoGheService::class);
+        $funcoesContrato = $asoGheService->funcoesDisponiveisParaContrato($contratoAtivo, $empresaId);
+        $funcoesCliente = $asoGheService->funcoesDisponiveisParaCliente($empresaId, $cliente->id);
+        $funcoes = $funcoesCliente
+            ->merge($funcoesContrato)
+            ->unique('id')
+            ->sortBy('nome')
+            ->values();
 
         $treinamentosDisponiveis = $this->getTreinamentosDisponiveis($empresaId);
 
@@ -602,12 +604,14 @@ class AsoController extends Controller
             $contratoAtivo->load('itens');
         }
 
-        $funcoes = app(AsoGheService::class)
-            ->funcoesDisponiveisParaContrato($contratoAtivo, $empresaId);
-        if ($funcoes->isEmpty()) {
-            $funcoes = app(AsoGheService::class)
-                ->funcoesDisponiveisParaCliente($empresaId, $cliente->id);
-        }
+        $asoGheService = app(AsoGheService::class);
+        $funcoesContrato = $asoGheService->funcoesDisponiveisParaContrato($contratoAtivo, $empresaId);
+        $funcoesCliente = $asoGheService->funcoesDisponiveisParaCliente($empresaId, $cliente->id);
+        $funcoes = $funcoesCliente
+            ->merge($funcoesContrato)
+            ->unique('id')
+            ->sortBy('nome')
+            ->values();
 
         // Tipos de ASO
         $tiposAso = [

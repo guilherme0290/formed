@@ -3,11 +3,13 @@
 namespace App\Http\Requests\Auth;
 
 use Illuminate\Auth\Events\Lockout;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use App\Models\User;
 
 class LoginRequest extends FormRequest
 {
@@ -51,6 +53,13 @@ class LoginRequest extends FormRequest
         $isEmail = str_contains($login, '@');
         if ($isEmail) {
             $credentials = ['email' => $login, 'password' => $this->input('password')];
+            if (! Auth::attempt($credentials, $this->boolean('remember'))) {
+                RateLimiter::hit($this->throttleKey());
+
+                throw ValidationException::withMessages([
+                    'login' => 'Login ou senha incorretos. Verifique e tente novamente.',
+                ]);
+            }
         } else {
             $documento = preg_replace('/\D+/', '', $login);
             if (!in_array(strlen($documento), [11, 14], true)) {
@@ -58,15 +67,20 @@ class LoginRequest extends FormRequest
                     'login' => 'Informe um CPF ou CNPJ válido.',
                 ]);
             }
-            $credentials = ['documento' => $documento, 'password' => $this->input('password')];
-        }
 
-        if (! Auth::attempt($credentials, $this->boolean('remember'))) {
-            RateLimiter::hit($this->throttleKey());
+            $user = User::query()
+                ->whereRaw("REPLACE(REPLACE(REPLACE(documento, '.', ''), '-', ''), '/', '') = ?", [$documento])
+                ->first();
 
-            throw ValidationException::withMessages([
-                'login' => 'Login ou senha incorretos. Verifique e tente novamente.',
-            ]);
+            if (!$user || !Hash::check((string) $this->input('password'), (string) $user->password)) {
+                RateLimiter::hit($this->throttleKey());
+
+                throw ValidationException::withMessages([
+                    'login' => 'Login ou senha incorretos. Verifique e tente novamente.',
+                ]);
+            }
+
+            Auth::login($user, $this->boolean('remember'));
         }
 
         RateLimiter::clear($this->throttleKey());

@@ -108,6 +108,8 @@
     </div>
 </div>
 
+<div id="app-overlay-root" class="fixed inset-0 z-[20000] pointer-events-none"></div>
+
 {{-- Configurações do painel (modal) --}}
 <div id="dashboard-config-backdrop" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[80] hidden"></div>
 <div id="dashboard-config-modal" class="fixed inset-0 z-[90] hidden items-center justify-center p-4 overflow-y-auto">

@@ -453,7 +453,7 @@
                                                 <button type="button"
                                                         id="btnLimparFuncoes"
                                                         class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-                                                    Limpar
+                                                    Limpar filtro
                                                 </button>
                                             </div>
                                         </div>
@@ -1973,10 +1973,9 @@
                         refreshFuncoesClienteGrid();
                     });
                     el.btnLimparFuncoes?.addEventListener('click', () => {
-                        getFuncaoCards().forEach((card) => {
-                            const checkbox = card.querySelector(`input[name="${inputName}"]`);
-                            if (checkbox) checkbox.checked = false;
-                        });
+                        if (el.funcoesClienteBusca) {
+                            el.funcoesClienteBusca.value = '';
+                        }
                         refreshFuncoesClienteGrid();
                     });
                     el.novaFuncaoNome.addEventListener('keydown', (e) => {

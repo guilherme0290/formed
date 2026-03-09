@@ -6,7 +6,7 @@
 @php($canUpdate = $canUpdate ?? false)
 @php($canDelete = $canDelete ?? false)
 
-<div id="modalGhe" data-overlay-root="true" class="fixed inset-0 z-[220] hidden bg-black/50 overflow-y-auto" style="z-index: 220;">
+<div id="modalGhe" data-overlay-root="true" class="fixed inset-0 z-[20010] hidden bg-black/50 overflow-y-auto" style="z-index: 20010;">
     <div class="min-h-full w-full flex items-center justify-center p-4 md:p-6">
         <div class="bg-white w-full max-w-6xl rounded-2xl shadow-xl overflow-hidden max-h-[88vh] flex flex-col text-base">
             <div class="px-6 py-4 bg-amber-700 text-white flex items-center justify-between">
@@ -45,7 +45,7 @@
 </div>
 
 {{-- Modal interno: Form criar/editar --}}
-<div id="modalGheForm" data-overlay-root="true" class="fixed inset-0 z-[230] hidden bg-black/50 overflow-y-auto" style="z-index: 230;">
+<div id="modalGheForm" data-overlay-root="true" class="fixed inset-0 z-[20020] hidden bg-black/50 overflow-y-auto" style="z-index: 20020;">
     <div class="min-h-full w-full flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-5xl rounded-2xl shadow-xl overflow-hidden text-base max-h-[90vh] overflow-y-auto">
             <div class="px-6 py-4 border-b border-slate-800/30 bg-gradient-to-r from-slate-900 to-slate-700 text-white flex items-center justify-between">
@@ -313,8 +313,8 @@
                 modalEl.style.zIndex = String(zIndexValue);
             }
 
-            ensureModalOverSidebar(GHE.dom.modal, 220);
-            ensureModalOverSidebar(GHE.dom.modalForm, 230);
+            ensureModalOverSidebar(GHE.dom.modal, 20010);
+            ensureModalOverSidebar(GHE.dom.modalForm, 20020);
 
             function brl(n){ return Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
             function escapeHtml(str){

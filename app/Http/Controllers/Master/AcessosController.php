@@ -26,16 +26,17 @@ class AcessosController extends Controller
         $tab = $r->get('tab','papeis');
         $senhaUserId = max(0, (int) $r->integer('user_id'));
 
-        $q       = $r->string('q')->toString();
-        $papelId = $r->integer('papel_id');
+        $q       = trim($r->string('q')->toString());
+        $papelId = $r->filled('papel_id') ? (int) $r->input('papel_id') : null;
         $status  = $r->string('status')->toString(); // 'ativos' | 'inativos' | ''
         $tipo    = $r->string('tipo')->toString();   // <- filtro de tipo
 
         $usuarios = User::with('papel')
             ->when($q, fn($b) => $b->where(fn($w) => $w
                 ->where('name','like',"%$q%")
-                ->orWhere('email','like',"%$q%")))
-            ->when($papelId, fn($b) => $b->where('papel_id',$papelId))
+                ->orWhere('email','like',"%$q%")
+                ->orWhere('documento','like',"%$q%")))
+            ->when($papelId !== null && $papelId > 0, fn($b) => $b->where('papel_id', $papelId))
             ->when($status==='ativos', fn($b) => $b->where('ativo',true))
             ->when($status==='inativos', fn($b) => $b->where('ativo',false))
             ->when($tipo, fn($b) => $b->where('tipo', $tipo)) // se tiver coluna tipo
