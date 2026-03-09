@@ -528,7 +528,8 @@ class PgrController extends Controller
         abort_if(!$pgr, 404);
 
         if (!empty($data['com_pcms0'])) {
-            $contrato = app(\App\Services\ContratoClienteService::class)
+            $contratoService = app(\App\Services\ContratoClienteService::class);
+            $contrato = $contratoService
                 ->getContratoAtivo($tarefa->cliente_id, $empresaId, null);
 
             $servicoPcmsoId = \App\Models\Servico::query()
@@ -536,10 +537,9 @@ class PgrController extends Controller
                 ->where('nome', 'PCMSO')
                 ->value('id');
 
-            $itemPcmso = $contrato?->itens()
-                ->where('servico_id', $servicoPcmsoId)
-                ->where('ativo', true)
-                ->first();
+            $itemPcmso = $contrato
+                ? $contratoService->findPcmsoItem($contrato, $pgr->tipo ?? 'matriz')
+                : null;
 
             if (!$contrato || !$servicoPcmsoId || !$itemPcmso || (float) $itemPcmso->preco_unitario_snapshot <= 0) {
                 return back()

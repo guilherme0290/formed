@@ -134,6 +134,9 @@ class TarefaController extends Controller
                 $servicoPgrId = (int) Servico::where('empresa_id', $tarefa->empresa_id)
                     ->where('nome', 'PGR')
                     ->value('id');
+                $servicoPcmsoId = (int) Servico::where('empresa_id', $tarefa->empresa_id)
+                    ->where('nome', 'PCMSO')
+                    ->value('id');
 
                 if ($isAso) {
                     $resultado = $precificacaoService->precificarAso($tarefa);
@@ -149,6 +152,12 @@ class TarefaController extends Controller
                     $comissaoService->gerarPorVenda($venda, $resultado['itemContrato'], $vendedorId ?: auth()->id());
                 } elseif ($servicoPgrId && (int) $tarefa->servico_id === $servicoPgrId) {
                     $resultado = $precificacaoService->precificarPgr($tarefa);
+                    $venda = $vendaService->criarVendaPorTarefaItens($tarefa, $resultado['contrato'], $resultado['itensVenda']);
+
+                    $vendedorId = optional($tarefa->cliente)->vendedor_id;
+                    $comissaoService->gerarPorVenda($venda, $resultado['itemContrato'], $vendedorId ?: auth()->id());
+                } elseif ($servicoPcmsoId && (int) $tarefa->servico_id === $servicoPcmsoId) {
+                    $resultado = $precificacaoService->precificarPcmso($tarefa);
                     $venda = $vendaService->criarVendaPorTarefaItens($tarefa, $resultado['contrato'], $resultado['itensVenda']);
 
                     $vendedorId = optional($tarefa->cliente)->vendedor_id;

@@ -20,7 +20,6 @@ use App\Services\TempoTarefaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 class PcmsoController extends Controller
 {
@@ -550,33 +549,14 @@ class PcmsoController extends Controller
 
     private function pcmsoEspecificoInfoParaCliente(Cliente $cliente): array
     {
-        $contrato = app(ContratoClienteService::class)
-            ->getContratoAtivo($cliente->id, $cliente->empresa_id, null);
+        $contratoService = app(ContratoClienteService::class);
+        $contrato = $contratoService->getContratoAtivo($cliente->id, $cliente->empresa_id, null);
 
         if (!$contrato) {
             return ['disponivel' => false, 'valor' => null, 'item_id' => null];
         }
 
-        $servicoIds = Servico::query()
-            ->where('empresa_id', $cliente->empresa_id)
-            ->get(['id', 'nome'])
-            ->filter(function (Servico $servico) {
-                $nomeNormalizado = Str::ascii(mb_strtolower(trim((string) $servico->nome)));
-                return str_contains($nomeNormalizado, 'pcmso')
-                    && str_contains($nomeNormalizado, 'especific');
-            })
-            ->pluck('id')
-            ->map(fn ($id) => (int) $id)
-            ->values();
-
-        if ($servicoIds->isEmpty()) {
-            return ['disponivel' => false, 'valor' => null, 'item_id' => null];
-        }
-
-        $item = $contrato->itens()
-            ->whereIn('servico_id', $servicoIds->all())
-            ->where('ativo', true)
-            ->first();
+        $item = $contratoService->findPcmsoItem($contrato, 'especifico');
 
         if (!$item) {
             return ['disponivel' => false, 'valor' => null, 'item_id' => null];

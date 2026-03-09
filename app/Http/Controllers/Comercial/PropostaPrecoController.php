@@ -13,6 +13,24 @@ use Illuminate\Http\Request;
 
 class PropostaPrecoController extends Controller
 {
+    private function applyServicoPriority($query, Servico $servico)
+    {
+        $nome = mb_strtolower(trim((string) $servico->nome), 'UTF-8');
+
+        return $query
+            ->orderByRaw(
+                "CASE
+                    WHEN LOWER(COALESCE(descricao, '')) = ? THEN 0
+                    WHEN LOWER(COALESCE(descricao, '')) LIKE ? THEN 1
+                    WHEN COALESCE(descricao, '') = '' THEN 2
+                    ELSE 3
+                END",
+                [$nome, '%' . $nome . '%']
+            )
+            ->orderByRaw('CHAR_LENGTH(COALESCE(descricao, \'\')) DESC')
+            ->orderBy('descricao');
+    }
+
     private function tabelaAtiva(int $empresaId): TabelaPrecoPadrao
     {
         return TabelaPrecoPadrao::where('empresa_id', $empresaId)
@@ -67,12 +85,14 @@ class PropostaPrecoController extends Controller
 
         $tabelaCliente = $this->tabelaClienteAtiva($empresaId, $clienteId);
         if ($tabelaCliente) {
-            $clienteItem = ClienteTabelaPrecoItem::query()
+            $clienteItem = $this->applyServicoPriority(
+                ClienteTabelaPrecoItem::query(),
+                $servico
+            )
                 ->where('cliente_tabela_preco_id', $tabelaCliente->id)
                 ->where('servico_id', $servico->id)
                 ->where('tipo', 'SERVICO')
                 ->where('ativo', true)
-                ->orderBy('descricao')
                 ->first();
 
             if ($clienteItem) {
@@ -87,11 +107,13 @@ class PropostaPrecoController extends Controller
         if ($origem === 'padrao') {
             $padrao = $this->tabelaAtiva($empresaId);
 
-            $item = TabelaPrecoItem::query()
+            $item = $this->applyServicoPriority(
+                TabelaPrecoItem::query(),
+                $servico
+            )
                 ->where('tabela_preco_padrao_id', $padrao->id)
                 ->where('servico_id', $servico->id)
                 ->where('ativo', true)
-                ->orderBy('descricao')
                 ->first();
 
             $preco = (float) ($item?->preco ?? 0);

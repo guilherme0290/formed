@@ -150,6 +150,64 @@ class PrecificacaoService
         ];
     }
 
+    /**
+     * Precifica PCMSO respeitando o tipo salvo na solicitação (matriz/específico).
+     *
+     * @return array{contrato: ClienteContrato, itemContrato: ClienteContratoItem, itensVenda: array<int, array<string, mixed>>}
+     */
+    public function precificarPcmso(Tarefa $tarefa): array
+    {
+        $contrato = $this->contratoClienteService->getContratoAtivo($tarefa->cliente_id, $tarefa->empresa_id, null);
+
+        if (!$contrato) {
+            throw ValidationException::withMessages([
+                'contrato' => 'Não é possível concluir esta tarefa porque o cliente não possui contrato ativo.',
+            ]);
+        }
+
+        $pcmso = $tarefa->pcmsoSolicitacao;
+        if (!$pcmso) {
+            throw ValidationException::withMessages([
+                'contrato' => 'Não foi possível localizar os dados do PCMSO para precificar esta tarefa.',
+            ]);
+        }
+
+        $tipo = $pcmso->tipo === 'especifico' ? 'especifico' : 'matriz';
+        $itemContrato = $this->contratoClienteService->findPcmsoItem($contrato, $tipo);
+
+        if (!$itemContrato) {
+            throw ValidationException::withMessages([
+                'contrato' => 'Não é possível concluir esta tarefa porque o cliente não possui preço definido para este tipo de PCMSO no contrato ativo.',
+            ]);
+        }
+
+        if ((float) $itemContrato->preco_unitario_snapshot <= 0) {
+            throw ValidationException::withMessages([
+                'contrato' => 'Não é possível concluir esta tarefa porque o PCMSO não possui valor válido no contrato ativo.',
+            ]);
+        }
+
+        $tipoLabel = $tipo === 'especifico' ? 'Específico' : 'Matriz';
+        $detalhe = $tipo === 'especifico'
+            ? implode(' - ', array_values(array_filter([$tipoLabel, trim((string) ($pcmso->obra_nome ?? ''))])))
+            : $tipoLabel;
+        $descricao = $this->montarDescricaoVenda(
+            $this->resolverNomeServico($tarefa, (int) $tarefa->servico_id) ?: 'PCMSO',
+            $detalhe !== '' ? $detalhe : ($itemContrato->descricao_snapshot ?: null)
+        );
+
+        return [
+            'contrato' => $contrato,
+            'itemContrato' => $itemContrato,
+            'itensVenda' => [[
+                'servico_id' => $tarefa->servico_id,
+                'descricao_snapshot' => $descricao,
+                'preco_unitario_snapshot' => (float) $itemContrato->preco_unitario_snapshot,
+                'quantidade' => 1,
+            ]],
+        ];
+    }
+
     private function descricaoAsoTipoLabel(string $tipoAso): string
     {
         return match ($tipoAso) {
@@ -510,10 +568,8 @@ class PrecificacaoService
                 ]);
             }
 
-            $itemPcmso = $contrato->itens()
-                ->where('servico_id', $servicoPcmsoId)
-                ->where('ativo', true)
-                ->first();
+            $itemPcmso = $this->contratoClienteService
+                ->findPcmsoItem($contrato, $pgr->tipo ?? 'matriz');
 
             if (!$itemPcmso || (float) $itemPcmso->preco_unitario_snapshot <= 0) {
                 throw ValidationException::withMessages([
