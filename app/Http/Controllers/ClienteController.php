@@ -540,7 +540,7 @@ class ClienteController extends Controller
             ->when($esocialId, fn($q) => $q->where('id', '!=', $esocialId))
             ->orderBy('nome')
             ->get();
-        $funcoes = Funcao::where('empresa_id', $empresaId)->orderBy('nome')->get(['id', 'nome']);
+        $funcoes = Funcao::where('empresa_id', $empresaId)->orderBy('nome')->get(['id', 'nome', 'ativo']);
         $clienteFuncoesIds = $cliente->funcoes()
             ->where('funcoes.empresa_id', $empresaId)
             ->pluck('funcoes.id')

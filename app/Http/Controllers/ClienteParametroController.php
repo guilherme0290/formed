@@ -305,6 +305,7 @@ class ClienteParametroController extends Controller
             ->unique()
             ->values()
             ->all();
+        $shouldSyncFuncoesCliente = $request->has('funcoes_cliente');
         $funcoesClienteIds = collect($data['funcoes_cliente'] ?? [])
             ->map(fn ($id) => (int) $id)
             ->filter(fn ($id) => $id > 0)
@@ -403,7 +404,7 @@ class ClienteParametroController extends Controller
         $valorTotal = $valorItens + $valorEsocial;
         $vencimentoServicos = $data['vencimento_servicos'];
 
-        return DB::transaction(function () use ($empresaId, $data, $valorTotal, $incluirEsocial, $valorEsocialCampo, $vencimentoServicos, $asoGrupos, $clienteAsoGrupos, $cliente, $unidadesPermitidasIds, $funcoesClienteIds) {
+        return DB::transaction(function () use ($empresaId, $data, $valorTotal, $incluirEsocial, $valorEsocialCampo, $vencimentoServicos, $asoGrupos, $clienteAsoGrupos, $cliente, $unidadesPermitidasIds, $funcoesClienteIds, $shouldSyncFuncoesCliente) {
             $parametro = ParametroCliente::query()
                 ->where('empresa_id', $empresaId)
                 ->where('cliente_id', $cliente->id)
@@ -498,23 +499,25 @@ class ClienteParametroController extends Controller
                 ClienteUnidadePermitida::insert($rows);
             }
 
-            ClienteFuncao::query()
-                ->where('empresa_id', $empresaId)
-                ->where('cliente_id', $cliente->id)
-                ->delete();
+            if ($shouldSyncFuncoesCliente) {
+                ClienteFuncao::query()
+                    ->where('empresa_id', $empresaId)
+                    ->where('cliente_id', $cliente->id)
+                    ->delete();
 
-            if (!empty($funcoesClienteIds)) {
-                $rows = array_map(function (int $funcaoId) use ($empresaId, $cliente) {
-                    return [
-                        'empresa_id' => $empresaId,
-                        'cliente_id' => $cliente->id,
-                        'funcao_id' => $funcaoId,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ];
-                }, $funcoesClienteIds);
+                if (!empty($funcoesClienteIds)) {
+                    $rows = array_map(function (int $funcaoId) use ($empresaId, $cliente) {
+                        return [
+                            'empresa_id' => $empresaId,
+                            'cliente_id' => $cliente->id,
+                            'funcao_id' => $funcaoId,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ];
+                    }, $funcoesClienteIds);
 
-                ClienteFuncao::insert($rows);
+                    ClienteFuncao::insert($rows);
+                }
             }
 
             $contrato = ClienteContrato::query()
