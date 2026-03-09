@@ -98,9 +98,6 @@
 
                     {{-- ABA 1: DADOS DO PGR --}}
                     <div id="tab-dados" class="space-y-6">
-                        @php
-                            $clienteSemTreinamentosNr = !($clienteTemTreinamentosNr ?? true);
-                        @endphp
                         {{-- 1. ART --}}
                         <section>
                             <h2 class="text-sm font-semibold text-slate-800 mb-3">1. ART</h2>
@@ -338,34 +335,32 @@
 
                                         <div class="col-span-12">
                                             @php
-                                                $nrAltura = $clienteSemTreinamentosNr ? 0 : (int) old('funcoes.'.$idx.'.nr_altura', $f['nr_altura'] ?? 0);
-                                                $nrEletricidade = $clienteSemTreinamentosNr ? 0 : (int) old('funcoes.'.$idx.'.nr_eletricidade', $f['nr_eletricidade'] ?? 0);
-                                                $nrEspacoConfinado = $clienteSemTreinamentosNr ? 0 : (int) old('funcoes.'.$idx.'.nr_espaco_confinado', $f['nr_espaco_confinado'] ?? 0);
-                                                $nrNenhuma = $clienteSemTreinamentosNr || ($nrAltura !== 1 && $nrEletricidade !== 1 && $nrEspacoConfinado !== 1);
+                                                $nrAltura = (int) old('funcoes.'.$idx.'.nr_altura', $f['nr_altura'] ?? 0);
+                                                $nrEletricidade = (int) old('funcoes.'.$idx.'.nr_eletricidade', $f['nr_eletricidade'] ?? 0);
+                                                $nrEspacoConfinado = (int) old('funcoes.'.$idx.'.nr_espaco_confinado', $f['nr_espaco_confinado'] ?? 0);
+                                                $nrNenhuma = $nrAltura !== 1 && $nrEletricidade !== 1 && $nrEspacoConfinado !== 1;
                                             @endphp
 
                                             <div class="flex flex-wrap items-center gap-3 text-xs">
                                                 <span class="text-slate-500 font-medium">Riscos (NR):</span>
 
-                                                @if(!$clienteSemTreinamentosNr)
-                                                    <label class="inline-flex items-center gap-1.5 text-slate-700">
-                                                        <input type="checkbox" class="rounded border-slate-300 text-emerald-600"
-                                                               data-nr-checkbox="altura" @checked($nrAltura === 1)>
-                                                        <span>NR-35 (altura)</span>
-                                                    </label>
+                                                <label class="inline-flex items-center gap-1.5 text-slate-700">
+                                                    <input type="checkbox" class="rounded border-slate-300 text-emerald-600"
+                                                           data-nr-checkbox="altura" @checked($nrAltura === 1)>
+                                                    <span>NR-35 (altura)</span>
+                                                </label>
 
-                                                    <label class="inline-flex items-center gap-1.5 text-slate-700">
-                                                        <input type="checkbox" class="rounded border-slate-300 text-emerald-600"
-                                                               data-nr-checkbox="eletricidade" @checked($nrEletricidade === 1)>
-                                                        <span>NR-10 (eletricidade)</span>
-                                                    </label>
+                                                <label class="inline-flex items-center gap-1.5 text-slate-700">
+                                                    <input type="checkbox" class="rounded border-slate-300 text-emerald-600"
+                                                           data-nr-checkbox="eletricidade" @checked($nrEletricidade === 1)>
+                                                    <span>NR-10 (eletricidade)</span>
+                                                </label>
 
-                                                    <label class="inline-flex items-center gap-1.5 text-slate-700">
-                                                        <input type="checkbox" class="rounded border-slate-300 text-emerald-600"
-                                                               data-nr-checkbox="espaco_confinado" @checked($nrEspacoConfinado === 1)>
-                                                        <span>NR-33 (espaço confinado)</span>
-                                                    </label>
-                                                @endif
+                                                <label class="inline-flex items-center gap-1.5 text-slate-700">
+                                                    <input type="checkbox" class="rounded border-slate-300 text-emerald-600"
+                                                           data-nr-checkbox="espaco_confinado" @checked($nrEspacoConfinado === 1)>
+                                                    <span>NR-33 (espaço confinado)</span>
+                                                </label>
 
                                                 <label class="inline-flex items-center gap-1.5 text-slate-700">
                                                     <input type="checkbox" class="rounded border-slate-300 text-emerald-600"
@@ -665,7 +660,6 @@
                 const btnAddAllFuncoes = document.getElementById('btn-add-all-funcoes');
                 const totalFuncoesEl = document.getElementById('total-funcionarios-funcoes');
                 const funcaoQtdMap = @json($funcaoQtdMap ?? []);
-                const clienteSemTreinamentosNr = @json($clienteSemTreinamentosNr);
                 const templateFuncao = wrapper ? wrapper.querySelector('.funcao-item')?.cloneNode(true) : null;
 
                 function atualizarTotalFuncionariosFuncoes() {
@@ -766,13 +760,6 @@
                     const checks = getNrCheckboxes(item);
                     if (!inputs.altura || !inputs.eletricidade || !inputs.espacoConfinado || !inputs.definido) {
                         return;
-                    }
-
-                    if (clienteSemTreinamentosNr) {
-                        if (checks.altura) checks.altura.checked = false;
-                        if (checks.eletricidade) checks.eletricidade.checked = false;
-                        if (checks.espacoConfinado) checks.espacoConfinado.checked = false;
-                        if (checks.nenhuma) checks.nenhuma.checked = true;
                     }
 
                     // fallback: se nada estiver marcado, mantem "Nenhuma" ativo

@@ -4,6 +4,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Http\Exceptions\PostTooLargeException;
 use Illuminate\Session\TokenMismatchException;
 use App\Http\Middleware\RequestTiming;
 use App\Http\Middleware\EnsureRoutePermission;
@@ -25,6 +26,16 @@ return Application::configure(basePath: dirname(__DIR__))
             ->monthlyOn(1, '02:00');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->render(function (PostTooLargeException $e, $request) {
+            $message = 'O arquivo enviado e muito grande. Reduza o tamanho e tente novamente.';
+
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $message], 413);
+            }
+
+            return back()->with('error', $message);
+        });
+
         $exceptions->render(function (TokenMismatchException $e, $request) {
             $message = 'Sua sessao expirou. Faca login novamente.';
 
@@ -42,7 +53,6 @@ return Application::configure(basePath: dirname(__DIR__))
                 ->with('error', $message);
         });
     })->create();
-
 
 
 

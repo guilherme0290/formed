@@ -128,7 +128,13 @@
                         <div class="flex items-center justify-between gap-2">
                             <div>
                                 <div class="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">3. Grupo de exames</div>
-                                <p class="mt-1 text-xs text-slate-500">Opcional, para vincular exames ao GHE.</p>
+                                <p class="mt-1 text-xs text-slate-500">
+                                    @if($isClienteScope)
+                                        Defina o grupo de exames de cada tipo de ASO.
+                                    @else
+                                        Opcional, para vincular exames ao GHE.
+                                    @endif
+                                </p>
                             </div>
                             <button type="button"
                                     id="gheProtocoloNovo"
@@ -138,10 +144,39 @@
                             </button>
                         </div>
 
-                        <select id="ghe_protocolo" class="w-full mt-3 rounded-xl border-slate-200 text-sm px-3 py-2 bg-white">
-                            <option value="">Selecione...</option>
-                        </select>
-                        <div id="gheProtocoloResumo" class="mt-2 text-xs text-slate-500">Nenhum exame selecionado.</div>
+                        @if($isClienteScope)
+                            <div class="mt-3 flex items-center justify-between gap-3">
+                                <div id="gheProtocolosResumoTipos" class="text-xs text-slate-600">0/5 tipos configurados.</div>
+                            </div>
+
+                            <div id="gheProtocolosByTipoPanel" class="mt-3 rounded-xl border border-emerald-200 bg-white p-3 space-y-2">
+                                <div class="grid grid-cols-12 gap-2 items-center">
+                                    <label class="col-span-5 text-xs font-semibold text-slate-700">Admissional</label>
+                                    <select id="ghe_protocolo_admissional" class="col-span-7 rounded-lg border-slate-200 text-sm px-2 py-1.5 bg-white"></select>
+                                </div>
+                                <div class="grid grid-cols-12 gap-2 items-center">
+                                    <label class="col-span-5 text-xs font-semibold text-slate-700">Periódico</label>
+                                    <select id="ghe_protocolo_periodico" class="col-span-7 rounded-lg border-slate-200 text-sm px-2 py-1.5 bg-white"></select>
+                                </div>
+                                <div class="grid grid-cols-12 gap-2 items-center">
+                                    <label class="col-span-5 text-xs font-semibold text-slate-700">Demissional</label>
+                                    <select id="ghe_protocolo_demissional" class="col-span-7 rounded-lg border-slate-200 text-sm px-2 py-1.5 bg-white"></select>
+                                </div>
+                                <div class="grid grid-cols-12 gap-2 items-center">
+                                    <label class="col-span-5 text-xs font-semibold text-slate-700">Mudança de Função</label>
+                                    <select id="ghe_protocolo_mudanca_funcao" class="col-span-7 rounded-lg border-slate-200 text-sm px-2 py-1.5 bg-white"></select>
+                                </div>
+                                <div class="grid grid-cols-12 gap-2 items-center">
+                                    <label class="col-span-5 text-xs font-semibold text-slate-700">Retorno ao Trabalho</label>
+                                    <select id="ghe_protocolo_retorno_trabalho" class="col-span-7 rounded-lg border-slate-200 text-sm px-2 py-1.5 bg-white"></select>
+                                </div>
+                            </div>
+                        @else
+                            <select id="ghe_protocolo" class="w-full mt-3 rounded-xl border-slate-200 text-sm px-3 py-2 bg-white">
+                                <option value="">Selecione...</option>
+                            </select>
+                            <div id="gheProtocoloResumo" class="mt-2 text-xs text-slate-500">Nenhum exame selecionado.</div>
+                        @endif
                     </section>
 
                     <div class="hidden">
@@ -204,7 +239,13 @@
                     protocolos: @json(route($routePrefix.'.protocolos-exames.indexJson')),
                     funcoes: @json(route($routePrefix.'.funcoes.indexJson')),
                 },
-                state: { ghes: [], protocolos: [], funcoes: FUNCOES || [], selectedFuncoes: new Set() },
+                state: {
+                    ghes: [],
+                    protocolos: [],
+                    funcoes: FUNCOES || [],
+                    selectedFuncoes: new Set(),
+                    reopenListAfterFormClose: false,
+                },
                 dom: {
                     modal: document.getElementById('modalGhe'),
                     list: document.getElementById('gheList'),
@@ -216,6 +257,14 @@
                     nome: document.getElementById('ghe_nome'),
                     protocolo: document.getElementById('ghe_protocolo'),
                     protocoloResumo: document.getElementById('gheProtocoloResumo'),
+                    protocolosResumoTipos: document.getElementById('gheProtocolosResumoTipos'),
+                    protocolosToggle: document.getElementById('gheProtocolosToggle'),
+                    protocolosByTipoPanel: document.getElementById('gheProtocolosByTipoPanel'),
+                    protocoloAdm: document.getElementById('ghe_protocolo_admissional'),
+                    protocoloPer: document.getElementById('ghe_protocolo_periodico'),
+                    protocoloDem: document.getElementById('ghe_protocolo_demissional'),
+                    protocoloMud: document.getElementById('ghe_protocolo_mudanca_funcao'),
+                    protocoloRet: document.getElementById('ghe_protocolo_retorno_trabalho'),
                     funcoesSearchAvailable: document.getElementById('gheFuncoesSearchAvailable'),
                     funcoesSearchSelected: document.getElementById('gheFuncoesSearchSelected'),
                     funcoesAvailable: document.getElementById('gheFuncoesAvailable'),
@@ -243,6 +292,7 @@
                     totalRet: document.getElementById('gheTotalRet'),
                 }
             };
+            const ASO_PROTOCOL_KEYS = ['admissional', 'periodico', 'demissional', 'mudanca_funcao', 'retorno_trabalho'];
 
             function ensureModalOverSidebar(modalEl, zIndexValue) {
                 if (!modalEl) return;
@@ -342,34 +392,60 @@
             }
 
             function renderProtocolosSelect(){
-                if (!GHE.dom.protocolo) return;
-                const current = String(GHE.dom.protocolo.value || '');
-                GHE.dom.protocolo.innerHTML = '<option value="">Selecione...</option>';
-                GHE.state.protocolos.forEach(p => {
-                    const opt = document.createElement('option');
-                    opt.value = p.id;
-                    opt.textContent = p.titulo;
-                    GHE.dom.protocolo.appendChild(opt);
+                const selects = [
+                    GHE.dom.protocolo,
+                    GHE.dom.protocoloAdm,
+                    GHE.dom.protocoloPer,
+                    GHE.dom.protocoloDem,
+                    GHE.dom.protocoloMud,
+                    GHE.dom.protocoloRet,
+                ].filter(Boolean);
+                if (!selects.length) return;
+
+                selects.forEach((selectEl) => {
+                    const current = String(selectEl.value || '');
+                    selectEl.innerHTML = '<option value="">Selecione...</option>';
+                    GHE.state.protocolos.forEach(p => {
+                        const opt = document.createElement('option');
+                        opt.value = p.id;
+                        opt.textContent = p.titulo;
+                        selectEl.appendChild(opt);
+                    });
+                    if (current) selectEl.value = current;
                 });
-                if (current) {
-                    GHE.dom.protocolo.value = current;
-                }
                 updateProtocoloResumo();
             }
 
+            function getProtocolosByTipoFromForm() {
+                return {
+                    admissional: Number(GHE.dom.protocoloAdm?.value || 0) || null,
+                    periodico: Number(GHE.dom.protocoloPer?.value || 0) || null,
+                    demissional: Number(GHE.dom.protocoloDem?.value || 0) || null,
+                    mudanca_funcao: Number(GHE.dom.protocoloMud?.value || 0) || null,
+                    retorno_trabalho: Number(GHE.dom.protocoloRet?.value || 0) || null,
+                };
+            }
+
             function updateProtocoloResumo(){
-                if (!GHE.dom.protocoloResumo) return;
-                const id = Number(GHE.dom.protocolo?.value || 0);
-                if (!id) {
-                    GHE.dom.protocoloResumo.textContent = 'Nenhum exame selecionado.';
-                    return;
+                if (GHE.dom.protocoloResumo) {
+                    const id = Number(GHE.dom.protocolo?.value || 0);
+                    if (!id) {
+                        GHE.dom.protocoloResumo.textContent = 'Nenhum exame selecionado.';
+                    } else {
+                        const grupo = GHE.state.protocolos.find(p => Number(p.id) === id);
+                        const total = Number(grupo?.total || 0);
+                        const count = grupo?.exames?.length ?? 0;
+                        GHE.dom.protocoloResumo.textContent = count
+                            ? `${count} exame(s) • Total ${brl(total)}`
+                            : 'Grupo sem exames.';
+                    }
                 }
-                const grupo = GHE.state.protocolos.find(p => Number(p.id) === id);
-                const total = Number(grupo?.total || 0);
-                const count = grupo?.exames?.length ?? 0;
-                GHE.dom.protocoloResumo.textContent = count
-                    ? `${count} exame(s) • Total ${brl(total)}`
-                    : 'Grupo sem exames.';
+
+                if (IS_CLIENTE_SCOPE && GHE.dom.protocolosResumoTipos) {
+                    const protocolos = getProtocolosByTipoFromForm();
+                    const configured = ASO_PROTOCOL_KEYS.filter((key) => Number(protocolos[key] || 0) > 0).length;
+                    GHE.dom.protocolosResumoTipos.textContent = `${configured}/5 tipos configurados.`;
+                }
             }
 
             function renderGhes(){
@@ -531,6 +607,7 @@
                 const payload = {
                     nome: GHE.dom.nome.value.trim(),
                     grupo_exames_id: Number(GHE.dom.protocolo?.value || 0) || null,
+                    protocolos: getProtocolosByTipoFromForm(),
                     funcoes: getSelectedFuncoes(),
                     base: {
                         admissional: Number(GHE.dom.baseAdm.value || 0),
@@ -558,7 +635,7 @@
 
                 if (IS_CLIENTE_SCOPE) {
                     payload.cliente_id = clienteId;
-                    payload.protocolo_id = payload.grupo_exames_id;
+                    payload.protocolo_id = null;
                     delete payload.grupo_exames_id;
                 }
 
@@ -610,25 +687,43 @@
 
             window.openGheModal = async function(){
                 ensureModalOverSidebar(GHE.dom.modal, 220);
+                GHE.state.reopenListAfterFormClose = false;
                 GHE.dom.modal?.classList.remove('hidden');
                 await loadProtocolos();
                 renderFuncoesList();
                 await loadGhes();
             };
-            window.closeGheModal = () => GHE.dom.modal?.classList.add('hidden');
+            window.closeGheModal = () => {
+                GHE.state.reopenListAfterFormClose = false;
+                GHE.dom.modalForm?.classList.add('hidden');
+                GHE.dom.modal?.classList.add('hidden');
+            };
 
             window.openGheForm = async function(ghe){
                 if (ghe && !PERMS.update) return deny('Usuário sem permissão para editar.');
                 if (!ghe && !PERMS.create) return deny('Usuário sem permissão para criar.');
+                const listWasOpen = !!GHE.dom.modal && !GHE.dom.modal.classList.contains('hidden');
+                GHE.state.reopenListAfterFormClose = listWasOpen;
+                if (listWasOpen) {
+                    GHE.dom.modal.classList.add('hidden');
+                }
                 ensureModalOverSidebar(GHE.dom.modalForm, 230);
                 GHE.dom.modalForm?.classList.remove('hidden');
                 GHE.dom.title.textContent = ghe ? 'Editar GHE' : 'Novo GHE';
                 GHE.dom.id.value = ghe?.id || '';
                 GHE.dom.nome.value = ghe?.nome || '';
-                if (GHE.dom.protocolo) {
+                if (!IS_CLIENTE_SCOPE && GHE.dom.protocolo) {
                     GHE.dom.protocolo.value = ghe?.grupo_exames_id || '';
-                    updateProtocoloResumo();
                 }
+                if (IS_CLIENTE_SCOPE) {
+                    const protocolos = ghe?.protocolos || {};
+                    if (GHE.dom.protocoloAdm) GHE.dom.protocoloAdm.value = protocolos?.admissional?.id || '';
+                    if (GHE.dom.protocoloPer) GHE.dom.protocoloPer.value = protocolos?.periodico?.id || '';
+                    if (GHE.dom.protocoloDem) GHE.dom.protocoloDem.value = protocolos?.demissional?.id || '';
+                    if (GHE.dom.protocoloMud) GHE.dom.protocoloMud.value = protocolos?.mudanca_funcao?.id || '';
+                    if (GHE.dom.protocoloRet) GHE.dom.protocoloRet.value = protocolos?.retorno_trabalho?.id || '';
+                }
+                updateProtocoloResumo();
                 if (GHE.dom.funcoesSearchAvailable) GHE.dom.funcoesSearchAvailable.value = '';
                 if (GHE.dom.funcoesSearchSelected) GHE.dom.funcoesSearchSelected.value = '';
                 renderFuncoesList();
@@ -644,10 +739,20 @@
                 GHE.dom.fechadoFun.value = ghe?.preco_fechado?.mudanca_funcao ?? '';
                 GHE.dom.fechadoRet.value = ghe?.preco_fechado?.retorno_trabalho ?? '';
             };
-            window.closeGheForm = () => GHE.dom.modalForm?.classList.add('hidden');
+            window.closeGheForm = () => {
+                GHE.dom.modalForm?.classList.add('hidden');
+                if (GHE.state.reopenListAfterFormClose) {
+                    GHE.dom.modal?.classList.remove('hidden');
+                }
+            };
 
             GHE.dom.form?.addEventListener('submit', saveGhe);
-            GHE.dom.protocolo?.addEventListener('change', updateProtocoloResumo);
+            GHE.dom.protocolo?.addEventListener('change', () => {
+                updateProtocoloResumo();
+            });
+            [GHE.dom.protocoloAdm, GHE.dom.protocoloPer, GHE.dom.protocoloDem, GHE.dom.protocoloMud, GHE.dom.protocoloRet]
+                .filter(Boolean)
+                .forEach((selectEl) => selectEl.addEventListener('change', updateProtocoloResumo));
             GHE.dom.funcoesReload?.addEventListener('click', reloadFuncoes);
             GHE.dom.funcoesSearchAvailable?.addEventListener('input', renderFuncoesList);
             GHE.dom.funcoesSearchSelected?.addEventListener('input', renderFuncoesList);

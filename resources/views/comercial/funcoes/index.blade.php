@@ -325,7 +325,11 @@
 
                 const submitWithDebounce = () => {
                     clearTimeout(timer);
-                    timer = setTimeout(() => form?.submit(), 350);
+                    const term = String(input?.value || '').trim();
+                    if (term !== '' && term.length < 3) {
+                        return;
+                    }
+                    timer = setTimeout(() => form?.submit(), 900);
                 };
 
                 input?.addEventListener('input', submitWithDebounce);

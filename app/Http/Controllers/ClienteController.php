@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Cidade;
 use App\Models\Cliente;
+use App\Models\ClienteGheFuncao;
 use App\Models\Estado;
 use App\Models\Funcao;
 use App\Models\Funcionario;
@@ -376,7 +377,7 @@ class ClienteController extends Controller
             }
 
             return redirect()
-                ->route($this->routeName('edit'), $cliente)
+                ->route($this->routeName('edit'), ['cliente' => $cliente->id, 'tab' => 'tarefa'])
                 ->with('ok', 'Cliente cadastrado com sucesso!');
         } catch (\Throwable $e) {
             report($e);
@@ -539,7 +540,34 @@ class ClienteController extends Controller
             ->when($esocialId, fn($q) => $q->where('id', '!=', $esocialId))
             ->orderBy('nome')
             ->get();
-        $funcoes = Funcao::where('empresa_id', $empresaId)->orderBy('nome')->get(['id', 'nome']);
+        $funcoes = Funcao::where('empresa_id', $empresaId)->orderBy('nome')->get(['id', 'nome', 'ativo']);
+        $clienteFuncoesIds = $cliente->funcoes()
+            ->where('funcoes.empresa_id', $empresaId)
+            ->pluck('funcoes.id')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+
+        $funcionariosPorFuncao = Funcionario::query()
+            ->where('empresa_id', $empresaId)
+            ->where('cliente_id', $cliente->id)
+            ->whereNotNull('funcao_id')
+            ->selectRaw('funcao_id, COUNT(*) as total')
+            ->groupBy('funcao_id')
+            ->pluck('total', 'funcao_id')
+            ->mapWithKeys(fn ($total, $funcaoId) => [(int) $funcaoId => (int) $total])
+            ->all();
+
+        $ghesPorFuncao = ClienteGheFuncao::query()
+            ->selectRaw('cliente_ghe_funcoes.funcao_id, COUNT(DISTINCT cliente_ghe_funcoes.cliente_ghe_id) as total')
+            ->whereHas('ghe', function ($q) use ($empresaId, $cliente) {
+                $q->where('empresa_id', $empresaId)
+                    ->where('cliente_id', $cliente->id);
+            })
+            ->groupBy('cliente_ghe_funcoes.funcao_id')
+            ->pluck('total', 'cliente_ghe_funcoes.funcao_id')
+            ->mapWithKeys(fn ($total, $funcaoId) => [(int) $funcaoId => (int) $total])
+            ->all();
 
         $treinamentos = collect();
         $treinamentoId = (int) (config('services.treinamento_id') ?? 0);
@@ -685,6 +713,9 @@ class ClienteController extends Controller
             'routePrefix'     => $routePrefix,
             'servicos'        => $servicos,
             'funcoes'         => $funcoes,
+            'clienteFuncoesIds' => $clienteFuncoesIds,
+            'funcionariosPorFuncao' => $funcionariosPorFuncao,
+            'ghesPorFuncao' => $ghesPorFuncao,
             'treinamentos'    => $treinamentos,
             'formasPagamento' => $formasPagamento,
             'parametro'       => $parametro,

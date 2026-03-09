@@ -8,6 +8,7 @@ use App\Models\ProtocoloExame;
 use App\Models\ProtocoloExameItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class ProtocolosExamesController extends Controller
 {
@@ -59,6 +60,9 @@ class ProtocolosExamesController extends Controller
         ]);
 
         return DB::transaction(function () use ($data, $empresaId) {
+            $validIds = $this->resolveValidExameIds($data['exames'] ?? [], $empresaId);
+            $this->assertNoDuplicateExamGroup($validIds, $empresaId, null);
+
             $protocolo = ProtocoloExame::create([
                 'empresa_id' => $empresaId,
                 'titulo' => $data['titulo'],
@@ -66,7 +70,7 @@ class ProtocolosExamesController extends Controller
                 'ativo' => $data['ativo'] ?? true,
             ]);
 
-            $this->syncExames($protocolo, $data['exames'] ?? []);
+            $this->syncExames($protocolo, $validIds);
 
             return response()->json(['data' => $protocolo->fresh()], 201);
         });
@@ -85,13 +89,17 @@ class ProtocolosExamesController extends Controller
         ]);
 
         return DB::transaction(function () use ($data, $protocolo) {
+            $empresaId = auth()->user()->empresa_id;
+            $validIds = $this->resolveValidExameIds($data['exames'] ?? [], $empresaId);
+            $this->assertNoDuplicateExamGroup($validIds, $empresaId, $protocolo->id);
+
             $protocolo->update([
                 'titulo' => $data['titulo'],
                 'descricao' => $data['descricao'] ?? null,
                 'ativo' => $data['ativo'] ?? false,
             ]);
 
-            $this->syncExames($protocolo, $data['exames'] ?? []);
+            $this->syncExames($protocolo, $validIds);
 
             return response()->json(['data' => $protocolo->fresh()]);
         });
@@ -106,21 +114,8 @@ class ProtocolosExamesController extends Controller
         return response()->json(['ok' => true]);
     }
 
-    private function syncExames(ProtocoloExame $protocolo, array $examesIds): void
+    private function syncExames(ProtocoloExame $protocolo, array $validIds): void
     {
-        $empresaId = auth()->user()->empresa_id;
-        $ids = array_values(array_unique(array_map('intval', $examesIds)));
-
-        if (!empty($ids)) {
-            $validIds = ExamesTabPreco::query()
-                ->where('empresa_id', $empresaId)
-                ->whereIn('id', $ids)
-                ->pluck('id')
-                ->all();
-        } else {
-            $validIds = [];
-        }
-
         ProtocoloExameItem::where('protocolo_id', $protocolo->id)
             ->whereNotIn('exame_id', $validIds)
             ->delete();
@@ -135,6 +130,59 @@ class ProtocolosExamesController extends Controller
             ProtocoloExameItem::create([
                 'protocolo_id' => $protocolo->id,
                 'exame_id' => $exameId,
+            ]);
+        }
+    }
+
+    private function resolveValidExameIds(array $examesIds, int $empresaId): array
+    {
+        $ids = array_values(array_unique(array_map('intval', $examesIds)));
+
+        if (!empty($ids)) {
+            return ExamesTabPreco::query()
+                ->where('empresa_id', $empresaId)
+                ->whereIn('id', $ids)
+                ->pluck('id')
+                ->all();
+        }
+
+        return [];
+    }
+
+    private function assertNoDuplicateExamGroup(array $exameIds, int $empresaId, ?int $currentProtocoloId): void
+    {
+        if (empty($exameIds)) {
+            return;
+        }
+
+        $alvo = array_values(array_unique(array_map('intval', $exameIds)));
+        sort($alvo);
+
+        $query = ProtocoloExame::query()
+            ->where('empresa_id', $empresaId)
+            ->with('itens:protocolo_id,exame_id');
+
+        if ($currentProtocoloId) {
+            $query->where('id', '!=', $currentProtocoloId);
+        }
+
+        $grupoDuplicado = $query
+            ->get(['id', 'titulo'])
+            ->first(function (ProtocoloExame $protocolo) use ($alvo) {
+                $ids = $protocolo->itens
+                    ->pluck('exame_id')
+                    ->map(fn ($id) => (int) $id)
+                    ->unique()
+                    ->values()
+                    ->all();
+
+                sort($ids);
+                return $ids === $alvo;
+            });
+
+        if ($grupoDuplicado) {
+            throw ValidationException::withMessages([
+                'exames' => "Já existe um grupo com a mesma combinação de exames: {$grupoDuplicado->titulo}.",
             ]);
         }
     }

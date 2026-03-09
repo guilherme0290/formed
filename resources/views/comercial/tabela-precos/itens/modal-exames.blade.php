@@ -3,7 +3,7 @@
 @php($canUpdate = $canUpdate ?? false)
 @php($canDelete = $canDelete ?? false)
 
-<div id="modalExamesCrud" data-overlay-root="true" class="fixed inset-0 z-[90] hidden bg-black/50 overflow-y-auto">
+<div id="modalExamesCrud" data-overlay-root="true" class="fixed inset-0 z-[260] hidden bg-black/50 overflow-y-auto" style="z-index: 260;">
     <div class="min-h-full w-full flex items-center justify-center p-4 md:p-6">
         <div class="bg-white w-full max-w-5xl rounded-2xl shadow-xl overflow-hidden max-h-[85vh] flex flex-col">
 
@@ -43,18 +43,19 @@
 </div>
 
 {{-- Modal interno: Form criar/editar --}}
-<div id="modalExameForm" data-overlay-root="true" class="fixed inset-0 z-[100] hidden bg-black/50 overflow-y-auto">
+<div id="modalExameForm" data-overlay-root="true" class="fixed inset-0 z-[270] hidden bg-black/50 overflow-y-auto" style="z-index: 270;">
     <div class="min-h-full w-full flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-xl rounded-2xl shadow-xl overflow-hidden max-h-[90vh] overflow-y-auto">
-            <div class="px-6 py-4 border-b flex items-center justify-between">
-                <h3 id="exameFormTitle" class="text-lg font-semibold text-slate-800">Novo Exame</h3>
+            <div class="px-6 py-4 bg-indigo-600 text-white flex items-center justify-between">
+                <h3 id="exameFormTitle" class="text-lg font-semibold">Novo Exame</h3>
                 <button type="button" onclick="closeExameForm()"
-                        class="h-9 w-9 rounded-xl hover:bg-slate-100 text-slate-500 flex items-center justify-center">
+                        class="h-9 w-9 rounded-xl hover:bg-white/10 text-white flex items-center justify-center">
                     ✕
                 </button>
             </div>
 
             <form id="formExame" class="p-6 space-y-4">
+                <div id="exameFormAlert" class="hidden"></div>
                 <input type="hidden" id="exame_id" value="">
                 <x-toggle-ativo
                     id="exame_ativo"
@@ -133,6 +134,7 @@
                     modalForm: document.getElementById('modalExameForm'),
                     form: document.getElementById('formExame'),
                     title: document.getElementById('exameFormTitle'),
+                    formAlert: document.getElementById('exameFormAlert'),
 
                     id: document.getElementById('exame_id'),
                     titulo: document.getElementById('exame_titulo'),
@@ -144,6 +146,28 @@
                 }
             };
 
+            function ensureModalOverSidebar(modalEl, zIndexValue) {
+                if (!modalEl) return;
+                const overlayRoot = document.getElementById('app-overlay-root');
+                const mountTarget = overlayRoot || document.body;
+                if (modalEl.parentElement !== mountTarget) {
+                    mountTarget.appendChild(modalEl);
+                }
+                modalEl.classList.add('pointer-events-auto');
+                modalEl.style.position = 'fixed';
+                modalEl.style.inset = '0';
+                modalEl.style.top = '0';
+                modalEl.style.left = '0';
+                modalEl.style.right = '0';
+                modalEl.style.bottom = '0';
+                modalEl.style.width = '100vw';
+                modalEl.style.height = '100vh';
+                modalEl.style.zIndex = String(zIndexValue);
+            }
+
+            ensureModalOverSidebar(EXAMES.dom.modal, 260);
+            ensureModalOverSidebar(EXAMES.dom.modalForm, 270);
+
             function brl(n){ return Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
             function escapeHtml(str){
                 return String(str||'')
@@ -152,19 +176,21 @@
             }
 
             function alertBox(type,msg){
-                if(!EXAMES.dom.alert) return;
-                EXAMES.dom.alert.classList.remove('hidden');
-                EXAMES.dom.alert.className = 'rounded-xl border px-4 py-3 text-sm';
+                const formAberto = EXAMES.dom.modalForm && !EXAMES.dom.modalForm.classList.contains('hidden');
+                const alvo = formAberto ? EXAMES.dom.formAlert : EXAMES.dom.alert;
+                if(!alvo) return;
+                alvo.classList.remove('hidden');
+                alvo.className = 'rounded-xl border px-4 py-3 text-sm';
                 if(type==='ok'){
-                    EXAMES.dom.alert.classList.add('bg-emerald-50','border-emerald-200','text-emerald-800');
+                    alvo.classList.add('bg-emerald-50','border-emerald-200','text-emerald-800');
                 } else {
-                    EXAMES.dom.alert.classList.add('bg-red-50','border-red-200','text-red-800');
+                    alvo.classList.add('bg-red-50','border-red-200','text-red-800');
                 }
-                EXAMES.dom.alert.textContent = msg;
+                alvo.textContent = msg;
             }
             function alertHide(){
-                if(!EXAMES.dom.alert) return;
-                EXAMES.dom.alert.classList.add('hidden');
+                if(EXAMES.dom.alert) EXAMES.dom.alert.classList.add('hidden');
+                if(EXAMES.dom.formAlert) EXAMES.dom.formAlert.classList.add('hidden');
             }
 
             // máscara por centavos (reaproveita seu padrão)
@@ -270,6 +296,7 @@
                 if(!EXAMES.dom.modalForm) return;
                 if (exame && !PERMS.update) return deny('Usuário sem permissão para editar.');
                 if (!exame && !PERMS.create) return deny('Usuário sem permissão para criar.');
+                alertHide();
 
                 EXAMES.dom.id.value = exame?.id ?? '';
                 EXAMES.dom.titulo.value = exame?.titulo ?? '';
@@ -286,6 +313,7 @@
             }
 
             function closeExameForm(){
+                alertHide();
                 EXAMES.dom.modalForm?.classList.add('hidden');
             }
 
@@ -304,7 +332,9 @@
                 };
 
                 if(!payload.titulo) return alertBox('err','Informe o título.');
-                if(payload.preco < 0) return alertBox('err','Preço inválido.');
+                if(!Number.isFinite(payload.preco) || payload.preco <= 0) {
+                    return alertBox('err','Informe o preço do exame.');
+                }
 
                 try{
                     alertHide();
@@ -334,6 +364,7 @@
                     closeExameForm();
                     await loadExames();
                     alertBox('ok', isEdit ? 'Exame atualizado.' : 'Exame criado.');
+                    window.dispatchEvent(new CustomEvent('exames:updated'));
                 } catch(err){
                     console.error(err);
                     alertBox('err','Falha ao salvar exame.');
@@ -354,6 +385,7 @@
                     if(!res.ok) return alertBox('err','Erro ao excluir exame.');
                     await loadExames();
                     alertBox('ok','Exame removido.');
+                    window.dispatchEvent(new CustomEvent('exames:updated'));
                 } catch(err){
                     console.error(err);
                     alertBox('err','Falha ao excluir exame.');
@@ -362,10 +394,13 @@
 
             // Expor funções p/ onclick
             window.openExamesModal = async function(){
+                ensureModalOverSidebar(EXAMES.dom.modal, 260);
+                alertHide();
                 EXAMES.dom.modal?.classList.remove('hidden');
                 await loadExames();
             }
             window.closeExamesModal = function(){
+                alertHide();
                 EXAMES.dom.modal?.classList.add('hidden');
             }
             window.openExameForm = openExameForm;

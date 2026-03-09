@@ -148,6 +148,13 @@
 @push('scripts')
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            const input = document.getElementById('kanban-clientes-input');
+            const form = document.getElementById('kanban-clientes-form');
+            let timer = null;
+            const delay = 900;
+            const minChars = 3;
+            let lastSubmittedQuery = (input?.value || '').trim();
+
             window.initTailwindAutocomplete?.(
                 'kanban-clientes-input',
                 'kanban-clientes-list',
@@ -155,8 +162,8 @@
                 {
                     maxItems: 200,
                     onSelect: () => {
-                        const form = document.getElementById('kanban-clientes-form');
                         if (!form) return;
+                        lastSubmittedQuery = (input?.value || '').trim();
                         if (typeof form.requestSubmit === 'function') {
                             form.requestSubmit();
                         } else {
@@ -165,6 +172,29 @@
                     }
                 }
             );
+
+            if (!input || !form) return;
+
+            input.addEventListener('input', () => {
+                clearTimeout(timer);
+                const query = (input.value || '').trim();
+
+                if (query !== '' && query.length < minChars) return;
+                if (query === lastSubmittedQuery) return;
+
+                timer = setTimeout(() => {
+                    lastSubmittedQuery = query;
+                    if (typeof form.requestSubmit === 'function') {
+                        form.requestSubmit();
+                    } else {
+                        form.submit();
+                    }
+                }, delay);
+            });
+
+            form.addEventListener('submit', () => {
+                lastSubmittedQuery = (input.value || '').trim();
+            });
         });
     </script>
 @endpush

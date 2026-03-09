@@ -12,6 +12,7 @@ use App\Models\ContaReceber;
 use App\Models\ContaReceberBaixa;
 
 use App\Models\ContaReceberItem;
+use App\Models\PcmsoSolicitacoes;
 use App\Models\PgrSolicitacoes;
 use App\Models\Servico;
 use App\Models\Tarefa;
@@ -20,6 +21,7 @@ use App\Models\TreinamentoNrDetalhes;
 use App\Models\Venda;
 use App\Models\VendaItem;
 use App\Services\AsoGheService;
+use App\Services\ContratoClienteService;
 use App\Services\ContaReceberService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
@@ -742,6 +744,7 @@ class ClienteDashboardController extends Controller
             ->where('empresa_id', $contratoAtivo->empresa_id)
             ->whereRaw('LOWER(nome) = ?', ['pcmso'])
             ->value('id');
+        $dadosPcmso = $this->dadosPcmsoPorTarefaIds($tarefas, $servicoPcmsoId);
         $total = 0.0;
 
         foreach ($tarefas as $tarefa) {
@@ -761,6 +764,11 @@ class ClienteDashboardController extends Controller
                 if ($valor !== null && $valor > 0) {
                     $total += $valor;
                 }
+            } elseif ($servicoPcmsoId > 0 && (int) $tarefa->servico_id === $servicoPcmsoId) {
+                $valor = $this->valorPcmsoContratoPorTipo($contratoAtivo, $dadosPcmso[$tarefa->id]['tipo'] ?? 'matriz');
+                if ($valor > 0) {
+                    $total += $valor;
+                }
             } else {
                 $valor = (float) ($itensPorServico->get($tarefa->servico_id)->preco_unitario_snapshot ?? 0);
                 if ($valor > 0) {
@@ -778,7 +786,7 @@ class ClienteDashboardController extends Controller
 
             $pgrComPcmso = (bool) ($dadosPgr[$tarefa->id]['com_pcms0'] ?? false);
             if ($pgrComPcmso && $servicoPcmsoId > 0) {
-                $valorPcmso = (float) ($itensPorServico->get($servicoPcmsoId)->preco_unitario_snapshot ?? 0);
+                $valorPcmso = $this->valorPcmsoContratoPorTipo($contratoAtivo, $dadosPgr[$tarefa->id]['tipo'] ?? 'matriz');
                 if ($valorPcmso > 0) {
                     $total += $valorPcmso;
                 }
@@ -803,6 +811,11 @@ class ClienteDashboardController extends Controller
         $asoServicoId = app(AsoGheService::class)->resolveServicoAsoIdFromContrato($contratoAtivo);
         $dadosAso = $this->dadosAsoPorTarefaIds($tarefas, $asoServicoId);
         $itensPorServico = $contratoAtivo->itens->keyBy('servico_id');
+        $servicoPcmsoId = (int) Servico::query()
+            ->where('empresa_id', $contratoAtivo->empresa_id)
+            ->whereRaw('LOWER(nome) = ?', ['pcmso'])
+            ->value('id');
+        $dadosPcmso = $this->dadosPcmsoPorTarefaIds($tarefas, $servicoPcmsoId);
         foreach ($tarefas as $tarefa) {
             if ($asoServicoId && (int) $tarefa->servico_id === (int) $asoServicoId) {
                 $tipoAso = $dadosAso[$tarefa->id]['tipo_aso'] ?? null;
@@ -814,7 +827,11 @@ class ClienteDashboardController extends Controller
                     continue;
                 }
             }
-            $valor = (float) ($itensPorServico->get($tarefa->servico_id)->preco_unitario_snapshot ?? 0);
+            if ($servicoPcmsoId > 0 && (int) $tarefa->servico_id === (int) $servicoPcmsoId) {
+                $valor = $this->valorPcmsoContratoPorTipo($contratoAtivo, $dadosPcmso[$tarefa->id]['tipo'] ?? 'matriz');
+            } else {
+                $valor = (float) ($itensPorServico->get($tarefa->servico_id)->preco_unitario_snapshot ?? 0);
+            }
             if ($valor > 0) {
                 $tarefa->setAttribute('valor_estimado', $valor);
                 $total += $valor;
@@ -858,6 +875,39 @@ class ClienteDashboardController extends Controller
             ->all();
     }
 
+    private function dadosPcmsoPorTarefaIds(iterable $tarefas, ?int $servicoPcmsoId): array
+    {
+        if (!$servicoPcmsoId) {
+            return [];
+        }
+
+        $ids = collect($tarefas)
+            ->filter(fn ($tarefa) => (int) $tarefa->servico_id === (int) $servicoPcmsoId)
+            ->pluck('id')
+            ->filter()
+            ->values();
+
+        if ($ids->isEmpty()) {
+            return [];
+        }
+
+        return PcmsoSolicitacoes::query()
+            ->whereIn('tarefa_id', $ids)
+            ->get(['tarefa_id', 'tipo'])
+            ->mapWithKeys(function (PcmsoSolicitacoes $pcmso) {
+                return [(int) $pcmso->tarefa_id => ['tipo' => $pcmso->tipo]];
+            })
+            ->all();
+    }
+
+    private function valorPcmsoContratoPorTipo(ClienteContrato $contratoAtivo, ?string $tipo): float
+    {
+        $item = app(ContratoClienteService::class)
+            ->findPcmsoItem($contratoAtivo, $tipo ?? 'matriz');
+
+        return (float) ($item?->preco_unitario_snapshot ?? 0);
+    }
+
     private function dadosPgrPorTarefaIds(iterable $tarefas): array
     {
         $ids = collect($tarefas)
@@ -872,10 +922,11 @@ class ClienteDashboardController extends Controller
 
         return PgrSolicitacoes::query()
             ->whereIn('tarefa_id', $ids)
-            ->get(['tarefa_id', 'com_art', 'com_pcms0'])
+            ->get(['tarefa_id', 'tipo', 'com_art', 'com_pcms0'])
             ->mapWithKeys(function ($pgr) {
                 return [
                     (int) $pgr->tarefa_id => [
+                        'tipo' => $pgr->tipo,
                         'com_art' => (bool) $pgr->com_art,
                         'com_pcms0' => (bool) $pgr->com_pcms0,
                     ],
@@ -946,11 +997,13 @@ class ClienteDashboardController extends Controller
             ->where('empresa_id', $contratoAtivo->empresa_id)
             ->whereRaw('LOWER(nome) = ?', ['pcmso'])
             ->value('id');
+        $dadosPcmso = $this->dadosPcmsoPorTarefaIds($tarefas, $servicoPcmsoId);
 
         return $tarefas->map(function ($tarefa) use (
             $asoServicoId,
             $dadosAso,
             $dadosPgr,
+            $dadosPcmso,
             $itensPorServico,
             $contratoAtivo,
             $servicoArtId,
@@ -968,6 +1021,8 @@ class ClienteDashboardController extends Controller
                 $payload = $treinamentoDetalhes->get((int) $tarefa->id)?->treinamentos ?? [];
                 $qtdParticipantes = (int) ($treinamentoQtdParticipantes[(int) $tarefa->id] ?? 0);
                 $valor = $this->valorTreinamentoNrContrato($contratoAtivo, $servicoTreinamentosNrId, $payload, $qtdParticipantes);
+            } elseif ($servicoPcmsoId > 0 && (int) $tarefa->servico_id === $servicoPcmsoId) {
+                $valor = $this->valorPcmsoContratoPorTipo($contratoAtivo, $dadosPcmso[$tarefa->id]['tipo'] ?? 'matriz');
             } else {
                 $valor = (float) ($itensPorServico->get($tarefa->servico_id)->preco_unitario_snapshot ?? 0);
             }
@@ -984,7 +1039,7 @@ class ClienteDashboardController extends Controller
 
             $pgrComPcmso = (bool) ($dadosPgr[$tarefa->id]['com_pcms0'] ?? false);
             if ($pgrComPcmso && $servicoPcmsoId > 0) {
-                $valorPcmso = (float) ($itensPorServico->get($servicoPcmsoId)->preco_unitario_snapshot ?? 0);
+                $valorPcmso = $this->valorPcmsoContratoPorTipo($contratoAtivo, $dadosPgr[$tarefa->id]['tipo'] ?? 'matriz');
                 if ($valor !== null) {
                     $valor += $valorPcmso;
                 } else {
@@ -1193,6 +1248,8 @@ class ClienteDashboardController extends Controller
                 'treinamento_unidade',
                 'treinamento_participantes',
                 'treinamento_qtd',
+                'pcmso_tipo',
+                'pcmso_obra',
             ] as $campo) {
                 if (property_exists($detalhes, $campo)) {
                     $tarefa->setAttribute($campo, $detalhes->{$campo});
@@ -1231,6 +1288,11 @@ class ClienteDashboardController extends Controller
             ->get()
             ->keyBy('tarefa_id');
 
+        $dadosPcmso = PcmsoSolicitacoes::query()
+            ->whereIn('tarefa_id', $tarefaIds)
+            ->get()
+            ->keyBy('tarefa_id');
+
         $treinamentoDetalhes = TreinamentoNrDetalhes::query()
             ->whereIn('tarefa_id', $tarefaIds)
             ->with('unidade:id,nome')
@@ -1251,7 +1313,7 @@ class ClienteDashboardController extends Controller
             'retorno_trabalho' => 'Retorno ao Trabalho',
         ];
 
-        return $itens->map(function ($item) use ($dadosAso, $dadosPgr, $treinamentoDetalhes, $treinamentoParticipantes, $mapTipo) {
+        return $itens->map(function ($item) use ($dadosAso, $dadosPgr, $dadosPcmso, $treinamentoDetalhes, $treinamentoParticipantes, $mapTipo) {
             $tarefaId = (int) ($item->tarefa_id ?? 0);
             if ($tarefaId > 0 && $dadosAso->has($tarefaId)) {
                 $aso = $dadosAso->get($tarefaId);
@@ -1302,6 +1364,25 @@ class ClienteDashboardController extends Controller
                 } elseif (str_contains($servicoAtual, 'art')) {
                     if ($pgr->obra_nome) {
                         $item->servico_detalhe = 'ART - ' . $pgr->obra_nome;
+                    }
+                }
+            }
+
+            if ($tarefaId > 0 && $dadosPcmso->has($tarefaId)) {
+                $pcmso = $dadosPcmso->get($tarefaId);
+                $tipoLabel = $pcmso->tipo === 'especifico'
+                    ? 'Específico'
+                    : ($pcmso->tipo === 'matriz' ? 'Matriz' : ($pcmso->tipo ? ucfirst($pcmso->tipo) : null));
+
+                $item->pcmso_tipo = $tipoLabel;
+                $item->pcmso_obra = $pcmso->obra_nome;
+
+                $servicoAtual = mb_strtolower((string) ($item->servico ?? ''));
+                if (str_contains($servicoAtual, 'pcms')) {
+                    if ($tipoLabel === 'Específico' && $pcmso->obra_nome) {
+                        $item->servico_detalhe = 'PCMSO - Específico - ' . $pcmso->obra_nome;
+                    } elseif ($tipoLabel) {
+                        $item->servico_detalhe = 'PCMSO | ' . $tipoLabel;
                     }
                 }
             }

@@ -77,6 +77,17 @@
                 ->map(fn ($id) => (int) $id)
                 ->values();
         }
+        $funcoes = collect($funcoes ?? []);
+        $funcoesSelecionadas = collect(old('funcoes_cliente', $clienteFuncoesIds ?? []))
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->values();
+        $funcionariosPorFuncao = collect($funcionariosPorFuncao ?? []);
+        $ghesPorFuncao = collect($ghesPorFuncao ?? []);
+        $routeFuncoesStore = route($routePrefix . '.parametros.funcoes.store', $cliente);
+        $funcoesCrudPrefix = str_starts_with($routePrefix, 'comercial.') ? 'comercial.funcoes' : 'master.funcoes';
+        $routeFuncoesUpdate = route($funcoesCrudPrefix . '.update', ['funcao' => '__ID__']);
+        $routeFuncoesDestroy = route($funcoesCrudPrefix . '.destroy', ['funcao' => '__ID__']);
     @endphp
 <div class="w-full mx-auto px-4 sm:px-6 lg:px-8 py-6" data-tabs-scope="parametro">
         <form id="parametroForm" method="POST" novalidate
@@ -128,7 +139,7 @@
                                         if (keys.some(k => k === 'forma_pagamento' || k === 'vencimento_servicos' || k === 'email_envio_fatura')) {
                                             targetTab = 'forma-pagamento';
                                         } else if (keys.some(k => k === 'incluir_esocial' || k.startsWith('esocial_'))) {
-                                            targetTab = 'esocial';
+                                            targetTab = 'parametros';
                                         }
 
                                         const tabButton = document.querySelector(`[data-tabs="cliente"] [data-tab="${targetTab}"]`);
@@ -175,6 +186,11 @@
                                     Treinamentos
                                     <span id="badgeTabTreinamentos" class="hidden absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-emerald-400"></span>
                                 </button>
+                                <button type="button"
+                                        class="relative px-4 py-2 rounded-full text-sm font-semibold text-slate-600 hover:bg-slate-100"
+                                        data-tab="funcoes">
+                                    Funções
+                                </button>
                             </div>
 
                             <div data-tab-panel="servicos" class="space-y-3">
@@ -184,6 +200,16 @@
                                         $servicoTreinamentoId = (int) config('services.treinamento_id');
                                         $servicoExameId = (int) config('services.exame_id');
                                         $servicoAsoId = (int) (config('services.aso_id') ?? 0);
+                                        $serviceButtonStyles = [
+                                            'aso' => 'border-slate-200 border-l-4 border-l-sky-500 bg-white text-sky-900 hover:bg-sky-50',
+                                            'pgr' => 'border-slate-200 border-l-4 border-l-emerald-500 bg-white text-emerald-900 hover:bg-emerald-50',
+                                            'pcmso' => 'border-slate-200 border-l-4 border-l-purple-500 bg-white text-purple-900 hover:bg-purple-50',
+                                            'ltcat' => 'border-slate-200 border-l-4 border-l-orange-500 bg-white text-orange-900 hover:bg-orange-50',
+                                            'ltip' => 'border-slate-200 border-l-4 border-l-red-600 bg-white text-red-900 hover:bg-red-50',
+                                            'apr' => 'border-slate-200 border-l-4 border-l-amber-600 bg-white text-amber-900 hover:bg-amber-50',
+                                            'pae' => 'border-slate-200 border-l-4 border-l-rose-600 bg-white text-rose-900 hover:bg-rose-50',
+                                            'default' => 'border-slate-200 border-l-4 border-l-slate-500 bg-white text-slate-700 hover:bg-slate-50',
+                                        ];
                                     @endphp
                                     @foreach($servicos as $servico)
                                         @if(
@@ -193,14 +219,67 @@
                                         )
                                             @continue
                                         @endif
+                                        @php
+                                            $nomeServico = mb_strtolower((string) $servico->nome, 'UTF-8');
+                                            $colorKey = 'default';
+                                            if (str_contains($nomeServico, 'aso')) {
+                                                $colorKey = 'aso';
+                                            } elseif (str_contains($nomeServico, 'pgr')) {
+                                                $colorKey = 'pgr';
+                                            } elseif (str_contains($nomeServico, 'pcmso')) {
+                                                $colorKey = 'pcmso';
+                                            } elseif (str_contains($nomeServico, 'ltcat')) {
+                                                $colorKey = 'ltcat';
+                                            } elseif (str_contains($nomeServico, 'ltip')) {
+                                                $colorKey = 'ltip';
+                                            } elseif (str_contains($nomeServico, 'apr')) {
+                                                $colorKey = 'apr';
+                                            } elseif (str_contains($nomeServico, 'pae')) {
+                                                $colorKey = 'pae';
+                                            }
+                                            $btnServiceClass = $serviceButtonStyles[$colorKey] ?? $serviceButtonStyles['default'];
+                                        @endphp
                                         <button type="button"
-                                                class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white hover:bg-slate-50"
+                                                class="w-full px-3 py-2 rounded-xl border text-sm {{ $btnServiceClass }}"
                                                 data-action="add-servico"
                                                 data-servico-id="{{ $servico->id }}"
                                                 data-servico-nome="{{ e($servico->nome) }}">
                                             + {{ $servico->nome }}
                                         </button>
                                     @endforeach
+                                    <button type="button"
+                                            id="btnToggleEsocial"
+                                            class="w-full px-3 py-2 rounded-xl border border-slate-200 border-l-4 border-l-violet-600 bg-white text-violet-800 text-sm hover:bg-violet-50">
+                                        + eSocial
+                                    </button>
+                                </div>
+
+                                <div class="mt-4 space-y-3">
+                                    <input type="checkbox" id="chkEsocial" name="incluir_esocial" value="1"
+                                           class="hidden"
+                                           @checked(old('incluir_esocial', $isEdit ? $parametro->incluir_esocial : false))>
+
+                                    <div id="esocialBox" class="hidden rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                                        <div class="grid md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label class="text-xs font-semibold text-slate-700">Qtd colaboradores</label>
+                                                <input id="esocialQtd" type="number" min="1"
+                                                       class="mt-1 w-full rounded-xl border border-slate-200 text-sm px-3 py-2"
+                                                       placeholder="Ex.: 12"
+                                                       value="{{ old('esocial_qtd_funcionarios', $isEdit ? $parametro->esocial_qtd_funcionarios : '') }}">
+                                            </div>
+                                            <div>
+                                                <label class="text-xs font-semibold text-slate-700">Valor mensal</label>
+                                                <input id="esocialValorView" type="text" readonly
+                                                       class="mt-1 w-full rounded-xl border border-slate-200 text-sm px-3 py-2 bg-white"
+                                                       value="R$ 0,00">
+                                                <input type="hidden" name="esocial_qtd_funcionarios" id="esocialQtdHidden">
+                                                <input type="hidden" name="esocial_valor_mensal" id="esocialValorHidden"
+                                                       value="{{ old('esocial_valor_mensal', $isEdit ? $parametro->esocial_valor_mensal : '0.00') }}">
+                                            </div>
+                                        </div>
+                                        <p id="esocialAviso" class="mt-3 text-sm text-amber-700 hidden"></p>
+                                    </div>
                                 </div>
                             </div>
 
@@ -284,10 +363,10 @@
 
                                 <div class="rounded-xl border border-slate-200 overflow-hidden">
                                     <div class="px-3 py-2 bg-slate-50">
-                                        <div class="text-sm font-semibold text-slate-800">Protocolos de ASO Configurados</div>
-                                        <div class="text-xs text-slate-500">Resumo dos GHEs com seus grupos por tipo.</div>
+                                        <div class="text-sm font-semibold text-slate-800">Valores de ASO por GHE</div>
+                                        <div class="text-xs text-slate-500">Visualização dos valores por tipo de ASO para todos os GHEs configurados.</div>
                                     </div>
-                                    <div id="gheConfigsGrid" class="p-3 grid gap-3 md:grid-cols-2"></div>
+                                    <div id="asoGheValoresGrid" class="p-3 grid gap-3 md:grid-cols-2"></div>
                                     <div class="px-3 py-2 text-xs text-slate-500 bg-emerald-50/60">
                                         O sistema aplicará automaticamente esses protocolos conforme o GHE do funcionário no momento da criação do ASO.
                                     </div>
@@ -317,6 +396,125 @@
                                             <div class="text-xs text-slate-500">#{{ $t->id }} — {{ $t->titulo }}</div>
                                         </button>
                                     @endforeach
+                                </div>
+                            </div>
+
+                            <div data-tab-panel="funcoes" class="hidden space-y-3">
+                                <div class="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
+                                    <div class="grid gap-4 lg:grid-cols-[360px_minmax(0,1fr)]">
+                                        <div class="rounded-2xl border border-blue-200 bg-white p-4 space-y-3">
+                                            <div>
+                                                <div class="text-xs font-semibold uppercase tracking-wide text-blue-700">1. Gerenciar função</div>
+                                                <div class="mt-1 text-sm font-semibold text-slate-800">Cadastrar nova função</div>
+                                                <div class="text-xs text-slate-500">Use este campo apenas para cadastrar uma nova função.</div>
+                                            </div>
+                                            <div class="space-y-2">
+                                                <input type="text"
+                                                       id="novaFuncaoNome"
+                                                       class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
+                                                       placeholder="Nova função">
+                                                <div class="flex flex-wrap gap-2">
+                                                    <button type="button"
+                                                            id="btnCancelarEdicaoFuncao"
+                                                            class="hidden rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100">
+                                                        Cancelar
+                                                    </button>
+                                                    <button type="button"
+                                                            id="btnNovaFuncaoParametro"
+                                                            class="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-800 hover:bg-blue-100">
+                                                        + Cadastrar
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="rounded-2xl border border-emerald-200 bg-white p-4 space-y-3">
+                                            <div class="flex flex-wrap items-start justify-between gap-3">
+                                                <div>
+                                                    <div class="text-xs font-semibold uppercase tracking-wide text-emerald-700">2. Vincular ao cliente</div>
+                                                    <div class="mt-1 text-sm font-semibold text-slate-800">Selecione as funções disponíveis</div>
+                                                    <div class="text-xs text-slate-500">As funções marcadas poderão ser usadas para este cliente.</div>
+                                                </div>
+                                                <span id="funcoesClienteResumo" class="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
+                                                    0 selecionadas
+                                                </span>
+                                            </div>
+
+                                            <div class="flex flex-wrap gap-2">
+                                                <input type="text"
+                                                       id="funcoesClienteBusca"
+                                                       class="min-w-[220px] flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                                                       placeholder="Buscar função">
+                                                <button type="button"
+                                                        id="btnSelecionarTodasFuncoes"
+                                                        class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                                                    Selecionar todas
+                                                </button>
+                                                <button type="button"
+                                                        id="btnLimparFuncoes"
+                                                        class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                                                    Limpar
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="rounded-2xl border border-slate-200 bg-slate-50/60 p-3">
+                                    <div id="funcoesClienteGrid" class="max-h-[22rem] overflow-y-auto pr-1 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                                        @forelse($funcoes as $funcao)
+                                            @php
+                                                $funcaoId = (int) $funcao->id;
+                                                $qtdFuncionarios = (int) ($funcionariosPorFuncao->get($funcaoId) ?? 0);
+                                                $qtdGhes = (int) ($ghesPorFuncao->get($funcaoId) ?? 0);
+                                                $funcaoAtiva = (bool) ($funcao->ativo ?? true);
+                                            @endphp
+                                            <label class="flex items-start gap-3 rounded-xl border border-slate-200 bg-white px-3 py-3 transition-colors hover:border-emerald-200 {{ $funcaoAtiva ? '' : 'opacity-70' }}"
+                                                   data-funcao-card
+                                                   data-funcao-id="{{ $funcaoId }}"
+                                                   data-funcao-nome="{{ e($funcao->nome) }}"
+                                                   data-funcao-ativo="{{ $funcaoAtiva ? '1' : '0' }}"
+                                                   data-funcao-funcionarios="{{ $qtdFuncionarios }}"
+                                                   data-funcao-ghes="{{ $qtdGhes }}">
+                                                <input type="checkbox"
+                                                       name="funcoes_cliente[]"
+                                                       value="{{ $funcaoId }}"
+                                                       class="mt-1 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                                                       @checked($funcoesSelecionadas->contains($funcaoId))>
+                                                <span class="min-w-0 flex-1">
+                                                    <span class="flex items-center justify-between gap-2">
+                                                        <span class="block truncate text-sm font-semibold text-slate-800" data-role="funcao-title">{{ $funcao->nome }}</span>
+                                                        <span class="flex items-center gap-2 shrink-0">
+                                                            @unless($funcaoAtiva)
+                                                                <span class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700" data-role="funcao-status">Inativa</span>
+                                                            @else
+                                                                <span class="hidden rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700" data-role="funcao-status">Inativa</span>
+                                                            @endunless
+                                                            <button type="button"
+                                                                    class="text-[11px] font-semibold text-blue-700 hover:text-blue-800"
+                                                                    data-action="edit-funcao">
+                                                                Editar
+                                                            </button>
+                                                        </span>
+                                                    </span>
+                                                    <span class="mt-1 block text-[11px] text-slate-500" data-role="funcao-meta">
+                                                        Funcionários: {{ $qtdFuncionarios }} | GHEs: {{ $qtdGhes }}
+                                                    </span>
+                                                </span>
+                                            </label>
+                                        @empty
+                                            <div class="col-span-full rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                                                Nenhuma função cadastrada para a empresa.
+                                            </div>
+                                        @endforelse
+                                    </div>
+                                </div>
+
+                                <div class="flex justify-end">
+                                    <button type="submit"
+                                            class="rounded-xl bg-emerald-600 hover:bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm">
+                                        Salvar Funções
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -413,53 +611,6 @@
                     </div>
                 </div>
 
-            <div data-tab-panel="esocial" data-tab-panel-root="cliente" class="hidden">
-                <div class="bg-white rounded-2xl shadow border border-slate-200 overflow-hidden">
-                    <div class="px-6 py-4 border-b bg-amber-600 text-white">
-                        <h1 class="text-lg font-semibold">eSocial</h1>
-                    </div>
-                    <div class="p-6 space-y-8">
-                        <section class="space-y-3">
-                            <label class="inline-flex items-center gap-2 text-sm font-semibold text-black">
-                                <input type="checkbox" id="chkEsocial" name="incluir_esocial" value="1"
-                                       class="rounded border-slate-300"
-                                       @checked(old('incluir_esocial', $isEdit ? $parametro->incluir_esocial : false))>
-                                Incluir eSocial (mensal)
-                            </label>
-
-                            <div id="esocialBox" class="hidden rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                                <div class="grid md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label class="text-xs font-semibold text-slate-700">Qtd colaboradores</label>
-                                        <input id="esocialQtd" type="number" min="1"
-                                               class="mt-1 w-full rounded-xl border border-slate-200 text-sm px-3 py-2"
-                                               placeholder="Ex.: 12"
-                                               value="{{ old('esocial_qtd_funcionarios', $isEdit ? $parametro->esocial_qtd_funcionarios : '') }}">
-                                    </div>
-                                    <div>
-                                        <label class="text-xs font-semibold text-slate-700">Valor mensal</label>
-                                        <input id="esocialValorView" type="text" readonly
-                                               class="mt-1 w-full rounded-xl border border-slate-200 text-sm px-3 py-2 bg-white"
-                                               value="R$ 0,00">
-                                        <input type="hidden" name="esocial_qtd_funcionarios" id="esocialQtdHidden">
-                                        <input type="hidden" name="esocial_valor_mensal" id="esocialValorHidden"
-                                               value="{{ old('esocial_valor_mensal', $isEdit ? $parametro->esocial_valor_mensal : '0.00') }}">
-                                    </div>
-                                </div>
-
-                                <p id="esocialAviso" class="mt-3 text-sm text-amber-700 hidden"></p>
-                            </div>
-                        </section>
-
-                        <section class="pt-4 border-t">
-                            <button type="submit"
-                                    class="w-full rounded-2xl bg-amber-600 hover:bg-amber-700 text-white text-base font-semibold py-3 shadow-md shadow-amber-200">
-                                Salvar Parâmetros
-                            </button>
-                        </section>
-                    </div>
-                </div>
-            </div>
 
             <div data-tab-panel="forma-pagamento" data-tab-panel-root="cliente" class="hidden">
                 <div class="bg-white rounded-2xl shadow border border-slate-200 overflow-hidden">
@@ -630,6 +781,9 @@
                     esocialStore: @json(route('comercial.esocial.faixas.store')),
                     esocialUpdate: (id) => @json(route('comercial.esocial.faixas.update', ['faixa' => '__ID__'])).replace('__ID__', id),
                     esocialDestroy: (id) => @json(route('comercial.esocial.faixas.destroy', ['faixa' => '__ID__'])).replace('__ID__', id),
+                    funcoesStore: @json($routeFuncoesStore),
+                    funcoesUpdate: (id) => @json($routeFuncoesUpdate).replace('__ID__', id),
+                    funcoesDestroy: (id) => @json($routeFuncoesDestroy).replace('__ID__', id),
                 };
 
                 const CSRF = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
@@ -649,6 +803,7 @@
                     medicoesTarget: null,
                     medicoesSelected: new Set(),
                     pacoteTreinamentosEditItemId: null,
+                    funcaoClienteEditingId: null,
                     esocial: { enabled:false, qtd:0, valor:0, aviso:null },
                     gruposExames: [],
                     gheCatalog: [],
@@ -672,6 +827,7 @@
                     itemAlertText: document.getElementById('itemAlertText'),
 
                     chkEsocial: document.getElementById('chkEsocial'),
+                    btnToggleEsocial: document.getElementById('btnToggleEsocial'),
                     esocialBox: document.getElementById('esocialBox'),
                     esocialQtd: document.getElementById('esocialQtd'),
                     esocialValorView: document.getElementById('esocialValorView'),
@@ -700,9 +856,18 @@
                     gheSelect: document.getElementById('gheSelect'),
                     asoTipoRows: document.getElementById('asoTipoRows'),
                     gheConfigsGrid: document.getElementById('gheConfigsGrid'),
+                    asoGheValoresGrid: document.getElementById('asoGheValoresGrid'),
                     asoGheTitle: document.getElementById('asoGheTitle'),
                     btnAddGheConfig: document.getElementById('btnAddGheConfig'),
                     btnGheGlobal: document.getElementById('btnGheGlobal'),
+                    novaFuncaoNome: document.getElementById('novaFuncaoNome'),
+                    funcoesClienteBusca: document.getElementById('funcoesClienteBusca'),
+                    funcoesClienteResumo: document.getElementById('funcoesClienteResumo'),
+                    btnSelecionarTodasFuncoes: document.getElementById('btnSelecionarTodasFuncoes'),
+                    btnLimparFuncoes: document.getElementById('btnLimparFuncoes'),
+                    btnNovaFuncaoParametro: document.getElementById('btnNovaFuncaoParametro'),
+                    btnCancelarEdicaoFuncao: document.getElementById('btnCancelarEdicaoFuncao'),
+                    funcoesClienteGrid: document.getElementById('funcoesClienteGrid'),
                 };
 
                 const ASO_TYPES = [
@@ -735,6 +900,7 @@
                 }
 
                 initTabs();
+                initFuncoesClienteTab();
                 updateTabBadges();
                 bindClienteAutoLoad();
                 bindAsoHandlers();
@@ -1151,11 +1317,16 @@
                 }
 
                 function renderGheConfigsTable() {
-                    if (!el.gheConfigsGrid) return;
-                    el.gheConfigsGrid.innerHTML = '';
+                    const hasLegacyGrid = !!el.gheConfigsGrid;
+                    if (hasLegacyGrid) {
+                        el.gheConfigsGrid.innerHTML = '';
+                    }
 
                     if (!state.gheConfigs.length) {
-                        el.gheConfigsGrid.innerHTML = '<div class="px-3 py-3 text-sm text-slate-500">Nenhum GHE configurado.</div>';
+                        if (hasLegacyGrid) {
+                            el.gheConfigsGrid.innerHTML = '<div class="px-3 py-3 text-sm text-slate-500">Nenhum GHE configurado.</div>';
+                        }
+                        renderAsoValoresPorGhe();
                         return;
                     }
 
@@ -1208,26 +1379,90 @@
                             </div>
                         `;
 
-                        card.querySelector('[data-action="edit"]').addEventListener('click', () => {
-                            state.currentGhe = JSON.parse(JSON.stringify(cfg));
-                            if (el.gheSelect) {
-                                const opt = cfg.cliente_ghe_id ? String(cfg.cliente_ghe_id) : (cfg.ghe_id ? String(cfg.ghe_id) : '');
-                                el.gheSelect.value = opt;
-                            }
-                            if (el.asoGheTitle) el.asoGheTitle.textContent = cfg.ghe_nome || '—';
-                            if (el.btnAddGheConfig) el.btnAddGheConfig.textContent = 'Atualizar este GHE';
-                            renderAsoTipoRows();
-                        });
+                        card.querySelector('[data-action="edit"]').addEventListener('click', () => editGheConfig(cfg));
+                        card.querySelector('[data-action="del"]').addEventListener('click', () => deleteGheConfig(cfg));
 
-                        card.querySelector('[data-action="del"]').addEventListener('click', () => {
-                            const key = getGheConfigKey(cfg);
-                            state.gheConfigs = state.gheConfigs.filter(c => getGheConfigKey(c) !== key);
-                            syncAsoTipoItems();
-                            renderGheConfigsTable();
-                            updateTabBadges();
-                        });
+                        if (hasLegacyGrid) {
+                            el.gheConfigsGrid.appendChild(card);
+                        }
+                    });
 
-                        el.gheConfigsGrid.appendChild(card);
+                    renderAsoValoresPorGhe();
+                }
+
+                function editGheConfig(cfg) {
+                    state.currentGhe = JSON.parse(JSON.stringify(cfg));
+                    if (el.gheSelect) {
+                        const opt = cfg.cliente_ghe_id ? String(cfg.cliente_ghe_id) : (cfg.ghe_id ? String(cfg.ghe_id) : '');
+                        el.gheSelect.value = opt;
+                    }
+                    if (el.asoGheTitle) el.asoGheTitle.textContent = cfg.ghe_nome || '—';
+                    if (el.btnAddGheConfig) el.btnAddGheConfig.textContent = 'Atualizar este GHE';
+                    renderAsoTipoRows();
+                }
+
+                function deleteGheConfig(cfg) {
+                    const key = getGheConfigKey(cfg);
+                    state.gheConfigs = state.gheConfigs.filter(c => getGheConfigKey(c) !== key);
+                    syncAsoTipoItems();
+                    renderGheConfigsTable();
+                    updateTabBadges();
+                }
+
+                function renderAsoValoresPorGhe() {
+                    if (!el.asoGheValoresGrid) return;
+                    el.asoGheValoresGrid.innerHTML = '';
+
+                    if (!state.gheConfigs.length) {
+                        el.asoGheValoresGrid.innerHTML = '<div class="px-3 py-3 text-sm text-slate-500">Nenhum GHE configurado.</div>';
+                        return;
+                    }
+
+                    state.gheConfigs.forEach((cfg) => {
+                        const card = document.createElement('div');
+                        card.className = 'rounded-xl border border-slate-200 bg-white overflow-hidden';
+                        const tipos = cfg.tipos || {};
+
+                        const rowsHtml = ASO_TYPES.map(({ key, label }) => {
+                            const row = tipos[key];
+                            const valor = Number(row?.total_exames || 0);
+                            const grupoTitulo = row?.grupo_titulo ? escapeHtml(row.grupo_titulo) : '—';
+                            return `
+                                <div class="grid grid-cols-12 gap-2 px-3 py-2 border-t border-slate-100">
+                                    <div class="col-span-7">
+                                        <div class="text-sm text-slate-700">${escapeHtml(label)}</div>
+                                        <div class="text-[11px] text-slate-500">${grupoTitulo}</div>
+                                    </div>
+                                    <div class="col-span-5 text-right text-sm font-semibold text-slate-800">${row?.grupo_id ? brl(valor) : '—'}</div>
+                                </div>
+                            `;
+                        }).join('');
+
+                        const totalGhe = ASO_TYPES.reduce((sum, { key }) => {
+                            const row = tipos[key];
+                            if (!row?.grupo_id) return sum;
+                            return sum + Number(row.total_exames || 0);
+                        }, 0);
+
+                        card.innerHTML = `
+                            <div class="px-3 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-3">
+                                <div class="text-sm font-semibold text-slate-800">${escapeHtml(cfg.ghe_nome || 'GHE')}</div>
+                                <div class="flex items-center gap-3">
+                                    <button type="button" class="text-blue-600 text-xs font-semibold" data-action="edit">Editar</button>
+                                    <button type="button" class="text-red-600 text-xs font-semibold" data-action="del">Excluir</button>
+                                </div>
+                            </div>
+                            ${rowsHtml}
+                            <div class="grid grid-cols-12 gap-2 px-3 py-2 bg-emerald-50/60 border-t border-emerald-100">
+                                <div class="col-span-7 text-sm font-semibold text-emerald-900">Total ASO (GHE)</div>
+                                <div class="col-span-5 text-right text-sm font-semibold text-emerald-900">${brl(totalGhe)}</div>
+                            </div>
+                        `;
+
+                        card.querySelector('[data-action="edit"]')?.addEventListener('click', () => editGheConfig(cfg));
+                        card.querySelector('[data-action="del"]')?.addEventListener('click', () => deleteGheConfig(cfg));
+
+                        el.asoGheValoresGrid.appendChild(card);
                     });
                 }
 
@@ -1478,6 +1713,306 @@
                     setActive(buttons[0].dataset.tab);
                 }
 
+                function initFuncoesClienteTab() {
+                    if (!el.btnNovaFuncaoParametro || !el.novaFuncaoNome || !el.funcoesClienteGrid) return;
+
+                    const inputName = 'funcoes_cliente[]';
+                    const getFuncaoCards = () => Array.from(el.funcoesClienteGrid.querySelectorAll('[data-funcao-card]'));
+
+                    const updateFuncoesClienteResumo = () => {
+                        const cards = getFuncaoCards();
+                        const selected = cards.filter((card) => card.querySelector(`input[name="${inputName}"]`)?.checked).length;
+                        const total = cards.length;
+                        if (el.funcoesClienteResumo) {
+                            el.funcoesClienteResumo.textContent = `${selected} de ${total} selecionadas`;
+                        }
+                    };
+
+                    const refreshFuncoesClienteGrid = () => {
+                        const term = String(el.funcoesClienteBusca?.value || '').trim().toLowerCase();
+                        const cards = getFuncaoCards();
+
+                        cards
+                            .sort((a, b) => {
+                                const aChecked = a.querySelector(`input[name="${inputName}"]`)?.checked ? 1 : 0;
+                                const bChecked = b.querySelector(`input[name="${inputName}"]`)?.checked ? 1 : 0;
+                                if (aChecked !== bChecked) return bChecked - aChecked;
+                                return String(a.dataset.funcaoNome || '').localeCompare(String(b.dataset.funcaoNome || ''), 'pt-BR');
+                            })
+                            .forEach((card) => el.funcoesClienteGrid.appendChild(card));
+
+                        cards.forEach((card) => {
+                            const title = String(card.dataset.funcaoNome || '').toLowerCase();
+                            const matches = !term || title.includes(term);
+                            const checkbox = card.querySelector(`input[name="${inputName}"]`);
+                            const checked = !!checkbox?.checked;
+                            card.classList.toggle('hidden', !matches);
+                            card.classList.toggle('border-emerald-300', checked);
+                            card.classList.toggle('bg-emerald-50/40', checked);
+                        });
+
+                        updateFuncoesClienteResumo();
+                    };
+
+                    const resetFuncoesEditor = () => {
+                        state.funcaoClienteEditingId = null;
+                        el.novaFuncaoNome.value = '';
+                        el.novaFuncaoNome.placeholder = 'Nova função';
+                        el.btnNovaFuncaoParametro.textContent = '+ Cadastrar';
+                        el.btnNovaFuncaoParametro.classList.remove('border-emerald-200', 'bg-emerald-50', 'text-emerald-800');
+                        el.btnNovaFuncaoParametro.classList.add('border-blue-200', 'bg-blue-50', 'text-blue-800');
+                        el.btnCancelarEdicaoFuncao?.classList.add('hidden');
+                    };
+
+                    const buildFuncaoCard = ({ id, nome, checked = true, funcionarios = 0, ghes = 0, ativo = true }) => {
+                        const label = document.createElement('label');
+                        label.className = `flex items-start gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 ${ativo ? '' : 'opacity-70'}`;
+                        label.dataset.funcaoCard = 'true';
+                        label.dataset.funcaoId = String(id);
+                        label.dataset.funcaoNome = String(nome || '');
+                        label.dataset.funcaoAtivo = ativo ? '1' : '0';
+                        label.dataset.funcaoFuncionarios = String(funcionarios || 0);
+                        label.dataset.funcaoGhes = String(ghes || 0);
+                        label.innerHTML = `
+                            <input type="checkbox"
+                                   name="${inputName}"
+                                   value="${id}"
+                                   class="mt-1 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                                   ${checked ? 'checked' : ''}>
+                            <span class="min-w-0 flex-1">
+                                <span class="flex items-center justify-between gap-2">
+                                    <span class="block truncate text-sm font-semibold text-slate-800" data-role="funcao-title"></span>
+                                    <span class="flex items-center gap-2 shrink-0">
+                                        <span class="${ativo ? 'hidden ' : ''}rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700" data-role="funcao-status">Inativa</span>
+                                        <button type="button" class="text-[11px] font-semibold text-blue-700 hover:text-blue-800" data-action="edit-funcao">Editar</button>
+                                    </span>
+                                </span>
+                                <span class="mt-1 block text-[11px] text-slate-500" data-role="funcao-meta">Funcionários: ${funcionarios} | GHEs: ${ghes}</span>
+                            </span>
+                        `;
+                        const title = label.querySelector('[data-role="funcao-title"]');
+                        if (title) title.textContent = String(nome || '');
+                        label.classList.toggle('border-emerald-300', checked);
+                        label.classList.toggle('bg-emerald-50/40', checked);
+                        return label;
+                    };
+
+                    const upsertFuncaoCard = ({ id, nome, checked = true, funcionarios = 0, ghes = 0, ativo = true }) => {
+                        const existing = el.funcoesClienteGrid.querySelector(`input[name="${inputName}"][value="${id}"]`);
+                        if (!existing) {
+                            const emptyState = el.funcoesClienteGrid.querySelector('.col-span-full');
+                            if (emptyState) emptyState.remove();
+                            el.funcoesClienteGrid.appendChild(buildFuncaoCard({ id, nome, checked, funcionarios, ghes, ativo }));
+                            refreshFuncoesClienteGrid();
+                            return;
+                        }
+
+                        existing.checked = checked;
+                        const card = existing.closest('[data-funcao-card]');
+                        if (!card) return;
+                        card.dataset.funcaoNome = String(nome || '');
+                        card.dataset.funcaoAtivo = ativo ? '1' : '0';
+                        card.dataset.funcaoFuncionarios = String(funcionarios || 0);
+                        card.dataset.funcaoGhes = String(ghes || 0);
+                        card.classList.toggle('opacity-70', !ativo);
+                        const title = card.querySelector('[data-role="funcao-title"]');
+                        const status = card.querySelector('[data-role="funcao-status"]');
+                        const meta = card.querySelector('[data-role="funcao-meta"]');
+                        if (title) title.textContent = String(nome || '');
+                        if (status) status.classList.toggle('hidden', !!ativo);
+                        if (meta) meta.textContent = `Funcionários: ${funcionarios} | GHEs: ${ghes}`;
+                        card.classList.toggle('border-emerald-300', checked);
+                        card.classList.toggle('bg-emerald-50/40', checked);
+                        refreshFuncoesClienteGrid();
+                    };
+
+                    const removeFuncaoCard = (id) => {
+                        const input = el.funcoesClienteGrid.querySelector(`input[name="${inputName}"][value="${id}"]`);
+                        const card = input?.closest('[data-funcao-card]');
+                        if (card) card.remove();
+                        if (!el.funcoesClienteGrid.querySelector('[data-funcao-card]')) {
+                            const empty = document.createElement('div');
+                            empty.className = 'col-span-full rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800';
+                            empty.textContent = 'Nenhuma função cadastrada para a empresa.';
+                            el.funcoesClienteGrid.appendChild(empty);
+                        }
+                        refreshFuncoesClienteGrid();
+                    };
+
+                    const startEditing = (card) => {
+                        const id = Number(card?.dataset.funcaoId || 0);
+                        if (!id) return;
+                        state.funcaoClienteEditingId = id;
+                        el.novaFuncaoNome.value = String(card.dataset.funcaoNome || '');
+                        el.novaFuncaoNome.placeholder = 'Editar função';
+                        el.btnNovaFuncaoParametro.textContent = 'Salvar edição';
+                        el.btnNovaFuncaoParametro.classList.remove('border-blue-200', 'bg-blue-50', 'text-blue-800');
+                        el.btnNovaFuncaoParametro.classList.add('border-emerald-200', 'bg-emerald-50', 'text-emerald-800');
+                        el.btnCancelarEdicaoFuncao?.classList.remove('hidden');
+                        el.novaFuncaoNome.focus();
+                        el.novaFuncaoNome.select();
+                    };
+
+                    const submit = async () => {
+                        const nome = String(el.novaFuncaoNome.value || '').trim();
+                        if (!nome) {
+                            showItemAlert('Informe o nome da função.');
+                            return;
+                        }
+
+                        const editingId = Number(state.funcaoClienteEditingId || 0) || null;
+                        const url = editingId ? URLS.funcoesUpdate(editingId) : URLS.funcoesStore;
+                        const method = editingId ? 'PUT' : 'POST';
+
+                        el.btnNovaFuncaoParametro.disabled = true;
+                        el.btnCancelarEdicaoFuncao?.setAttribute('disabled', 'disabled');
+
+                        try {
+                            const existingCard = editingId
+                                ? el.funcoesClienteGrid.querySelector(`[data-funcao-id="${editingId}"]`)
+                                : null;
+                            const res = await fetch(url, {
+                                method,
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Accept': 'application/json',
+                                    'X-CSRF-TOKEN': CSRF,
+                                },
+                                body: JSON.stringify({
+                                    nome,
+                                    ...(editingId ? { ativo: true } : {}),
+                                }),
+                            });
+
+                            const json = await res.json().catch(() => ({}));
+                            const payloadFuncao = json?.funcao || null;
+                            if (!res.ok || !payloadFuncao?.id) {
+                                const msg = json?.message || `Não foi possível ${editingId ? 'atualizar' : 'cadastrar'} a função.`;
+                                showItemAlert(msg, 'error');
+                                return;
+                            }
+
+                            const existingUpdatedCard = el.funcoesClienteGrid.querySelector(`[data-funcao-id="${payloadFuncao.id}"]`);
+                            upsertFuncaoCard({
+                                id: Number(payloadFuncao.id),
+                                nome: payloadFuncao.nome || nome,
+                                checked: true,
+                                funcionarios: Number((existingUpdatedCard || existingCard)?.dataset.funcaoFuncionarios || 0),
+                                ghes: Number((existingUpdatedCard || existingCard)?.dataset.funcaoGhes || 0),
+                                ativo: payloadFuncao.ativo !== false,
+                            });
+
+                            resetFuncoesEditor();
+                            showItemToast(editingId
+                                ? `Função atualizada: ${payloadFuncao.nome}`
+                                : (json?.existing ? 'Função existente selecionada.' : `Função cadastrada: ${payloadFuncao.nome}`));
+                        } catch (e) {
+                            console.error(e);
+                            showItemAlert(`Falha ao ${editingId ? 'atualizar' : 'cadastrar'} função.`, 'error');
+                        } finally {
+                            el.btnNovaFuncaoParametro.disabled = false;
+                            el.btnCancelarEdicaoFuncao?.removeAttribute('disabled');
+                        }
+                    };
+
+                    const destroy = async (card) => {
+                        const id = Number(card?.dataset.funcaoId || 0);
+                        if (!id) return;
+
+                        const ok = await window.uiConfirm('Deseja excluir esta função?');
+                        if (!ok) return;
+
+                        try {
+                            const res = await fetch(URLS.funcoesDestroy(id), {
+                                method: 'DELETE',
+                                headers: {
+                                    'Accept': 'application/json',
+                                    'X-CSRF-TOKEN': CSRF,
+                                },
+                            });
+
+                            const json = await res.json().catch(() => ({}));
+                            if (!res.ok) {
+                                showItemAlert(json?.message || 'Não foi possível excluir a função.', 'error');
+                                return;
+                            }
+
+                            const funcao = json?.funcao || {};
+                            if (funcao.id && funcao.ativo === false) {
+                                upsertFuncaoCard({
+                                    id: Number(funcao.id),
+                                    nome: funcao.nome || card.dataset.funcaoNome || '',
+                                    checked: !!card.querySelector(`input[name="${inputName}"]`)?.checked,
+                                    funcionarios: Number(card.dataset.funcaoFuncionarios || 0),
+                                    ghes: Number(card.dataset.funcaoGhes || 0),
+                                    ativo: false,
+                                });
+                            } else {
+                                removeFuncaoCard(id);
+                            }
+
+                            if (state.funcaoClienteEditingId === id) {
+                                resetFuncoesEditor();
+                            }
+
+                            showItemToast(json?.message || 'Função removida.');
+                        } catch (e) {
+                            console.error(e);
+                            showItemAlert('Falha ao excluir função.', 'error');
+                        }
+                    };
+
+                    el.btnNovaFuncaoParametro.addEventListener('click', submit);
+                    el.btnCancelarEdicaoFuncao?.addEventListener('click', resetFuncoesEditor);
+                    el.funcoesClienteBusca?.addEventListener('input', refreshFuncoesClienteGrid);
+                    el.btnSelecionarTodasFuncoes?.addEventListener('click', () => {
+                        getFuncaoCards().forEach((card) => {
+                            const checkbox = card.querySelector(`input[name="${inputName}"]`);
+                            if (checkbox) checkbox.checked = true;
+                        });
+                        refreshFuncoesClienteGrid();
+                    });
+                    el.btnLimparFuncoes?.addEventListener('click', () => {
+                        getFuncaoCards().forEach((card) => {
+                            const checkbox = card.querySelector(`input[name="${inputName}"]`);
+                            if (checkbox) checkbox.checked = false;
+                        });
+                        refreshFuncoesClienteGrid();
+                    });
+                    el.novaFuncaoNome.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            submit();
+                        }
+                    });
+                    el.funcoesClienteGrid.addEventListener('change', (e) => {
+                        if (e.target.matches(`input[name="${inputName}"]`)) {
+                            refreshFuncoesClienteGrid();
+                        }
+                    });
+
+                    el.funcoesClienteGrid.addEventListener('click', (e) => {
+                        const actionEl = e.target.closest('[data-action]');
+                        if (!actionEl) return;
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        const card = actionEl.closest('[data-funcao-card]');
+                        if (!card) return;
+
+                        if (actionEl.dataset.action === 'edit-funcao') {
+                            startEditing(card);
+                            return;
+                        }
+
+                        if (actionEl.dataset.action === 'delete-funcao') {
+                            destroy(card);
+                        }
+                    });
+
+                    refreshFuncoesClienteGrid();
+                }
+
                 function attachMoneyMask(viewEl, hiddenEl) {
                     if (!viewEl || !hiddenEl) return;
                     if (viewEl.dataset.maskReady === '1') return;
@@ -1551,6 +2086,27 @@
                         return true;
                     });
                     return before !== state.itens.length;
+                }
+
+                function getEsocialListItem() {
+                    if (!state.esocial.enabled || Number(state.esocial.valor || 0) <= 0) {
+                        return null;
+                    }
+
+                    return {
+                        id: '__esocial__',
+                        servico_id: Number(SERVICO_ESOCIAL_ID || 0) || null,
+                        tipo: 'ESOCIAL',
+                        nome: 'eSocial',
+                        descricao: `eSocial (${state.esocial.qtd || 0} colaboradores)`,
+                        valor_unitario: Number(state.esocial.valor || 0),
+                        quantidade: 1,
+                        prazo: '',
+                        acrescimo: 0,
+                        desconto: 0,
+                        meta: { qtd_funcionarios: state.esocial.qtd || 0, virtual: true },
+                        valor_total: Number(state.esocial.valor || 0),
+                    };
                 }
 
                 function recalcTotals() {
@@ -1706,11 +2262,13 @@
                 function render() {
                     el.lista.innerHTML = '';
                     removeEsocialItens();
+                    const esocialItem = getEsocialListItem();
+                    const itensRender = esocialItem ? [esocialItem, ...state.itens] : [...state.itens];
                     if (el.listaCount) {
-                        el.listaCount.textContent = `${state.itens.length} item${state.itens.length === 1 ? '' : 's'}`;
+                        el.listaCount.textContent = `${itensRender.length} item${itensRender.length === 1 ? '' : 's'}`;
                     }
 
-                    if (!state.itens.length) {
+                    if (!itensRender.length) {
                         el.lista.innerHTML = `
                             <div class="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-6 text-center">
                                 <div class="text-sm font-semibold text-slate-700">Nenhum item adicionado</div>
@@ -1723,9 +2281,10 @@
                     }
 
                     let rowIndex = 0;
-                    state.itens.forEach(item => {
+                    itensRender.forEach(item => {
                         const hasZeroPrice = Number(item.valor_unitario || 0) <= 0;
                         const isAsoTipo = !!item?.meta?.aso_tipo;
+                        const isEsocialVirtual = item.id === '__esocial__';
                         const isPacoteTreinamentos = String(item?.tipo || '').toUpperCase() === 'PACOTE_TREINAMENTOS';
                         const tipoUi = getItemTipoUi(item);
                         const metaResumo = getItemMetaResumo(item);
@@ -1805,14 +2364,23 @@
             `;
 
                         // Actions
-                        row.querySelector('[data-act="remove"]').addEventListener('click', () => removeItem(item.id));
+                        row.querySelector('[data-act="remove"]').addEventListener('click', () => {
+                            if (isEsocialVirtual) {
+                                if (el.chkEsocial) {
+                                    el.chkEsocial.checked = false;
+                                    el.chkEsocial.dispatchEvent(new Event('change'));
+                                }
+                                return;
+                            }
+                            removeItem(item.id);
+                        });
                         row.querySelector('[data-act="edit-pacote-treinamentos"]')?.addEventListener('click', () => {
                             openPacoteTreinamentosModal(item);
                         });
 
                         // Prazo
                         const prazoInput = row.querySelector('[data-act="prazo"]');
-                        if (isAsoTipo) {
+                        if (isAsoTipo || isEsocialVirtual) {
                             prazoInput.value = '—';
                             prazoInput.setAttribute('readonly', 'readonly');
                             prazoInput.classList.add('bg-slate-100', 'cursor-not-allowed');
@@ -1826,7 +2394,7 @@
 	                        // Qtd
                         const qtdMinus = row.querySelector('[data-act="qtd_minus"]');
                         const qtdPlus = row.querySelector('[data-act="qtd_plus"]');
-                        if (isAsoTipo) {
+                        if (isAsoTipo || isEsocialVirtual) {
                             qtdMinus.setAttribute('disabled', 'disabled');
                             qtdPlus.setAttribute('disabled', 'disabled');
                             qtdMinus.classList.add('opacity-50', 'cursor-not-allowed');
@@ -1838,7 +2406,7 @@
 
 	                        // Input qtd (manual)
                         const qtdInput = row.querySelector('[data-act="qtd"]');
-                        if (isAsoTipo) {
+                        if (isAsoTipo || isEsocialVirtual) {
                             qtdInput.setAttribute('readonly', 'readonly');
                             qtdInput.classList.add('bg-slate-100', 'cursor-not-allowed');
                             qtdInput.value = '1';
@@ -1858,8 +2426,16 @@
                         // Valor (máscara por centavos)
                         const valorView = row.querySelector('[data-act="valor_view"]');
                         valorView.dataset.digits = onlyDigits(Math.round(Number(item.valor_unitario || 0) * 100));
+                        if (isEsocialVirtual) {
+                            valorView.setAttribute('readonly', 'readonly');
+                            valorView.classList.add('bg-slate-100', 'cursor-not-allowed');
+                        }
 
                         valorView.addEventListener('keydown', (e) => {
+                            if (isEsocialVirtual) {
+                                e.preventDefault();
+                                return;
+                            }
                             const nav = ['Tab','Escape','Enter','ArrowLeft','ArrowRight','Home','End','Delete'];
                             if (e.ctrlKey || e.metaKey) return;
 
@@ -1886,6 +2462,10 @@
                         });
 
                         valorView.addEventListener('input', () => {
+                            if (isEsocialVirtual) {
+                                valorView.value = brl(item.valor_unitario);
+                                return;
+                            }
                             const digits = onlyDigits(valorView.value);
                             valorView.dataset.digits = digits;
 
@@ -2481,6 +3061,15 @@
                 }
 
                 function applyEsocialUI() {
+                    if (el.btnToggleEsocial) {
+                        el.btnToggleEsocial.textContent = '+ eSocial';
+                        el.btnToggleEsocial.classList.toggle('font-semibold', state.esocial.enabled);
+                        el.btnToggleEsocial.classList.toggle('ring-2', state.esocial.enabled);
+                        el.btnToggleEsocial.classList.toggle('ring-violet-300', state.esocial.enabled);
+                    }
+
+                    el.esocialBox?.classList.toggle('hidden', !state.esocial.enabled);
+
                     el.esocialValorView.value = brl(state.esocial.valor);
                     el.esocialQtdHidden.value = state.esocial.enabled ? state.esocial.qtd : '';
                     el.esocialValorHidden.value = state.esocial.enabled ? Number(state.esocial.valor || 0).toFixed(2) : '0.00';
@@ -2490,6 +3079,11 @@
                         el.esocialAviso.classList.remove('hidden');
                     } else {
                         el.esocialAviso.classList.add('hidden');
+                    }
+
+                    if (el.lista) {
+                        render();
+                        return;
                     }
 
                     recalcTotals();
@@ -2648,6 +3242,24 @@
                 // =========================
                 // eSocial UI toggles
                 // =========================
+                el.btnToggleEsocial?.addEventListener('click', () => {
+                    if (!el.chkEsocial) return;
+
+                    if (!el.chkEsocial.checked) {
+                        state.esocial.enabled = true;
+                        el.chkEsocial.checked = true;
+                        el.esocialBox?.classList.remove('hidden');
+                        el.chkEsocial.dispatchEvent(new Event('change'));
+                        setTimeout(() => el.esocialQtd?.focus(), 0);
+                        return;
+                    }
+
+                    state.esocial.enabled = true;
+                    el.esocialBox?.classList.remove('hidden');
+                    applyEsocialUI();
+                    setTimeout(() => el.esocialQtd?.focus(), 0);
+                });
+
                 el.chkEsocial?.addEventListener('change', () => {
                     state.esocial.enabled = el.chkEsocial.checked;
                     el.esocialBox.classList.toggle('hidden', !state.esocial.enabled);
@@ -2710,7 +3322,7 @@
                     if (fieldName === 'forma_pagamento' || fieldName === 'vencimento_servicos') {
                         targetTab = 'forma-pagamento';
                     } else if (fieldName === 'incluir_esocial' || String(fieldName || '').startsWith('esocial_')) {
-                        targetTab = 'esocial';
+                        targetTab = 'parametros';
                     }
                     const tabButton = document.querySelector(`[data-tabs="cliente"] [data-tab="${targetTab}"]`);
                     tabButton?.click();

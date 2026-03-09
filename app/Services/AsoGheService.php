@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\ClienteAsoGrupo;
 use App\Models\ClienteContrato;
 use App\Models\ClienteContratoItem;
+use App\Models\ClienteFuncao;
 use App\Models\ClienteGhe;
 use App\Models\Funcao;
 use Illuminate\Support\Collection;
@@ -473,6 +474,23 @@ class AsoGheService
 
     public function funcoesDisponiveisParaCliente(int $empresaId, int $clienteId): Collection
     {
+        $funcoesClienteIds = ClienteFuncao::query()
+            ->where('empresa_id', $empresaId)
+            ->where('cliente_id', $clienteId)
+            ->pluck('funcao_id')
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($funcoesClienteIds->isNotEmpty()) {
+            return Funcao::query()
+                ->where('empresa_id', $empresaId)
+                ->whereIn('id', $funcoesClienteIds)
+                ->where('ativo', true)
+                ->orderBy('nome')
+                ->get();
+        }
+
         $funcoesIds = ClienteGhe::query()
             ->where('empresa_id', $empresaId)
             ->where('cliente_id', $clienteId)

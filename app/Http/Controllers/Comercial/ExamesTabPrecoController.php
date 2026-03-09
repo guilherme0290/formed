@@ -24,12 +24,18 @@ class ExamesTabPrecoController extends Controller
     {
         $empresaId = auth()->user()->empresa_id;
 
-        $data = $request->validate([
-            'titulo' => ['required', 'string', 'max:255'],
-            'descricao' => ['nullable', 'string', 'max:255'],
-            'preco' => ['required', 'numeric', 'min:0'],
-            'ativo' => ['nullable', 'boolean'],
-        ]);
+        $data = $request->validate(
+            [
+                'titulo' => ['required', 'string', 'max:255'],
+                'descricao' => ['nullable', 'string', 'max:255'],
+                'preco' => ['required', 'numeric', 'gt:0'],
+                'ativo' => ['nullable', 'boolean'],
+            ],
+            [
+                'preco.required' => 'Informe o preço do exame.',
+                'preco.gt' => 'Informe um preço maior que zero.',
+            ]
+        );
 
         $data['empresa_id'] = $empresaId;
         $data['ativo'] = $data['ativo'] ?? true;
@@ -44,12 +50,18 @@ class ExamesTabPrecoController extends Controller
     {
         $this->authorizeEmpresa($exame);
 
-        $data = $request->validate([
-            'titulo' => ['required', 'string', 'max:255'],
-            'descricao' => ['nullable', 'string', 'max:255'],
-            'preco' => ['required', 'numeric', 'min:0'],
-            'ativo' => ['nullable', 'boolean'],
-        ]);
+        $data = $request->validate(
+            [
+                'titulo' => ['required', 'string', 'max:255'],
+                'descricao' => ['nullable', 'string', 'max:255'],
+                'preco' => ['required', 'numeric', 'gt:0'],
+                'ativo' => ['nullable', 'boolean'],
+            ],
+            [
+                'preco.required' => 'Informe o preço do exame.',
+                'preco.gt' => 'Informe um preço maior que zero.',
+            ]
+        );
 
         $exame->update([
             'titulo' => $data['titulo'],

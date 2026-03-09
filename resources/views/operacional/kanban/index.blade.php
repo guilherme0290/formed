@@ -726,10 +726,17 @@
                                         // -------- PCMSO --------
                                         } elseif ($servicoNome === 'PCMSO') {
                                             $pcmso = $tarefa->pcmsoSolicitacao ?? null;
+                                            $pcmsoTipo = $pcmso?->tipo ?? null;
 
-                                            if ($pcmso && $pcmso->obra_nome) {
-                                                $tituloCard    = 'PCMSO - ' . $pcmso->obra_nome;
+                                            if ($pcmsoTipo === 'especifico') {
+                                                if ($pcmso && $pcmso->obra_nome) {
+                                                    $tituloCard = 'PCMSO - Específico - ' . $pcmso->obra_nome;
+                                                } else {
+                                                    $tituloCard = 'PCMSO - Específico - ' . $clienteNome;
+                                                }
                                                 $subtituloCard = $clienteNome;
+                                            } elseif ($pcmsoTipo === 'matriz') {
+                                                $tituloCard = 'PCMSO - Matriz - ' . $clienteNome;
                                             } else {
                                                 $tituloCard    = 'PCMSO - ' . $clienteNome;
                                             }
@@ -2728,9 +2735,24 @@
                         body: formData,
                     })
                         .then(async (r) => {
-                            const contentType = r.headers.get('content-type') || '';
-                            const isJson = contentType.includes('application/json');
-                            const data = isJson ? await r.json() : null;
+                            const raw = await r.text();
+                            let data = null;
+
+                            if (raw) {
+                                try {
+                                    data = JSON.parse(raw);
+                                } catch (error) {
+                                    const jsonStart = raw.indexOf('{');
+                                    const jsonEnd = raw.lastIndexOf('}');
+                                    if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+                                        try {
+                                            data = JSON.parse(raw.slice(jsonStart, jsonEnd + 1));
+                                        } catch (innerError) {
+                                            data = null;
+                                        }
+                                    }
+                                }
+                            }
 
                             if (!r.ok) {
                                 const error =
@@ -2813,6 +2835,19 @@
             const CSRF_TOKEN = @json(csrf_token());
             const POLL_INTERVAL = 30000;
             const TICK_INTERVAL = 1000;
+
+            async function parseJsonResponse(response) {
+                const contentType = response.headers.get('content-type') || '';
+                if (!contentType.includes('application/json')) {
+                    return null;
+                }
+
+                try {
+                    return await response.json();
+                } catch (error) {
+                    return null;
+                }
+            }
 
             function getKanbanCards() {
                 return Array.from(document.querySelectorAll('.kanban-card'));
@@ -3094,7 +3129,7 @@
                         },
                         body: JSON.stringify({ ids }),
                     });
-                    const data = await res.json();
+                    const data = await parseJsonResponse(res);
                     if (!data || !data.ok || !Array.isArray(data.tarefas)) return;
 
                     data.tarefas.forEach((tarefa) => {
@@ -3199,7 +3234,7 @@
                                     ordem_origem: idsOrigem,
                                 }),
                             })
-                                .then(response => response.json())
+                                .then(response => parseJsonResponse(response))
                                 .then(data => {
                                     if (!data || !data.ok) return;
 
@@ -3314,9 +3349,9 @@
                             coluna_id: colunaId
                         })
                     })
-                        .then(response => response.json())
+                        .then(response => parseJsonResponse(response))
                         .then(data => {
-                            if (data.ok) {
+                            if (data?.ok) {
                                 // Se tiver um badge de status, atualiza:
                                 const statusBadge = document.querySelector('#tarefa-status-label');
                                 if (statusBadge && data.status_label) {
@@ -3328,7 +3363,7 @@
 
                                 console.log('Movido com sucesso:', data);
                             } else {
-                                window.uiAlert('Não foi possível mover a tarefa.');
+                                window.uiAlert(data?.error || data?.message || 'Não foi possível mover a tarefa.');
                             }
                         })
                         .catch(err => {
