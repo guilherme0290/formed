@@ -125,13 +125,15 @@ class PainelController extends Controller
         }
 
         if ($filtroBusca !== '') {
-            $tarefasQuery->where(function ($q) use ($filtroBusca) {
+            $filtroBuscaDigits = preg_replace('/\D+/', '', $filtroBusca);
+            $tarefasQuery->where(function ($q) use ($filtroBusca, $filtroBuscaDigits) {
                 $q->where('titulo', 'like', '%' . $filtroBusca . '%')
                     ->orWhere('descricao', 'like', '%' . $filtroBusca . '%')
                     ->orWhereHas('cliente', function ($clienteQuery) use ($filtroBusca) {
                         $clienteQuery->where('razao_social', 'like', '%' . $filtroBusca . '%')
                             ->orWhere('nome_fantasia', 'like', '%' . $filtroBusca . '%')
-                            ->orWhere('cnpj', 'like', '%' . $filtroBusca . '%');
+                            ->orWhere('cnpj', 'like', '%' . $filtroBusca . '%')
+                            ->orWhere('cpf', 'like', '%' . $filtroBusca . '%');
                     })
                     ->orWhereHas('servico', function ($servicoQuery) use ($filtroBusca) {
                         $servicoQuery->where('nome', 'like', '%' . $filtroBusca . '%');
@@ -140,6 +142,13 @@ class PainelController extends Controller
                         $funcionarioQuery->where('nome', 'like', '%' . $filtroBusca . '%')
                             ->orWhere('cpf', 'like', '%' . $filtroBusca . '%');
                     });
+                if ($filtroBuscaDigits !== '') {
+                    $q->orWhereHas('cliente', function ($clienteQuery) use ($filtroBuscaDigits) {
+                        $clienteQuery
+                            ->whereRaw("REPLACE(REPLACE(REPLACE(cnpj, '.', ''), '/', ''), '-', '') LIKE ?", ['%' . $filtroBuscaDigits . '%'])
+                            ->orWhereRaw("REPLACE(REPLACE(cpf, '.', ''), '-', '') LIKE ?", ['%' . $filtroBuscaDigits . '%']);
+                    });
+                }
             });
         }
 
@@ -211,12 +220,13 @@ class PainelController extends Controller
         $clienteAutocomplete = Cliente::query()
             ->where('empresa_id', $empresaId)
             ->orderBy('razao_social')
-            ->get(['razao_social', 'nome_fantasia', 'cnpj'])
+            ->get(['razao_social', 'nome_fantasia', 'cnpj', 'cpf'])
             ->flatMap(function ($cliente) {
                 return array_filter([
                     $cliente->razao_social,
                     $cliente->nome_fantasia,
                     $cliente->cnpj,
+                    $cliente->cpf,
                 ]);
             })
             ->unique()
@@ -517,11 +527,15 @@ class PainelController extends Controller
                 $query->where(function ($subQuery) use ($q, $qDigits) {
                     $subQuery->where('razao_social', 'like', "%{$q}%")
                         ->orWhere('nome_fantasia', 'like', "%{$q}%")
-                        ->orWhere('cnpj', 'like', "%{$q}%");
+                        ->orWhere('cnpj', 'like', "%{$q}%")
+                        ->orWhere('cpf', 'like', "%{$q}%");
 
                     if ($qDigits !== '') {
                         $subQuery->orWhereRaw(
                             "REPLACE(REPLACE(REPLACE(cnpj, '.', ''), '/', ''), '-', '') LIKE ?",
+                            ["%{$qDigits}%"]
+                        )->orWhereRaw(
+                            "REPLACE(REPLACE(cpf, '.', ''), '-', '') LIKE ?",
                             ["%{$qDigits}%"]
                         );
                     }
@@ -557,12 +571,13 @@ class PainelController extends Controller
         $clienteAutocomplete = Cliente::query()
             ->where('empresa_id', $empresaId)
             ->orderBy('razao_social')
-            ->get(['razao_social', 'nome_fantasia', 'cnpj'])
+            ->get(['razao_social', 'nome_fantasia', 'cnpj', 'cpf'])
             ->flatMap(function ($cliente) {
                 return array_filter([
                     $cliente->razao_social,
                     $cliente->nome_fantasia,
                     $cliente->cnpj,
+                    $cliente->cpf,
                 ]);
             })
             ->unique()

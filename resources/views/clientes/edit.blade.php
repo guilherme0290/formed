@@ -25,6 +25,7 @@
         $canCreate = $isMaster || isset($permissionMap[$permPrefix.'.create']);
         $canUpdate = $isMaster || isset($permissionMap[$permPrefix.'.update']);
         $canSave = $cliente->exists ? $canUpdate : $canCreate;
+        $tipoPessoaAtual = old('tipo_pessoa', $cliente->tipo_pessoa ?: 'PJ');
     @endphp
 
     <div class="w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -122,19 +123,36 @@
             </div>
 
             {{-- LINHA 1 --}}
-            <div class="grid md:grid-cols-3 gap-4">
+            <div class="grid md:grid-cols-4 gap-4">
                 <div>
-                    <label class="text-sm">CNPJ</label>
-                    <input name="cnpj" value="{{ old('cnpj', $cliente->cnpj) }}"
-                           data-cliente-id="{{ $cliente->exists ? $cliente->id : '' }}"
-                           class="w-full border-gray-300 rounded-lg px-3 py-2">
-                    @error('cnpj')
+                    <label class="text-sm">Tipo de Pessoa</label>
+                    <select name="tipo_pessoa" id="tipo_pessoa" class="w-full border-gray-300 rounded-lg px-3 py-2">
+                        <option value="PJ" @selected($tipoPessoaAtual === 'PJ')>Pessoa Jurídica</option>
+                        <option value="PF" @selected($tipoPessoaAtual === 'PF')>Pessoa Física</option>
+                    </select>
+                    @error('tipo_pessoa')
                     <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
                     @enderror
                 </div>
 
                 <div>
-                    <label class="text-sm">Raz&atilde;o Social</label>
+                    <label class="text-sm" id="documento-label">CNPJ</label>
+                    <input name="cnpj" id="cnpj" value="{{ old('cnpj', $cliente->cnpj) }}"
+                           data-cliente-id="{{ $cliente->exists ? $cliente->id : '' }}"
+                           class="w-full border-gray-300 rounded-lg px-3 py-2 {{ $tipoPessoaAtual === 'PF' ? 'hidden' : '' }}">
+                    @error('cnpj')
+                    <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                    @enderror
+                    <input name="cpf" id="cpf" value="{{ old('cpf', $cliente->cpf) }}"
+                           data-cliente-id="{{ $cliente->exists ? $cliente->id : '' }}"
+                           class="w-full border-gray-300 rounded-lg px-3 py-2 {{ $tipoPessoaAtual === 'PF' ? '' : 'hidden' }}">
+                    @error('cpf')
+                    <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <div>
+                    <label class="text-sm" id="razao-social-label">Raz&atilde;o Social</label>
                     <input name="razao_social" value="{{ old('razao_social', $cliente->razao_social) }}"
                            class="w-full border-gray-300 rounded-lg px-3 py-2 uppercase">
                     @error('razao_social')
@@ -142,7 +160,7 @@
                     @enderror
                 </div>
 
-                <div>
+                <div id="nome-fantasia-group" class="{{ $tipoPessoaAtual === 'PF' ? 'hidden' : '' }}">
                     <label class="text-sm">Nome Fantasia</label>
                     <input name="nome_fantasia" value="{{ old('nome_fantasia', $cliente->nome_fantasia) }}"
                            class="w-full border-gray-300 rounded-lg px-3 py-2 uppercase">
@@ -437,14 +455,12 @@
 
     <script>
         $(function () {
-            // CNPJ
-            // $('input[name="cnpj"]').mask('00.000.000/0000-00');
-
             // CEP
             $('#cep').mask('00000-000');
 
             // Telefone (celular/padrão BR)
             $('input[name="telefone"]').mask('(00) 00000-0000');
+            $('input[name="telefone_2"]').mask('(00) 00000-0000');
         });
     </script>
 
@@ -555,175 +571,259 @@
                 console.error('Erro ao buscar CEP', e);
             }
         });
-        document.querySelector('input[name="cnpj"]').addEventListener('blur', async function () {
-            let cnpjLimpo = this.value.replace(/\D/g, '');
+        document.addEventListener('DOMContentLoaded', function () {
+            const tipoPessoa = document.getElementById('tipo_pessoa');
+            const cnpjInput = document.getElementById('cnpj');
+            const cpfInput = document.getElementById('cpf');
+            const documentoLabel = document.getElementById('documento-label');
+            const razaoLabel = document.getElementById('razao-social-label');
+            const fantasiaGroup = document.getElementById('nome-fantasia-group');
+            const razaoInput = document.querySelector('input[name="razao_social"]');
+            const fantasiaInput = document.querySelector('input[name="nome_fantasia"]');
+            const cepInput = document.getElementById('cep');
+            const enderecoInput = document.getElementById('endereco');
+            const bairroInput = document.getElementById('bairro');
+            const complInput = document.querySelector('input[name="complemento"]');
+            const estadoSelect = document.getElementById('estado');
+            let documentoDuplicado = false;
 
-            // CNPJ vazio ou incompleto: não faz nada
-            if (cnpjLimpo.length !== 14) {
+            if (!tipoPessoa || !cnpjInput || !cpfInput) {
                 return;
             }
 
-            // Monta URL da rota (substitui o placeholder pelo CNPJ limpo)
-            let url = "{{ route($routePrefix.'.consulta-cnpj', ['cnpj' => 'CNPJ_PLACEHOLDER']) }}";
-            url = url.replace('CNPJ_PLACEHOLDER', cnpjLimpo);
+            function getTipoPessoa() {
+                return tipoPessoa.value === 'PF' ? 'PF' : 'PJ';
+            }
 
-            const razaoInput      = document.querySelector('input[name="razao_social"]');
-            const fantasiaInput   = document.querySelector('input[name="nome_fantasia"]');
-            const cepInput        = document.querySelector('#cep');
-            const enderecoInput   = document.querySelector('#endereco');
-            const bairroInput     = document.querySelector('#bairro');
-            const complInput      = document.querySelector('input[name="complemento"]');
-            const estadoSelect    = document.querySelector('#estado');
+            function getDocumentoInput() {
+                return getTipoPessoa() === 'PF' ? cpfInput : cnpjInput;
+            }
 
-            try {
-                // opcional: poderia colocar um "carregando..." em algum lugar aqui
+            function aplicarMascaraCpf(valor) {
+                const digits = valor.replace(/\D/g, '').slice(0, 11);
+                if (digits.length > 9) {
+                    return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
+                }
+                if (digits.length > 6) {
+                    return digits.replace(/(\d{3})(\d{3})(\d{1,3})/, '$1.$2.$3');
+                }
+                if (digits.length > 3) {
+                    return digits.replace(/(\d{3})(\d{1,3})/, '$1.$2');
+                }
+                return digits;
+            }
 
-                const resp = await fetch(url);
-                const json = await resp.json();
+            function aplicarMascaraCnpj(valor) {
+                const digits = valor.replace(/\D/g, '').slice(0, 14);
+                if (digits.length > 12) {
+                    return digits.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{1,2})/, '$1.$2.$3/$4-$5');
+                }
+                if (digits.length > 8) {
+                    return digits.replace(/(\d{2})(\d{3})(\d{3})(\d{1,4})/, '$1.$2.$3/$4');
+                }
+                if (digits.length > 5) {
+                    return digits.replace(/(\d{2})(\d{3})(\d{1,3})/, '$1.$2.$3');
+                }
+                if (digits.length > 2) {
+                    return digits.replace(/(\d{2})(\d{1,3})/, '$1.$2');
+                }
+                return digits;
+            }
 
-                if (json.error) {
-                    console.warn('Erro na consulta CNPJ:', json.error);
+            function cpfValido(cpf) {
+                if (!cpf || cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) {
+                    return false;
+                }
+
+                let soma = 0;
+                for (let i = 0; i < 9; i++) {
+                    soma += parseInt(cpf.charAt(i), 10) * (10 - i);
+                }
+                let digito = (soma * 10) % 11;
+                if (digito === 10) digito = 0;
+                if (digito !== parseInt(cpf.charAt(9), 10)) {
+                    return false;
+                }
+
+                soma = 0;
+                for (let i = 0; i < 10; i++) {
+                    soma += parseInt(cpf.charAt(i), 10) * (11 - i);
+                }
+                digito = (soma * 10) % 11;
+                if (digito === 10) digito = 0;
+
+                return digito === parseInt(cpf.charAt(10), 10);
+            }
+
+            function syncTipoPessoaUI() {
+                const isPf = getTipoPessoa() === 'PF';
+                cnpjInput.classList.toggle('hidden', isPf);
+                cpfInput.classList.toggle('hidden', !isPf);
+                cnpjInput.disabled = isPf;
+                cpfInput.disabled = !isPf;
+                documentoLabel.textContent = isPf ? 'CPF' : 'CNPJ';
+                razaoLabel.textContent = isPf ? 'Nome Completo' : 'Razão Social';
+                fantasiaGroup.classList.toggle('hidden', isPf);
+                if (isPf && fantasiaInput) {
+                    fantasiaInput.value = '';
+                }
+                limparErroCNPJ(cnpjInput);
+                limparErroCNPJ(cpfInput);
+                documentoDuplicado = false;
+            }
+
+            async function consultarCnpj() {
+                if (getTipoPessoa() !== 'PJ') {
                     return;
                 }
 
-                // Preenche campos básicos
-                if (razaoInput && json.razao_social) {
-                    razaoInput.value = json.razao_social;
-                }
-                if (fantasiaInput && json.nome_fantasia) {
-                    fantasiaInput.value = json.nome_fantasia;
-                }
-                if (cepInput && json.cep) {
-                    // normaliza CEP para 00000-000
-                    let cepLimpo = json.cep.replace(/\D/g, '');
-                    if (cepLimpo.length === 8) {
-                        cepInput.value = cepLimpo.replace(/^(\d{5})(\d{3})$/, '$1-$2');
-                    } else {
-                        cepInput.value = json.cep;
-                    }
-                }
-                if (enderecoInput && json.endereco) {
-                    enderecoInput.value = json.endereco;
-                }
-                if (bairroInput && json.bairro) {
-                    bairroInput.value = json.bairro;
-                }
-                if (complInput && json.complemento) {
-                    complInput.value = json.complemento;
+                const cnpjLimpo = cnpjInput.value.replace(/\D/g, '');
+                if (cnpjLimpo.length !== 14) {
+                    return;
                 }
 
-                // UF + Cidade
-                const ufApi     = json.uf || null;
-                const cidadeApi = json.municipio || null;
+                let url = "{{ route($routePrefix.'.consulta-cnpj', ['cnpj' => 'CNPJ_PLACEHOLDER']) }}";
+                url = url.replace('CNPJ_PLACEHOLDER', cnpjLimpo);
 
-                if (ufApi && estadoSelect) {
-                    // garante option da UF
-                    let found = Array.from(estadoSelect.options).some(opt => opt.value === ufApi);
-                    if (!found) {
-                        let opt = document.createElement('option');
-                        opt.value = ufApi;
-                        opt.textContent = ufApi;
-                        estadoSelect.appendChild(opt);
+                try {
+                    const resp = await fetch(url);
+                    const json = await resp.json();
+
+                    if (json.error) {
+                        console.warn('Erro na consulta CNPJ:', json.error);
+                        return;
                     }
 
-                    estadoSelect.value = ufApi;
-
-                    // Carrega cidades da UF e tenta selecionar pelo nome retornado
-                    if (cidadeApi) {
-                        await carregarCidadesPorUf(ufApi, cidadeApi);
-                    } else {
-                        await carregarCidadesPorUf(ufApi);
+                    if (razaoInput && json.razao_social) {
+                        razaoInput.value = json.razao_social;
                     }
+                    if (fantasiaInput && json.nome_fantasia) {
+                        fantasiaInput.value = json.nome_fantasia;
+                    }
+                    if (cepInput && json.cep) {
+                        const cepLimpo = json.cep.replace(/\D/g, '');
+                        cepInput.value = cepLimpo.length === 8
+                            ? cepLimpo.replace(/^(\d{5})(\d{3})$/, '$1-$2')
+                            : json.cep;
+                    }
+                    if (enderecoInput && json.endereco) {
+                        enderecoInput.value = json.endereco;
+                    }
+                    if (bairroInput && json.bairro) {
+                        bairroInput.value = json.bairro;
+                    }
+                    if (complInput && json.complemento) {
+                        complInput.value = json.complemento;
+                    }
+
+                    const ufApi = json.uf || null;
+                    const cidadeApi = json.municipio || null;
+
+                    if (ufApi && estadoSelect) {
+                        const found = Array.from(estadoSelect.options).some(opt => opt.value === ufApi);
+                        if (!found) {
+                            const opt = document.createElement('option');
+                            opt.value = ufApi;
+                            opt.textContent = ufApi;
+                            estadoSelect.appendChild(opt);
+                        }
+
+                        estadoSelect.value = ufApi;
+                        await carregarCidadesPorUf(ufApi, cidadeApi || null);
+                    }
+                } catch (e) {
+                    console.error('Erro ao consultar CNPJ', e);
                 }
-
-                // OBS: se você quiser, aqui ainda pode disparar manualmente o blur do CEP
-                // para "refinar" o endereço via ViaCEP:
-                // if (cepInput && cepInput.value) {
-                //     cepInput.dispatchEvent(new Event('blur'));
-                // }
-
-            } catch (e) {
-                console.error('Erro ao consultar CNPJ', e);
             }
+
+            async function validarDocumentoDuplicado() {
+                const input = getDocumentoInput();
+                const documentoLimpo = input.value.replace(/\D/g, '');
+                const tamanhoEsperado = getTipoPessoa() === 'PF' ? 11 : 14;
+                const mensagemInvalido = getTipoPessoa() === 'PF' ? 'CPF inválido' : 'CNPJ inválido';
+                const mensagemDuplicado = getTipoPessoa() === 'PF'
+                    ? 'Já existe um cliente cadastrado com este CPF.'
+                    : 'Já existe um cliente cadastrado com este CNPJ.';
+
+                if (documentoLimpo === '') {
+                    limparErroCNPJ(input);
+                    documentoDuplicado = false;
+                    return;
+                }
+
+                const valido = getTipoPessoa() === 'PF'
+                    ? cpfValido(documentoLimpo)
+                    : cnpjValido(documentoLimpo);
+
+                if (documentoLimpo.length !== tamanhoEsperado || !valido) {
+                    mostrarErroCNPJ(input, mensagemInvalido);
+                    documentoDuplicado = false;
+                    return;
+                }
+
+                limparErroCNPJ(input);
+
+                const clienteId = input.dataset.clienteId || '';
+                const baseUrl = @json(route($routePrefix.'.cnpj-exists', ['cnpj' => '__DOCUMENTO__']));
+                let url = baseUrl.replace('__DOCUMENTO__', encodeURIComponent(documentoLimpo));
+                const params = new URLSearchParams();
+                params.set('tipo_pessoa', getTipoPessoa());
+                if (clienteId) {
+                    params.set('ignore', clienteId);
+                }
+                url += `?${params.toString()}`;
+
+                try {
+                    const resp = await fetch(url);
+                    const json = await resp.json();
+                    if (json?.exists) {
+                        documentoDuplicado = true;
+                        mostrarErroCNPJ(input, mensagemDuplicado);
+                    } else {
+                        documentoDuplicado = false;
+                        limparErroCNPJ(input);
+                    }
+                } catch (e) {
+                    console.error('Erro ao validar documento duplicado', e);
+                }
+            }
+
+            cnpjInput.addEventListener('input', function () {
+                this.value = aplicarMascaraCnpj(this.value);
+            });
+
+            cpfInput.addEventListener('input', function () {
+                this.value = aplicarMascaraCpf(this.value);
+            });
+
+            cnpjInput.addEventListener('blur', async function () {
+                await validarDocumentoDuplicado();
+                await consultarCnpj();
+            });
+
+            cpfInput.addEventListener('blur', validarDocumentoDuplicado);
+            tipoPessoa.addEventListener('change', syncTipoPessoaUI);
+            syncTipoPessoaUI();
+
+            const formCliente = cnpjInput.closest('form');
+            formCliente?.addEventListener('submit', function (e) {
+                if (documentoDuplicado) {
+                    e.preventDefault();
+                    const input = getDocumentoInput();
+                    mostrarErroCNPJ(
+                        input,
+                        getTipoPessoa() === 'PF'
+                            ? 'Já existe um cliente cadastrado com este CPF.'
+                            : 'Já existe um cliente cadastrado com este CNPJ.'
+                    );
+                }
+            });
         });
 
 
     </script>
 
-
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            // pega o primeiro input com name="cnpj" da página
-            var cnpjInput = document.querySelector('input[name="cnpj"]');
-            var formCliente = cnpjInput?.closest('form');
-            var cnpjDuplicado = false;
-            if (!cnpjInput) return;
-
-            // máscara enquanto digita
-            cnpjInput.addEventListener('input', function () {
-                var v = cnpjInput.value.replace(/\D/g, '');   // só números
-                v = v.slice(0, 14);                           // máximo 14 dígitos
-
-                if (v.length > 12) {
-                    // 00.000.000/0000-00
-                    cnpjInput.value = v.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{1,2})/, "$1.$2.$3/$4-$5");
-                } else if (v.length > 8) {
-                    // 00.000.000/0000
-                    cnpjInput.value = v.replace(/(\d{2})(\d{3})(\d{3})(\d{1,4})/, "$1.$2.$3/$4");
-                } else if (v.length > 5) {
-                    // 00.000.000
-                    cnpjInput.value = v.replace(/(\d{2})(\d{3})(\d{1,3})/, "$1.$2.$3");
-                } else if (v.length > 2) {
-                    // 00.000
-                    cnpjInput.value = v.replace(/(\d{2})(\d{1,3})/, "$1.$2");
-                } else {
-                    cnpjInput.value = v;
-                }
-            });
-
-            // validação ao sair do campo
-            cnpjInput.addEventListener('blur', async function () {
-                var cnpjLimpo = cnpjInput.value.replace(/\D/g, '');
-
-                if (cnpjLimpo === '') {
-                    limparErroCNPJ(cnpjInput);
-                    return;
-                }
-
-                if (!cnpjValido(cnpjLimpo)) {
-                    mostrarErroCNPJ(cnpjInput, 'CNPJ inválido');
-                    cnpjDuplicado = false;
-                } else {
-                    limparErroCNPJ(cnpjInput);
-                    const clienteId = cnpjInput.dataset.clienteId || '';
-                    const baseUrl = @json(route($routePrefix.'.cnpj-exists', ['cnpj' => '__CNPJ__']));
-                    const url = baseUrl
-                        .replace('__CNPJ__', encodeURIComponent(cnpjLimpo))
-                        + (clienteId ? `?ignore=${encodeURIComponent(clienteId)}` : '');
-                    try {
-                        const resp = await fetch(url);
-                        const json = await resp.json();
-                        if (json?.exists) {
-                            cnpjDuplicado = true;
-                            mostrarErroCNPJ(cnpjInput, 'Já existe um cliente cadastrado com este CNPJ.');
-                        } else {
-                            cnpjDuplicado = false;
-                            limparErroCNPJ(cnpjInput);
-                        }
-                    } catch (e) {
-                        console.error('Erro ao validar CNPJ duplicado', e);
-                    }
-                }
-            });
-
-            formCliente?.addEventListener('submit', (e) => {
-                if (cnpjDuplicado) {
-                    e.preventDefault();
-                    mostrarErroCNPJ(cnpjInput, 'Já existe um cliente cadastrado com este CNPJ.');
-                }
-            });
-        });
-
         // valida CNPJ (algoritmo padrão)
         function cnpjValido(cnpj) {
             if (!cnpj || cnpj.length !== 14) return false;

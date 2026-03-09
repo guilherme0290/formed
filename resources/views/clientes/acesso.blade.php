@@ -18,12 +18,13 @@
     $telefoneLimpo = preg_replace('/\\D+/', '', $cliente->telefone ?? '');
     $senhaPadrao = $senhaSugerida ?? \Illuminate\Support\Str::password(10);
     $emailSugerido = $cliente->email ?? '';
-    $documentoSugerido = $cliente->cnpj ?? '';
+    $documentoSugerido = $cliente->documento_principal ?? '';
     $temEmail = trim($emailSugerido) !== '';
     $temDocumento = trim($documentoSugerido) !== '';
     $loginTipoPadrao = $temDocumento ? 'documento' : 'email';
     $loginTipoAtual = old('login_tipo', $loginTipoPadrao);
     $mostrarEscolhaLogin = $temEmail && $temDocumento;
+    $documentoLabel = $cliente->documento_label ?? 'CPF/CNPJ';
     if (!$temEmail && $loginTipoAtual === 'email') {
         $loginTipoAtual = 'documento';
     }
@@ -74,7 +75,7 @@
                                        value="documento"
                                        class="h-4 w-4 text-slate-900"
                                        {{ $loginTipoAtual === 'documento' ? 'checked' : '' }}>
-                                <span>CNPJ</span>
+                                <span>{{ $documentoLabel }}</span>
                             </label>
 
                             <label class="flex items-center gap-2 text-sm font-semibold text-slate-700">
@@ -92,11 +93,11 @@
                 @endif
 
                 <div id="documentoGroup" class="space-y-1">
-                    <label class="text-sm font-semibold text-slate-700">CNPJ (login)</label>
+                    <label class="text-sm font-semibold text-slate-700">{{ $documentoLabel }} (login)</label>
                     <input type="text" name="documento" id="documentoInput" value="{{ old('documento', $documentoSugerido) }}"
                            {{ $loginTipoAtual === 'documento' ? 'required' : '' }}
                            {{ $loginTipoAtual === 'documento' ? '' : 'disabled' }}
-                           class="w-full rounded-xl border border-slate-200 px-3 py-2" placeholder="00.000.000/0000-00">
+                           class="w-full rounded-xl border border-slate-200 px-3 py-2" placeholder="{{ $documentoLabel === 'CPF' ? '000.000.000-00' : '00.000.000/0000-00' }}">
                 </div>
                 <div id="emailGroup" class="space-y-1">
                     <label class="text-sm font-semibold text-slate-700">E-mail (login)</label>

@@ -75,9 +75,10 @@ class ClienteController extends Controller
                             ->orWhere('telefone', 'like', "%{$qText}%");
                     }
 
-                    // Só filtra por CNPJ se tiver número na busca
+                    // Só filtra por CPF/CNPJ se tiver número na busca
                     if ($doc !== '') {
                         $x->orWhere('cnpj', 'like', "%{$doc}%")
+                            ->orWhere('cpf', 'like', "%{$doc}%")
                             ->orWhere('telefone', 'like', "%{$doc}%");
                     }
                 });
@@ -100,12 +101,13 @@ class ClienteController extends Controller
             ->when(!empty($dataInicioNormalizada), fn($query) => $query->whereDate('clientes.created_at', '>=', $dataInicioNormalizada))
             ->when(!empty($dataFimNormalizada), fn($query) => $query->whereDate('clientes.created_at', '<=', $dataFimNormalizada))
             ->orderBy('razao_social')
-            ->get(['razao_social', 'nome_fantasia', 'cnpj'])
+            ->get(['razao_social', 'nome_fantasia', 'cnpj', 'cpf'])
             ->flatMap(function ($cliente) {
                 return array_filter([
                     $cliente->razao_social,
                     $cliente->nome_fantasia,
                     $cliente->cnpj,
+                    $cliente->cpf,
                 ]);
             })
             ->unique()
@@ -292,16 +294,26 @@ class ClienteController extends Controller
     public function cnpjExists(Request $request, string $cnpj)
     {
         $empresaId = $request->user()->empresa_id ?? 1;
-        $cnpjLimpo = preg_replace('/\D+/', '', (string) $cnpj);
+        $documentoLimpo = preg_replace('/\D+/', '', (string) $cnpj);
+        $tipoPessoa = strtoupper((string) $request->query('tipo_pessoa', ''));
         $ignorarId = $request->query('ignore') ? (int) $request->query('ignore') : null;
 
-        if ($cnpjLimpo === '') {
+        if ($documentoLimpo === '') {
             return response()->json(['exists' => false]);
         }
 
+        if ($tipoPessoa !== 'PF' && $tipoPessoa !== 'PJ') {
+            $tipoPessoa = strlen($documentoLimpo) === 11 ? 'PF' : 'PJ';
+        }
+
+        $colunaDocumento = $tipoPessoa === 'PF' ? 'cpf' : 'cnpj';
+
         $query = Cliente::query()
             ->where('empresa_id', $empresaId)
-            ->whereRaw("REPLACE(REPLACE(REPLACE(cnpj, '.', ''), '-', ''), '/', '') = ?", [$cnpjLimpo]);
+            ->whereRaw(
+                "REPLACE(REPLACE(REPLACE({$colunaDocumento}, '.', ''), '-', ''), '/', '') = ?",
+                [$documentoLimpo]
+            );
 
         if ($ignorarId) {
             $query->where('id', '!=', $ignorarId);
@@ -365,7 +377,7 @@ class ClienteController extends Controller
             if ($afterAction === 'apresentacao') {
                 $r->session()->put('apresentacao_proposta.cliente', [
                     'proposta_id' => null,
-                    'cnpj' => $cliente->cnpj,
+                    'cnpj' => $cliente->documento_principal,
                     'razao_social' => $cliente->razao_social,
                     'contato' => $cliente->nome_fantasia ?: $cliente->razao_social,
                     'telefone' => $cliente->telefone,
@@ -377,7 +389,7 @@ class ClienteController extends Controller
             }
 
             return redirect()
-                ->route($this->routeName('edit'), ['cliente' => $cliente->id, 'tab' => 'tarefa'])
+                ->route($this->routeName('edit'), ['cliente' => $cliente->id, 'tab' => 'dados'])
                 ->with('ok', 'Cliente cadastrado com sucesso!');
         } catch (\Throwable $e) {
             report($e);
@@ -431,8 +443,8 @@ class ClienteController extends Controller
                             return;
                         }
                         $doc = preg_replace('/\D+/', '', (string) $value);
-                        if (strlen($doc) !== 14) {
-                            $fail('Informe um CNPJ (14 dígitos) válido.');
+                        if (!in_array(strlen($doc), [11, 14], true)) {
+                            $fail('Informe um CPF ou CNPJ válido.');
                         }
                     },
                 ],
@@ -871,13 +883,25 @@ class ClienteController extends Controller
         $empresaId = $r->user()->empresa_id ?? 1;
         $clienteRoute = $r->route('cliente');
         $clienteId = $clienteRoute instanceof Cliente ? $clienteRoute->id : (is_numeric($clienteRoute) ? (int) $clienteRoute : null);
+        $tipoPessoa = strtoupper((string) $r->input('tipo_pessoa', 'PJ'));
 
-        return $r->validate(
+        $data = $r->validate(
             [
+                'tipo_pessoa'    => ['required', Rule::in(['PF', 'PJ'])],
                 'razao_social'   => ['required', 'string', 'max:255'],
                 'nome_fantasia'  => ['nullable', 'string', 'max:255'],
+                'cpf'            => [
+                    Rule::requiredIf(fn () => $tipoPessoa === 'PF'),
+                    'nullable',
+                    'string',
+                    'max:14',
+                    Rule::unique('clientes', 'cpf')
+                        ->where(fn ($q) => $q->where('empresa_id', $empresaId))
+                        ->ignore($clienteId),
+                ],
                 'cnpj'           => [
-                    'required',
+                    Rule::requiredIf(fn () => $tipoPessoa === 'PJ'),
+                    'nullable',
                     'string',
                     'max:20',
                     Rule::unique('clientes', 'cnpj')
@@ -903,13 +927,14 @@ class ClienteController extends Controller
                 'cidade_id'      => ['required', 'exists:cidades,id'],
             ],
             [
-                // mensagens amigáveis 💬
-                'razao_social.required' => 'Informe a razão social do cliente.',
-                'razao_social.max'      => 'A razão social deve ter no máximo 255 caracteres.',
-
+                'tipo_pessoa.required'  => 'Selecione se o cliente e PF ou PJ.',
+                'tipo_pessoa.in'        => 'Tipo de pessoa invalido.',
+                'razao_social.required' => 'Informe o nome do cliente.',
+                'razao_social.max'      => 'O nome deve ter no máximo 255 caracteres.',
+                'cpf.required'          => 'Informe o CPF do cliente.',
+                'cpf.max'               => 'O CPF está muito longo. Confira o número digitado.',
                 'cnpj.required'         => 'Informe o CNPJ do cliente.',
                 'cnpj.max'              => 'O CNPJ está muito longo. Confira o número digitado.',
-
                 'email.email'           => 'Informe um e-mail válido (ex: nome@empresa.com).',
                 'tipo_cliente.required' => 'Selecione se o cliente Parceiro ou Final.',
                 'tipo_cliente.in'       => 'Tipo de cliente inválido.',
@@ -918,7 +943,25 @@ class ClienteController extends Controller
             ]
         );
 
+        $data['tipo_pessoa'] = $tipoPessoa;
+        $data['cpf'] = $this->normalizeDocumento($data['cpf'] ?? null);
+        $data['cnpj'] = $this->normalizeDocumento($data['cnpj'] ?? null);
+
+        if ($tipoPessoa === 'PF') {
+            $data['cnpj'] = null;
+            $data['nome_fantasia'] = null;
+        } else {
+            $data['cpf'] = null;
+        }
+
         return $this->normalizeClienteUppercase($data);
+    }
+
+    private function normalizeDocumento(?string $value): ?string
+    {
+        $value = preg_replace('/\D+/', '', (string) $value);
+
+        return $value !== '' ? $value : null;
     }
 
     private function normalizeClienteUppercase(array $data): array

@@ -44,7 +44,7 @@ class LoginRequest extends FormRequest
         $login = trim((string) $this->input('login'));
         if ($login === '') {
             throw ValidationException::withMessages([
-                'login' => 'Informe um e-mail ou CNPJ para entrar.',
+                'login' => 'Informe um e-mail, CPF ou CNPJ para entrar.',
             ]);
         }
 
@@ -53,9 +53,9 @@ class LoginRequest extends FormRequest
             $credentials = ['email' => $login, 'password' => $this->input('password')];
         } else {
             $documento = preg_replace('/\D+/', '', $login);
-            if (strlen($documento) !== 14) {
+            if (!in_array(strlen($documento), [11, 14], true)) {
                 throw ValidationException::withMessages([
-                    'login' => 'Informe um CNPJ (14 dígitos) válido.',
+                    'login' => 'Informe um CPF ou CNPJ válido.',
                 ]);
             }
             $credentials = ['documento' => $documento, 'password' => $this->input('password')];

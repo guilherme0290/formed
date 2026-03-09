@@ -10,11 +10,12 @@
 
     $senhaPadraoTab = old('password', $senhaSugerida ?? \Illuminate\Support\Str::password(10));
     $emailSugeridoTab = old('email', $cliente->email ?? '');
-    $documentoSugeridoTab = old('documento', $cliente->cnpj ?? '');
+    $documentoSugeridoTab = old('documento', $cliente->documento_principal ?? '');
     $temEmailTab = trim((string) ($cliente->email ?? '')) !== '';
-    $temDocumentoTab = trim((string) ($cliente->cnpj ?? '')) !== '';
+    $temDocumentoTab = trim((string) ($cliente->documento_principal ?? '')) !== '';
     $loginTipoPadraoTab = $temDocumentoTab ? 'documento' : 'email';
     $loginTipoAtualTab = old('login_tipo', $loginTipoPadraoTab);
+    $documentoLabelTab = $cliente->documento_label ?? 'CPF/CNPJ';
     if (!$temEmailTab && $loginTipoAtualTab === 'email') {
         $loginTipoAtualTab = 'documento';
     }
@@ -84,7 +85,7 @@
                                     <label class="flex items-center gap-2 text-sm text-slate-700">
                                         <input type="radio" name="login_tipo" value="documento" class="h-4 w-4"
                                                {{ $loginTipoAtualTab === 'documento' ? 'checked' : '' }}>
-                                        <span>CNPJ</span>
+                                        <span>{{ $documentoLabelTab }}</span>
                                     </label>
                                     <label class="flex items-center gap-2 text-sm text-slate-700">
                                         <input type="radio" name="login_tipo" value="email" class="h-4 w-4"
@@ -98,13 +99,13 @@
                         @endif
 
                         <div id="acessoTabDocumentoGroup" class="space-y-1">
-                                <label class="text-sm font-semibold text-slate-700">CNPJ (login)</label>
+                                <label class="text-sm font-semibold text-slate-700">{{ $documentoLabelTab }} (login)</label>
                                 <input type="text"
                                        id="acessoTabDocumentoInput"
                                        name="documento"
                                        value="{{ $documentoSugeridoTab }}"
                                        class="w-full rounded-xl border border-slate-200 px-3 py-2"
-                                       placeholder="00.000.000/0000-00">
+                                       placeholder="{{ $documentoLabelTab === 'CPF' ? '000.000.000-00' : '00.000.000/0000-00' }}">
                         </div>
 
                         <div id="acessoTabEmailGroup" class="space-y-1">

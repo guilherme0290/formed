@@ -40,7 +40,7 @@
                                id="kanban-clientes-input"
                                name="q"
                                value="{{ request('q') }}"
-                               placeholder="Pesquisar por razão social, fantasia ou CNPJ..."
+                               placeholder="Pesquisar por razão social, fantasia ou CPF/CNPJ..."
                                autocomplete="off"
                                class="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm
                                       focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400">
@@ -77,8 +77,8 @@
                                             {{ $cliente->razao_social ?? $cliente->nome_fantasia }}
                                         </p>
                                         <p class="text-[11px] text-slate-500">
-                                            @if($cliente->cnpj)
-                                                {{ $cliente->cnpj }}
+                                            @if($cliente->documento_principal)
+                                                {{ $cliente->documento_principal }}
                                             @else
                                                 &nbsp;
                                             @endif
@@ -112,8 +112,8 @@
                                             <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Sem contrato ativo</p>
                                         @endif
                                         <p class="text-[11px] text-slate-500">
-                                            @if($cliente->cnpj)
-                                                {{ $cliente->cnpj }}
+                                            @if($cliente->documento_principal)
+                                                {{ $cliente->documento_principal }}
                                             @else
                                                 &nbsp;
                                             @endif

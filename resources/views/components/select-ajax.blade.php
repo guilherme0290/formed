@@ -34,7 +34,7 @@
 
                 {{-- subtítulo opcional: tipo, cnpj, etc --}}
                 <span class="text-xs text-gray-500"
-                      x-text="item.tipo || item.cnpj || ''">
+                      x-text="item.tipo || item.documento || item.cpf || item.cnpj || ''">
                 </span>
             </button>
         </template>

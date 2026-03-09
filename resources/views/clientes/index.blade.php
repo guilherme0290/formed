@@ -33,24 +33,6 @@
             </div>
         @endif
 
-        {{-- MENSAGENS --}}
-        @if (session('ok'))
-            <div class="mb-2 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700">
-                {{ session('ok') }}
-            </div>
-        @endif
-
-        @if (session('erro'))
-            <div class="mb-2 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-                {{ session('erro') }}
-            </div>
-        @endif
-        @if (session('error'))
-            <div class="mb-2 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-700">
-                {{ session('error') }}
-            </div>
-        @endif
-
         <div class="flex items-start sm:items-center justify-between flex-wrap gap-3">
             <div>
                 <h1 class="text-2xl font-semibold text-gray-800">Clientes</h1>
@@ -69,11 +51,11 @@
             <form method="GET" class="grid md:grid-cols-4 gap-4 items-end" id="clientes-filter-form">
 
                 <div class="md:col-span-2">
-                    <label class="block text-sm font-medium mb-1 text-slate-700 break-words">Busca (raz&atilde;o social, nome fantasia ou CNPJ)</label>
+                    <label class="block text-sm font-medium mb-1 text-slate-700 break-words">Busca (raz&atilde;o social, nome fantasia ou CPF/CNPJ)</label>
                     <div class="relative">
                         <input type="search" name="q" id="cliente-search" value="{{ $q }}"
                                autocomplete="off"
-                               placeholder="Raz&atilde;o social, fantasia ou CNPJ"
+                               placeholder="Raz&atilde;o social, fantasia ou CPF/CNPJ"
                                class="w-full rounded-xl border-slate-300 px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                         <div id="clientes-autocomplete"
                              class="absolute z-20 mt-1 w-full max-h-64 overflow-auto rounded-lg border border-slate-200 bg-white shadow-lg hidden">
@@ -134,8 +116,8 @@
 
                             <div class="grid grid-cols-1 gap-2 text-xs">
                                 <div>
-                                    <div class="text-slate-500">CNPJ</div>
-                                    <div class="font-medium text-slate-800">{{ $cliente->cnpj }}</div>
+                                    <div class="text-slate-500">{{ $cliente->documento_label }}</div>
+                                    <div class="font-medium text-slate-800">{{ $cliente->documento_principal ?? '-' }}</div>
                                 </div>
                                 <div>
                                     <div class="text-slate-500">Contato</div>
@@ -202,7 +184,7 @@
                         <thead class="sticky top-0 z-10 bg-slate-100/95 backdrop-blur text-xs uppercase tracking-wide text-slate-600">
                         <tr>
                             <th class="px-4 py-3 text-left w-[30%]">Cliente</th>
-                            <th class="px-4 py-3 text-left w-[16%]">CNPJ</th>
+                            <th class="px-4 py-3 text-left w-[16%]">CPF/CNPJ</th>
                             <th class="px-4 py-3 text-left w-[24%]">Contato</th>
                             <th class="px-4 py-3 text-center w-[8%] whitespace-nowrap">Acesso</th>
                             <th class="px-4 py-3 text-center w-[10%]">Status</th>
@@ -231,7 +213,10 @@
                                     </div>
                                 </td>
 
-                                <td class="px-4 py-2.5">{{ $cliente->cnpj }}</td>
+                                <td class="px-4 py-2.5">
+                                    <div class="font-medium text-slate-800">{{ $cliente->documento_principal ?? '-' }}</div>
+                                    <div class="text-[11px] text-slate-500">{{ $cliente->documento_label }}</div>
+                                </td>
 
                                 <td class="px-4 py-2.5">
                                     <div class="leading-tight break-words">{{ $cliente->email }}</div>
@@ -401,6 +386,34 @@
 @endsection
 
 @push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const flashOk = @json(session('ok'));
+            const flashErr = @json(session('error') ?? session('erro'));
+
+            if (typeof window.uiAlert !== 'function') {
+                return;
+            }
+
+            if (flashOk) {
+                window.uiAlert(flashOk, {
+                    icon: 'success',
+                    title: 'Sucesso',
+                    confirmText: 'OK',
+                });
+                return;
+            }
+
+            if (flashErr) {
+                window.uiAlert(flashErr, {
+                    icon: 'error',
+                    title: 'Atenção',
+                    confirmText: 'OK',
+                });
+            }
+        });
+    </script>
+
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             window.initTailwindAutocomplete?.(

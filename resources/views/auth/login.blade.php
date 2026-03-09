@@ -148,7 +148,7 @@
                     <input type="hidden" name="redirect" id="redirectInput" value="{{ $redirect }}">
 
                     <div class="space-y-1.5">
-                        <label class="block text-xs font-medium text-slate-300">E-mail ou CNPJ</label>
+                        <label class="block text-xs font-medium text-slate-300">E-mail, CPF ou CNPJ</label>
                         <div class="relative">
                             <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-500 text-sm">
                                 @
@@ -162,9 +162,9 @@
                                 class="w-full rounded-xl border border-slate-700 bg-slate-900/60 px-8 py-2.5 text-sm text-slate-100
                                        placeholder:text-slate-500
                                        focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                placeholder="Digite seu e-mail ou CNPJ">
+                                placeholder="Digite seu e-mail, CPF ou CNPJ">
                         </div>
-                        <p class="mt-1 text-[11px] text-slate-500">Use e-mail ou CNPJ.</p>
+                        <p class="mt-1 text-[11px] text-slate-500">Use e-mail, CPF ou CNPJ.</p>
                     </div>
 
                     <div class="space-y-1.5">

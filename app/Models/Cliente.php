@@ -15,8 +15,10 @@ class Cliente extends Model
     protected $fillable = [
         'empresa_id',
         'vendedor_id',
+        'tipo_pessoa',
         'razao_social',
         'nome_fantasia',
+        'cpf',
         'cnpj',
         'email',
         'telefone',
@@ -71,6 +73,18 @@ class Cliente extends Model
             'funcao_id'
         )->withTimestamps();
     }
-}
 
+    public function getDocumentoPrincipalAttribute(): ?string
+    {
+        $documento = $this->tipo_pessoa === 'PF' ? $this->cpf : $this->cnpj;
+        $documento = preg_replace('/\D+/', '', (string) $documento);
+
+        return $documento !== '' ? $documento : null;
+    }
+
+    public function getDocumentoLabelAttribute(): string
+    {
+        return $this->tipo_pessoa === 'PF' ? 'CPF' : 'CNPJ';
+    }
+}
 
