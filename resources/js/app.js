@@ -110,6 +110,7 @@ window.initTailwindAutocomplete = (inputRef, listRef, options = [], config = {})
     if (!input || !list) return;
 
     const maxItems = Number(config.maxItems || 10);
+    const minChars = Number(config.minChars || 0);
     const dataset = Array.from(new Set((Array.isArray(options) ? options : [])
         .map((value) => (value ?? '').toString().trim())
         .filter(Boolean)));
@@ -160,7 +161,7 @@ window.initTailwindAutocomplete = (inputRef, listRef, options = [], config = {})
         }
 
         filteredItems = items;
-        activeIndex = 0;
+        activeIndex = -1;
 
         items.forEach((value, idx) => {
             const btn = document.createElement('button');
@@ -179,11 +180,15 @@ window.initTailwindAutocomplete = (inputRef, listRef, options = [], config = {})
         });
 
         list.classList.remove('hidden');
-        setActive(activeIndex);
     };
 
     const filterOptions = () => {
-        const query = normalize(input.value);
+        const rawQuery = (input.value || '').trim();
+        const query = normalize(rawQuery);
+        if (rawQuery !== '' && rawQuery.length < minChars) {
+            closeList();
+            return;
+        }
         const filtered = dataset
             .filter((value) => !query || normalize(value).includes(query))
             .slice(0, maxItems);
@@ -217,8 +222,9 @@ window.initTailwindAutocomplete = (inputRef, listRef, options = [], config = {})
         }
 
         if (event.key === 'Enter') {
+            if (activeIndex < 0) return;
             event.preventDefault();
-            const selected = filteredItems[activeIndex] ?? filteredItems[0];
+            const selected = filteredItems[activeIndex];
             if (selected) {
                 selectItem(selected);
             }

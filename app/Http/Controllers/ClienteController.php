@@ -54,9 +54,14 @@ class ClienteController extends Controller
         if (!empty($dataInicioNormalizada) && !empty($dataFimNormalizada) && $dataInicioNormalizada > $dataFimNormalizada) {
             [$dataInicioNormalizada, $dataFimNormalizada] = [$dataFimNormalizada, $dataInicioNormalizada];
         }
-        $qText  = trim(preg_replace('/\d+/', ' ', $q));
-        $qText  = preg_replace('/\s+/', ' ', $qText);
-        $doc    = preg_replace('/\D+/', '', $q);
+        $qTerm = preg_replace('/\s+/', ' ', $q);
+        $qTerm = trim((string) $qTerm);
+        $doc = preg_replace('/\D+/', '', $q);
+
+        if ($q !== '' && mb_strlen($qTerm) < 3 && strlen($doc) < 3) {
+            $qTerm = '';
+            $doc = '';
+        }
 
         $empresaId = $r->user()->empresa_id ?? 1;
 
@@ -66,18 +71,19 @@ class ClienteController extends Controller
             ->when($this->isComercialNaoMaster($r->user()), function ($q) use ($r) {
                 $q->where('vendedor_id', (int) $r->user()->id);
             })
-            ->when($qText !== '' || $doc !== '', function ($w) use ($qText, $doc) {
-                $w->where(function ($x) use ($qText, $doc) {
-                    if ($qText !== '') {
-                        $x->where('razao_social', 'like', "%{$qText}%")
-                            ->orWhere('nome_fantasia', 'like', "%{$qText}%")
-                            ->orWhere('email', 'like', "%{$qText}%")
-                            ->orWhere('telefone', 'like', "%{$qText}%");
+            ->when($qTerm !== '' || $doc !== '', function ($w) use ($qTerm, $doc) {
+                $w->where(function ($x) use ($qTerm, $doc) {
+                    if ($qTerm !== '') {
+                        $x->where('razao_social', 'like', "%{$qTerm}%")
+                            ->orWhere('nome_fantasia', 'like', "%{$qTerm}%")
+                            ->orWhere('email', 'like', "%{$qTerm}%");
                     }
 
-                    // Só filtra por CNPJ se tiver número na busca
-                    if ($doc !== '') {
-                        $x->orWhere('cnpj', 'like', "%{$doc}%")
+                    if (strlen($doc) >= 3) {
+                        $x->orWhereRaw(
+                            "REPLACE(REPLACE(REPLACE(REPLACE(TRIM(cnpj), '.', ''), '-', ''), '/', ''), ' ', '') LIKE ?",
+                            ["%{$doc}%"]
+                        )
                             ->orWhere('telefone', 'like', "%{$doc}%");
                     }
                 });
@@ -85,6 +91,38 @@ class ClienteController extends Controller
             ->when($status !== 'todos', fn($w) => $w->where('ativo', $status === 'ativo'))
             ->when(!empty($dataInicioNormalizada), fn($w) => $w->whereDate('clientes.created_at', '>=', $dataInicioNormalizada))
             ->when(!empty($dataFimNormalizada), fn($w) => $w->whereDate('clientes.created_at', '<=', $dataFimNormalizada))
+            ->when($qTerm !== '', function ($query) use ($qTerm) {
+                $query->orderByRaw(
+                    "CASE
+                        WHEN razao_social LIKE ? THEN 0
+                        WHEN nome_fantasia LIKE ? THEN 1
+                        WHEN razao_social LIKE ? THEN 2
+                        WHEN nome_fantasia LIKE ? THEN 3
+                        WHEN email LIKE ? THEN 4
+                        ELSE 5
+                    END",
+                    [
+                        "{$qTerm}%",
+                        "{$qTerm}%",
+                        "%{$qTerm}%",
+                        "%{$qTerm}%",
+                        "%{$qTerm}%",
+                    ]
+                )->orderBy('razao_social');
+            })
+            ->when($qTerm === '' && strlen($doc) >= 3, function ($query) use ($doc) {
+                $query->orderByRaw(
+                    "CASE
+                        WHEN REPLACE(REPLACE(REPLACE(REPLACE(TRIM(cnpj), '.', ''), '-', ''), '/', ''), ' ', '') LIKE ? THEN 0
+                        WHEN telefone LIKE ? THEN 1
+                        ELSE 2
+                    END",
+                    [
+                        "{$doc}%",
+                        "%{$doc}%",
+                    ]
+                )->orderBy('razao_social');
+            })
             ->orderByDesc('id')
             ->paginate(15)
             ->withQueryString();
