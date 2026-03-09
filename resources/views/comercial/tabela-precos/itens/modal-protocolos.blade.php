@@ -2,6 +2,7 @@
 @php($canCreate = $canCreate ?? false)
 @php($canUpdate = $canUpdate ?? false)
 @php($canDelete = $canDelete ?? false)
+@php($clienteSelector = $clienteSelector ?? null)
 
 <div id="modalProtocolos" data-overlay-root="true" class="fixed inset-0 z-[240] hidden bg-black/50 overflow-y-auto" style="z-index: 240;">
     <div class="min-h-full w-full flex items-center justify-center p-4 md:p-6">
@@ -78,6 +79,19 @@
                            placeholder="Opcional">
                 </div>
 
+                <div id="protocoloEscopoWrap" class="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2">
+                    <div class="text-xs font-semibold text-slate-600">Escopo do grupo</div>
+                    <label class="flex items-center gap-2 text-sm text-slate-700">
+                        <input type="radio" name="protocolo_escopo" id="protocolo_escopo_generico" value="generico" checked>
+                        <span>Genérico da empresa</span>
+                    </label>
+                    <label class="flex items-center gap-2 text-sm text-slate-700">
+                        <input type="radio" name="protocolo_escopo" id="protocolo_escopo_cliente" value="cliente">
+                        <span>Exclusivo deste cliente</span>
+                    </label>
+                    <div id="protocoloEscopoHint" class="text-xs text-slate-500"></div>
+                </div>
+
                 <div>
                     <div class="flex items-center justify-between">
                         <label class="text-xs font-semibold text-slate-600">Exames do grupo</label>
@@ -127,6 +141,7 @@
                 update: @json((bool) $canUpdate),
                 delete: @json((bool) $canDelete),
             };
+            const CLIENTE_SELECTOR = @json($clienteSelector);
             const deny = (msg) => window.uiAlert?.(msg || 'Usuário sem permissão.');
             const CSRF = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
@@ -151,6 +166,10 @@
                     titulo: document.getElementById('protocolo_titulo'),
                     descricao: document.getElementById('protocolo_descricao'),
                     ativo: document.getElementById('protocolo_ativo'),
+                    escopoWrap: document.getElementById('protocoloEscopoWrap'),
+                    escopoGenerico: document.getElementById('protocolo_escopo_generico'),
+                    escopoCliente: document.getElementById('protocolo_escopo_cliente'),
+                    escopoHint: document.getElementById('protocoloEscopoHint'),
                     examesList: document.getElementById('protocoloExamesList'),
                     examesCount: document.getElementById('protocoloExamesCount'),
                     btnReloadExames: document.getElementById('btnProtocoloReloadExames'),
@@ -181,6 +200,50 @@
             ensureModalOverSidebar(PROTOCOLOS.dom.modalForm, 250);
 
             function brl(n){ return Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
+            function getClienteInput(){
+                return CLIENTE_SELECTOR ? document.querySelector(CLIENTE_SELECTOR) : null;
+            }
+            function setEscopoSelection(scope){
+                if (PROTOCOLOS.dom.escopoGenerico) {
+                    PROTOCOLOS.dom.escopoGenerico.checked = scope !== 'cliente';
+                }
+                if (PROTOCOLOS.dom.escopoCliente) {
+                    PROTOCOLOS.dom.escopoCliente.checked = scope === 'cliente';
+                }
+            }
+            function getCurrentClienteId(){
+                const el = getClienteInput();
+                const value = Number(el?.value || 0);
+                return Number.isFinite(value) && value > 0 ? value : null;
+            }
+            function hasClienteContext(){
+                return !!getCurrentClienteId();
+            }
+            function buildListUrl(){
+                const clienteId = getCurrentClienteId();
+                if (!clienteId) return PROTOCOLOS.urls.list;
+                return `${PROTOCOLOS.urls.list}?cliente_id=${encodeURIComponent(clienteId)}`;
+            }
+            function updateEscopoVisibility(protocolo = null){
+                const hasContext = hasClienteContext();
+                const isClienteScoped = !!(protocolo?.cliente_id);
+
+                if (PROTOCOLOS.dom.escopoGenerico) {
+                    PROTOCOLOS.dom.escopoGenerico.disabled = false;
+                }
+
+                if (PROTOCOLOS.dom.escopoCliente) {
+                    PROTOCOLOS.dom.escopoCliente.disabled = !hasContext && !isClienteScoped;
+                }
+
+                setEscopoSelection(isClienteScoped ? 'cliente' : 'generico');
+
+                if (PROTOCOLOS.dom.escopoHint) {
+                    PROTOCOLOS.dom.escopoHint.textContent = hasContext
+                        ? 'Com um cliente selecionado, você pode escolher entre grupo genérico ou exclusivo.'
+                        : 'Sem cliente selecionado, o grupo será genérico. Para criar exclusivo, abra este modal dentro de um cliente.';
+                }
+            }
             function escapeHtml(str){
                 return String(str||'')
                     .replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
@@ -221,7 +284,7 @@
             async function loadProtocolos(){
                 try{
                     alertHide();
-                    const res = await fetch(PROTOCOLOS.urls.list, { headers:{'Accept':'application/json'} });
+                    const res = await fetch(buildListUrl(), { headers:{'Accept':'application/json'} });
                     const json = await res.json();
                     PROTOCOLOS.state.protocolos = json.data || [];
                     renderProtocolos();
@@ -241,21 +304,30 @@
                 }
                 PROTOCOLOS.state.protocolos.forEach(p=>{
                     const row = document.createElement('div');
-                    row.className = 'grid grid-cols-12 gap-2 items-center rounded-xl border border-slate-200 px-3 py-2';
+                    row.className = 'rounded-xl border border-slate-200 px-4 py-3';
 
                     const total = brl(p.total || 0);
                     const examesTxt = p.exames?.length ? `${p.exames.length} exame(s)` : 'Sem exames';
+                    const scopeBadge = p.escopo === 'cliente'
+                        ? '<span class="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">Exclusivo</span>'
+                        : '<span class="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">Genérico</span>';
 
                     row.innerHTML = `
-                        <div class="col-span-5">
-                            <div class="font-semibold text-slate-800">${escapeHtml(p.titulo)}</div>
-                            <div class="text-xs text-slate-500">${p.descricao ? escapeHtml(p.descricao) : '—'}</div>
-                        </div>
-                        <div class="col-span-3 text-xs text-slate-600">${examesTxt}</div>
-                        <div class="col-span-2 text-right font-semibold text-slate-800">${total}</div>
-                        <div class="col-span-2 flex gap-2 justify-end">
-                            <button type="button" class="text-sm ${PERMS.update ? 'text-blue-600 hover:underline' : 'text-slate-400 cursor-not-allowed'}" data-action="edit" ${PERMS.update ? '' : 'disabled title=\"Usuário sem permissão\"'}>Editar</button>
-                            <button type="button" class="text-sm ${PERMS.delete ? 'text-red-600 hover:underline' : 'text-slate-400 cursor-not-allowed'}" data-action="del" ${PERMS.delete ? '' : 'disabled title=\"Usuário sem permissão\"'}>Excluir</button>
+                        <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                            <div class="min-w-0 flex-1">
+                                <div class="text-sm font-semibold text-slate-800 break-words">${escapeHtml(p.titulo)}</div>
+                                <div class="mt-1">${scopeBadge}</div>
+                                <div class="mt-1 text-xs text-slate-500 break-words">${p.descricao ? escapeHtml(p.descricao) : '—'}</div>
+                            </div>
+
+                            <div class="flex flex-wrap items-center gap-x-6 gap-y-2 lg:flex-nowrap lg:justify-end lg:text-right">
+                                <div class="min-w-[92px] text-xs font-medium text-slate-600">${examesTxt}</div>
+                                <div class="min-w-[110px] text-sm font-semibold text-slate-800">${total}</div>
+                                <div class="flex items-center gap-3 justify-end">
+                                    <button type="button" class="text-sm ${PERMS.update ? 'text-blue-600 hover:underline' : 'text-slate-400 cursor-not-allowed'}" data-action="edit" ${PERMS.update ? '' : 'disabled title=\"Usuário sem permissão\"'}>Editar</button>
+                                    <button type="button" class="text-sm ${PERMS.delete ? 'text-red-600 hover:underline' : 'text-slate-400 cursor-not-allowed'}" data-action="del" ${PERMS.delete ? '' : 'disabled title=\"Usuário sem permissão\"'}>Excluir</button>
+                                </div>
+                            </div>
                         </div>
                     `;
 
@@ -309,6 +381,14 @@
                     exames: Array.from(PROTOCOLOS.dom.examesList.querySelectorAll('input[type="checkbox"]:checked'))
                         .map(cb => Number(cb.value)),
                 };
+                const clienteId = getCurrentClienteId();
+
+                if (PROTOCOLOS.dom.escopoCliente?.checked) {
+                    if (!clienteId) return alertBox('err','Selecione um cliente para criar grupo exclusivo.');
+                    payload.cliente_id = clienteId;
+                } else {
+                    payload.cliente_id = null;
+                }
 
                 if (!payload.titulo) return alertBox('err','Informe o título do grupo.');
 
@@ -387,6 +467,10 @@
                 PROTOCOLOS.dom.titulo.value = protocolo?.titulo || '';
                 PROTOCOLOS.dom.descricao.value = protocolo?.descricao || '';
                 PROTOCOLOS.dom.ativo.checked = protocolo ? !!protocolo.ativo : true;
+                updateEscopoVisibility(protocolo || null);
+                if (!protocolo) {
+                    setEscopoSelection('generico');
+                }
                 const selected = (protocolo?.exames || []).map(e => e.id);
                 renderExamesChecklist(selected);
             };
@@ -408,6 +492,19 @@
                     return alertBox('err', 'Modal de exames não está disponível.');
                 }
                 window.openExameForm(null);
+            });
+            PROTOCOLOS.dom.escopoGenerico?.addEventListener('change', () => {
+                setEscopoSelection('generico');
+            });
+            PROTOCOLOS.dom.escopoCliente?.addEventListener('change', () => {
+                if (PROTOCOLOS.dom.escopoCliente.disabled) {
+                    setEscopoSelection('generico');
+                    return;
+                }
+                setEscopoSelection('cliente');
+            });
+            getClienteInput()?.addEventListener('change', () => {
+                updateEscopoVisibility();
             });
             window.addEventListener('exames:updated', async () => {
                 if (!PROTOCOLOS.dom.modalForm || PROTOCOLOS.dom.modalForm.classList.contains('hidden')) return;

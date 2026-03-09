@@ -940,7 +940,11 @@
 
                 async function loadGruposExames() {
                     try {
-                        const res = await fetch(URLS.gruposExames, { headers: { 'Accept': 'application/json' } });
+                        const clienteId = Number(el.clienteSelect?.value || 0);
+                        const url = clienteId
+                            ? `${URLS.gruposExames}?cliente_id=${encodeURIComponent(clienteId)}`
+                            : URLS.gruposExames;
+                        const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
                         const json = await res.json();
                         state.gruposExames = json.data || [];
                         Object.entries(state.currentGhe.tipos || {}).forEach(([tipo, row]) => {

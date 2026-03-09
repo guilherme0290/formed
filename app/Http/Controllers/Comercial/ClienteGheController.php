@@ -129,7 +129,7 @@ class ClienteGheController extends Controller
         $this->authorizeCliente($empresaId, (int) $data['cliente_id']);
         $protocolos = $this->resolveProtocolosInput($data['protocolos'] ?? [], $data['protocolo_id'] ?? null);
         foreach ($protocolos as $protocoloId) {
-            $this->authorizeProtocolo($empresaId, $protocoloId);
+            $this->authorizeProtocolo($empresaId, (int) $data['cliente_id'], $protocoloId);
         }
         $this->authorizeFuncoes($empresaId, $data['funcoes'] ?? []);
 
@@ -199,7 +199,7 @@ class ClienteGheController extends Controller
         if ($shouldUpdateProtocolos) {
             $protocolos = $this->resolveProtocolosInput($data['protocolos'] ?? [], $data['protocolo_id'] ?? null);
             foreach ($protocolos as $protocoloId) {
-                $this->authorizeProtocolo($ghe->empresa_id, $protocoloId);
+                $this->authorizeProtocolo($ghe->empresa_id, $ghe->cliente_id, $protocoloId);
             }
         }
         $this->authorizeFuncoes($ghe->empresa_id, $data['funcoes'] ?? []);
@@ -376,12 +376,16 @@ class ClienteGheController extends Controller
         abort_if(!$ok, 403);
     }
 
-    private function authorizeProtocolo(int $empresaId, ?int $protocoloId): void
+    private function authorizeProtocolo(int $empresaId, int $clienteId, ?int $protocoloId): void
     {
         if (!$protocoloId) {
             return;
         }
         $ok = ProtocoloExame::where('empresa_id', $empresaId)
+            ->where(function ($query) use ($clienteId) {
+                $query->whereNull('cliente_id')
+                    ->orWhere('cliente_id', $clienteId);
+            })
             ->where('id', $protocoloId)
             ->exists();
         abort_if(!$ok, 403);

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Comercial;
 
 use App\Http\Controllers\Controller;
+use App\Models\Cliente;
 use App\Models\ExamesTabPreco;
 use App\Models\ProtocoloExame;
 use App\Models\ProtocoloExameItem;
@@ -15,9 +16,18 @@ class ProtocolosExamesController extends Controller
     public function indexJson()
     {
         $empresaId = auth()->user()->empresa_id;
+        $clienteId = (int) request()->query('cliente_id');
 
         $protocolos = ProtocoloExame::query()
             ->where('empresa_id', $empresaId)
+            ->when($clienteId > 0, function ($query) use ($clienteId) {
+                $query->where(function ($subQuery) use ($clienteId) {
+                    $subQuery->whereNull('cliente_id')
+                        ->orWhere('cliente_id', $clienteId);
+                });
+            }, function ($query) {
+                $query->whereNull('cliente_id');
+            })
             ->with(['itens.exame:id,titulo,preco,ativo'])
             ->orderBy('titulo')
             ->get()
@@ -34,6 +44,8 @@ class ProtocolosExamesController extends Controller
                     'titulo' => $p->titulo,
                     'descricao' => $p->descricao,
                     'ativo' => (bool) $p->ativo,
+                    'cliente_id' => $p->cliente_id ? (int) $p->cliente_id : null,
+                    'escopo' => $p->cliente_id ? 'cliente' : 'generico',
                     'exames' => $exames->map(fn ($ex) => [
                         'id' => $ex->id,
                         'titulo' => $ex->titulo,
@@ -55,16 +67,20 @@ class ProtocolosExamesController extends Controller
             'titulo' => ['required', 'string', 'max:255'],
             'descricao' => ['nullable', 'string', 'max:255'],
             'ativo' => ['nullable', 'boolean'],
+            'cliente_id' => ['nullable', 'integer', 'exists:clientes,id'],
             'exames' => ['array'],
             'exames.*' => ['integer', 'exists:exames_tab_preco,id'],
         ]);
 
-        return DB::transaction(function () use ($data, $empresaId) {
+        $clienteId = $this->resolveClienteId($empresaId, $data['cliente_id'] ?? null);
+
+        return DB::transaction(function () use ($data, $empresaId, $clienteId) {
             $validIds = $this->resolveValidExameIds($data['exames'] ?? [], $empresaId);
-            $this->assertNoDuplicateExamGroup($validIds, $empresaId, null);
+            $this->assertNoDuplicateExamGroup($validIds, $empresaId, $clienteId, null);
 
             $protocolo = ProtocoloExame::create([
                 'empresa_id' => $empresaId,
+                'cliente_id' => $clienteId,
                 'titulo' => $data['titulo'],
                 'descricao' => $data['descricao'] ?? null,
                 'ativo' => $data['ativo'] ?? true,
@@ -84,16 +100,19 @@ class ProtocolosExamesController extends Controller
             'titulo' => ['required', 'string', 'max:255'],
             'descricao' => ['nullable', 'string', 'max:255'],
             'ativo' => ['nullable', 'boolean'],
+            'cliente_id' => ['nullable', 'integer', 'exists:clientes,id'],
             'exames' => ['array'],
             'exames.*' => ['integer', 'exists:exames_tab_preco,id'],
         ]);
 
         return DB::transaction(function () use ($data, $protocolo) {
             $empresaId = auth()->user()->empresa_id;
+            $clienteId = $this->resolveClienteId($empresaId, $data['cliente_id'] ?? null);
             $validIds = $this->resolveValidExameIds($data['exames'] ?? [], $empresaId);
-            $this->assertNoDuplicateExamGroup($validIds, $empresaId, $protocolo->id);
+            $this->assertNoDuplicateExamGroup($validIds, $empresaId, $clienteId, $protocolo->id);
 
             $protocolo->update([
+                'cliente_id' => $clienteId,
                 'titulo' => $data['titulo'],
                 'descricao' => $data['descricao'] ?? null,
                 'ativo' => $data['ativo'] ?? false,
@@ -149,7 +168,7 @@ class ProtocolosExamesController extends Controller
         return [];
     }
 
-    private function assertNoDuplicateExamGroup(array $exameIds, int $empresaId, ?int $currentProtocoloId): void
+    private function assertNoDuplicateExamGroup(array $exameIds, int $empresaId, ?int $clienteId, ?int $currentProtocoloId): void
     {
         if (empty($exameIds)) {
             return;
@@ -160,6 +179,7 @@ class ProtocolosExamesController extends Controller
 
         $query = ProtocoloExame::query()
             ->where('empresa_id', $empresaId)
+            ->when($clienteId, fn ($q) => $q->where('cliente_id', $clienteId), fn ($q) => $q->whereNull('cliente_id'))
             ->with('itens:protocolo_id,exame_id');
 
         if ($currentProtocoloId) {
@@ -185,6 +205,23 @@ class ProtocolosExamesController extends Controller
                 'exames' => "Já existe um grupo com a mesma combinação de exames: {$grupoDuplicado->titulo}.",
             ]);
         }
+    }
+
+    private function resolveClienteId(int $empresaId, mixed $clienteId): ?int
+    {
+        $clienteId = (int) $clienteId;
+        if ($clienteId <= 0) {
+            return null;
+        }
+
+        $ok = Cliente::query()
+            ->where('empresa_id', $empresaId)
+            ->where('id', $clienteId)
+            ->exists();
+
+        abort_if(!$ok, 403);
+
+        return $clienteId;
     }
 
     private function authorizeEmpresa(ProtocoloExame $protocolo): void

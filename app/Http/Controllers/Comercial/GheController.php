@@ -95,6 +95,7 @@ class GheController extends Controller
         if (!empty($data['grupo_exames_id'])) {
             $ok = ProtocoloExame::query()
                 ->where('empresa_id', $empresaId)
+                ->whereNull('cliente_id')
                 ->where('id', $data['grupo_exames_id'])
                 ->exists();
             abort_if(!$ok, 403);
@@ -151,6 +152,7 @@ class GheController extends Controller
         if (!empty($data['grupo_exames_id'])) {
             $ok = ProtocoloExame::query()
                 ->where('empresa_id', $empresaId)
+                ->whereNull('cliente_id')
                 ->where('id', $data['grupo_exames_id'])
                 ->exists();
             abort_if(!$ok, 403);

@@ -381,7 +381,11 @@
 
             async function loadProtocolos(){
                 try{
-                    const res = await fetch(GHE.urls.protocolos, { headers:{'Accept':'application/json'} });
+                    const clienteId = getClienteId();
+                    const url = (IS_CLIENTE_SCOPE && clienteId)
+                        ? `${GHE.urls.protocolos}?cliente_id=${encodeURIComponent(clienteId)}`
+                        : GHE.urls.protocolos;
+                    const res = await fetch(url, { headers:{'Accept':'application/json'} });
                     const json = await res.json();
                     GHE.state.protocolos = json.data || [];
                     renderProtocolosSelect();
@@ -774,12 +778,17 @@
             window.addEventListener('protocolos:updated', () => {
                 loadProtocolos();
             });
+            document.querySelector(CLIENTE_SELECTOR)?.addEventListener('change', () => {
+                if (!IS_CLIENTE_SCOPE) return;
+                loadProtocolos();
+            });
         })();
     </script>
 @endpush
 
 @include('comercial.tabela-precos.itens.modal-protocolos', [
     'routePrefix' => $routePrefix,
+    'clienteSelector' => $isClienteScope ? $clienteSelector : null,
     'canCreate' => $canCreate,
     'canUpdate' => $canUpdate,
     'canDelete' => $canDelete,
