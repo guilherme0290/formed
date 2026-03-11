@@ -127,7 +127,7 @@
                     <section class="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4">
                         <div class="flex items-center justify-between gap-2">
                             <div>
-                                <div class="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">3. Grupo de exames</div>
+                                <div class="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">3. Grupo de exames (Opcional)</div>
                                 <p class="mt-1 text-xs text-slate-500">
                                     @if($isClienteScope)
                                         Defina o grupo de exames de cada tipo de ASO.

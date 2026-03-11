@@ -93,7 +93,7 @@
                 </div>
 
                 <div id="protocoloClienteWrap" class="hidden">
-                    <label class="text-xs font-semibold text-slate-600">Cliente do grupo exclusivo *</label>
+                    <label class="text-xs font-semibold text-slate-600">Vincular este grupo de exame ao cliente... *</label>
                     <input id="protocolo_cliente_search" type="text"
                            class="w-full mt-1 rounded-xl border-slate-200 text-sm px-3 py-2"
                            placeholder="Buscar por nome ou documento">
