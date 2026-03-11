@@ -68,17 +68,25 @@
         <div class="bg-white rounded-2xl p-4 md:p-5 shadow-sm border border-slate-100">
             <form method="GET" class="grid md:grid-cols-4 gap-4 items-end" id="clientes-filter-form">
 
-                <div class="md:col-span-2">
-                    <label class="block text-sm font-medium mb-1 text-slate-700 break-words">Busca (raz&atilde;o social, nome fantasia ou CNPJ)</label>
+                <div>
+                    <label class="block text-sm font-medium mb-1 text-slate-700 break-words">Texto</label>
                     <div class="relative">
-                        <input type="search" name="q" id="cliente-search" value="{{ $q }}"
+                        <input type="search" name="texto" id="cliente-search" value="{{ $texto }}"
                                autocomplete="off"
-                               placeholder="Raz&atilde;o social, fantasia ou CNPJ"
+                               placeholder="Raz&atilde;o social, fantasia ou e-mail"
                                class="w-full rounded-xl border-slate-300 px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                         <div id="clientes-autocomplete"
                              class="absolute z-20 mt-1 w-full max-h-64 overflow-auto rounded-lg border border-slate-200 bg-white shadow-lg hidden">
                         </div>
                     </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium mb-1 text-slate-700 break-words">CPF/CNPJ</label>
+                    <input type="search" name="documento" value="{{ $documento }}"
+                           autocomplete="off"
+                           placeholder="Somente documento"
+                           class="w-full rounded-xl border-slate-300 px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                 </div>
 
                 <div>
@@ -134,8 +142,8 @@
 
                             <div class="grid grid-cols-1 gap-2 text-xs">
                                 <div>
-                                    <div class="text-slate-500">CNPJ</div>
-                                    <div class="font-medium text-slate-800">{{ $cliente->cnpj }}</div>
+                                    <div class="text-slate-500">{{ $cliente->documento_label }}</div>
+                                    <div class="font-medium text-slate-800">{{ $cliente->documento_principal ?? '-' }}</div>
                                 </div>
                                 <div>
                                     <div class="text-slate-500">Contato</div>
@@ -202,7 +210,7 @@
                         <thead class="sticky top-0 z-10 bg-slate-100/95 backdrop-blur text-xs uppercase tracking-wide text-slate-600">
                         <tr>
                             <th class="px-4 py-3 text-left w-[30%]">Cliente</th>
-                            <th class="px-4 py-3 text-left w-[16%]">CNPJ</th>
+                            <th class="px-4 py-3 text-left w-[16%]">CPF/CNPJ</th>
                             <th class="px-4 py-3 text-left w-[24%]">Contato</th>
                             <th class="px-4 py-3 text-center w-[8%] whitespace-nowrap">Acesso</th>
                             <th class="px-4 py-3 text-center w-[10%]">Status</th>
@@ -231,7 +239,10 @@
                                     </div>
                                 </td>
 
-                                <td class="px-4 py-2.5">{{ $cliente->cnpj }}</td>
+                                <td class="px-4 py-2.5">
+                                    <div class="font-medium text-slate-800">{{ $cliente->documento_principal ?? '-' }}</div>
+                                    <div class="text-[11px] text-slate-500">{{ $cliente->documento_label }}</div>
+                                </td>
 
                                 <td class="px-4 py-2.5">
                                     <div class="leading-tight break-words">{{ $cliente->email }}</div>
@@ -402,41 +413,89 @@
 
 @push('scripts')
     <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const flashOk = @json(session('ok'));
+            const flashErr = @json(session('error') ?? session('erro'));
+
+            if (typeof window.uiAlert !== 'function') {
+                return;
+            }
+
+            if (flashOk) {
+                window.uiAlert(flashOk, {
+                    icon: 'success',
+                    title: 'Sucesso',
+                    confirmText: 'OK',
+                });
+                return;
+            }
+
+            if (flashErr) {
+                window.uiAlert(flashErr, {
+                    icon: 'error',
+                    title: 'Atenção',
+                    confirmText: 'OK',
+                });
+            }
+        });
+    </script>
+
+    <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const form = document.getElementById('clientes-filter-form');
             window.initTailwindAutocomplete?.(
                 'cliente-search',
                 'clientes-autocomplete',
                 @json($autocompleteOptions),
-                {
-                    maxItems: 200,
-                    minChars: 1,
-                    onSelect: () => {
-                        if (!form) {
-                            return;
-                        }
-
-                        if (typeof form.requestSubmit === 'function') {
-                            form.requestSubmit();
-                        } else {
-                            form.submit();
-                        }
-                    }
-                }
+                { maxItems: 200 }
             );
         });
     </script>
 
     <script>
         (function () {
+            const input = document.getElementById('cliente-search');
             const form = document.getElementById('clientes-filter-form');
             const status = form?.querySelector('select[name="status"]');
 
-            if (!form) {
+            if (!input || !form) {
                 return;
             }
 
+            let timer = null;
+            const delay = 900;
+            const minChars = 3;
+            let lastSubmittedQuery = (input.value || '').trim();
+
+            input.addEventListener('input', () => {
+                clearTimeout(timer);
+                const query = (input.value || '').trim();
+
+                // Evita reload precoce para consultas curtas.
+                if (query !== '' && query.length < minChars) {
+                    return;
+                }
+
+                // Evita repetir submit com o mesmo termo.
+                if (query === lastSubmittedQuery) {
+                    return;
+                }
+
+                timer = setTimeout(() => {
+                    lastSubmittedQuery = query;
+                    if (typeof form.requestSubmit === 'function') {
+                        form.requestSubmit();
+                    } else {
+                        form.submit();
+                    }
+                }, delay);
+            });
+
+            form.addEventListener('submit', () => {
+                lastSubmittedQuery = (input.value || '').trim();
+            });
+
             status?.addEventListener('change', () => {
+                clearTimeout(timer);
                 if (typeof form.requestSubmit === 'function') {
                     form.requestSubmit();
                 } else {
