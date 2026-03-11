@@ -32,9 +32,7 @@ class ClienteController extends Controller
     {
         $this->authorizeComercialAction('view');
 
-        $q = trim((string) $r->query('q', ''));
-        $texto = trim((string) $r->query('texto', ''));
-        $documento = trim((string) $r->query('documento', ''));
+        $q      = trim((string) $r->query('q', ''));
         $status = $r->query('status', 'todos'); // todos|ativo|inativo
         $dataInicio = $r->query('data_inicio');
         $dataFim = $r->query('data_fim');
@@ -56,45 +54,92 @@ class ClienteController extends Controller
         if (!empty($dataInicioNormalizada) && !empty($dataFimNormalizada) && $dataInicioNormalizada > $dataFimNormalizada) {
             [$dataInicioNormalizada, $dataFimNormalizada] = [$dataFimNormalizada, $dataInicioNormalizada];
         }
+        $qTerm = preg_replace('/\s+/', ' ', $q);
+        $qTerm = trim((string) $qTerm);
+        $qCompact = preg_replace('/[^[:alnum:]]+/u', '', $qTerm);
+        $qCompact = mb_strtolower((string) $qCompact);
+        $doc = preg_replace('/\D+/', '', $q);
 
-        if ($texto === '' && $documento === '' && $q !== '') {
-            if (preg_match('/[A-Za-z]/', Str::ascii($q))) {
-                $texto = $q;
-            }
+        $normalizedRazao = "LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(TRIM(razao_social), ' ', ''), '.', ''), '-', ''), '/', ''), '(', ''), ')', ''), ',', ''))";
+        $normalizedFantasia = "LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(TRIM(nome_fantasia), ' ', ''), '.', ''), '-', ''), '/', ''), '(', ''), ')', ''), ',', ''))";
+        $normalizedEmail = "LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(TRIM(email), ' ', ''), '.', ''), '-', ''), '_', ''), '@', ''))";
+        $normalizedCnpj = "REPLACE(REPLACE(REPLACE(REPLACE(TRIM(cnpj), '.', ''), '-', ''), '/', ''), ' ', '')";
+        $normalizedTelefone = "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(TRIM(telefone), ' ', ''), '-', ''), '(', ''), ')', ''), '+', '')";
 
-            if (preg_match('/\d/', $q)) {
-                $documento = $q;
-            }
+        if ($q !== '' && mb_strlen($qTerm) < 3 && strlen($doc) < 3) {
+            $qTerm = '';
+            $qCompact = '';
+            $doc = '';
         }
-
-        $qText = preg_replace('/\s+/', ' ', trim($texto));
-        $qText = is_string($qText) ? $qText : '';
-        $qTextNormalized = $this->normalizeAutocompleteSearchValue($qText);
-        $doc = preg_replace('/\D+/', '', $documento);
 
         $empresaId = $r->user()->empresa_id ?? 1;
 
-        $clientesBaseQuery = Cliente::query()
+        $clientes = Cliente::query()
             ->with('userCliente')
             ->where('empresa_id', $empresaId)
             ->when($this->isComercialNaoMaster($r->user()), function ($q) use ($r) {
                 $q->where('vendedor_id', (int) $r->user()->id);
             })
+            ->when($qTerm !== '' || $doc !== '', function ($w) use ($qTerm, $qCompact, $doc, $normalizedRazao, $normalizedFantasia, $normalizedEmail, $normalizedCnpj, $normalizedTelefone) {
+                $w->where(function ($x) use ($qTerm, $qCompact, $doc, $normalizedRazao, $normalizedFantasia, $normalizedEmail, $normalizedCnpj, $normalizedTelefone) {
+                    if ($qTerm !== '') {
+                        $x->where('razao_social', 'like', "%{$qTerm}%")
+                            ->orWhere('nome_fantasia', 'like', "%{$qTerm}%")
+                            ->orWhere('email', 'like', "%{$qTerm}%");
+                    }
+
+                    if ($qCompact !== '' && mb_strlen($qCompact) >= 3) {
+                        $x->orWhereRaw("{$normalizedRazao} LIKE ?", ["%{$qCompact}%"])
+                            ->orWhereRaw("{$normalizedFantasia} LIKE ?", ["%{$qCompact}%"])
+                            ->orWhereRaw("{$normalizedEmail} LIKE ?", ["%{$qCompact}%"]);
+                    }
+
+                    if (strlen($doc) >= 3) {
+                        $x->orWhereRaw("{$normalizedCnpj} LIKE ?", ["%{$doc}%"])
+                            ->orWhereRaw("{$normalizedTelefone} LIKE ?", ["%{$doc}%"]);
+                    }
+                });
+            })
             ->when($status !== 'todos', fn($w) => $w->where('ativo', $status === 'ativo'))
             ->when(!empty($dataInicioNormalizada), fn($w) => $w->whereDate('clientes.created_at', '>=', $dataInicioNormalizada))
-            ->when(!empty($dataFimNormalizada), fn($w) => $w->whereDate('clientes.created_at', '<=', $dataFimNormalizada));
-
-        $clientes = (clone $clientesBaseQuery)
-            ->when($qText !== '' || $doc !== '', function ($w) use ($qTextNormalized, $doc, $clientesBaseQuery) {
-                $matchingIds = $this->findClienteIdsByNormalizedSearch($clientesBaseQuery, $qTextNormalized, $doc);
-
-                if (empty($matchingIds)) {
-                    $w->whereRaw('1 = 0');
-
-                    return;
-                }
-
-                $w->whereIn('id', $matchingIds);
+            ->when(!empty($dataFimNormalizada), fn($w) => $w->whereDate('clientes.created_at', '<=', $dataFimNormalizada))
+            ->when($qTerm !== '', function ($query) use ($qTerm, $qCompact, $normalizedRazao, $normalizedFantasia, $normalizedEmail) {
+                $query->orderByRaw(
+                    "CASE
+                        WHEN razao_social LIKE ? THEN 0
+                        WHEN nome_fantasia LIKE ? THEN 1
+                        WHEN razao_social LIKE ? THEN 2
+                        WHEN nome_fantasia LIKE ? THEN 3
+                        WHEN {$normalizedRazao} LIKE ? THEN 4
+                        WHEN {$normalizedFantasia} LIKE ? THEN 5
+                        WHEN email LIKE ? THEN 6
+                        WHEN {$normalizedEmail} LIKE ? THEN 7
+                        ELSE 8
+                    END",
+                    [
+                        "{$qTerm}%",
+                        "{$qTerm}%",
+                        "%{$qTerm}%",
+                        "%{$qTerm}%",
+                        "{$qCompact}%",
+                        "{$qCompact}%",
+                        "%{$qTerm}%",
+                        "%{$qCompact}%",
+                    ]
+                )->orderBy('razao_social');
+            })
+            ->when($qTerm === '' && strlen($doc) >= 3, function ($query) use ($doc, $normalizedCnpj, $normalizedTelefone) {
+                $query->orderByRaw(
+                    "CASE
+                        WHEN {$normalizedCnpj} LIKE ? THEN 0
+                        WHEN {$normalizedTelefone} LIKE ? THEN 1
+                        ELSE 2
+                    END",
+                    [
+                        "{$doc}%",
+                        "%{$doc}%",
+                    ]
+                )->orderBy('razao_social');
             })
             ->orderByDesc('id')
             ->paginate(15)
@@ -111,14 +156,12 @@ class ClienteController extends Controller
             ->when(!empty($dataInicioNormalizada), fn($query) => $query->whereDate('clientes.created_at', '>=', $dataInicioNormalizada))
             ->when(!empty($dataFimNormalizada), fn($query) => $query->whereDate('clientes.created_at', '<=', $dataFimNormalizada))
             ->orderBy('razao_social')
-            ->get(['razao_social', 'nome_fantasia', 'email'])
+            ->get(['razao_social', 'nome_fantasia', 'cnpj'])
             ->flatMap(function ($cliente) {
-                $email = trim((string) $cliente->email);
-
                 return array_filter([
                     $cliente->razao_social,
                     $cliente->nome_fantasia,
-                    $email,
+                    $cliente->cnpj,
                 ]);
             })
             ->unique()
@@ -127,64 +170,12 @@ class ClienteController extends Controller
         return view('clientes.index', compact(
             'clientes',
             'q',
-            'texto',
-            'documento',
             'status',
             'dataInicioNormalizada',
             'dataFimNormalizada',
             'routePrefix',
             'autocompleteOptions'
         ));
-    }
-
-    private function normalizeAutocompleteSearchValue(?string $value): string
-    {
-        $ascii = Str::ascii((string) $value);
-
-        return Str::lower(preg_replace('/[^[:alnum:]]+/u', '', $ascii) ?? '');
-    }
-
-    private function normalizeDocumentoSearchValue(?string $value): string
-    {
-        return preg_replace('/\D+/', '', (string) $value) ?? '';
-    }
-
-    private function findClienteIdsByNormalizedSearch($baseQuery, string $qTextNormalized, string $doc): array
-    {
-        if ($qTextNormalized === '' && $doc === '') {
-            return [];
-        }
-
-        return (clone $baseQuery)
-            ->get(['id', 'razao_social', 'nome_fantasia', 'email', 'cnpj', 'cpf'])
-            ->filter(fn (Cliente $cliente) => $this->clienteMatchesSearch($cliente, $qTextNormalized, $doc))
-            ->pluck('id')
-            ->all();
-    }
-
-    private function clienteMatchesSearch(Cliente $cliente, string $qTextNormalized, string $doc): bool
-    {
-        if ($qTextNormalized !== '') {
-            foreach ([$cliente->razao_social, $cliente->nome_fantasia, $cliente->email] as $value) {
-                $normalizedValue = $this->normalizeAutocompleteSearchValue($value);
-
-                if ($normalizedValue !== '' && str_contains($normalizedValue, $qTextNormalized)) {
-                    return true;
-                }
-            }
-        }
-
-        if ($doc !== '') {
-            foreach ([$cliente->cnpj, $cliente->cpf] as $value) {
-                $normalizedValue = $this->normalizeDocumentoSearchValue($value);
-
-                if ($normalizedValue !== '' && str_contains($normalizedValue, $doc)) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
     }
 
     /**
@@ -357,26 +348,16 @@ class ClienteController extends Controller
     public function cnpjExists(Request $request, string $cnpj)
     {
         $empresaId = $request->user()->empresa_id ?? 1;
-        $documentoLimpo = preg_replace('/\D+/', '', (string) $cnpj);
-        $tipoPessoa = strtoupper((string) $request->query('tipo_pessoa', ''));
+        $cnpjLimpo = preg_replace('/\D+/', '', (string) $cnpj);
         $ignorarId = $request->query('ignore') ? (int) $request->query('ignore') : null;
 
-        if ($documentoLimpo === '') {
+        if ($cnpjLimpo === '') {
             return response()->json(['exists' => false]);
         }
 
-        if ($tipoPessoa !== 'PF' && $tipoPessoa !== 'PJ') {
-            $tipoPessoa = strlen($documentoLimpo) === 11 ? 'PF' : 'PJ';
-        }
-
-        $colunaDocumento = $tipoPessoa === 'PF' ? 'cpf' : 'cnpj';
-
         $query = Cliente::query()
             ->where('empresa_id', $empresaId)
-            ->whereRaw(
-                "REPLACE(REPLACE(REPLACE({$colunaDocumento}, '.', ''), '-', ''), '/', '') = ?",
-                [$documentoLimpo]
-            );
+            ->whereRaw("REPLACE(REPLACE(REPLACE(cnpj, '.', ''), '-', ''), '/', '') = ?", [$cnpjLimpo]);
 
         if ($ignorarId) {
             $query->where('id', '!=', $ignorarId);
@@ -440,7 +421,7 @@ class ClienteController extends Controller
             if ($afterAction === 'apresentacao') {
                 $r->session()->put('apresentacao_proposta.cliente', [
                     'proposta_id' => null,
-                    'cnpj' => $cliente->documento_principal,
+                    'cnpj' => $cliente->cnpj,
                     'razao_social' => $cliente->razao_social,
                     'contato' => $cliente->nome_fantasia ?: $cliente->razao_social,
                     'telefone' => $cliente->telefone,
@@ -452,7 +433,7 @@ class ClienteController extends Controller
             }
 
             return redirect()
-                ->route($this->routeName('edit'), ['cliente' => $cliente->id, 'tab' => 'dados'])
+                ->route($this->routeName('edit'), ['cliente' => $cliente->id, 'tab' => 'tarefa'])
                 ->with('ok', 'Cliente cadastrado com sucesso!');
         } catch (\Throwable $e) {
             report($e);
@@ -506,8 +487,8 @@ class ClienteController extends Controller
                             return;
                         }
                         $doc = preg_replace('/\D+/', '', (string) $value);
-                        if (!in_array(strlen($doc), [11, 14], true)) {
-                            $fail('Informe um CPF ou CNPJ válido.');
+                        if (strlen($doc) !== 14) {
+                            $fail('Informe um CNPJ (14 dígitos) válido.');
                         }
                     },
                 ],
@@ -946,25 +927,13 @@ class ClienteController extends Controller
         $empresaId = $r->user()->empresa_id ?? 1;
         $clienteRoute = $r->route('cliente');
         $clienteId = $clienteRoute instanceof Cliente ? $clienteRoute->id : (is_numeric($clienteRoute) ? (int) $clienteRoute : null);
-        $tipoPessoa = strtoupper((string) $r->input('tipo_pessoa', 'PJ'));
 
-        $data = $r->validate(
+        return $r->validate(
             [
-                'tipo_pessoa'    => ['required', Rule::in(['PF', 'PJ'])],
                 'razao_social'   => ['required', 'string', 'max:255'],
                 'nome_fantasia'  => ['nullable', 'string', 'max:255'],
-                'cpf'            => [
-                    Rule::requiredIf(fn () => $tipoPessoa === 'PF'),
-                    'nullable',
-                    'string',
-                    'max:14',
-                    Rule::unique('clientes', 'cpf')
-                        ->where(fn ($q) => $q->where('empresa_id', $empresaId))
-                        ->ignore($clienteId),
-                ],
                 'cnpj'           => [
-                    Rule::requiredIf(fn () => $tipoPessoa === 'PJ'),
-                    'nullable',
+                    'required',
                     'string',
                     'max:20',
                     Rule::unique('clientes', 'cnpj')
@@ -990,14 +959,13 @@ class ClienteController extends Controller
                 'cidade_id'      => ['required', 'exists:cidades,id'],
             ],
             [
-                'tipo_pessoa.required'  => 'Selecione se o cliente e PF ou PJ.',
-                'tipo_pessoa.in'        => 'Tipo de pessoa invalido.',
-                'razao_social.required' => 'Informe o nome do cliente.',
-                'razao_social.max'      => 'O nome deve ter no máximo 255 caracteres.',
-                'cpf.required'          => 'Informe o CPF do cliente.',
-                'cpf.max'               => 'O CPF está muito longo. Confira o número digitado.',
+                // mensagens amigáveis 💬
+                'razao_social.required' => 'Informe a razão social do cliente.',
+                'razao_social.max'      => 'A razão social deve ter no máximo 255 caracteres.',
+
                 'cnpj.required'         => 'Informe o CNPJ do cliente.',
                 'cnpj.max'              => 'O CNPJ está muito longo. Confira o número digitado.',
+
                 'email.email'           => 'Informe um e-mail válido (ex: nome@empresa.com).',
                 'tipo_cliente.required' => 'Selecione se o cliente Parceiro ou Final.',
                 'tipo_cliente.in'       => 'Tipo de cliente inválido.',
@@ -1006,25 +974,7 @@ class ClienteController extends Controller
             ]
         );
 
-        $data['tipo_pessoa'] = $tipoPessoa;
-        $data['cpf'] = $this->normalizeDocumento($data['cpf'] ?? null);
-        $data['cnpj'] = $this->normalizeDocumento($data['cnpj'] ?? null);
-
-        if ($tipoPessoa === 'PF') {
-            $data['cnpj'] = null;
-            $data['nome_fantasia'] = null;
-        } else {
-            $data['cpf'] = null;
-        }
-
         return $this->normalizeClienteUppercase($data);
-    }
-
-    private function normalizeDocumento(?string $value): ?string
-    {
-        $value = preg_replace('/\D+/', '', (string) $value);
-
-        return $value !== '' ? $value : null;
     }
 
     private function normalizeClienteUppercase(array $data): array
