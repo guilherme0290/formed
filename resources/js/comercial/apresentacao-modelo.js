@@ -92,6 +92,7 @@ function updateRepeaterNames(container, config) {
             if (config.placeholders?.[field] && !input.getAttribute('placeholder')) {
                 input.setAttribute('placeholder', config.placeholders[field]);
             }
+
         });
 
         item.querySelectorAll('[data-field-hidden]').forEach((input) => {

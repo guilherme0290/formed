@@ -94,6 +94,11 @@
                 @if ($errors->any())
                     <div class="alert alert-danger border-0 shadow-sm">
                         Revise os campos do configurador e tente novamente.
+                        <ul class="mb-0 mt-2 ps-3">
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
                     </div>
                 @endif
 
@@ -101,6 +106,7 @@
                     <div class="col-12">
                         <form method="POST" action="{{ route('comercial.apresentacao.modelo.store', $segmento) }}" class="d-grid gap-4">
                             @csrf
+                            <input type="hidden" name="segmento_modelo" value="{{ old('segmento_modelo', $segmento) }}">
                             <input type="hidden" name="comissao_vendedor" value="{{ old('comissao_vendedor', $modelo?->comissao_vendedor) }}">
                             <input type="hidden" name="contato_email" value="{{ old('contato_email', $modelo?->contato_email ?? '') }}">
                             <input type="hidden" name="contato_telefone" value="{{ old('contato_telefone', $modelo?->contato_telefone ?? '') }}">
@@ -229,8 +235,12 @@
                                     @foreach(old('layout.desafios.items', $desafiosDraft['items'] ?? []) as $index => $item)
                                         <div class="card border-0 shadow-sm" data-repeater-item>
                                             <div class="card-body">
-                                                <div class="d-flex justify-content-end mb-2">
-                                                    <button type="button" class="btn btn-sm btn-outline-success" data-repeater-remove><i class="bi bi-check-lg"></i></button>
+                                                <div class="mb-2">
+                                                    <div class="form-check cfg-check-control m-0">
+                                                        <input type="hidden" name="layout[desafios][items][{{ $index }}][active]" value="0">
+                                                        <input class="form-check-input" type="checkbox" value="1" name="layout[desafios][items][{{ $index }}][active]" @checked($item['active'] ?? true)>
+                                                        <label class="form-check-label small">Incluir na proposta</label>
+                                                    </div>
                                                 </div>
                                                 <div class="mb-3">
                                                     <label class="form-label">Título do desafio</label>
@@ -269,8 +279,12 @@
                                     @foreach(old('layout.solucoes.cards', $solucoesDraft['cards'] ?? []) as $index => $card)
                                         <div class="card border-0 shadow-sm" data-repeater-item>
                                             <div class="card-body">
-                                                <div class="d-flex justify-content-end mb-2">
-                                                    <button type="button" class="btn btn-sm btn-outline-success" data-repeater-remove><i class="bi bi-check-lg"></i></button>
+                                                <div class="mb-2">
+                                                    <div class="form-check cfg-check-control m-0">
+                                                        <input type="hidden" name="layout[solucoes][cards][{{ $index }}][active]" value="0">
+                                                        <input class="form-check-input" type="checkbox" value="1" name="layout[solucoes][cards][{{ $index }}][active]" @checked($card['active'] ?? true)>
+                                                        <label class="form-check-label small">Incluir na proposta</label>
+                                                    </div>
                                                 </div>
                                                 <div class="mb-3">
                                                     <label class="form-label">Título</label>
@@ -352,8 +366,12 @@
                                     @foreach(old('layout.processo.items', $processoDraft['items'] ?? []) as $index => $step)
                                         <div class="card border-0 shadow-sm" data-repeater-item>
                                             <div class="card-body">
-                                                <div class="d-flex justify-content-end mb-2">
-                                                    <button type="button" class="btn btn-sm btn-outline-success" data-repeater-remove><i class="bi bi-check-lg"></i></button>
+                                                <div class="mb-2">
+                                                    <div class="form-check cfg-check-control m-0">
+                                                        <input type="hidden" name="layout[processo][items][{{ $index }}][active]" value="0">
+                                                        <input class="form-check-input" type="checkbox" value="1" name="layout[processo][items][{{ $index }}][active]" @checked($step['active'] ?? true)>
+                                                        <label class="form-check-label small">Incluir na proposta</label>
+                                                    </div>
                                                 </div>
                                                 <div class="mb-3">
                                                     <label class="form-label">Título da etapa</label>
@@ -415,8 +433,12 @@
                                     @foreach(old('layout.investimento.cards', $layoutDraft['investimento']['cards'] ?? []) as $index => $card)
                                         <div class="card border-0 shadow-sm" data-repeater-item>
                                             <div class="card-body">
-                                                <div class="d-flex justify-content-end mb-2">
-                                                    <button type="button" class="btn btn-sm btn-outline-success" data-repeater-remove><i class="bi bi-check-lg"></i></button>
+                                                <div class="mb-2">
+                                                    <div class="form-check cfg-check-control m-0">
+                                                        <input type="hidden" name="layout[investimento][cards][{{ $index }}][active]" value="0">
+                                                        <input class="form-check-input" type="checkbox" value="1" name="layout[investimento][cards][{{ $index }}][active]" @checked($card['active'] ?? true)>
+                                                        <label class="form-check-label small">Incluir na proposta</label>
+                                                    </div>
                                                 </div>
                                                 <div class="mb-3">
                                                     <label class="form-label">Título</label>
@@ -430,10 +452,12 @@
                                                     <label class="form-label">Descrição</label>
                                                     <textarea class="form-control" rows="3" name="layout[investimento][cards][{{ $index }}][description]">{{ $card['description'] ?? '' }}</textarea>
                                                 </div>
-                                                <div>
-                                                    <label class="form-label">Itens internos (um por linha)</label>
-                                                    <textarea class="form-control" rows="5" name="layout[investimento][cards][{{ $index }}][items]">{{ $card['items'] ?? '' }}</textarea>
-                                                </div>
+                                                @if (filled($card['items'] ?? null))
+                                                    <div>
+                                                        <label class="form-label">Itens internos (um por linha)</label>
+                                                        <textarea class="form-control" rows="5" name="layout[investimento][cards][{{ $index }}][items]">{{ $card['items'] ?? '' }}</textarea>
+                                                    </div>
+                                                @endif
                                             </div>
                                         </div>
                                     @endforeach
@@ -559,8 +583,12 @@
     <template id="repeater-card-template">
         <div class="card border-0 shadow-sm" data-repeater-item>
             <div class="card-body">
-                <div class="d-flex justify-content-end mb-2">
-                    <button type="button" class="btn btn-sm btn-outline-success" data-repeater-remove><i class="bi bi-check-lg"></i></button>
+                <div class="mb-2">
+                    <div class="form-check cfg-check-control m-0">
+                        <input type="hidden" data-field-hidden="active" value="0">
+                        <input class="form-check-input" type="checkbox" value="1" data-field-input="active" checked>
+                        <label class="form-check-label small">Incluir na proposta</label>
+                    </div>
                 </div>
                 <div class="mb-3">
                     <label class="form-label" data-field-label="title">Título</label>
@@ -603,8 +631,12 @@
     <template id="repeater-offer-template">
         <div class="card border-0 shadow-sm" data-repeater-item>
             <div class="card-body">
-                <div class="d-flex justify-content-end mb-2">
-                    <button type="button" class="btn btn-sm btn-outline-success" data-repeater-remove><i class="bi bi-check-lg"></i></button>
+                <div class="mb-2">
+                    <div class="form-check cfg-check-control m-0">
+                        <input type="hidden" data-field-hidden="active" value="0">
+                        <input class="form-check-input" type="checkbox" value="1" data-field-input="active" checked>
+                        <label class="form-check-label small">Incluir na proposta</label>
+                    </div>
                 </div>
                 <div class="mb-3">
                     <label class="form-label" data-field-label="title">Título</label>
@@ -617,10 +649,6 @@
                 <div class="mb-3">
                     <label class="form-label" data-field-label="description">Descrição</label>
                     <textarea class="form-control" rows="3" data-field-input="description"></textarea>
-                </div>
-                <div>
-                    <label class="form-label" data-field-label="items">Itens internos</label>
-                    <textarea class="form-control" rows="5" data-field-input="items"></textarea>
                 </div>
             </div>
         </div>

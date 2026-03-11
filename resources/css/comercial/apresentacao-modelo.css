@@ -4,12 +4,22 @@
     --cfg-border: rgba(15, 23, 42, 0.08);
     --cfg-shadow: 0 20px 48px rgba(15, 23, 42, 0.08);
     --cfg-bg: linear-gradient(180deg, #f8fbff 0%, #eef4f8 100%);
+    --cfg-card-white: #ffffff;
+    --cfg-card-sheet: #f3f6fb;
     background: var(--cfg-bg);
     min-height: 100vh;
 }
 
 .cfg-shell {
     max-width: 1560px;
+}
+
+.comercial-layout #comercial-sidebar a,
+.comercial-layout #comercial-sidebar button,
+.comercial-layout #master-sidebar a,
+.comercial-layout #master-sidebar button,
+.comercial-layout #master-sidebar summary {
+    text-decoration: none;
 }
 
 .cfg-overview-card {
@@ -84,6 +94,11 @@
     border-radius: 1.6rem;
     box-shadow: var(--cfg-shadow);
     scroll-margin-top: 1.5rem;
+    background: var(--cfg-card-white);
+}
+
+.cfg-section:nth-of-type(even) {
+    background: var(--cfg-card-sheet);
 }
 
 .cfg-section__head h2 {
@@ -155,6 +170,17 @@
 .cfg-repeater-grid .card,
 .manual-table {
     transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.cfg-repeater-grid .card,
+.manual-table,
+.cfg-submitbar {
+    background: var(--cfg-card-white);
+}
+
+.cfg-repeater-grid .card .card-body,
+.manual-table .card-body {
+    border-radius: inherit;
 }
 
 .cfg-table {

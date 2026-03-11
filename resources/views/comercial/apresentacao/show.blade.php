@@ -1,395 +1,159 @@
 ﻿@extends('layouts.comercial')
-@section('title', 'ApresentaÃ§Ã£o da Proposta')
+@section('title', 'Apresentação da Proposta')
 @section('page-container', 'w-full p-0')
 
 @section('content')
-    @php
-        $themeBySegment = [
-            'construcao-civil' => [
-                'headerBg' => 'bg-amber-700',
-                'apresentacaoBg' => 'bg-amber-50',
-                'apresentacaoBar' => 'bg-amber-600',
-                'titulo' => 'CONSTRUÃ‡ÃƒO CIVIL',
-            ],
-            'industria' => [
-                'headerBg' => 'bg-blue-600',
-                'apresentacaoBg' => 'bg-blue-50',
-                'apresentacaoBar' => 'bg-blue-600',
-                'titulo' => 'INDÃšSTRIA',
-            ],
-            'comercio' => [
-                'headerBg' => 'bg-emerald-600',
-                'apresentacaoBg' => 'bg-emerald-50',
-                'apresentacaoBar' => 'bg-emerald-600',
-                'titulo' => 'COMÃ‰RCIO / VAREJO / SUPERMERCADOS',
-            ],
-            'restaurante' => [
-                'headerBg' => 'bg-red-600',
-                'apresentacaoBg' => 'bg-rose-50',
-                'apresentacaoBar' => 'bg-red-600',
-                'titulo' => 'RESTAURANTE / ALIMENTAÃ‡ÃƒO',
-            ],
-        ];
+    <div class="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(251,191,36,0.12),_transparent_28%),linear-gradient(180deg,_#f8fafc_0%,_#eef2f7_100%)]">
+        <div class="w-full px-3 py-3 sm:px-4 md:px-5">
+            <div class="mb-4 rounded-[30px] border border-slate-200/80 bg-white/90 p-5 shadow-sm backdrop-blur print:hidden">
+                <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                    <div class="space-y-4">
+                        <a href="{{ route('comercial.dashboard') }}"
+                           class="inline-flex items-center rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-white hover:text-slate-900">
+                            Painel comercial
+                        </a>
 
-        $theme = $themeBySegment[$segmento] ?? $themeBySegment['construcao-civil'];
-    @endphp
-
-    <div class="min-h-screen bg-slate-50">
-        <div class="w-full px-2 sm:px-3 md:px-4 py-2 md:py-3">
-            <div class="mb-3 flex items-center justify-start print:hidden">
-                <a href="{{ route('comercial.dashboard') }}"
-                   class="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900">
-                    Painel comercial
-                </a>
-            </div>
-            <div class="w-full bg-white rounded-none shadow-sm border-y border-slate-100 overflow-hidden md:rounded-3xl md:border">
-
-                {{-- Header do documento --}}
-                <div class="{{ $theme['headerBg'] }} px-6 py-4 flex items-center justify-between gap-3">
-                    <div class="text-white">
-                        <div class="text-lg font-semibold leading-tight">FORMED</div>
-                        <div class="text-xs text-white/80">Medicina e SeguranÃ§a do Trabalho</div>
-                    </div>
-
-                    <div class="flex items-center gap-3">
-                        <img id="clienteLogoPreview"
-                             alt="Logo do cliente"
-                             class="{{ $clienteLogoData ? '' : 'hidden' }} h-12 w-auto rounded-lg bg-white/90 p-1"
-                             src="{{ $clienteLogoData ?? '' }}" />
-                        <div class="flex items-center gap-2 print:hidden">
-                            <label for="clienteLogoInput"
-                                   class="rounded-xl bg-white/95 hover:bg-white border border-white/50 text-slate-800 px-3 py-1.5 text-xs font-semibold cursor-pointer">
-                                Logo do cliente
-                            </label>
-                            <button type="button" id="clienteLogoRemove"
-                                    class="rounded-xl bg-white/95 hover:bg-white border border-white/50 text-slate-800 px-3 py-1.5 text-xs font-semibold">
-                                Remover logo
-                            </button>
+                        <div>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="inline-flex rounded-full bg-amber-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-amber-700">
+                                    Apresentacao comercial
+                                </span>
+                                <span class="inline-flex rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-600">
+                                    {{ $segmentoNome }}
+                                </span>
+                            </div>
+                            <h1 class="mt-3 text-2xl font-semibold tracking-[-0.04em] text-slate-950 sm:text-3xl">
+                                {{ $cliente['razao_social'] ?? 'Cliente sem nome' }}
+                            </h1>
+                            <p class="mt-2 max-w-3xl text-sm text-slate-600">
+                                Edite apenas os dados essenciais na lateral e use a área principal para validar a apresentação final antes de gerar o PDF.
+                            </p>
                         </div>
                     </div>
 
-                    <div class="flex items-center gap-2 print:hidden">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <a href="{{ route('comercial.apresentacao.modelo', $segmento) }}"
+                           class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+                            Configurar modelo
+                        </a>
                         <a href="{{ route('comercial.apresentacao.pdf', $segmento) }}"
                            target="_blank"
                            rel="noopener"
-                           class="rounded-xl bg-white/95 hover:bg-white border border-white/50 text-slate-800 px-3 py-1.5 text-xs font-semibold">
-                            Imprimir
-                        </a>
-                        <a href="{{ route('comercial.apresentacao.modelo', $segmento) }}"
-                           class="rounded-xl bg-white/95 hover:bg-white border border-white/50 text-slate-800 px-3 py-1.5 text-xs font-semibold">
-                            Configurar modelo
-                        </a>
-                        <a href="{{ route('comercial.apresentacao.segmento') }}"
-                           class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900">
-                            Voltar
+                           class="rounded-xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800">
+                            Gerar PDF
                         </a>
                     </div>
                 </div>
 
-                <div class="p-6 space-y-6">
-                    <div class="print:hidden rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                        <div class="flex items-center justify-between gap-3">
-                            <div>
-                                <div class="text-sm font-semibold text-slate-800">Atualizar dados do cliente</div>
-                                <p class="text-xs text-slate-500">Buscar CNPJ e preencher razÃ£o social, contato e telefone.</p>
-                            </div>
-                            <span id="cnpjMsg" class="text-[11px] text-slate-500 hidden"></span>
-                        </div>
+            </div>
 
-                        <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div class="md:col-span-2">
-                                <label class="text-xs font-semibold text-slate-600">Logo do cliente</label>
-                                <input id="clienteLogoInput" type="file" accept="image/*"
-                                       class="mt-1 w-full rounded-xl border border-slate-200 text-sm px-3 py-2">
-                                <p class="mt-1 text-[11px] text-slate-500">A logo aparece apenas nesta apresentaÃ§Ã£o.</p>
+            <div class="grid gap-4 xl:grid-cols-[340px,minmax(0,1fr)]">
+                <aside class="print:hidden">
+                    <div class="sticky top-4 space-y-4">
+                        <section class="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+                            <div class="flex items-start justify-between gap-3">
+                                <div>
+                                    <div class="text-sm font-semibold text-slate-900">Editar dados</div>
+                                    <p class="mt-1 text-xs text-slate-500">Ajustes rápidos sem sair do preview.</p>
+                                </div>
+                                <span id="cnpjMsg" class="hidden text-[11px] text-slate-500"></span>
                             </div>
-                            <div>
-                                <label class="text-xs font-semibold text-slate-600">CNPJ</label>
-                                <div class="mt-1 flex gap-2">
-                                    <input id="cnpj" type="text"
-                                           value="{{ $cliente['cnpj'] ?? '' }}"
-                                           class="flex-1 rounded-xl border border-slate-200 text-sm px-3 py-2"
-                                           placeholder="00.000.000/0000-00">
-                                    <button type="button" id="btnBuscarCnpj"
-                                            class="rounded-xl bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 text-sm font-semibold">
-                                        Buscar
-                                    </button>
+
+                            <div class="mt-4 space-y-4">
+                                <div>
+                                    <label class="text-xs font-semibold text-slate-600">CNPJ</label>
+                                    <div class="mt-1 flex gap-2">
+                                        <input id="cnpj" type="text"
+                                               value="{{ $cliente['cnpj'] ?? '' }}"
+                                               class="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                                               placeholder="00.000.000/0000-00">
+                                        <button type="button" id="btnBuscarCnpj"
+                                                class="rounded-xl bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+                                            Buscar
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="text-xs font-semibold text-slate-600">Razão social</label>
+                                    <input id="razao_social" type="text"
+                                           value="{{ $cliente['razao_social'] ?? '' }}"
+                                           class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                                </div>
+
+                                <div>
+                                    <label class="text-xs font-semibold text-slate-600">Contato</label>
+                                    <input id="contato" type="text"
+                                           value="{{ $cliente['contato'] ?? '' }}"
+                                           class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                                </div>
+
+                                <div>
+                                    <label class="text-xs font-semibold text-slate-600">Telefone</label>
+                                    <input id="telefone" type="text"
+                                           value="{{ $cliente['telefone'] ?? '' }}"
+                                           class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
                                 </div>
                             </div>
-                            <div>
-                                <label class="text-xs font-semibold text-slate-600">RazÃ£o Social</label>
-                                <input id="razao_social" type="text"
-                                       value="{{ $cliente['razao_social'] ?? '' }}"
-                                       class="mt-1 w-full rounded-xl border border-slate-200 text-sm px-3 py-2">
-                            </div>
-                            <div>
-                                <label class="text-xs font-semibold text-slate-600">Nome do contato</label>
-                                <input id="contato" type="text"
-                                       value="{{ $cliente['contato'] ?? '' }}"
-                                       class="mt-1 w-full rounded-xl border border-slate-200 text-sm px-3 py-2">
-                            </div>
-                            <div>
-                                <label class="text-xs font-semibold text-slate-600">Telefone</label>
-                                <input id="telefone" type="text"
-                                       value="{{ $cliente['telefone'] ?? '' }}"
-                                       class="mt-1 w-full rounded-xl border border-slate-200 text-sm px-3 py-2">
-                            </div>
-                        </div>
-                    </div>
+                        </section>
 
-                    {{-- ApresentaÃ§Ã£o para --}}
-                    <div class="rounded-2xl {{ $theme['apresentacaoBg'] }} border border-slate-200 overflow-hidden">
-                        <div class="grid grid-cols-[6px,1fr]">
-                            <div class="{{ $theme['apresentacaoBar'] }}"></div>
-                            <div class="p-5">
-                                <div class="font-semibold text-slate-900">ApresentaÃ§Ã£o para:</div>
-                                <div class="mt-2 space-y-1 text-sm text-slate-700">
-                                    <div><span class="text-slate-500">RazÃ£o Social:</span> <span id="view_razao_social" class="font-semibold">{{ $cliente['razao_social'] ?? 'â€”' }}</span></div>
-                                    <div><span class="text-slate-500">CNPJ:</span> <span id="view_cnpj" class="font-semibold">{{ $cliente['cnpj'] ?? 'â€”' }}</span></div>
-                                    <div><span class="text-slate-500">Contato:</span> <span id="view_contato" class="font-semibold">{{ $cliente['contato'] ?? 'â€”' }}</span></div>
-                                    <div><span class="text-slate-500">Telefone:</span> <span id="view_telefone" class="font-semibold">{{ $cliente['telefone'] ?? 'â€”' }}</span></div>
+                        <section class="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+                            <div class="text-sm font-semibold text-slate-900">Logos</div>
+                            <p class="mt-1 text-xs text-slate-500">O preview e a impressão usam as mesmas imagens.</p>
+
+                            <div class="mt-4 space-y-4">
+                                <div>
+                                    <div class="flex items-center justify-between gap-3">
+                                        <label class="text-xs font-semibold text-slate-600">Logo do cliente</label>
+                                        <button type="button" id="clienteLogoRemove"
+                                                class="text-xs font-semibold text-rose-600 hover:text-rose-700">
+                                            Remover
+                                        </button>
+                                    </div>
+                                    <input id="clienteLogoInput" type="file" accept="image/*"
+                                           class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                                </div>
+
+                                <div>
+                                    <div class="flex items-center justify-between gap-3">
+                                        <label class="text-xs font-semibold text-slate-600">Logo da FORMED</label>
+                                        <button type="button" id="formedLogoRemove"
+                                                class="text-xs font-semibold text-rose-600 hover:text-rose-700">
+                                            Remover
+                                        </button>
+                                    </div>
+                                    <input id="formedLogoInput" type="file" accept="image/*"
+                                           class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                                </div>
+
+                                <div>
+                                    <div class="flex items-center justify-between gap-3">
+                                        <label class="text-xs font-semibold text-slate-600">Imagem de capa</label>
+                                        <button type="button" id="coverImageRemove"
+                                                class="text-xs font-semibold text-rose-600 hover:text-rose-700">
+                                            Remover
+                                        </button>
+                                    </div>
+                                    <input id="coverImageInput" type="file" accept="image/*"
+                                           class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
                                 </div>
                             </div>
-                        </div>
+                        </section>
                     </div>
+                </aside>
 
-                    {{-- Bloco do segmento (azul-marinho fixo) --}}
-                    <div class="rounded-2xl bg-slate-900 text-white p-6 text-center">
-                        <div class="inline-flex items-center gap-2 justify-center">
-                            <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-amber-500">
-                                <span class="h-2 w-2 rounded-full bg-white/90"></span>
-                            </span>
-                            <span class="text-sm font-extrabold tracking-wide">{{ $tituloSegmento }}</span>
+                <section>
+                    <div class="rounded-[30px] border border-slate-200/80 bg-white/80 p-3 shadow-sm backdrop-blur sm:p-4">
+                        <div class="mb-4 flex flex-col gap-2 border-b border-slate-200 px-2 pb-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <div class="text-sm font-semibold text-slate-900">Pré-visualização da apresentação</div>
+                                <p class="mt-1 text-xs text-slate-500">Este bloco mostra como o PDF será gerado para o cliente.</p>
+                            </div>
                         </div>
 
-                        <div class="mt-4 space-y-2 text-sm text-white/85 text-left md:text-center">
-                            <p>{{ $conteudo['intro'][0] ?? '' }}</p>
-                            <p>{{ $conteudo['intro'][1] ?? '' }}</p>
-                        </div>
+                        @include('comercial.apresentacao.partials.documento-gamma', ['printMode' => false])
                     </div>
-
-                    {{-- ServiÃ§os Essenciais --}}
-                    <div class="rounded-2xl bg-white border border-slate-200 p-6">
-                        <div class="flex items-center gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5h6m-6 4h6m-7 4h8m-10 6h12V4H6v16z"/>
-                            </svg>
-                            <h3 class="text-sm font-semibold text-slate-900">ServiÃ§os Essenciais</h3>
-                        </div>
-
-                        <ul class="mt-4 space-y-2 text-sm text-slate-700">
-                            @foreach(($conteudo['servicos'] ?? []) as $s)
-                                <li class="flex items-start gap-2">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-600 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 6L9 17l-5-5"/>
-                                    </svg>
-                                    <span>{{ $s }}</span>
-                                </li>
-                            @endforeach
-                        </ul>
-                    </div>
-
-                    @if(($precos ?? collect())->count())
-                        <div class="rounded-2xl bg-white border border-slate-200 p-6">
-                            <div class="flex items-center gap-2">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h18M3 12h18M3 17h18"/>
-                                </svg>
-                                <h3 class="text-sm font-semibold text-slate-900">ServiÃ§os</h3>
-                            </div>
-
-                            <div class="mt-4 overflow-x-auto rounded-2xl border border-slate-200">
-                                <table class="w-full text-sm">
-                                    <thead class="bg-slate-50 text-xs text-slate-500">
-                                    <tr>
-                                        <th class="px-4 py-3 text-left font-semibold">Item</th>
-                                        <th class="px-4 py-3 text-right font-semibold">Qtd</th>
-                                        <th class="px-4 py-3 text-right font-semibold">Total</th>
-                                    </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-slate-100">
-                                    @foreach($precos as $preco)
-                                        @php
-                                            $item = $preco->tabelaPrecoItem;
-                                            $descricao = $item?->descricao ?: $item?->servico?->nome ?: 'Item';
-                                            $qtd = (float) $preco->quantidade;
-                                            $valor = (float) ($item?->preco ?? 0);
-                                            $total = $qtd * $valor;
-                                        @endphp
-                                        <tr>
-                                            <td class="px-4 py-3">
-                                                <div class="font-semibold text-slate-900">{{ $item?->codigo }}</div>
-
-                                                    <div class="text-xs text-slate-500">CÃ³digo: {{ $descricao }}</div>
-
-                                            </td>
-                                            <td class="px-4 py-3 text-right">{{ number_format($qtd, 2, ',', '.') }}</td>
-                                            <td class="px-4 py-3 text-right">R$ {{ number_format($total, 2, ',', '.') }}</td>
-                                        </tr>
-                                    @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    @endif
-
-                    @if(($exames ?? collect())->count())
-                        <div class="rounded-2xl bg-white border border-slate-200 p-6">
-                            <div class="flex items-center gap-2">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 01-2 2H7a2 2 0 01-2-2m14 0a2 2 0 00-2-2H7a2 2 0 00-2 2"/>
-                                </svg>
-                                <h3 class="text-sm font-semibold text-slate-900">Exames</h3>
-                            </div>
-
-                            <div class="mt-4 overflow-x-auto rounded-2xl border border-slate-200">
-                                <table class="w-full text-sm">
-                                    <thead class="bg-slate-50 text-xs text-slate-500">
-                                    <tr>
-                                        <th class="px-4 py-3 text-left font-semibold">Exame</th>
-                                        <th class="px-4 py-3 text-right font-semibold">Qtd</th>
-                                        <th class="px-4 py-3 text-right font-semibold">Total</th>
-                                    </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-slate-100">
-                                    @foreach($exames as $exameRow)
-                                        @php
-                                            $exame = $exameRow->exame ?? null;
-                                            $qtd = (float) ($exameRow->quantidade ?? 1);
-                                            $valor = (float) ($exame?->preco ?? 0);
-                                            $total = $qtd * $valor;
-                                        @endphp
-                                        <tr>
-                                            <td class="px-4 py-3">
-                                                <div class="font-semibold text-slate-900">{{ $exame?->titulo ?? 'Exame' }}</div>
-                                                @if(!empty($exame?->descricao))
-                                                    <div class="text-xs text-slate-500">{{ $exame->descricao }}</div>
-                                                @endif
-                                            </td>
-                                            <td class="px-4 py-3 text-right">{{ number_format($qtd, 2, ',', '.') }}</td>
-                                            <td class="px-4 py-3 text-right">R$ {{ number_format($total, 2, ',', '.') }}</td>
-                                        </tr>
-                                    @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    @endif
-
-                    @php
-                        $treinamentosComPreco = ($treinamentos ?? collect())
-                            ->filter(fn($treinamentoRow) => !empty($treinamentoRow->tabelaItem)
-                                && $treinamentoRow->tabelaItem->preco !== null);
-                    @endphp
-
-                    @if($treinamentosComPreco->count())
-                        <div class="rounded-2xl bg-white border border-slate-200 p-6">
-                            <div class="flex items-center gap-2">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5zM12 14l6.16-3.422M12 14v7m0 0l-9-5m9 5l9-5"/>
-                                </svg>
-                                <h3 class="text-sm font-semibold text-slate-900">Treinamentos</h3>
-                            </div>
-
-                            <div class="mt-4 overflow-x-auto rounded-2xl border border-slate-200">
-                                <table class="w-full text-sm">
-                                    <thead class="bg-slate-50 text-xs text-slate-500">
-                                    <tr>
-                                        <th class="px-4 py-3 text-left font-semibold">Treinamento</th>
-                                        <th class="px-4 py-3 text-right font-semibold">Qtd</th>
-                                        <th class="px-4 py-3 text-right font-semibold">Total</th>
-                                    </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-slate-100">
-                                    @foreach($treinamentosComPreco as $treinamentoRow)
-                                        @php
-                                            $treinamento = $treinamentoRow->treinamento ?? null;
-                                            $qtd = (float) ($treinamentoRow->quantidade ?? 1);
-                                            $valor = (float) ($treinamentoRow->tabelaItem?->preco ?? 0);
-                                            $total = $qtd * $valor;
-                                        @endphp
-                                        <tr>
-                                            <td class="px-4 py-3">
-                                                <div class="font-semibold text-slate-900">{{ $treinamento?->codigo ?? 'NR' }} â€” {{ $treinamento?->titulo ?? 'Treinamento' }}</div>
-                                            </td>
-                                            <td class="px-4 py-3 text-right">{{ number_format($qtd, 2, ',', '.') }}</td>
-                                            <td class="px-4 py-3 text-right">R$ {{ number_format($total, 2, ',', '.') }}</td>
-                                        </tr>
-                                    @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    @endif
-
-                    @if(($esocialFaixas ?? collect())->count())
-                        <div class="rounded-2xl bg-white border border-slate-200 p-6">
-                            <div class="flex items-center gap-2">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h18M3 12h18M3 17h18"/>
-                                </svg>
-                                <h3 class="text-sm font-semibold text-slate-900">eSocial</h3>
-                            </div>
-
-                            @if(!empty($esocialDescricao))
-                                <div class="mt-3 prose prose-sm max-w-none text-slate-700">
-                                    {!! $esocialDescricao !!}
-                                </div>
-                            @endif
-
-                            <div class="mt-4 overflow-x-auto rounded-2xl border border-slate-200">
-                                <table class="w-full text-sm">
-                                    <thead class="bg-slate-50 text-xs text-slate-500">
-                                    <tr>
-                                        <th class="px-4 py-3 text-left font-semibold">Faixa</th>
-                                        <th class="px-4 py-3 text-left font-semibold">DescriÃ§Ã£o</th>
-                                        <th class="px-4 py-3 text-right font-semibold">Valor</th>
-                                    </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-slate-100">
-                                    @foreach($esocialFaixas as $faixa)
-                                        <tr>
-                                            <td class="px-4 py-3">
-                                                {{ $faixa->inicio }}@if($faixa->fim) - {{ $faixa->fim }}@else+@endif
-                                            </td>
-                                            <td class="px-4 py-3">{{ $faixa->descricao }}</td>
-                                            <td class="px-4 py-3 text-right">R$ {{ number_format((float) $faixa->preco, 2, ',', '.') }}</td>
-                                        </tr>
-                                    @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    @endif
-
-                    {{-- BenefÃ­cios --}}
-                    <div class="rounded-2xl bg-emerald-50 border border-emerald-200 overflow-hidden">
-                        <div class="grid grid-cols-[6px,1fr]">
-                            <div class="bg-emerald-500"></div>
-                            <div class="p-6">
-                                <div class="flex items-center gap-2">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 6L9 17l-5-5"/>
-                                    </svg>
-                                    <h3 class="text-sm font-semibold text-emerald-800">BenefÃ­cios</h3>
-                                </div>
-                                <p class="mt-3 text-sm text-emerald-900/80">
-                                    {{ $conteudo['beneficios'] ?? '' }}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- RodapÃ© --}}
-                    <div class="pt-4">
-                        <div class="h-px bg-blue-600/30"></div>
-                        <div class="mt-4 text-center text-sm">
-                            <div class="font-semibold text-blue-700">FORMED</div>
-                            <div class="text-slate-600 text-xs mt-0.5">Medicina e SeguranÃ§a do Trabalho</div>
-                            <div class="text-slate-500 text-xs mt-2">{{ $conteudo['rodape'] ?? 'comercial@formed.com.br â€¢ (00) 0000-0000' }}</div>
-                        </div>
-                    </div>
-                </div>
+                </section>
             </div>
         </div>
     </div>
@@ -409,11 +173,21 @@
                 const logoRemoveUrl = @json(route('comercial.apresentacao.logo.destroy'));
                 const logoRemoveButton = document.getElementById('clienteLogoRemove');
                 const csrfToken = @json(csrf_token());
-
-                const viewRazao = document.getElementById('view_razao_social');
-                const viewCnpj = document.getElementById('view_cnpj');
-                const viewContato = document.getElementById('view_contato');
-                const viewTelefone = document.getElementById('view_telefone');
+                const formedLogoInput = document.getElementById('formedLogoInput');
+                const formedLogoHeader = document.getElementById('formedLogoHeader');
+                const formedLogoRemoveButton = document.getElementById('formedLogoRemove');
+                const formedUploadUrl = @json(route('comercial.apresentacao.logo.formed'));
+                const formedRemoveUrl = @json(route('comercial.apresentacao.logo.formed.destroy'));
+                const coverImageInput = document.getElementById('coverImageInput');
+                const coverImageRemoveButton = document.getElementById('coverImageRemove');
+                const coverUploadUrl = @json(route('comercial.apresentacao.cover'));
+                const coverRemoveUrl = @json(route('comercial.apresentacao.cover.destroy'));
+                const previewTargets = {
+                    razao_social: Array.from(document.querySelectorAll('[data-preview-field="razao_social"], #view_razao_social')),
+                    cnpj: Array.from(document.querySelectorAll('[data-preview-field="cnpj"], #view_cnpj')),
+                    contato: Array.from(document.querySelectorAll('[data-preview-field="contato"], #view_contato')),
+                    telefone: Array.from(document.querySelectorAll('[data-preview-field="telefone"], #view_telefone')),
+                };
 
                 function setMsg(type, text) {
                     if (!cnpjMsg) return;
@@ -427,7 +201,6 @@
                     cnpjMsg?.classList.add('hidden');
                 }
 
-
                 function maskCnpj(value) {
                     const digits = String(value || '').replace(/\D+/g, '').slice(0, 14);
                     if (digits.length <= 2) return digits;
@@ -436,6 +209,7 @@
                     if (digits.length <= 12) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8)}`;
                     return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12)}`;
                 }
+
                 function maskTelefone(value) {
                     const digits = String(value || '').replace(/\D+/g, '').slice(0, 11);
                     if (digits.length <= 2) return digits;
@@ -445,10 +219,10 @@
                 }
 
                 function syncPreview() {
-                    if (viewRazao && razao) viewRazao.textContent = razao.value || 'â€”';
-                    if (viewCnpj && cnpj) viewCnpj.textContent = cnpj.value || 'â€”';
-                    if (viewContato && contato) viewContato.textContent = contato.value || 'â€”';
-                    if (viewTelefone && telefone) viewTelefone.textContent = telefone.value || 'â€”';
+                    if (razao) previewTargets.razao_social.forEach((el) => el.textContent = razao.value || '—');
+                    if (cnpj) previewTargets.cnpj.forEach((el) => el.textContent = cnpj.value || '—');
+                    if (contato) previewTargets.contato.forEach((el) => el.textContent = contato.value || '—');
+                    if (telefone) previewTargets.telefone.forEach((el) => el.textContent = telefone.value || '—');
                 }
 
                 if (cnpj) {
@@ -473,8 +247,7 @@
 
                 btnBuscar?.addEventListener('click', async () => {
                     clearMsg();
-                    const raw = (cnpj?.value || '').trim();
-                    const digits = raw.replace(/\D+/g, '');
+                    const digits = String(cnpj?.value || '').replace(/\D+/g, '');
                     if (!digits) return setMsg('err', 'Informe um CNPJ.');
 
                     btnBuscar.disabled = true;
@@ -483,7 +256,7 @@
                     try {
                         const url = @json(route('comercial.clientes.consulta-cnpj', ['cnpj' => '__CNPJ__']))
                             .replace('__CNPJ__', encodeURIComponent(digits));
-                        const res = await fetch(url, { headers: { 'Accept': 'application/json' }});
+                        const res = await fetch(url, { headers: { Accept: 'application/json' } });
                         const json = await res.json().catch(() => ({}));
 
                         if (!res.ok) {
@@ -492,15 +265,15 @@
 
                         if (razao && json?.razao_social) razao.value = json.razao_social;
                         if (contato && (json?.contato || json?.nome_fantasia)) {
-                            contato.value = json?.contato || json?.nome_fantasia;
+                            contato.value = json.contato || json.nome_fantasia;
                         }
                         if (telefone && (json?.telefone || json?.telefone1 || json?.telefone2)) {
-                            telefone.value = maskTelefone(json?.telefone || json?.telefone1 || json?.telefone2);
+                            telefone.value = maskTelefone(json.telefone || json.telefone1 || json.telefone2);
                         }
                         syncPreview();
                         setMsg('ok', 'Dados preenchidos com sucesso.');
-                    } catch (e) {
-                        console.error(e);
+                    } catch (error) {
+                        console.error(error);
                         setMsg('err', 'Falha ao consultar CNPJ.');
                     } finally {
                         btnBuscar.disabled = false;
@@ -510,9 +283,7 @@
 
                 logoInput?.addEventListener('change', async () => {
                     const file = logoInput.files?.[0];
-                    if (!file || !logoPreview) {
-                        return;
-                    }
+                    if (!file || !logoPreview) return;
 
                     const reader = new FileReader();
                     reader.onload = () => {
@@ -529,12 +300,12 @@
                             method: 'POST',
                             headers: {
                                 'X-CSRF-TOKEN': csrfToken,
-                                'Accept': 'application/json',
+                                Accept: 'application/json',
                             },
                             body: formData,
                         });
-                    } catch (e) {
-                        console.error(e);
+                    } catch (error) {
+                        console.error(error);
                     }
                 });
 
@@ -543,24 +314,112 @@
                         logoPreview.src = '';
                         logoPreview.classList.add('hidden');
                     }
-                    if (logoInput) {
-                        logoInput.value = '';
-                    }
+                    if (logoInput) logoInput.value = '';
 
                     try {
                         await fetch(logoRemoveUrl, {
                             method: 'POST',
                             headers: {
                                 'X-CSRF-TOKEN': csrfToken,
-                                'Accept': 'application/json',
+                                Accept: 'application/json',
                             },
                         });
-                    } catch (e) {
-                        console.error(e);
+                    } catch (error) {
+                        console.error(error);
+                    }
+                });
+
+                formedLogoInput?.addEventListener('change', async () => {
+                    const file = formedLogoInput.files?.[0];
+                    if (!file) return;
+
+                    if (formedLogoHeader) {
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                            formedLogoHeader.src = String(reader.result || '');
+                            formedLogoHeader.classList.remove('hidden');
+                        };
+                        reader.readAsDataURL(file);
+                    }
+
+                    const formData = new FormData();
+                    formData.append('logo', file);
+
+                    try {
+                        await fetch(formedUploadUrl, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': csrfToken,
+                                Accept: 'application/json',
+                            },
+                            body: formData,
+                        });
+                    } catch (error) {
+                        console.error(error);
+                    }
+                });
+
+                formedLogoRemoveButton?.addEventListener('click', async () => {
+                    if (formedLogoHeader) {
+                        formedLogoHeader.src = '';
+                        formedLogoHeader.classList.add('hidden');
+                    }
+                    if (formedLogoInput) formedLogoInput.value = '';
+
+                    try {
+                        await fetch(formedRemoveUrl, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': csrfToken,
+                                Accept: 'application/json',
+                            },
+                        });
+                    } catch (error) {
+                        console.error(error);
+                    }
+                });
+
+                coverImageInput?.addEventListener('change', async () => {
+                    const file = coverImageInput.files?.[0];
+                    if (!file) return;
+
+                    const formData = new FormData();
+                    formData.append('image', file);
+
+                    try {
+                        await fetch(coverUploadUrl, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': csrfToken,
+                                Accept: 'application/json',
+                            },
+                            body: formData,
+                        });
+
+                        window.location.reload();
+                    } catch (error) {
+                        console.error(error);
+                    }
+                });
+
+                coverImageRemoveButton?.addEventListener('click', async () => {
+                    if (coverImageInput) coverImageInput.value = '';
+
+                    try {
+                        await fetch(coverRemoveUrl, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': csrfToken,
+                                Accept: 'application/json',
+                            },
+                        });
+
+                        window.location.reload();
+                    } catch (error) {
+                        console.error(error);
                     }
                 });
             })();
         </script>
     @endpush
 @endsection
-

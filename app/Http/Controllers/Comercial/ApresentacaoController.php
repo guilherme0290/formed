@@ -19,6 +19,7 @@ use App\Models\TreinamentoNrsTabPreco;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class ApresentacaoController extends Controller
 {
@@ -149,18 +150,17 @@ class ApresentacaoController extends Controller
             'logo' => ['required', 'image', 'max:2048'],
         ]);
 
-        $file = $data['logo'];
-        $mime = $file->getMimeType() ?: 'image/png';
-        $base64 = base64_encode(file_get_contents($file->getRealPath()));
-
-        $request->session()->put(self::SESSION_KEY . '.cliente_logo', "data:{$mime};base64,{$base64}");
+        $segmento = $this->segmentoPersistencia($request);
+        $path = $this->storePresentationAsset($request, $segmento, $data['logo'], 'cliente-logo', true, true);
+        $this->persistLayoutAssetPath($request, $segmento, 'cliente_logo_path', $path);
 
         return response()->json(['ok' => true]);
     }
 
     public function clienteLogoDestroy(Request $request)
     {
-        $request->session()->forget(self::SESSION_KEY . '.cliente_logo');
+        $segmento = $this->segmentoPersistencia($request);
+        $this->deleteLayoutAssetPath($request, $segmento, 'cliente_logo_path');
 
         return response()->json(['ok' => true]);
     }
@@ -171,15 +171,38 @@ class ApresentacaoController extends Controller
             'logo' => ['required', 'image', 'max:2048'],
         ]);
 
-        $file = $data['logo'];
-        Storage::disk('public')->putFileAs('', $file, 'logo-formed.png');
+        $segmento = $this->segmentoPersistencia($request);
+        $path = $this->storePresentationAsset($request, $segmento, $data['logo'], 'formed-logo', true);
+        $this->persistLayoutAssetPath($request, $segmento, 'formed_logo_path', $path);
 
         return response()->json(['ok' => true]);
     }
 
     public function formedLogoDestroy(Request $request)
     {
-        Storage::disk('public')->delete('logo-formed.png');
+        $segmento = $this->segmentoPersistencia($request);
+        $this->deleteLayoutAssetPath($request, $segmento, 'formed_logo_path');
+
+        return response()->json(['ok' => true]);
+    }
+
+    public function coverImageStore(Request $request)
+    {
+        $data = $request->validate([
+            'image' => ['required', 'image', 'max:4096'],
+        ]);
+
+        $segmento = $this->segmentoPersistencia($request);
+        $path = $this->storePresentationAsset($request, $segmento, $data['image'], 'cover-image');
+        $this->persistLayoutAssetPath($request, $segmento, 'cover_image_path', $path);
+
+        return response()->json(['ok' => true]);
+    }
+
+    public function coverImageDestroy(Request $request)
+    {
+        $segmento = $this->segmentoPersistencia($request);
+        $this->deleteLayoutAssetPath($request, $segmento, 'cover_image_path');
 
         return response()->json(['ok' => true]);
     }
@@ -298,9 +321,14 @@ class ApresentacaoController extends Controller
         abort_unless(array_key_exists($segmentoDestino, self::SEGMENTOS), 404);
 
         $empresaId = $request->user()->empresa_id;
+        $modeloAtual = $this->findModelo($request, $segmentoDestino);
         $layoutInput = $data['layout'] ?? [];
         $layout = $this->normalizeLayout($segmentoDestino, $layoutInput);
         $layout = $this->mergeLayout($layout, $this->normalizeExtraLayout($layoutInput));
+        $assetsPersistidos = is_array($modeloAtual?->layout ?? null) ? (($modeloAtual->layout['assets'] ?? null) ?: []) : [];
+        if (is_array($assetsPersistidos) && !empty($assetsPersistidos)) {
+            $layout['assets'] = $assetsPersistidos;
+        }
 
         $linhas = collect(preg_split("/\r\n|\n|\r/", (string) ($data['servicos'] ?? '')))
             ->map(fn ($linha) => trim($linha))
@@ -535,21 +563,30 @@ class ApresentacaoController extends Controller
     private function presentationViewData(Request $request, string $segmento): array
     {
         $modelo = $this->findModelo($request, $segmento);
-        $logoFormedPath = storage_path('app/public/logo-formed.png');
-        if (!is_file($logoFormedPath)) {
-            $logoFormedPath = storage_path('app/public/logo (1)-transparente.png');
-        }
+        $layout = $this->layoutParaSegmento($request, $segmento);
+        $assets = $layout['assets'] ?? [];
 
-        $logoFormedData = is_file($logoFormedPath)
-            ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoFormedPath))
-            : null;
+        $clienteLogoData = $this->storageFileToDataUrl($assets['cliente_logo_path'] ?? null);
+
+        $logoFormedData = $this->storageFileToDataUrl($assets['formed_logo_path'] ?? null);
+        $coverImageData = $this->storageFileToDataUrl($assets['cover_image_path'] ?? null);
+        if ($logoFormedData === null) {
+            $logoFormedPath = storage_path('app/public/logo-formed.png');
+            if (!is_file($logoFormedPath)) {
+                $logoFormedPath = storage_path('app/public/logo (1)-transparente.png');
+            }
+
+            $logoFormedData = is_file($logoFormedPath)
+                ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoFormedPath))
+                : null;
+        }
 
         return [
             'modelo' => $modelo,
             'cliente' => $request->session()->get(self::SESSION_KEY . '.cliente', []),
             'segmento' => $segmento,
             'segmentoNome' => self::SEGMENTOS[$segmento],
-            'clienteLogoData' => $request->session()->get(self::SESSION_KEY . '.cliente_logo'),
+            'clienteLogoData' => $clienteLogoData,
             'conteudo' => $this->conteudoParaSegmento($request, $segmento),
             'tituloSegmento' => $this->tituloParaSegmento($request, $segmento),
             'precos' => $this->precosParaSegmento($request, $segmento),
@@ -558,8 +595,9 @@ class ApresentacaoController extends Controller
             'esocialFaixas' => $this->esocialFaixas($request),
             'esocialDescricao' => $this->esocialDescricao($request, $segmento),
             'tabelasManuais' => $this->tabelasManuaisParaSegmento($request, $segmento),
-            'layout' => $this->layoutParaSegmento($request, $segmento),
+            'layout' => $layout,
             'logoFormedData' => $logoFormedData,
+            'coverImageData' => $coverImageData,
         ];
     }
 
@@ -607,6 +645,7 @@ class ApresentacaoController extends Controller
                     'subtitle' => 'Sua obra não pode parar!',
                     'description' => null,
                 ],
+                'assets' => [],
                 'desafios' => [
                     'enabled' => true,
                     'badge' => 'Desafio do setor',
@@ -864,6 +903,7 @@ class ApresentacaoController extends Controller
                 'title' => self::SEGMENTO_TITULOS[$segmento] ?? 'Apresentação',
                 'description' => 'Apresentação personalizada da FORMED.',
             ],
+            'assets' => [],
         ];
     }
 
@@ -890,6 +930,153 @@ class ApresentacaoController extends Controller
         }
 
         return $padrao;
+    }
+
+    private function segmentoPersistencia(Request $request): string
+    {
+        $segmento = (string) $request->session()->get(self::SESSION_KEY . '.segmento', '');
+        abort_unless(array_key_exists($segmento, self::SEGMENTOS), 422);
+
+        return $segmento;
+    }
+
+    private function presentationAssetDirectory(Request $request, string $segmento): string
+    {
+        return 'apresentacao/' . $request->user()->empresa_id . '/' . $segmento;
+    }
+
+    private function storePresentationAsset(
+        Request $request,
+        string $segmento,
+        $file,
+        string $basename,
+        bool $forcePng = false,
+        bool $removeWhiteBackground = false
+    ): string
+    {
+        $disk = Storage::disk('public');
+        $directory = $this->presentationAssetDirectory($request, $segmento);
+        $extension = $forcePng
+            ? 'png'
+            : strtolower($file->getClientOriginalExtension() ?: $file->extension() ?: 'png');
+        $filename = $basename . '.' . $extension;
+        $path = $directory . '/' . $filename;
+
+        foreach ($disk->files($directory) as $existingPath) {
+            if (Str::startsWith(basename($existingPath), $basename . '.')) {
+                $disk->delete($existingPath);
+            }
+        }
+
+        if ($forcePng) {
+            $disk->put($path, $this->convertImageToPng($file, $removeWhiteBackground));
+        } else {
+            $disk->putFileAs($directory, $file, $filename);
+        }
+
+        return $path;
+    }
+
+    private function convertImageToPng($file, bool $removeWhiteBackground = false): string
+    {
+        $contents = file_get_contents($file->getRealPath());
+        abort_if($contents === false, 422, 'Falha ao ler a imagem enviada.');
+
+        $image = imagecreatefromstring($contents);
+        abort_if($image === false, 422, 'Falha ao processar a imagem enviada.');
+
+        imagepalettetotruecolor($image);
+        imagealphablending($image, false);
+        imagesavealpha($image, true);
+
+        if ($removeWhiteBackground) {
+            $this->makeNearWhitePixelsTransparent($image);
+        }
+
+        ob_start();
+        imagepng($image);
+        $png = ob_get_clean();
+        imagedestroy($image);
+
+        abort_if($png === false, 422, 'Falha ao converter a imagem para PNG.');
+
+        return $png;
+    }
+
+    private function makeNearWhitePixelsTransparent(\GdImage $image): void
+    {
+        $width = imagesx($image);
+        $height = imagesy($image);
+
+        for ($x = 0; $x < $width; $x++) {
+            for ($y = 0; $y < $height; $y++) {
+                $rgba = imagecolorat($image, $x, $y);
+                $alpha = ($rgba & 0x7F000000) >> 24;
+
+                if ($alpha === 127) {
+                    continue;
+                }
+
+                $red = ($rgba >> 16) & 0xFF;
+                $green = ($rgba >> 8) & 0xFF;
+                $blue = $rgba & 0xFF;
+
+                if ($red >= 245 && $green >= 245 && $blue >= 245) {
+                    $transparent = imagecolorallocatealpha($image, $red, $green, $blue, 127);
+                    imagesetpixel($image, $x, $y, $transparent);
+                }
+            }
+        }
+    }
+
+    private function persistLayoutAssetPath(Request $request, string $segmento, string $key, string $path): void
+    {
+        $modelo = ModeloComercial::firstOrCreate(
+            ['empresa_id' => $request->user()->empresa_id, 'segmento' => $segmento],
+            ['ativo' => true]
+        );
+
+        $layout = is_array($modelo->layout) ? $modelo->layout : [];
+        $assets = is_array($layout['assets'] ?? null) ? $layout['assets'] : [];
+        $assets[$key] = $path;
+        $layout['assets'] = $assets;
+
+        $modelo->layout = $layout;
+        $modelo->ativo = true;
+        $modelo->save();
+    }
+
+    private function deleteLayoutAssetPath(Request $request, string $segmento, string $key): void
+    {
+        $modelo = $this->findModelo($request, $segmento);
+        if (!$modelo) {
+            return;
+        }
+
+        $layout = is_array($modelo->layout) ? $modelo->layout : [];
+        $assets = is_array($layout['assets'] ?? null) ? $layout['assets'] : [];
+        $path = $assets[$key] ?? null;
+
+        if (is_string($path) && $path !== '') {
+            Storage::disk('public')->delete($path);
+        }
+
+        unset($assets[$key]);
+        $layout['assets'] = $assets;
+        $modelo->layout = $layout;
+        $modelo->save();
+    }
+
+    private function storageFileToDataUrl(?string $path): ?string
+    {
+        if (!is_string($path) || $path === '' || !Storage::disk('public')->exists($path)) {
+            return null;
+        }
+
+        $contents = Storage::disk('public')->get($path);
+        $mime = Storage::disk('public')->mimeType($path) ?: 'image/png';
+
+        return 'data:' . $mime . ';base64,' . base64_encode($contents);
     }
 
     private function sanitizeLayoutSection(string $section, array $input, array $default): array
@@ -952,6 +1139,7 @@ class ApresentacaoController extends Controller
                 'description' => $description,
                 'value' => $this->sanitizeText($entry['value'] ?? null, 200),
                 'items' => $this->sanitizeText($entry['items'] ?? null, 4000),
+                'active' => filter_var($entry['active'] ?? true, FILTER_VALIDATE_BOOLEAN),
             ];
 
             if (count($items) >= 20) {
@@ -964,6 +1152,15 @@ class ApresentacaoController extends Controller
 
     private function sanitizeText($value, int $limit = 1000): ?string
     {
+        if (is_array($value)) {
+            $value = collect($value)
+                ->flatten()
+                ->filter(fn ($item) => !is_array($item) && $item !== null)
+                ->map(fn ($item) => trim((string) $item))
+                ->filter()
+                ->implode("\n");
+        }
+
         $text = trim((string) ($value ?? ''));
         if ($text === '') {
             return null;

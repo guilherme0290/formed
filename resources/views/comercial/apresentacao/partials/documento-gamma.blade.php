@@ -16,14 +16,16 @@
     };
 
     $desafiosItems = collect($desafios['items'] ?? [])
+        ->filter(fn ($item) => ($item['active'] ?? true) !== false)
         ->filter(fn ($item) => filled($item['title'] ?? null))
         ->values();
     $desafiosPages = $desafiosItems->chunk(5)->values();
 
     $solucoesCards = collect($solucoes['cards'] ?? [])
+        ->filter(fn ($item) => ($item['active'] ?? true) !== false)
         ->filter(fn ($item) => filled($item['title'] ?? null))
         ->values();
-    $solucoesPages = $solucoesCards->chunk(4)->values();
+    $solucoesPages = $solucoesCards->chunk(10)->values();
 
     $palestrasItems = collect($palestras['items'] ?? [])
         ->filter(fn ($item) => filled($item['title'] ?? null))
@@ -31,16 +33,17 @@
     $palestrasPages = $palestrasItems->chunk(12)->values();
 
     $processoItems = collect($processo['items'] ?? [])
+        ->filter(fn ($item) => ($item['active'] ?? true) !== false)
         ->filter(fn ($item) => filled($item['title'] ?? null))
         ->values();
     $processoPages = $processoItems->chunk(8)->values();
 
     $investmentCards = collect($investimento['cards'] ?? [])
+        ->filter(fn ($item) => ($item['active'] ?? true) !== false)
         ->filter(fn ($item) => filled($item['title'] ?? null))
         ->values();
     $investmentPrimaryCards = $investmentCards->take(1)->values();
-    $investmentServiceCards = $investmentCards->slice(1, 4)->values();
-    $investmentTrainingPages = $investmentCards->slice(5)->chunk(8)->values();
+    $investmentSecondaryCards = $investmentCards->slice(1)->values();
     $investmentAsoItems = $splitLines($investimento['aso_items_text'] ?? '');
 
     $heroTitle = $hero['title'] ?? $tituloSegmento;
@@ -55,8 +58,10 @@
     $investimentoBadge = $investimento['badge'] ?? 'Capacitação';
 
     $formedLogoSrc = $logoFormedData ?: asset('assets/apresentacao/construcao-civil/formed-logo.avif');
-    $clienteLogoSrc = $clienteLogoData ?: asset('assets/apresentacao/construcao-civil/stena-logo.avif');
-    $obraImageSrc = asset('assets/apresentacao/construcao-civil/obra-capa.avif');
+    $clienteLogoSrc = $clienteLogoData ?: null;
+    $hasFormedLogo = filled($formedLogoSrc);
+    $hasClienteLogo = filled($clienteLogoSrc);
+    $obraImageSrc = $coverImageData ?: asset('assets/apresentacao/construcao-civil/obra-capa.avif');
 
     $unidadeBadge = $unidade['badge'] ?? 'Atendimento';
     $unidadeTitle = $unidade['title'] ?? 'Unidade de Fácil Acesso';
@@ -109,12 +114,8 @@
     if (($investimento['enabled'] ?? true) !== false) {
         $pages->push(['key' => 'investimento-principal', 'items' => $investmentPrimaryCards]);
 
-        if ($investmentServiceCards->isNotEmpty()) {
-            $pages->push(['key' => 'investimento-servicos', 'items' => $investmentServiceCards]);
-        }
-
-        foreach ($investmentTrainingPages as $index => $items) {
-            $pages->push(['key' => 'investimento-extra', 'items' => $items, 'index' => $index]);
+        if ($investmentSecondaryCards->isNotEmpty()) {
+            $pages->push(['key' => 'investimento-complementar', 'items' => $investmentSecondaryCards]);
         }
     }
 
@@ -256,8 +257,8 @@
     }
 
     .gamma-logo {
-        max-width: 280px;
-        max-height: 120px;
+        max-width: 360px;
+        max-height: 150px;
         object-fit: contain;
     }
 
@@ -400,6 +401,62 @@
         flex: none;
     }
 
+    .gamma-annual-list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-rows: repeat(6, minmax(0, 1fr));
+        grid-auto-flow: column;
+        gap: 10px 12px;
+        flex: 1;
+        min-height: 0;
+        align-content: start;
+    }
+
+    .gamma-annual-item {
+        display: grid;
+        grid-template-columns: 36px minmax(110px, 150px) minmax(0, 1fr);
+        gap: 10px;
+        align-items: center;
+        padding: 10px 12px;
+        border-radius: 16px;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(239, 246, 255, 0.9));
+        border: 1px solid rgba(147, 197, 253, 0.7);
+        min-height: 0;
+    }
+
+    .gamma-annual-month {
+        font-size: 0.82rem;
+        line-height: 1.25;
+        font-weight: 800;
+        color: #1e3a8a;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        text-align: center;
+    }
+
+    .gamma-annual-topic {
+        font-size: 0.82rem;
+        line-height: 1.3;
+        color: #334155;
+        white-space: pre-line;
+        text-align: center;
+    }
+
+    .gamma-annual-item .gamma-number {
+        justify-self: center;
+        align-self: center;
+    }
+
+    .gamma-annual-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 999px;
+        background: #2563eb;
+        justify-self: center;
+        align-self: center;
+        box-shadow: 0 0 0 4px rgba(219, 234, 254, 0.9);
+    }
+
     .gamma-process-grid {
         position: relative;
         display: grid;
@@ -489,6 +546,8 @@
         display: flex;
         flex-direction: column;
         gap: 18px;
+        min-height: 0;
+        height: 100%;
     }
 
     .gamma-investment-side {
@@ -501,12 +560,67 @@
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 18px;
-        align-content: start;
+        align-content: stretch;
+        grid-auto-rows: minmax(0, 1fr);
     }
 
     .gamma-investment-grid--compact {
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 18px;
+    }
+
+    .gamma-investment-grid--dense {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+    }
+
+    .gamma-investment-main--spread {
+        justify-content: space-between;
+    }
+
+    .gamma-investment-main--accent {
+        background: linear-gradient(180deg, #dbeafe 0%, #bfdbfe 100%);
+        border-color: rgba(96, 165, 250, 0.8);
+        color: #1e3a8a;
+    }
+
+    .gamma-investment-main--accent .gamma-card-title,
+    .gamma-investment-main--accent .gamma-card-value,
+    .gamma-investment-main--accent .gamma-card-copy {
+        color: #1e3a8a;
+    }
+
+    .gamma-investment-list {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-evenly;
+        min-height: 0;
+    }
+
+    .gamma-nowrap {
+        white-space: nowrap;
+    }
+
+    .gamma-investment-main--compact {
+        padding: 16px;
+        gap: 10px;
+        border-radius: 16px;
+    }
+
+    .gamma-investment-main--compact .gamma-card-title {
+        font-size: 0.9rem;
+        line-height: 1.2;
+    }
+
+    .gamma-investment-main--compact .gamma-card-value {
+        font-size: 1rem !important;
+        line-height: 1.05;
+    }
+
+    .gamma-investment-main--compact .gamma-card-copy {
+        font-size: 0.8rem;
+        line-height: 1.25;
     }
 
     .gamma-contact-grid {
@@ -733,32 +847,63 @@
 
     .gamma-solutions-grid {
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 16px;
-        flex: 1;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
         align-content: start;
+        align-items: start;
+        grid-auto-rows: auto;
+    }
+
+    .gamma-solutions-grid--dense {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        grid-template-rows: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        flex: 1;
+        align-content: stretch;
+        align-items: stretch;
     }
 
     .gamma-solutions-grid .gamma-block-card {
-        min-height: 188px;
-        padding: 18px 16px 16px;
-        border-radius: 16px;
+        min-height: 0;
+        padding: 8px 8px 7px;
+        border-radius: 14px;
         background: rgba(255, 255, 255, 0.94);
         border: 2px solid #b6cfe8;
         box-shadow: none;
-        gap: 12px;
+        gap: 4px;
+    }
+
+    .gamma-solutions-grid--dense .gamma-block-card {
+        height: 100%;
+        padding: 8px 8px 7px;
+        border-radius: 14px;
+        gap: 4px;
+        justify-content: flex-start;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(241, 245, 255, 0.96));
     }
 
     .gamma-solutions-grid .gamma-card-title {
-        font-size: 1.12rem;
-        line-height: 1.14;
+        font-size: 0.94rem;
+        line-height: 1.08;
         color: #2b3b71;
+        margin-bottom: 4px;
+    }
+
+    .gamma-solutions-grid--dense .gamma-card-title {
+        font-size: 0.9rem;
+        line-height: 1.02;
+        margin-bottom: 5px;
     }
 
     .gamma-solutions-grid .gamma-card-copy {
-        font-size: 0.9rem;
-        line-height: 1.5;
+        font-size: 0.82rem;
+        line-height: 1.18;
         color: #44557f;
+    }
+
+    .gamma-solutions-grid--dense .gamma-card-copy {
+        font-size: 0.78rem;
+        line-height: 1.08;
     }
 
     .gamma-solutions-grid--duo .gamma-block-card {
@@ -837,6 +982,21 @@
     }
 
     @media print {
+        @page {
+            size: A4 landscape;
+            margin: 0;
+        }
+
+        html,
+        body {
+            width: 297mm;
+            height: 210mm;
+            margin: 0;
+            padding: 0;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
         .gamma-page {
             width: 297mm;
             height: 210mm;
@@ -852,13 +1012,166 @@
 
         .gamma-card {
             border-radius: 0;
-            padding: 10mm;
+            padding: 6mm;
             height: 100%;
         }
 
         .gamma-book {
             display: block;
             gap: 0;
+        }
+
+        .gamma-page,
+        .gamma-frame,
+        .gamma-card,
+        .gamma-shell {
+            overflow: hidden !important;
+        }
+
+        .gamma-shell,
+        .gamma-solutions-shell,
+        .gamma-challenge-shell,
+        .gamma-unit-shell {
+            gap: 10px !important;
+        }
+
+        .gamma-title {
+            font-size: 2.4rem;
+        }
+
+        .gamma-section-title,
+        .gamma-solutions-title,
+        .gamma-challenge-title {
+            font-size: 1.85rem !important;
+        }
+
+        .gamma-copy,
+        .gamma-solutions-copy,
+        .gamma-card-copy,
+        .gamma-annual-topic,
+        .gamma-unit-address,
+        .gamma-unit-schedule,
+        .gamma-meta-value {
+            font-size: 0.78rem !important;
+            line-height: 1.2 !important;
+        }
+
+        .gamma-card-title,
+        .gamma-annual-month,
+        .gamma-meta-label {
+            font-size: 0.84rem !important;
+            line-height: 1.08 !important;
+        }
+
+        .gamma-card-value {
+            font-size: 1.2rem !important;
+        }
+
+        .gamma-logos {
+            gap: 18px;
+        }
+
+        .gamma-logo {
+            max-width: 280px;
+            max-height: 110px;
+        }
+
+        .gamma-divider {
+            width: 1px !important;
+            height: 56px;
+        }
+
+        .gamma-cover-layout,
+        .gamma-investment-layout,
+        .gamma-contact-grid {
+            gap: 10px;
+        }
+
+        .gamma-challenge-grid,
+        .gamma-process-grid,
+        .gamma-investment-grid,
+        .gamma-annual-list {
+            gap: 8px !important;
+        }
+
+        .gamma-challenge-grid {
+            display: grid !important;
+            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+            align-content: start !important;
+        }
+
+        .gamma-solutions-grid {
+            display: grid !important;
+            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+            gap: 8px !important;
+            align-content: start !important;
+            align-items: stretch !important;
+            grid-auto-rows: auto !important;
+            width: 100% !important;
+            flex: none !important;
+        }
+
+        .gamma-solutions-grid--dense {
+            display: grid !important;
+            grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+            grid-template-rows: repeat(2, minmax(0, 1fr)) !important;
+            gap: 8px !important;
+            align-content: stretch !important;
+            align-items: stretch !important;
+            flex: 1 !important;
+        }
+
+        .gamma-solutions-grid .gamma-block-card,
+        .gamma-solutions-grid--dense .gamma-block-card {
+            display: flex !important;
+            flex-direction: column !important;
+            width: 100% !important;
+            height: 100% !important;
+            min-height: 0 !important;
+        }
+
+        .gamma-process-grid {
+            display: grid !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        }
+
+        .gamma-investment-grid {
+            display: grid !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        }
+
+        .gamma-investment-grid--dense {
+            display: grid !important;
+            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        }
+
+        .gamma-annual-list {
+            display: grid !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            grid-template-rows: repeat(6, minmax(0, 1fr)) !important;
+        }
+
+        .gamma-process-card,
+        .gamma-block-card,
+        .gamma-investment-main,
+        .gamma-annual-item,
+        .gamma-meta-card,
+        .gamma-highlight-card {
+            padding: 10px !important;
+            border-radius: 14px !important;
+        }
+
+        .gamma-solutions-grid--dense .gamma-block-card {
+            padding: 8px !important;
+        }
+
+        .gamma-process-card {
+            min-height: 0;
+        }
+
+        .gamma-investment-main,
+        .gamma-investment-main--compact {
+            gap: 8px !important;
         }
     }
 </style>
@@ -878,9 +1191,13 @@
                         <div class="gamma-shell gamma-cover-layout">
                             <div class="gamma-cover-copy">
                                 <div class="gamma-logos">
-                                    <img id="formedLogoHeader" src="{{ $formedLogoSrc }}" alt="Logo FORMED" class="gamma-logo {{ $formedLogoSrc ? '' : 'hidden' }}">
-                                    <span class="gamma-divider" aria-hidden="true"></span>
-                                    <img id="clienteLogoPreview" src="{{ $clienteLogoSrc }}" alt="Logo do cliente" class="gamma-logo {{ $clienteLogoSrc ? '' : 'hidden' }}">
+                                    @if ($hasFormedLogo)
+                                        <img id="formedLogoHeader" src="{{ $formedLogoSrc }}" alt="Logo FORMED" class="gamma-logo" onerror="this.classList.add('hidden')">
+                                    @endif
+                                    @if ($hasClienteLogo)
+                                        <span class="gamma-divider" aria-hidden="true"></span>
+                                        <img id="clienteLogoPreview" src="{{ $clienteLogoSrc }}" alt="Logo do cliente" class="gamma-logo" onerror="this.classList.add('hidden')">
+                                    @endif
                                 </div>
 
                                 <div class="gamma-badge">{{ $heroBadge }}</div>
@@ -946,7 +1263,7 @@
                                     </div>
                                 </div>
                             @else
-                                <div class="gamma-solutions-grid">
+                                <div class="gamma-solutions-grid {{ $pageItems->count() > 6 ? 'gamma-solutions-grid--dense' : '' }}">
                                     @foreach ($pageItems as $card)
                                         <div class="gamma-block-card">
                                             <div class="gamma-card-title">{{ $card['title'] ?? '' }}</div>
@@ -969,11 +1286,12 @@
                             <div class="gamma-badge">{{ $palestrasBadge }}</div>
                             <h2 class="gamma-section-title">{{ $palestras['title'] ?? 'Palestras conforme o calendário anual' }}</h2>
 
-                            <div class="gamma-grid-4" style="flex: 1;">
-                                @foreach ($pageItems as $item)
-                                    <div class="gamma-block-card">
-                                        <div class="gamma-card-title">{{ $item['title'] }}</div>
-                                        <div class="gamma-card-copy">{{ $item['description'] ?? '' }}</div>
+                            <div class="gamma-annual-list" style="flex: 1;">
+                                @foreach ($pageItems as $index => $item)
+                                    <div class="gamma-annual-item">
+                                        <span class="gamma-annual-dot" aria-hidden="true"></span>
+                                        <div class="gamma-annual-month">{{ $item['title'] }}</div>
+                                        <div class="gamma-annual-topic">{{ $item['description'] ?? '' }}</div>
                                     </div>
                                 @endforeach
                             </div>
@@ -1015,14 +1333,14 @@
                             <h2 class="gamma-section-title">{{ $investimento['title'] ?? 'Investimento' }}</h2>
 
                             <div class="gamma-investment-layout">
-                                <div class="gamma-investment-main">
+                                <div class="gamma-investment-main gamma-investment-main--spread gamma-investment-main--accent">
                                     <div class="gamma-card-title">{{ $investimento['aso_title'] ?? 'ASO - TRABALHO EM ALTURA / ESPAÇO CONFINADO' }}</div>
                                     <div class="gamma-card-value">{{ $investimento['aso_price'] ?? 'R$ 240,00' }}</div>
 
-                                    <div class="gamma-list" style="flex: 1; gap: 6px;">
+                                    <div class="gamma-list gamma-investment-list" style="gap: 6px;">
                                         @foreach ($investmentAsoItems as $index => $item)
                                             <div class="gamma-card-copy" style="display: flex; gap: 12px; align-items: flex-start; background: transparent; border: 0; padding: 0;">
-                                                <span style="display: inline-block; min-width: 18px; font-weight: 800; color: #334155;">{{ $index + 1 }}.</span>
+                                                <span style="display: inline-block; min-width: 18px; font-weight: 800; color: #2563eb;">{{ $index + 1 }}.</span>
                                                 <span>{{ $item }}</span>
                                             </div>
                                         @endforeach
@@ -1030,11 +1348,11 @@
                                 </div>
 
                                 @php $esocialCard = $pageItems->first(); @endphp
-                                <div class="gamma-investment-main">
+                                <div class="gamma-investment-main gamma-investment-main--spread gamma-investment-main--accent">
                                     @if ($esocialCard)
                                         <div class="gamma-card-title">{{ $esocialCard['title'] }}</div>
                                         @if (filled($esocialCard['description'] ?? null) || filled($esocialCard['value'] ?? null))
-                                            <div class="gamma-card-copy">
+                                            <div class="gamma-card-copy gamma-nowrap">
                                                 @if (filled($esocialCard['description'] ?? null))
                                                     {{ $esocialCard['description'] }}
                                                 @endif
@@ -1045,9 +1363,9 @@
                                         @endif
                                         @php $cardItems = $splitLines($esocialCard['items'] ?? null); @endphp
                                         @if ($cardItems->isNotEmpty())
-                                            <div class="gamma-list" style="gap: 0;">
+                                            <div class="gamma-list gamma-investment-list" style="gap: 0;">
                                                 @foreach ($cardItems as $item)
-                                                    <div class="gamma-card-copy" style="padding: 12px 0; border-bottom: 1px solid rgba(191, 219, 254, 0.8);">{{ $item }}</div>
+                                                    <div class="gamma-card-copy" style="padding: 12px 0; border-bottom: 1px solid rgba(96, 165, 250, 0.35);">{{ $item }}</div>
                                                 @endforeach
                                             </div>
                                         @endif
@@ -1060,53 +1378,29 @@
             </section>
         @endif
 
-        @if ($page === 'investimento-servicos')
+        @if ($page === 'investimento-complementar')
             <section class="gamma-page">
                 <div class="gamma-frame">
                     <div class="gamma-card">
                         <div class="gamma-shell">
-                            <div class="gamma-investment-grid" style="flex: 1;">
-                                @foreach ($pageItems as $card)
-                                    <div class="gamma-investment-main">
-                                        <div class="gamma-card-title">{{ $card['title'] }}</div>
-                                        @if (filled($card['value'] ?? null))
-                                            <div class="gamma-card-value" style="font-size: 1.2rem;">{{ $card['value'] }}</div>
-                                        @endif
-                                        @if (filled($card['description'] ?? null))
-                                            <div class="gamma-card-copy">{{ $card['description'] }}</div>
-                                        @endif
-                                    </div>
-                                @endforeach
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-        @endif
+                            <div class="gamma-badge">{{ $investimentoBadge }}</div>
+                            <h2 class="gamma-section-title">{{ $investimento['title'] ?? 'Investimento' }}</h2>
 
-        @if ($page === 'investimento-extra')
-            <section class="gamma-page">
-                <div class="gamma-frame">
-                    <div class="gamma-card">
-                        <div class="gamma-shell">
-                            <div class="gamma-investment-grid {{ $pageItems->count() > 4 ? 'gamma-investment-grid--compact' : '' }}" style="flex: 1;">
+                            <div class="gamma-investment-grid gamma-investment-grid--dense" style="flex: 1;">
                                 @foreach ($pageItems as $card)
-                                    <div class="gamma-investment-main">
+                                    <div class="gamma-investment-main gamma-investment-main--compact">
                                         <div class="gamma-card-title">{{ $card['title'] }}</div>
                                         @if (filled($card['value'] ?? null))
-                                            <div class="gamma-card-value" style="font-size: 1.2rem;">{{ $card['value'] }}</div>
+                                            <div class="gamma-card-value">{{ $card['value'] }}</div>
                                         @endif
                                         @if (filled($card['description'] ?? null))
                                             <div class="gamma-card-copy">{{ $card['description'] }}</div>
                                         @endif
                                         @php $cardItems = $splitLines($card['items'] ?? null); @endphp
                                         @if ($cardItems->isNotEmpty())
-                                            <div class="gamma-list">
+                                            <div class="gamma-list" style="gap: 4px;">
                                                 @foreach ($cardItems as $item)
-                                                    <div class="gamma-list-row">
-                                                        <span class="gamma-list-dot"></span>
-                                                        <div class="gamma-card-copy" style="margin-top: -2px;">{{ $item }}</div>
-                                                    </div>
+                                                    <div class="gamma-card-copy" style="margin-top: -2px;">{{ $item }}</div>
                                                 @endforeach
                                             </div>
                                         @endif

@@ -2,6 +2,16 @@
 
 use Illuminate\Support\Str;
 
+$sessionDomain = env('SESSION_DOMAIN');
+
+if (is_string($sessionDomain)) {
+    $sessionDomain = trim($sessionDomain);
+
+    if ($sessionDomain === '' || in_array(Str::lower($sessionDomain), ['null', 'false'], true)) {
+        $sessionDomain = null;
+    }
+}
+
 return [
 
     /*
@@ -156,7 +166,7 @@ return [
     |
     */
 
-    'domain' => env('SESSION_DOMAIN'),
+    'domain' => $sessionDomain,
 
     /*
     |--------------------------------------------------------------------------

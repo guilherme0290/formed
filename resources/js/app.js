@@ -138,7 +138,8 @@ window.initTailwindAutocomplete = (inputRef, listRef, options = [], config = {})
         .toString()
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
-        .toLowerCase();
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '');
 
     const closeList = () => {
         list.classList.add('hidden');

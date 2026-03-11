@@ -59,6 +59,9 @@ Route::post('/proposta/{token}/responder', [PropostaPublicController::class, 're
 // ==================== Raiz -> Login ====================
 Route::redirect('/', '/login');
 
+Route::view('/apresentacao/construcao-civil', 'apresentacoes.construcao-civil')
+    ->name('apresentacoes.construcao-civil');
+
 // ==================== Ãrea autenticada ====================
 Route::middleware(['auth', 'route.permission'])->group(function () {
     Route::get('/dashboard', function (Request $request) {
@@ -606,6 +609,14 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
                 ->name('apresentacao.logo');
             Route::post('/apresentacao/logo/remover', [\App\Http\Controllers\Comercial\ApresentacaoController::class, 'clienteLogoDestroy'])
                 ->name('apresentacao.logo.destroy');
+            Route::post('/apresentacao/logo/formed', [\App\Http\Controllers\Comercial\ApresentacaoController::class, 'formedLogoStore'])
+                ->name('apresentacao.logo.formed');
+            Route::post('/apresentacao/logo/formed/remover', [\App\Http\Controllers\Comercial\ApresentacaoController::class, 'formedLogoDestroy'])
+                ->name('apresentacao.logo.formed.destroy');
+            Route::post('/apresentacao/capa', [\App\Http\Controllers\Comercial\ApresentacaoController::class, 'coverImageStore'])
+                ->name('apresentacao.cover');
+            Route::post('/apresentacao/capa/remover', [\App\Http\Controllers\Comercial\ApresentacaoController::class, 'coverImageDestroy'])
+                ->name('apresentacao.cover.destroy');
             Route::get('/apresentacao/{segmento}/modelo', [\App\Http\Controllers\Comercial\ApresentacaoController::class, 'modelo'])
                 ->name('apresentacao.modelo');
             Route::post('/apresentacao/{segmento}/modelo', [\App\Http\Controllers\Comercial\ApresentacaoController::class, 'modeloStore'])

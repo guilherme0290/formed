@@ -15,6 +15,7 @@
           referrerpolicy="no-referrer">
     <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
     <link rel="shortcut icon" type="image/png" href="{{ asset('favicon.png') }}">
+    @stack('styles')
 </head>
 <body class="bg-slate-50 comercial-layout">
 <div class="min-h-screen md:flex relative overflow-x-hidden">
