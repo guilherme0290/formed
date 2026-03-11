@@ -1,714 +1,702 @@
 @extends('layouts.comercial')
-@section('title', 'Modelo Comercial')
+@section('title', 'Configurador do Modelo Comercial')
+
+@php
+    $layoutDraft = old('layout', $layout ?? []);
+    $navigationGroups = [
+        'Base' => [
+            'dados-modelo' => 'Dados do modelo',
+            'textos-apresentacao' => 'Textos da apresentação',
+            'servicos-essenciais' => 'Serviços essenciais',
+        ],
+        'Estrutura visual' => [
+            'layout-apresentacao' => 'Blocos ativos',
+            'hero-config' => 'Hero',
+            'desafios-config' => 'Desafios',
+            'solucoes-config' => 'Nossas soluções',
+            'palestras-config' => 'Palestras anuais',
+            'processo-config' => 'Processo simplificado',
+        ],
+        'Fechamento' => [
+            'investimento-config' => 'Investimento',
+            'unidade-config' => 'Unidade',
+            'contato-config' => 'Contato final',
+        ],
+    ];
+
+    $manualTablesOld = old('manual_tables');
+    if (is_array($manualTablesOld)) {
+        $manualTables = $manualTablesOld;
+        $manualTablesOrder = old('manual_tables_order', array_keys($manualTables));
+    } else {
+        $manualTables = ($tabelasManuais ?? collect())
+            ->mapWithKeys(function ($tabela) {
+                $rows = $tabela->linhas
+                    ->sortBy('ordem')
+                    ->mapWithKeys(function ($linha) {
+                        return [(string) $linha->id => $linha->valores ?? []];
+                    })
+                    ->all();
+
+                return [(string) $tabela->id => [
+                    'titulo' => $tabela->titulo,
+                    'subtitulo' => $tabela->subtitulo,
+                    'columns' => $tabela->colunas ?? [],
+                    'rows' => $rows,
+                ]];
+            })
+            ->all();
+        $manualTablesOrder = ($tabelasManuais ?? collect())
+            ->sortBy('ordem')
+            ->pluck('id')
+            ->map(fn ($id) => (string) $id)
+            ->all();
+    }
+
+    $heroSubtitle = old('layout.hero.subtitle', $heroDraft['subtitle'] ?? ($heroDraft['description'] ?? ''));
+    $heroTitle = old('layout.hero.title', $heroDraft['title'] ?? $tituloSegmento);
+@endphp
+
+@push('styles')
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    @vite(['resources/css/comercial/apresentacao-modelo.css'])
+@endpush
 
 @section('content')
-    <div class="max-w-5xl mx-auto px-4 md:px-6 py-6 space-y-6">
-        <div class="flex items-center justify-between gap-3">
-            <div>
-                <a href="{{ route('comercial.apresentacao.show', $segmento) }}"
-                   class="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900">
-                    ← Voltar para apresentação
-                </a>
-                <h1 class="text-2xl font-semibold text-slate-900 mt-2">Modelo Comercial</h1>
-                <p class="text-sm text-slate-500">Segmento: <span class="font-semibold text-slate-700">{{ $segmentoNome }}</span></p>
-            </div>
-            <div class="flex items-center gap-2"></div>
-        </div>
-
-        @if (session('ok'))
-            <div class="rounded-2xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700">
-                {{ session('ok') }}
-            </div>
-        @endif
-
-        @if ($errors->any())
-            <div class="rounded-2xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-                Revise os campos informados e tente novamente.
-            </div>
-        @endif
-
-        <form method="POST" action="{{ route('comercial.apresentacao.modelo.store', $segmento) }}"
-              class="bg-white rounded-2xl shadow border border-slate-100 overflow-hidden">
-            @csrf
-
-            <div class="px-6 py-4 border-b border-emerald-300 bg-emerald-100">
-                <h2 class="text-sm font-semibold text-slate-800">Textos da apresentação</h2>
-                <p class="text-xs text-slate-500 mt-1">Edite os blocos exibidos no PDF e na tela.</p>
-            </div>
-
-            <div class="p-6 space-y-5">
-                <div>
-                    <label class="text-xs font-semibold text-slate-600">Título do segmento</label>
-                    <input name="titulo" type="text"
-                           value="{{ old('titulo', $tituloSegmento) }}"
-                           class="mt-1 w-full rounded-xl border border-slate-200 text-sm px-3 py-2"
-                           placeholder="Ex: CONSTRUÇÃO CIVIL">
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div class="cfg-page py-4 py-xl-5">
+        <div class="container-fluid px-3 px-xl-4">
+            <div class="cfg-shell mx-auto">
+                <div class="cfg-topbar d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
                     <div>
-                        <label class="text-xs font-semibold text-slate-600">Introdução (linha 1)</label>
-                        <textarea name="intro_1" rows="4"
-                                  class="mt-1 w-full rounded-xl border border-slate-200 text-sm px-3 py-2"
-                                  placeholder="Mensagem principal">{{ old('intro_1', $conteudo['intro'][0] ?? '') }}</textarea>
+                        <a href="{{ route('comercial.apresentacao.show', $segmento) }}"
+                           class="btn btn-sm btn-light border mb-3">
+                            <i class="bi bi-arrow-left"></i>
+                            Voltar para apresentação
+                        </a>
+                        <h1 class="display-6 fw-bold text-dark mb-2">Modelo comercial da apresentação de {{ $segmentoNome }}</h1>
+                        <p class="text-secondary mb-0">
+                            Organize o modelo por blocos. O foco aqui é editar sem se perder entre conteúdo, preços e layout.
+                        </p>
                     </div>
-                    <div>
-                        <label class="text-xs font-semibold text-slate-600">Introdução (linha 2)</label>
-                        <textarea name="intro_2" rows="4"
-                                  class="mt-1 w-full rounded-xl border border-slate-200 text-sm px-3 py-2"
-                                  placeholder="Complemento da introdução">{{ old('intro_2', $conteudo['intro'][1] ?? '') }}</textarea>
+                    <div class="cfg-topbar__actions d-flex flex-wrap gap-2">
+                        <a href="{{ route('comercial.apresentacao.show', $segmento) }}" class="btn btn-outline-secondary">
+                            Visualizar apresentação
+                        </a>
                     </div>
                 </div>
 
-                <div>
-                    <label class="text-xs font-semibold text-slate-600">Benefícios</label>
-                    <textarea name="beneficios" rows="4"
-                              class="mt-1 w-full rounded-xl border border-slate-200 text-sm px-3 py-2"
-                              placeholder="Resumo dos benefícios">{{ old('beneficios', $conteudo['beneficios'] ?? '') }}</textarea>
-                </div>
+                @if (session('ok'))
+                    <div class="alert alert-success border-0 shadow-sm">{{ session('ok') }}</div>
+                @endif
 
-                <div>
-                    <label class="text-xs font-semibold text-slate-600">Rodapé</label>
-                    <input name="rodape" type="text"
-                           value="{{ old('rodape', $conteudo['rodape'] ?? '') }}"
-                           class="mt-1 w-full rounded-xl border border-slate-200 text-sm px-3 py-2"
-                           placeholder="contato@empresa.com.br • (00) 0000-0000">
-                </div>
-            </div>
-
-            <div class="px-6 py-4 border-t border-emerald-300 bg-emerald-100">
-                <h3 class="text-sm font-semibold text-slate-800">Serviços essenciais</h3>
-                <p class="text-xs text-slate-500 mt-1">Digite um serviço por linha. Linhas vazias são ignoradas.</p>
-            </div>
-
-            <div class="p-6">
-                <textarea name="servicos" rows="10"
-                          class="w-full rounded-xl border border-slate-200 text-sm px-3 py-2"
-                          placeholder="Ex: PCMSO e gestão de exames ocupacionais">{{ old('servicos', $servicos) }}</textarea>
-            </div>
-
-            <div class="px-6 py-4 border-t border-emerald-300 bg-emerald-100">
-                <h3 class="text-sm font-semibold text-slate-800">Serviços</h3>
-                <p class="text-xs text-slate-500 mt-1">Selecione serviços da tabela de preço padrão e informe a quantidade.</p>
-            </div>
-
-            <div class="p-6 space-y-3">
-                @forelse($tabelaItens as $item)
-                    @php
-                        $servicoNome = $item->servico?->nome;
-                        $descricao = trim((string) $item->descricao);
-                        $codigo = trim((string) $item->codigo);
-                        $label = $descricao ?: $servicoNome ?: 'Item';
-                        $quantidadeValue = old('preco_qtd.' . $item->id, $precoQuantidades[$item->id] ?? 1);
-                    @endphp
-                    <div class="flex flex-col gap-2 rounded-2xl border border-slate-200 p-4 md:flex-row md:items-center md:gap-4">
-                        <label class="flex items-start gap-3">
-                            <input type="checkbox"
-                                   name="preco_itens[]"
-                                   value="{{ $item->id }}"
-                                   class="mt-1 rounded border-slate-300 text-blue-600"
-                                   @checked(in_array($item->id, old('preco_itens', $precoSelecionados ?? []), true))>
-                            <div class="text-sm text-slate-700">
-                                <div class="font-semibold text-slate-900">{{ $label }}</div>
-                                <div class="text-xs text-slate-500">
-                                    @if($codigo)
-                                        <span>Código: {{ $codigo }}</span>
-                                    @endif
-                                    @if($servicoNome)
-                                        <span class="ml-2">Serviço: {{ $servicoNome }}</span>
-                                    @endif
-                                </div>
-                            </div>
-                        </label>
-                        <div class="flex items-center gap-3 md:ml-auto">
-                            <div class="text-xs text-slate-500">R$ {{ number_format((float) $item->preco, 2, ',', '.') }}</div>
-                            <input type="number"
-                                   name="preco_qtd[{{ $item->id }}]"
-                                   min="0"
-                                   step="0.01"
-                                   class="w-24 rounded-xl border border-slate-200 px-2 py-1 text-sm"
-                                   value="{{ $quantidadeValue }}">
-                        </div>
+                @if ($errors->any())
+                    <div class="alert alert-danger border-0 shadow-sm">
+                        Revise os campos do configurador e tente novamente.
+                        <ul class="mb-0 mt-2 ps-3">
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
                     </div>
-                @empty
-                    <div class="text-sm text-slate-500">Nenhum item ativo na tabela de preço padrão.</div>
-                @endforelse
-            </div>
+                @endif
 
-            <div class="px-6 py-4 border-t border-emerald-300 bg-emerald-100">
-                <h3 class="text-sm font-semibold text-slate-800">Exames</h3>
-                <p class="text-xs text-slate-500 mt-1">Selecione exames ou marque para incluir todos.</p>
-            </div>
+                <div class="row g-4 align-items-start">
+                    <div class="col-12">
+                        <form method="POST" action="{{ route('comercial.apresentacao.modelo.store', $segmento) }}" class="d-grid gap-4">
+                            @csrf
+                            <input type="hidden" name="segmento_modelo" value="{{ old('segmento_modelo', $segmento) }}">
+                            <input type="hidden" name="comissao_vendedor" value="{{ old('comissao_vendedor', $modelo?->comissao_vendedor) }}">
+                            <input type="hidden" name="contato_email" value="{{ old('contato_email', $modelo?->contato_email ?? '') }}">
+                            <input type="hidden" name="contato_telefone" value="{{ old('contato_telefone', $modelo?->contato_telefone ?? '') }}">
+                            <input type="hidden" name="rodape" value="{{ old('rodape', $modelo?->rodape ?? '') }}">
 
-            <div class="p-6 space-y-3">
-                <label class="flex items-center gap-2 text-sm text-slate-700">
-                    <input type="checkbox" name="usar_todos_exames" value="1"
-                           class="rounded border-slate-300 text-blue-600"
-                           @checked(old('usar_todos_exames', $usarTodosExames ?? false))>
-                    Incluir todos os exames cadastrados
-                </label>
-
-                <div class="mt-3 space-y-2">
-                    @forelse($examesList as $exame)
-                        @php
-                            $quantidadeValue = old('exames_qtd.' . $exame->id, $examesQuantidades[$exame->id] ?? 1);
-                        @endphp
-                        <div class="flex flex-col gap-2 rounded-2xl border border-slate-200 p-4 md:flex-row md:items-center md:gap-4">
-                            <label class="flex items-start gap-3">
-                                <input type="checkbox"
-                                       name="exames[]"
-                                       value="{{ $exame->id }}"
-                                       class="mt-1 rounded border-slate-300 text-blue-600"
-                                       @checked(in_array($exame->id, old('exames', $examesSelecionados ?? []), true))>
-                                <div class="text-sm text-slate-700">
-                                    <div class="font-semibold text-slate-900">{{ $exame->titulo }}</div>
-                                    @if($exame->descricao)
-                                        <div class="text-xs text-slate-500">{{ $exame->descricao }}</div>
-                                    @endif
+                            <x-comercial.config-section
+                                id="textos-apresentacao"
+                                title="Textos da apresentação"
+                                data-section="textos-apresentacao"
+                                description="Configure a narrativa inicial da proposta comercial.">
+                                <div class="row g-4">
+                                    <div class="col-lg-4">
+                                        <label class="form-label">Introdução linha 1</label>
+                                        <textarea name="intro_1" rows="5" class="form-control" placeholder="Primeira linha da apresentação">{{ old('intro_1', $modelo?->intro_1 ?? ($conteudo['intro'][0] ?? '')) }}</textarea>
+                                    </div>
+                                    <div class="col-lg-4">
+                                        <label class="form-label">Introdução linha 2</label>
+                                        <textarea name="intro_2" rows="5" class="form-control" placeholder="Segunda linha da apresentação">{{ old('intro_2', $modelo?->intro_2 ?? ($conteudo['intro'][1] ?? '')) }}</textarea>
+                                    </div>
+                                    <div class="col-lg-4">
+                                        <label class="form-label">Mensagem principal</label>
+                                        <textarea name="mensagem_principal" rows="5" class="form-control" placeholder="Mensagem principal do modelo">{{ old('mensagem_principal', $modelo?->mensagem_principal ?? '') }}</textarea>
+                                    </div>
                                 </div>
-                            </label>
-                            <div class="flex items-center gap-3 md:ml-auto">
-                                <div class="text-xs text-slate-500">R$ {{ number_format((float) $exame->preco, 2, ',', '.') }}</div>
-                                <input type="number"
-                                       name="exames_qtd[{{ $exame->id }}]"
-                                       min="0"
-                                       step="0.01"
-                                       class="w-24 rounded-xl border border-slate-200 px-2 py-1 text-sm"
-                                       value="{{ $quantidadeValue }}">
-                            </div>
-                        </div>
-                    @empty
-                        <div class="text-sm text-slate-500">Nenhum exame ativo cadastrado.</div>
-                    @endforelse
-                </div>
-            </div>
+                            </x-comercial.config-section>
 
-            @php
-                $treinamentosComPreco = ($treinamentosList ?? collect())
-                    ->filter(fn($treinamento) => !empty($treinamento->tabelaItem)
-                        && $treinamento->tabelaItem->preco !== null);
-            @endphp
+                            <x-comercial.config-section
+                                id="servicos-essenciais"
+                                title="Serviços essenciais"
+                                data-section="servicos-essenciais"
+                                description="Cada linha será convertida em um item exibido na apresentação.">
+                                <label class="form-label">Lista de serviços</label>
+                                <textarea name="servicos" rows="8" class="form-control cfg-codearea" placeholder="PGR e inventário de riscos&#10;PCMSO e gestão de exames ocupacionais&#10;ASO admissional">{{ old('servicos', $servicos) }}</textarea>
+                            </x-comercial.config-section>
 
-            <div class="px-6 py-4 border-t border-emerald-300 bg-emerald-100">
-                <h3 class="text-sm font-semibold text-slate-800">Treinamentos</h3>
-                <p class="text-xs text-slate-500 mt-1">Selecione treinamentos e informe a quantidade.</p>
-            </div>
-
-            <div class="p-6 space-y-2">
-                @forelse($treinamentosComPreco as $treinamento)
-                    @php
-                        $quantidadeValue = old('treinamentos_qtd.' . $treinamento->id, $treinamentosQuantidades[$treinamento->id] ?? 1);
-                    @endphp
-                    <div class="flex flex-col gap-2 rounded-2xl border border-slate-200 p-4 md:flex-row md:items-center md:gap-4">
-                        <label class="flex items-start gap-3">
-                            <input type="checkbox"
-                                   name="treinamentos[]"
-                                   value="{{ $treinamento->id }}"
-                                   class="mt-1 rounded border-slate-300 text-blue-600"
-                                   @checked(in_array($treinamento->id, old('treinamentos', $treinamentosSelecionados ?? []), true))>
-                            <div class="text-sm text-slate-700">
-                                <div class="font-semibold text-slate-900">{{ $treinamento->codigo }} — {{ $treinamento->titulo }}</div>
-                            </div>
-                        </label>
-                        <div class="flex items-center gap-3 md:ml-auto">
-                            <div class="text-xs text-slate-500">R$ {{ number_format((float) ($treinamento->tabelaItem?->preco ?? 0), 2, ',', '.') }}</div>
-                            <input type="number"
-                                   name="treinamentos_qtd[{{ $treinamento->id }}]"
-                                   min="0"
-                                   step="0.01"
-                                   class="w-24 rounded-xl border border-slate-200 px-2 py-1 text-sm"
-                                   value="{{ $quantidadeValue }}">
-                        </div>
-                    </div>
-                @empty
-                    <div class="text-sm text-slate-500">Nenhum treinamento com preço cadastrado.</div>
-                @endforelse
-            </div>
-
-            @php
-                $manualTablesOld = old('manual_tables');
-                if (is_array($manualTablesOld)) {
-                    $manualTables = $manualTablesOld;
-                    $manualTablesOrder = old('manual_tables_order', array_keys($manualTables));
-                } else {
-                    $manualTables = ($tabelasManuais ?? collect())
-                        ->mapWithKeys(function ($tabela) {
-                            $rows = $tabela->linhas
-                                ->sortBy('ordem')
-                                ->mapWithKeys(function ($linha) {
-                                    return [(string) $linha->id => $linha->valores ?? []];
-                                })
-                                ->all();
-
-                            return [(string) $tabela->id => [
-                                'titulo' => $tabela->titulo,
-                                'subtitulo' => $tabela->subtitulo,
-                                'columns' => $tabela->colunas ?? [],
-                                'rows' => $rows,
-                            ]];
-                        })
-                        ->all();
-                    $manualTablesOrder = ($tabelasManuais ?? collect())
-                        ->sortBy('ordem')
-                        ->pluck('id')
-                        ->map(fn ($id) => (string) $id)
-                        ->all();
-                }
-            @endphp
-
-            <div class="px-6 py-4 border-t border-emerald-300 bg-emerald-100">
-                <h3 class="text-sm font-semibold text-slate-800">Tabelas manuais</h3>
-                <p class="text-xs text-slate-500 mt-1">Crie tabelas livres e organize a ordem arrastando.</p>
-            </div>
-
-            <div class="p-6 space-y-4">
-                <div id="manual-tables-wrapper" class="space-y-4">
-                    @foreach($manualTablesOrder as $tableId)
-                        @php
-                            $table = $manualTables[$tableId] ?? [];
-                            $columns = $table['columns'] ?? [];
-                            $rows = $table['rows'] ?? [];
-                            $rowsOrder = $table['rows_order'] ?? array_keys($rows);
-                        @endphp
-                        <div class="manual-table rounded-2xl border border-slate-200 bg-slate-50/40 p-4 space-y-4"
-                             draggable="true"
-                             data-table-id="{{ $tableId }}">
-                            <div class="flex items-center justify-between gap-3">
-                                <div class="inline-flex items-center gap-2 text-xs font-semibold text-slate-700">
-                                    <span class="manual-table-handle cursor-move rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px]">Arrastar</span>
-                                    <span>Tabela manual</span>
-                                </div>
-                                <button type="button"
-                                        class="btn-remove-table text-xs text-rose-600 hover:text-rose-700">
-                                    Remover tabela
-                                </button>
-                            </div>
-
-                            <div class="grid md:grid-cols-2 gap-3">
-                                <div>
-                                    <label class="text-xs font-semibold text-slate-600">Título da tabela</label>
-                                    <input type="text"
-                                           name="manual_tables[{{ $tableId }}][titulo]"
-                                           value="{{ old('manual_tables.' . $tableId . '.titulo', $table['titulo'] ?? '') }}"
-                                           class="mt-1 w-full rounded-xl border border-slate-200 text-sm px-3 py-2"
-                                           placeholder="Ex: Programas">
-                                </div>
-                                <div>
-                                    <label class="text-xs font-semibold text-slate-600">Subtítulo (opcional)</label>
-                                    <input type="text"
-                                           name="manual_tables[{{ $tableId }}][subtitulo]"
-                                           value="{{ old('manual_tables.' . $tableId . '.subtitulo', $table['subtitulo'] ?? '') }}"
-                                           class="mt-1 w-full rounded-xl border border-slate-200 text-sm px-3 py-2"
-                                           placeholder="Texto auxiliar da tabela">
-                                </div>
-                            </div>
-
-                            <div class="space-y-2">
-                                <div class="flex items-center justify-between">
-                                    <label class="text-xs font-semibold text-slate-600">Colunas</label>
-                                    <button type="button"
-                                            class="btn-add-col text-xs text-slate-600 hover:text-slate-800">
-                                        + Adicionar coluna
-                                    </button>
-                                </div>
-                                <div class="manual-columns grid md:grid-cols-3 gap-2">
-                                    @foreach($columns as $colIndex => $column)
-                                        <div class="manual-column flex items-center gap-2" data-col-index="{{ $colIndex }}">
-                                            <input type="text"
-                                                   name="manual_tables[{{ $tableId }}][columns][]"
-                                                   value="{{ $column }}"
-                                                   class="w-full rounded-xl border border-slate-200 text-sm px-3 py-2"
-                                                   placeholder="Ex: Programa">
-                                            <button type="button"
-                                                    class="btn-remove-col text-xs text-rose-600 hover:text-rose-700">
-                                                ✕
-                                            </button>
+                            <x-comercial.config-section
+                                id="layout-apresentacao"
+                                title="Blocos ativos"
+                                data-section="layout-apresentacao"
+                                description="Escolha quais blocos estruturais serão exibidos no PDF e na apresentação.">
+                                <div class="row g-3">
+                                    @foreach([
+                                        'hero' => 'Hero',
+                                        'desafios' => 'Desafios',
+                                        'solucoes' => 'Nossas soluções',
+                                        'palestras' => 'Palestras anuais',
+                                        'processo' => 'Processo simplificado',
+                                        'investimento' => 'Investimento',
+                                        'unidade' => 'Unidade',
+                                        'contato_final' => 'Contato final',
+                                    ] as $key => $label)
+                                        <div class="col-md-6 col-xl-4">
+                                            <label class="card border-0 shadow-sm h-100 cfg-toggle-card">
+                                                <div class="card-body d-flex justify-content-between align-items-center">
+                                                    <span class="fw-semibold">{{ $label }}</span>
+                                                    <span class="form-check m-0 cfg-check-control">
+                                                        <input type="hidden" name="layout[{{ $key }}][enabled]" value="0">
+                                                        <input class="form-check-input" type="checkbox" value="1"
+                                                               name="layout[{{ $key }}][enabled]"
+                                                               @checked(old("layout.$key.enabled", $layoutDraft[$key]['enabled'] ?? true))>
+                                                    </span>
+                                                </div>
+                                            </label>
                                         </div>
                                     @endforeach
                                 </div>
-                            </div>
+                            </x-comercial.config-section>
 
-                            <div class="space-y-2">
-                                <div class="flex items-center justify-between">
-                                    <label class="text-xs font-semibold text-slate-600">Linhas</label>
-                                    <button type="button"
-                                            class="btn-add-row text-xs text-slate-600 hover:text-slate-800">
-                                        + Adicionar linha
+                            <x-comercial.config-section
+                                id="hero-config"
+                                title="Hero"
+                                data-section="hero-config"
+                                description="Título e subtítulo principal da capa da apresentação.">
+                                <div class="row g-4">
+                                    <div class="col-md-4">
+                                        <label class="form-label">Etiqueta</label>
+                                        <input type="text"
+                                               class="form-control"
+                                               name="layout[hero][badge]"
+                                               value="{{ old('layout.hero.badge', $heroDraft['badge'] ?? 'Apresentação comercial') }}">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Título</label>
+                                        <input type="text"
+                                              class="form-control form-control-lg"
+                                              name="layout[hero][title]"
+                                               value="{{ $heroTitle }}"
+                                               data-sync-titulo
+                                               placeholder="Construção Civil">
+                                        <input type="hidden" name="titulo" value="{{ old('titulo', $tituloSegmento) }}" data-sync-titulo-target>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Subtítulo</label>
+                                        <input type="text"
+                                               class="form-control form-control-lg"
+                                               name="layout[hero][subtitle]"
+                                               value="{{ $heroSubtitle }}"
+                                               data-sync-hero-subtitle
+                                               placeholder="Sua obra não pode parar">
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label">Texto auxiliar da capa</label>
+                                        <textarea class="form-control" rows="3" name="layout[hero][description]">{{ old('layout.hero.description', $heroDraft['description'] ?? '') }}</textarea>
+                                    </div>
+                                </div>
+                            </x-comercial.config-section>
+
+                            <x-comercial.config-section
+                                id="desafios-config"
+                                title="Desafios"
+                                data-section="desafios-config"
+                                description="Configure os cards de dores e obstáculos do segmento.">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <div>
+                                        <label class="form-label mb-1">Etiqueta do bloco</label>
+                                        <input type="text" class="form-control mb-3" name="layout[desafios][badge]" value="{{ old('layout.desafios.badge', $desafiosDraft['badge'] ?? 'Desafio do setor') }}">
+                                        <label class="form-label mb-1">Título do bloco</label>
+                                        <input type="text" class="form-control" name="layout[desafios][title]" value="{{ old('layout.desafios.title', $desafiosDraft['title'] ?? 'Os principais desafios das empresas da construção civil') }}">
+                                    </div>
+                                    <button type="button" class="btn btn-outline-primary btn-sm ms-3 mt-4" data-repeater-add="desafios">
+                                        <i class="bi bi-plus-lg"></i>
+                                        Adicionar desafio
                                     </button>
                                 </div>
-                                <div class="manual-rows space-y-2">
-                                    @foreach($rowsOrder as $rowKey)
-                                        @php
-                                            $rowValues = $rows[$rowKey] ?? [];
-                                        @endphp
-                                        <div class="manual-row rounded-xl border border-slate-200 bg-white p-3 space-y-2"
-                                             data-row-id="{{ $rowKey }}">
-                                            <div class="grid gap-2 manual-row-cells"
-                                                 style="grid-template-columns: repeat({{ max(count($columns), 1) }}, minmax(0, 1fr));">
-                                                @foreach($columns as $colIndex => $column)
-                                                    <div class="manual-cell" data-col-index="{{ $colIndex }}">
-                                                        <input type="text"
-                                                               name="manual_tables[{{ $tableId }}][rows][{{ $rowKey }}][]"
-                                                               value="{{ $rowValues[$colIndex] ?? '' }}"
-                                                               class="w-full rounded-xl border border-slate-200 text-sm px-3 py-2"
-                                                               placeholder="Valor">
+                                <div class="cfg-repeater-grid" data-repeater="desafios" data-next-index="{{ count(old('layout.desafios.items', $desafiosDraft['items'] ?? [])) }}">
+                                    @foreach(old('layout.desafios.items', $desafiosDraft['items'] ?? []) as $index => $item)
+                                        <div class="card border-0 shadow-sm" data-repeater-item>
+                                            <div class="card-body">
+                                                <div class="mb-2">
+                                                    <div class="form-check cfg-check-control m-0">
+                                                        <input type="hidden" name="layout[desafios][items][{{ $index }}][active]" value="0">
+                                                        <input class="form-check-input" type="checkbox" value="1" name="layout[desafios][items][{{ $index }}][active]" @checked($item['active'] ?? true)>
+                                                        <label class="form-check-label small">Incluir na proposta</label>
                                                     </div>
-                                                @endforeach
-                                            </div>
-                                            <div class="flex justify-end">
-                                                <button type="button"
-                                                        class="btn-remove-row text-xs text-rose-600 hover:text-rose-700">
-                                                    Remover linha
-                                                </button>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label">Título do desafio</label>
+                                                    <input type="text" class="form-control" name="layout[desafios][items][{{ $index }}][title]" value="{{ $item['title'] ?? '' }}">
+                                                </div>
+                                                <div>
+                                                    <label class="form-label">Descrição</label>
+                                                    <textarea class="form-control" rows="3" name="layout[desafios][items][{{ $index }}][description]">{{ $item['description'] ?? '' }}</textarea>
+                                                </div>
                                             </div>
                                         </div>
                                     @endforeach
                                 </div>
-                                <div class="manual-rows-order"></div>
+                            </x-comercial.config-section>
+
+                            <x-comercial.config-section
+                                id="solucoes-config"
+                                title="Nossas soluções"
+                                data-section="solucoes-config"
+                                description="Cadastre os cards de solução que aparecerão no material comercial.">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <div class="flex-grow-1">
+                                        <label class="form-label mb-1">Etiqueta do bloco</label>
+                                        <input type="text" class="form-control" name="layout[solucoes][badge]" value="{{ old('layout.solucoes.badge', $solucoesDraft['badge'] ?? 'Nossas soluções') }}">
+                                        <label class="form-label mb-1">Título do bloco</label>
+                                        <input type="text" class="form-control" name="layout[solucoes][title]" value="{{ old('layout.solucoes.title', $solucoesDraft['title'] ?? 'Como resolvemos isso') }}">
+                                        <label class="form-label mt-3 mb-1">Texto introdutório</label>
+                                        <textarea class="form-control" rows="4" name="layout[solucoes][description]">{{ old('layout.solucoes.description', $solucoesDraft['description'] ?? '') }}</textarea>
+                                    </div>
+                                    <button type="button" class="btn btn-outline-primary btn-sm ms-3 mt-4" data-repeater-add="solucoes">
+                                        <i class="bi bi-plus-lg"></i>
+                                        Adicionar solução
+                                    </button>
+                                </div>
+                                <div class="cfg-repeater-grid" data-repeater="solucoes" data-next-index="{{ count(old('layout.solucoes.cards', $solucoesDraft['cards'] ?? [])) }}">
+                                    @foreach(old('layout.solucoes.cards', $solucoesDraft['cards'] ?? []) as $index => $card)
+                                        <div class="card border-0 shadow-sm" data-repeater-item>
+                                            <div class="card-body">
+                                                <div class="mb-2">
+                                                    <div class="form-check cfg-check-control m-0">
+                                                        <input type="hidden" name="layout[solucoes][cards][{{ $index }}][active]" value="0">
+                                                        <input class="form-check-input" type="checkbox" value="1" name="layout[solucoes][cards][{{ $index }}][active]" @checked($card['active'] ?? true)>
+                                                        <label class="form-check-label small">Incluir na proposta</label>
+                                                    </div>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label">Título</label>
+                                                    <input type="text" class="form-control" name="layout[solucoes][cards][{{ $index }}][title]" value="{{ $card['title'] ?? '' }}">
+                                                </div>
+                                                <div>
+                                                    <label class="form-label">Descrição</label>
+                                                    <textarea class="form-control" rows="3" name="layout[solucoes][cards][{{ $index }}][description]">{{ $card['description'] ?? '' }}</textarea>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </x-comercial.config-section>
+
+                            <x-comercial.config-section
+                                id="palestras-config"
+                                title="Palestras anuais"
+                                data-section="palestras-config"
+                                description="Monte a grade mensal de palestras do calendário anual.">
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-4">
+                                        <label class="form-label">Etiqueta do bloco</label>
+                                        <input type="text" class="form-control" name="layout[palestras][badge]" value="{{ old('layout.palestras.badge', $palestrasDraft['badge'] ?? 'Calendário anual') }}">
+                                    </div>
+                                    <div class="col-md-8">
+                                        <label class="form-label">Título do bloco</label>
+                                        <input type="text" class="form-control" name="layout[palestras][title]" value="{{ old('layout.palestras.title', $palestrasDraft['title'] ?? 'Palestras conforme o calendário anual') }}">
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-content-end mb-3">
+                                    <button type="button" class="btn btn-outline-primary btn-sm" data-repeater-add="palestras">
+                                        <i class="bi bi-plus-lg"></i>
+                                        Adicionar palestra
+                                    </button>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table align-middle cfg-table">
+                                        <thead>
+                                        <tr>
+                                            <th>Mês</th>
+                                            <th>Tema</th>
+                                            <th style="width: 72px;"></th>
+                                        </tr>
+                                        </thead>
+                                        <tbody data-repeater="palestras" data-next-index="{{ count(old('layout.palestras.items', $palestrasDraft['items'] ?? [])) }}">
+                                        @foreach(old('layout.palestras.items', $palestrasDraft['items'] ?? []) as $index => $item)
+                                            <tr data-repeater-item>
+                                                <td><input type="text" class="form-control" name="layout[palestras][items][{{ $index }}][title]" value="{{ $item['title'] ?? '' }}" placeholder="Janeiro"></td>
+                                                <td><input type="text" class="form-control" name="layout[palestras][items][{{ $index }}][description]" value="{{ $item['description'] ?? '' }}" placeholder="Segurança no trabalho"></td>
+                                                <td class="text-end">
+                                                    <button type="button" class="btn btn-sm btn-outline-success" data-repeater-remove><i class="bi bi-check-lg"></i></button>
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </x-comercial.config-section>
+
+                            <x-comercial.config-section
+                                id="processo-config"
+                                title="Processo simplificado"
+                                data-section="processo-config"
+                                description="Cadastre as etapas da jornada comercial/operacional do atendimento.">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <div>
+                                        <label class="form-label mb-1">Etiqueta do bloco</label>
+                                        <input type="text" class="form-control mb-3" name="layout[processo][badge]" value="{{ old('layout.processo.badge', $processoDraft['badge'] ?? 'Fluxo de atendimento') }}">
+                                        <label class="form-label mb-1">Título do bloco</label>
+                                        <input type="text" class="form-control" name="layout[processo][title]" value="{{ old('layout.processo.title', $processoDraft['title'] ?? 'Processo simplificado') }}">
+                                    </div>
+                                    <button type="button" class="btn btn-outline-primary btn-sm ms-3 mt-4" data-repeater-add="processo">
+                                        <i class="bi bi-plus-lg"></i>
+                                        Adicionar etapa
+                                    </button>
+                                </div>
+                                <div class="cfg-repeater-grid" data-repeater="processo" data-next-index="{{ count(old('layout.processo.items', $processoDraft['items'] ?? [])) }}">
+                                    @foreach(old('layout.processo.items', $processoDraft['items'] ?? []) as $index => $step)
+                                        <div class="card border-0 shadow-sm" data-repeater-item>
+                                            <div class="card-body">
+                                                <div class="mb-2">
+                                                    <div class="form-check cfg-check-control m-0">
+                                                        <input type="hidden" name="layout[processo][items][{{ $index }}][active]" value="0">
+                                                        <input class="form-check-input" type="checkbox" value="1" name="layout[processo][items][{{ $index }}][active]" @checked($step['active'] ?? true)>
+                                                        <label class="form-check-label small">Incluir na proposta</label>
+                                                    </div>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label">Título da etapa</label>
+                                                    <input type="text" class="form-control" name="layout[processo][items][{{ $index }}][title]" value="{{ $step['title'] ?? '' }}" placeholder="Etapa 1">
+                                                </div>
+                                                <div>
+                                                    <label class="form-label">Descrição</label>
+                                                    <textarea class="form-control" rows="3" name="layout[processo][items][{{ $index }}][description]">{{ $step['description'] ?? '' }}</textarea>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </x-comercial.config-section>
+
+                            <x-comercial.config-section
+                                id="investimento-config"
+                                title="Investimento"
+                                data-section="investimento-config"
+                                description="Cadastre os cards de preço e o bloco principal de ASO que serão exibidos no slide de investimento.">
+                                <div class="form-check mb-4 cfg-check-control">
+                                    <input type="hidden" name="layout[investimento][enabled]" value="0">
+                                    <input class="form-check-input" type="checkbox" value="1"
+                                           name="layout[investimento][enabled]"
+                                           @checked(old('layout.investimento.enabled', $layoutDraft['investimento']['enabled'] ?? true))>
+                                    <label class="form-check-label">Mostrar bloco na apresentação</label>
+                                </div>
+
+                                <div class="row g-4 mb-4">
+                                    <div class="col-md-4">
+                                        <label class="form-label">Etiqueta do bloco</label>
+                                        <input type="text" class="form-control" name="layout[investimento][badge]" value="{{ old('layout.investimento.badge', $layoutDraft['investimento']['badge'] ?? 'Capacitação') }}">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Título do bloco</label>
+                                        <input type="text" class="form-control" name="layout[investimento][title]" value="{{ old('layout.investimento.title', $layoutDraft['investimento']['title'] ?? 'Investimento') }}">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Preço principal do ASO</label>
+                                        <input type="text" class="form-control" name="layout[investimento][aso_price]" value="{{ old('layout.investimento.aso_price', $layoutDraft['investimento']['aso_price'] ?? '') }}">
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label">Título principal do ASO</label>
+                                        <input type="text" class="form-control" name="layout[investimento][aso_title]" value="{{ old('layout.investimento.aso_title', $layoutDraft['investimento']['aso_title'] ?? '') }}">
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label">Itens do ASO (um por linha)</label>
+                                        <textarea class="form-control cfg-codearea" rows="8" name="layout[investimento][aso_items_text]">{{ old('layout.investimento.aso_items_text', $layoutDraft['investimento']['aso_items_text'] ?? '') }}</textarea>
+                                    </div>
+                                </div>
+
+                                <div class="d-flex justify-content-end mb-3">
+                                    <button type="button" class="btn btn-outline-primary btn-sm" data-repeater-add="investimento">
+                                        <i class="bi bi-plus-lg"></i>
+                                        Adicionar card de investimento
+                                    </button>
+                                </div>
+                                <div class="cfg-repeater-grid" data-repeater="investimento" data-next-index="{{ count(old('layout.investimento.cards', $layoutDraft['investimento']['cards'] ?? [])) }}">
+                                    @foreach(old('layout.investimento.cards', $layoutDraft['investimento']['cards'] ?? []) as $index => $card)
+                                        <div class="card border-0 shadow-sm" data-repeater-item>
+                                            <div class="card-body">
+                                                <div class="mb-2">
+                                                    <div class="form-check cfg-check-control m-0">
+                                                        <input type="hidden" name="layout[investimento][cards][{{ $index }}][active]" value="0">
+                                                        <input class="form-check-input" type="checkbox" value="1" name="layout[investimento][cards][{{ $index }}][active]" @checked($card['active'] ?? true)>
+                                                        <label class="form-check-label small">Incluir na proposta</label>
+                                                    </div>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label">Título</label>
+                                                    <input type="text" class="form-control" name="layout[investimento][cards][{{ $index }}][title]" value="{{ $card['title'] ?? '' }}">
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label">Valor</label>
+                                                    <input type="text" class="form-control" name="layout[investimento][cards][{{ $index }}][value]" value="{{ $card['value'] ?? '' }}">
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label">Descrição</label>
+                                                    <textarea class="form-control" rows="3" name="layout[investimento][cards][{{ $index }}][description]">{{ $card['description'] ?? '' }}</textarea>
+                                                </div>
+                                                @if (filled($card['items'] ?? null))
+                                                    <div>
+                                                        <label class="form-label">Itens internos (um por linha)</label>
+                                                        <textarea class="form-control" rows="5" name="layout[investimento][cards][{{ $index }}][items]">{{ $card['items'] ?? '' }}</textarea>
+                                                    </div>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </x-comercial.config-section>
+
+                            <x-comercial.config-section
+                                id="unidade-config"
+                                title="Unidade"
+                                data-section="unidade-config"
+                                description="Defina os dados da unidade e o destaque de atendimento in company.">
+                                <div class="form-check mb-4 cfg-check-control">
+                                    <input type="hidden" name="layout[unidade][enabled]" value="0">
+                                    <input class="form-check-input" type="checkbox" value="1"
+                                           name="layout[unidade][enabled]"
+                                           @checked(old('layout.unidade.enabled', $layoutDraft['unidade']['enabled'] ?? true))>
+                                    <label class="form-check-label">Mostrar bloco na apresentação</label>
+                                </div>
+                                <div class="row g-4">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Etiqueta do bloco</label>
+                                        <input type="text" class="form-control" name="layout[unidade][badge]" value="{{ old('layout.unidade.badge', $layoutDraft['unidade']['badge'] ?? 'Atendimento') }}">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Título do bloco</label>
+                                        <input type="text" class="form-control" name="layout[unidade][title]" value="{{ old('layout.unidade.title', $layoutDraft['unidade']['title'] ?? '') }}">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Nome da unidade</label>
+                                        <input type="text" class="form-control" name="layout[unidade][name]" value="{{ old('layout.unidade.name', $layoutDraft['unidade']['name'] ?? '') }}">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Endereço</label>
+                                        <textarea class="form-control" rows="4" name="layout[unidade][address]">{{ old('layout.unidade.address', $layoutDraft['unidade']['address'] ?? '') }}</textarea>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Horário</label>
+                                        <textarea class="form-control" rows="4" name="layout[unidade][schedule]">{{ old('layout.unidade.schedule', $layoutDraft['unidade']['schedule'] ?? '') }}</textarea>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Título do card azul</label>
+                                        <input type="text" class="form-control" name="layout[unidade][highlight_title]" value="{{ old('layout.unidade.highlight_title', $layoutDraft['unidade']['highlight_title'] ?? '') }}">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Texto do card azul</label>
+                                        <textarea class="form-control" rows="4" name="layout[unidade][highlight_description]">{{ old('layout.unidade.highlight_description', $layoutDraft['unidade']['highlight_description'] ?? '') }}</textarea>
+                                    </div>
+                                </div>
+                            </x-comercial.config-section>
+
+                            <x-comercial.config-section
+                                id="contato-config"
+                                title="Contato final"
+                                data-section="contato-config"
+                                description="Configure o último slide com contato, horário, site e CTA final.">
+                                <div class="form-check mb-4 cfg-check-control">
+                                    <input type="hidden" name="layout[contato_final][enabled]" value="0">
+                                    <input class="form-check-input" type="checkbox" value="1"
+                                           name="layout[contato_final][enabled]"
+                                           @checked(old('layout.contato_final.enabled', $layoutDraft['contato_final']['enabled'] ?? true))>
+                                    <label class="form-check-label">Mostrar bloco na apresentação</label>
+                                </div>
+                                <div class="row g-4">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Etiqueta do bloco</label>
+                                        <input type="text" class="form-control" name="layout[contato_final][badge]" value="{{ old('layout.contato_final.badge', $layoutDraft['contato_final']['badge'] ?? 'Contato e próximos passos') }}">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Título</label>
+                                        <input type="text" class="form-control" name="layout[contato_final][title]" value="{{ old('layout.contato_final.title', $layoutDraft['contato_final']['title'] ?? '') }}">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Texto do CTA</label>
+                                        <input type="text" class="form-control" name="layout[contato_final][cta_label]" value="{{ old('layout.contato_final.cta_label', $layoutDraft['contato_final']['cta_label'] ?? '') }}">
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label">Mensagem principal</label>
+                                        <textarea class="form-control" rows="4" name="layout[contato_final][description]">{{ old('layout.contato_final.description', $layoutDraft['contato_final']['description'] ?? '') }}</textarea>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Telefone</label>
+                                        <input type="text" class="form-control" name="layout[contato_final][phone]" value="{{ old('layout.contato_final.phone', $layoutDraft['contato_final']['phone'] ?? '') }}">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">E-mail</label>
+                                        <input type="text" class="form-control" name="layout[contato_final][email]" value="{{ old('layout.contato_final.email', $layoutDraft['contato_final']['email'] ?? '') }}">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Endereço principal</label>
+                                        <textarea class="form-control" rows="4" name="layout[contato_final][address]">{{ old('layout.contato_final.address', $layoutDraft['contato_final']['address'] ?? '') }}</textarea>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Horário de funcionamento</label>
+                                        <textarea class="form-control" rows="4" name="layout[contato_final][schedule]">{{ old('layout.contato_final.schedule', $layoutDraft['contato_final']['schedule'] ?? '') }}</textarea>
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label">Site</label>
+                                        <input type="text" class="form-control" name="layout[contato_final][site]" value="{{ old('layout.contato_final.site', $layoutDraft['contato_final']['site'] ?? '') }}">
+                                    </div>
+                                </div>
+                            </x-comercial.config-section>
+
+                            <div class="cfg-submitbar card border-0 shadow-sm">
+                                <div class="card-body d-flex flex-wrap justify-content-end gap-2">
+                                    <a href="{{ route('comercial.apresentacao.show', $segmento) }}" class="btn btn-light border">
+                                        Cancelar
+                                    </a>
+                                    <button type="submit" name="submit_action" value="save" class="btn btn-outline-primary">
+                                        Salvar modelo
+                                    </button>
+                                    <button type="submit" name="submit_action" value="generate" class="btn btn-primary">
+                                        Gerar apresentação
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-                    @endforeach
-                </div>
-
-                <div id="manual-tables-order"></div>
-
-                <button type="button" id="btn-add-manual-table"
-                        class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-                    + Nova tabela manual
-                </button>
-            </div>
-
-            <div class="px-6 py-4 border-t border-emerald-300 bg-emerald-100">
-                <h3 class="text-sm font-semibold text-slate-800">eSocial</h3>
-                <p class="text-xs text-slate-500 mt-1">Texto livre e tabela de faixas vigente.</p>
-            </div>
-
-            <div class="p-6 space-y-4">
-                <div>
-                    <label class="text-xs font-semibold text-slate-600">Descrição do eSocial</label>
-                    <textarea id="esocial_descricao"
-                              name="esocial_descricao"
-                              class="mt-1 w-full rounded-xl border border-slate-200 text-sm px-3 py-2"
-                              rows="6">{{ old('esocial_descricao', $esocialDescricao ?? '') }}</textarea>
-                </div>
-
-                <div class="overflow-hidden rounded-2xl border border-slate-200">
-                    <table class="w-full text-sm">
-                        <thead class="bg-slate-50 text-xs text-slate-500">
-                        <tr>
-                            <th class="px-4 py-3 text-left font-semibold">Faixa</th>
-                            <th class="px-4 py-3 text-left font-semibold">Descrição</th>
-                            <th class="px-4 py-3 text-right font-semibold">Valor</th>
-                        </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                        @forelse($esocialFaixas as $faixa)
-                            <tr>
-                                <td class="px-4 py-3">
-                                    {{ $faixa->inicio }}@if($faixa->fim) - {{ $faixa->fim }}@else+@endif
-                                </td>
-                                <td class="px-4 py-3">{{ $faixa->descricao }}</td>
-                                <td class="px-4 py-3 text-right">R$ {{ number_format((float) $faixa->preco, 2, ',', '.') }}</td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="3" class="px-4 py-3 text-sm text-slate-500">Nenhuma faixa ativa cadastrada.</td>
-                            </tr>
-                        @endforelse
-                        </tbody>
-                    </table>
+                        </form>
+                    </div>
                 </div>
             </div>
-
-            <div class="px-6 py-4 border-t bg-white flex items-center justify-end gap-2">
-                <a href="{{ route('comercial.apresentacao.show', $segmento) }}"
-                   class="rounded-xl px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">
-                    Cancelar
-                </a>
-                <button type="submit"
-                        class="rounded-xl bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 text-sm font-semibold">
-                    Salvar modelo
-                </button>
-                <a href="{{ route('comercial.apresentacao.show', $segmento) }}"
-                   class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900">
-                    Visualizar apresentação
-                </a>
-            </div>
-        </form>
+        </div>
     </div>
 
-    @push('scripts')
-        <script src="https://cdn.ckeditor.com/ckeditor5/41.2.1/classic/ckeditor.js"></script>
-        <script>
-            (function () {
-                const textarea = document.getElementById('esocial_descricao');
-                if (!textarea || !window.ClassicEditor) return;
-
-                ClassicEditor.create(textarea, {
-                    toolbar: ['heading', '|', 'bold', 'italic', 'underline', 'link', 'bulletedList', 'numberedList', 'blockQuote', '|', 'undo', 'redo'],
-                }).catch((error) => {
-                    console.error(error);
-                });
-            })();
-        </script>
-        <template id="manual-table-template">
-            <div class="manual-table rounded-2xl border border-slate-200 bg-slate-50/40 p-4 space-y-4"
-                 draggable="true"
-                 data-table-id="__ID__">
-                <div class="flex items-center justify-between gap-3">
-                    <div class="inline-flex items-center gap-2 text-xs font-semibold text-slate-700">
-                        <span class="manual-table-handle cursor-move rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px]">Arrastar</span>
-                        <span>Tabela manual</span>
-                    </div>
-                    <button type="button"
-                            class="btn-remove-table text-xs text-rose-600 hover:text-rose-700">
-                        Remover tabela
-                    </button>
-                </div>
-
-                <div class="grid md:grid-cols-2 gap-3">
-                    <div>
-                        <label class="text-xs font-semibold text-slate-600">Título da tabela</label>
-                        <input type="text"
-                               name="manual_tables[__ID__][titulo]"
-                               class="mt-1 w-full rounded-xl border border-slate-200 text-sm px-3 py-2"
-                               placeholder="Ex: Programas">
-                    </div>
-                    <div>
-                        <label class="text-xs font-semibold text-slate-600">Subtítulo (opcional)</label>
-                        <input type="text"
-                               name="manual_tables[__ID__][subtitulo]"
-                               class="mt-1 w-full rounded-xl border border-slate-200 text-sm px-3 py-2"
-                               placeholder="Texto auxiliar da tabela">
+    <template id="repeater-card-template">
+        <div class="card border-0 shadow-sm" data-repeater-item>
+            <div class="card-body">
+                <div class="mb-2">
+                    <div class="form-check cfg-check-control m-0">
+                        <input type="hidden" data-field-hidden="active" value="0">
+                        <input class="form-check-input" type="checkbox" value="1" data-field-input="active" checked>
+                        <label class="form-check-label small">Incluir na proposta</label>
                     </div>
                 </div>
-
-                <div class="space-y-2">
-                    <div class="flex items-center justify-between">
-                        <label class="text-xs font-semibold text-slate-600">Colunas</label>
-                        <button type="button"
-                                class="btn-add-col text-xs text-slate-600 hover:text-slate-800">
-                            + Adicionar coluna
-                        </button>
-                    </div>
-                    <div class="manual-columns grid md:grid-cols-3 gap-2"></div>
+                <div class="mb-3">
+                    <label class="form-label" data-field-label="title">Título</label>
+                    <input type="text" class="form-control" data-field-input="title">
                 </div>
+                <div>
+                    <label class="form-label" data-field-label="description">Descrição</label>
+                    <textarea class="form-control" rows="3" data-field-input="description"></textarea>
+                </div>
+            </div>
+        </div>
+    </template>
 
-                <div class="space-y-2">
-                    <div class="flex items-center justify-between">
-                        <label class="text-xs font-semibold text-slate-600">Linhas</label>
-                        <button type="button"
-                                class="btn-add-row text-xs text-slate-600 hover:text-slate-800">
-                            + Adicionar linha
-                        </button>
+    <template id="repeater-row-template">
+        <tr data-repeater-item>
+            <td><input type="text" class="form-control" data-field-input="title"></td>
+            <td><input type="text" class="form-control" data-field-input="description"></td>
+            <td class="text-end">
+                <button type="button" class="btn btn-sm btn-outline-success" data-repeater-remove><i class="bi bi-check-lg"></i></button>
+            </td>
+        </tr>
+    </template>
+
+    <template id="repeater-exam-template">
+        <tr data-repeater-item>
+            <td><input type="text" class="form-control" data-field-input="title"></td>
+            <td><input type="text" class="form-control" data-field-input="value"></td>
+            <td>
+                <div class="form-check cfg-check-control">
+                    <input type="hidden" data-field-hidden="active" value="0">
+                    <input class="form-check-input" type="checkbox" value="1" data-field-input="active">
+                </div>
+            </td>
+            <td class="text-end">
+                <button type="button" class="btn btn-sm btn-outline-success" data-repeater-remove><i class="bi bi-check-lg"></i></button>
+            </td>
+        </tr>
+    </template>
+
+    <template id="repeater-offer-template">
+        <div class="card border-0 shadow-sm" data-repeater-item>
+            <div class="card-body">
+                <div class="mb-2">
+                    <div class="form-check cfg-check-control m-0">
+                        <input type="hidden" data-field-hidden="active" value="0">
+                        <input class="form-check-input" type="checkbox" value="1" data-field-input="active" checked>
+                        <label class="form-check-label small">Incluir na proposta</label>
                     </div>
-                    <div class="manual-rows space-y-2"></div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" data-field-label="title">Título</label>
+                    <input type="text" class="form-control" data-field-input="title">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" data-field-label="value">Valor</label>
+                    <input type="text" class="form-control" data-field-input="value">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" data-field-label="description">Descrição</label>
+                    <textarea class="form-control" rows="3" data-field-input="description"></textarea>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <template id="manual-table-template">
+        <div class="manual-table card border-0 shadow-sm" draggable="true" data-table-id="__ID__">
+            <div class="card-body">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge text-bg-light border manual-table-handle">Arrastar</span>
+                        <span class="fw-semibold">Tabela manual</span>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-danger btn-remove-table">Remover tabela</button>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Título da tabela</label>
+                        <input type="text" class="form-control" name="manual_tables[__ID__][titulo]">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Subtítulo</label>
+                        <input type="text" class="form-control" name="manual_tables[__ID__][subtitulo]">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <label class="form-label mb-0">Colunas</label>
+                        <button type="button" class="btn btn-sm btn-outline-secondary btn-add-col">Adicionar coluna</button>
+                    </div>
+                    <div class="manual-columns row g-2"></div>
+                </div>
+                <div>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <label class="form-label mb-0">Linhas</label>
+                        <button type="button" class="btn btn-sm btn-outline-secondary btn-add-row">Adicionar linha</button>
+                    </div>
+                    <div class="manual-rows d-grid gap-2"></div>
                     <div class="manual-rows-order"></div>
                 </div>
             </div>
-        </template>
-
-        <script>
-            (function () {
-                const wrapper = document.getElementById('manual-tables-wrapper');
-                const orderWrap = document.getElementById('manual-tables-order');
-                const btnAdd = document.getElementById('btn-add-manual-table');
-                const template = document.getElementById('manual-table-template');
-                if (!wrapper || !orderWrap || !btnAdd || !template) return;
-
-                let draggedTable = null;
-
-                function syncTablesOrder() {
-                    orderWrap.innerHTML = '';
-                    wrapper.querySelectorAll('.manual-table').forEach((table) => {
-                        const input = document.createElement('input');
-                        input.type = 'hidden';
-                        input.name = 'manual_tables_order[]';
-                        input.value = table.dataset.tableId || '';
-                        orderWrap.appendChild(input);
-                    });
-                }
-
-                function syncRowsOrder(table) {
-                    const rowsWrap = table.querySelector('.manual-rows-order');
-                    if (!rowsWrap) return;
-                    rowsWrap.innerHTML = '';
-                    table.querySelectorAll('.manual-row').forEach((row) => {
-                        const input = document.createElement('input');
-                        input.type = 'hidden';
-                        input.name = `manual_tables[${table.dataset.tableId}][rows_order][]`;
-                        input.value = row.dataset.rowId || '';
-                        rowsWrap.appendChild(input);
-                    });
-                }
-
-                function reindexColumns(table) {
-                    const columns = table.querySelectorAll('.manual-column');
-                    columns.forEach((col, idx) => {
-                        col.dataset.colIndex = String(idx);
-                    });
-                    table.querySelectorAll('.manual-row').forEach((row) => {
-                        row.querySelectorAll('.manual-cell').forEach((cell, idx) => {
-                            cell.dataset.colIndex = String(idx);
-                        });
-                        const cols = Math.max(columns.length, 1);
-                        const cellsWrap = row.querySelector('.manual-row-cells');
-                        if (cellsWrap) {
-                            cellsWrap.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
-                        }
-                    });
-                }
-
-                function addColumn(table) {
-                    const columnsWrap = table.querySelector('.manual-columns');
-                    if (!columnsWrap) return;
-                    const colIndex = columnsWrap.querySelectorAll('.manual-column').length;
-
-                    const col = document.createElement('div');
-                    col.className = 'manual-column flex items-center gap-2';
-                    col.dataset.colIndex = String(colIndex);
-                    col.innerHTML = `
-                        <input type="text"
-                               name="manual_tables[${table.dataset.tableId}][columns][]"
-                               class="w-full rounded-xl border border-slate-200 text-sm px-3 py-2"
-                               placeholder="Ex: Coluna">
-                        <button type="button"
-                                class="btn-remove-col text-xs text-rose-600 hover:text-rose-700">
-                            ✕
-                        </button>
-                    `;
-                    columnsWrap.appendChild(col);
-
-                    table.querySelectorAll('.manual-row').forEach((row) => {
-                        const cellsWrap = row.querySelector('.manual-row-cells');
-                        if (!cellsWrap) return;
-                        const cell = document.createElement('div');
-                        cell.className = 'manual-cell';
-                        cell.dataset.colIndex = String(colIndex);
-                        cell.innerHTML = `
-                            <input type="text"
-                                   name="manual_tables[${table.dataset.tableId}][rows][${row.dataset.rowId}][]"
-                                   class="w-full rounded-xl border border-slate-200 text-sm px-3 py-2"
-                                   placeholder="Valor">
-                        `;
-                        cellsWrap.appendChild(cell);
-                    });
-                    reindexColumns(table);
-                }
-
-                function addRow(table) {
-                    const rowsWrap = table.querySelector('.manual-rows');
-                    const columns = table.querySelectorAll('.manual-column');
-                    if (!rowsWrap) return;
-                    const rowId = `new_${Date.now()}`;
-                    const row = document.createElement('div');
-                    row.className = 'manual-row rounded-xl border border-slate-200 bg-white p-3 space-y-2';
-                    row.dataset.rowId = rowId;
-
-                    const cols = Math.max(columns.length, 1);
-                    const cells = Array.from({ length: cols }).map((_, idx) => {
-                        return `
-                            <div class="manual-cell" data-col-index="${idx}">
-                                <input type="text"
-                                       name="manual_tables[${table.dataset.tableId}][rows][${rowId}][]"
-                                       class="w-full rounded-xl border border-slate-200 text-sm px-3 py-2"
-                                       placeholder="Valor">
-                            </div>
-                        `;
-                    }).join('');
-
-                    row.innerHTML = `
-                        <div class="grid gap-2 manual-row-cells" style="grid-template-columns: repeat(${cols}, minmax(0, 1fr));">${cells}</div>
-                        <div class="flex justify-end">
-                            <button type="button"
-                                    class="btn-remove-row text-xs text-rose-600 hover:text-rose-700">
-                                Remover linha
-                            </button>
-                        </div>
-                    `;
-                    rowsWrap.appendChild(row);
-                    syncRowsOrder(table);
-                }
-
-                function initTable(table) {
-                    table.addEventListener('dragstart', (e) => {
-                        draggedTable = table;
-                        e.dataTransfer.effectAllowed = 'move';
-                    });
-                    table.addEventListener('dragover', (e) => {
-                        e.preventDefault();
-                    });
-                    table.addEventListener('drop', (e) => {
-                        e.preventDefault();
-                        if (!draggedTable || draggedTable === table) return;
-                        const tables = Array.from(wrapper.querySelectorAll('.manual-table'));
-                        const draggedIndex = tables.indexOf(draggedTable);
-                        const targetIndex = tables.indexOf(table);
-                        if (draggedIndex < targetIndex) {
-                            wrapper.insertBefore(draggedTable, table.nextSibling);
-                        } else {
-                            wrapper.insertBefore(draggedTable, table);
-                        }
-                        syncTablesOrder();
-                    });
-
-                    table.querySelector('.btn-remove-table')?.addEventListener('click', () => {
-                        table.remove();
-                        syncTablesOrder();
-                    });
-
-                    table.querySelector('.btn-add-col')?.addEventListener('click', () => {
-                        addColumn(table);
-                    });
-
-                    table.querySelector('.btn-add-row')?.addEventListener('click', () => {
-                        addRow(table);
-                    });
-
-                    table.addEventListener('click', (e) => {
-                        const btnRemoveCol = e.target.closest('.btn-remove-col');
-                        if (btnRemoveCol) {
-                            const col = btnRemoveCol.closest('.manual-column');
-                            if (!col) return;
-                            const colIndex = Number(col.dataset.colIndex || 0);
-                            col.remove();
-                            table.querySelectorAll('.manual-row').forEach((row) => {
-                                const cell = row.querySelector(`.manual-cell[data-col-index=\"${colIndex}\"]`);
-                                cell?.remove();
-                            });
-                            reindexColumns(table);
-                            return;
-                        }
-
-                        const btnRemoveRow = e.target.closest('.btn-remove-row');
-                        if (btnRemoveRow) {
-                            const row = btnRemoveRow.closest('.manual-row');
-                            row?.remove();
-                            syncRowsOrder(table);
-                        }
-                    });
-
-                    syncRowsOrder(table);
-                    reindexColumns(table);
-                }
-
-                btnAdd.addEventListener('click', () => {
-                    const id = `new_${Date.now()}`;
-                    const html = template.innerHTML.replaceAll('__ID__', id);
-                    const wrapperDiv = document.createElement('div');
-                    wrapperDiv.innerHTML = html;
-                    const table = wrapperDiv.firstElementChild;
-                    if (!table) return;
-                    wrapper.appendChild(table);
-                    initTable(table);
-                    syncTablesOrder();
-                    addColumn(table);
-                    addRow(table);
-                });
-
-                wrapper.querySelectorAll('.manual-table').forEach(initTable);
-                syncTablesOrder();
-            })();
-        </script>
-    @endpush
+        </div>
+    </template>
 @endsection
+
+@push('scripts')
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+            crossorigin="anonymous"></script>
+    @vite(['resources/js/comercial/apresentacao-modelo.js'])
+@endpush

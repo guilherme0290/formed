@@ -11,19 +11,28 @@ class ModeloComercial extends Model
     protected $fillable = [
         'empresa_id',
         'segmento',
+        'nome_modelo',
         'titulo',
         'intro_1',
         'intro_2',
+        'mensagem_principal',
+        'comissao_vendedor',
+        'contato_email',
+        'contato_telefone',
+        'catalogo_preco',
         'beneficios',
         'rodape',
         'usar_todos_exames',
         'esocial_descricao',
         'ativo',
+        'layout',
     ];
 
     protected $casts = [
         'ativo' => 'bool',
         'usar_todos_exames' => 'bool',
+        'comissao_vendedor' => 'decimal:2',
+        'layout' => 'array',
     ];
 
     public function empresa()
