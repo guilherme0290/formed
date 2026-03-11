@@ -50,17 +50,25 @@
         <div class="bg-white rounded-2xl p-4 md:p-5 shadow-sm border border-slate-100">
             <form method="GET" class="grid md:grid-cols-4 gap-4 items-end" id="clientes-filter-form">
 
-                <div class="md:col-span-2">
-                    <label class="block text-sm font-medium mb-1 text-slate-700 break-words">Busca (raz&atilde;o social, nome fantasia ou CPF/CNPJ)</label>
+                <div>
+                    <label class="block text-sm font-medium mb-1 text-slate-700 break-words">Texto</label>
                     <div class="relative">
-                        <input type="search" name="q" id="cliente-search" value="{{ $q }}"
+                        <input type="search" name="texto" id="cliente-search" value="{{ $texto }}"
                                autocomplete="off"
-                               placeholder="Raz&atilde;o social, fantasia ou CPF/CNPJ"
+                               placeholder="Raz&atilde;o social, fantasia ou e-mail"
                                class="w-full rounded-xl border-slate-300 px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                         <div id="clientes-autocomplete"
                              class="absolute z-20 mt-1 w-full max-h-64 overflow-auto rounded-lg border border-slate-200 bg-white shadow-lg hidden">
                         </div>
                     </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium mb-1 text-slate-700 break-words">CPF/CNPJ</label>
+                    <input type="search" name="documento" value="{{ $documento }}"
+                           autocomplete="off"
+                           placeholder="Somente documento"
+                           class="w-full rounded-xl border-slate-300 px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                 </div>
 
                 <div>
@@ -416,11 +424,26 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('clientes-filter-form');
+
             window.initTailwindAutocomplete?.(
                 'cliente-search',
                 'clientes-autocomplete',
                 @json($autocompleteOptions),
-                { maxItems: 200 }
+                {
+                    maxItems: 200,
+                    onSelect: () => {
+                        if (!form) {
+                            return;
+                        }
+
+                        if (typeof form.requestSubmit === 'function') {
+                            form.requestSubmit();
+                        } else {
+                            form.submit();
+                        }
+                    }
+                }
             );
         });
     </script>
@@ -442,10 +465,12 @@
 
             input.addEventListener('input', () => {
                 clearTimeout(timer);
+                const rawValue = input.value || '';
                 const query = (input.value || '').trim();
+                const hasTrailingSpace = /\s$/.test(rawValue);
 
-                // Evita reload precoce para consultas curtas.
-                if (query !== '' && query.length < minChars) {
+                // Permite busca curta quando o usuario fecha o termo com espaco.
+                if (query !== '' && query.length < minChars && !hasTrailingSpace) {
                     return;
                 }
 
