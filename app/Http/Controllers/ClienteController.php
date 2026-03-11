@@ -22,6 +22,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Str;
 
 class ClienteController extends Controller
 {
@@ -32,7 +33,9 @@ class ClienteController extends Controller
     {
         $this->authorizeComercialAction('view');
 
-        $q      = trim((string) $r->query('q', ''));
+        $q = trim((string) $r->query('q', ''));
+        $texto = trim((string) $r->query('texto', ''));
+        $documento = trim((string) $r->query('documento', ''));
         $status = $r->query('status', 'todos'); // todos|ativo|inativo
         $dataInicio = $r->query('data_inicio');
         $dataFim = $r->query('data_fim');
@@ -54,38 +57,46 @@ class ClienteController extends Controller
         if (!empty($dataInicioNormalizada) && !empty($dataFimNormalizada) && $dataInicioNormalizada > $dataFimNormalizada) {
             [$dataInicioNormalizada, $dataFimNormalizada] = [$dataFimNormalizada, $dataInicioNormalizada];
         }
-        $qText  = trim(preg_replace('/\d+/', ' ', $q));
-        $qText  = preg_replace('/\s+/', ' ', $qText);
-        $doc    = preg_replace('/\D+/', '', $q);
+
+        if ($texto === '' && $documento === '' && $q !== '') {
+            if (preg_match('/[A-Za-z]/', Str::ascii($q))) {
+                $texto = $q;
+            }
+
+            if (preg_match('/\d/', $q)) {
+                $documento = $q;
+            }
+        }
+
+        $qText = preg_replace('/\s+/', ' ', trim($texto));
+        $qText = is_string($qText) ? $qText : '';
+        $qTextNormalized = $this->normalizeAutocompleteSearchValue($qText);
+        $doc = preg_replace('/\D+/', '', $documento);
 
         $empresaId = $r->user()->empresa_id ?? 1;
 
-        $clientes = Cliente::query()
+        $clientesBaseQuery = Cliente::query()
             ->with('userCliente')
             ->where('empresa_id', $empresaId)
             ->when($this->isComercialNaoMaster($r->user()), function ($q) use ($r) {
                 $q->where('vendedor_id', (int) $r->user()->id);
             })
-            ->when($qText !== '' || $doc !== '', function ($w) use ($qText, $doc) {
-                $w->where(function ($x) use ($qText, $doc) {
-                    if ($qText !== '') {
-                        $x->where('razao_social', 'like', "%{$qText}%")
-                            ->orWhere('nome_fantasia', 'like', "%{$qText}%")
-                            ->orWhere('email', 'like', "%{$qText}%")
-                            ->orWhere('telefone', 'like', "%{$qText}%");
-                    }
-
-                    // Só filtra por CPF/CNPJ se tiver número na busca
-                    if ($doc !== '') {
-                        $x->orWhere('cnpj', 'like', "%{$doc}%")
-                            ->orWhere('cpf', 'like', "%{$doc}%")
-                            ->orWhere('telefone', 'like', "%{$doc}%");
-                    }
-                });
-            })
             ->when($status !== 'todos', fn($w) => $w->where('ativo', $status === 'ativo'))
             ->when(!empty($dataInicioNormalizada), fn($w) => $w->whereDate('clientes.created_at', '>=', $dataInicioNormalizada))
-            ->when(!empty($dataFimNormalizada), fn($w) => $w->whereDate('clientes.created_at', '<=', $dataFimNormalizada))
+            ->when(!empty($dataFimNormalizada), fn($w) => $w->whereDate('clientes.created_at', '<=', $dataFimNormalizada));
+
+        $clientes = (clone $clientesBaseQuery)
+            ->when($qText !== '' || $doc !== '', function ($w) use ($qTextNormalized, $doc, $clientesBaseQuery) {
+                $matchingIds = $this->findClienteIdsByNormalizedSearch($clientesBaseQuery, $qTextNormalized, $doc);
+
+                if (empty($matchingIds)) {
+                    $w->whereRaw('1 = 0');
+
+                    return;
+                }
+
+                $w->whereIn('id', $matchingIds);
+            })
             ->orderByDesc('id')
             ->paginate(15)
             ->withQueryString();
@@ -101,13 +112,14 @@ class ClienteController extends Controller
             ->when(!empty($dataInicioNormalizada), fn($query) => $query->whereDate('clientes.created_at', '>=', $dataInicioNormalizada))
             ->when(!empty($dataFimNormalizada), fn($query) => $query->whereDate('clientes.created_at', '<=', $dataFimNormalizada))
             ->orderBy('razao_social')
-            ->get(['razao_social', 'nome_fantasia', 'cnpj', 'cpf'])
+            ->get(['razao_social', 'nome_fantasia', 'email'])
             ->flatMap(function ($cliente) {
+                $email = trim((string) $cliente->email);
+
                 return array_filter([
                     $cliente->razao_social,
                     $cliente->nome_fantasia,
-                    $cliente->cnpj,
-                    $cliente->cpf,
+                    $email,
                 ]);
             })
             ->unique()
@@ -116,12 +128,64 @@ class ClienteController extends Controller
         return view('clientes.index', compact(
             'clientes',
             'q',
+            'texto',
+            'documento',
             'status',
             'dataInicioNormalizada',
             'dataFimNormalizada',
             'routePrefix',
             'autocompleteOptions'
         ));
+    }
+
+    private function normalizeAutocompleteSearchValue(?string $value): string
+    {
+        $ascii = Str::ascii((string) $value);
+
+        return Str::lower(preg_replace('/[^[:alnum:]]+/u', '', $ascii) ?? '');
+    }
+
+    private function normalizeDocumentoSearchValue(?string $value): string
+    {
+        return preg_replace('/\D+/', '', (string) $value) ?? '';
+    }
+
+    private function findClienteIdsByNormalizedSearch($baseQuery, string $qTextNormalized, string $doc): array
+    {
+        if ($qTextNormalized === '' && $doc === '') {
+            return [];
+        }
+
+        return (clone $baseQuery)
+            ->get(['id', 'razao_social', 'nome_fantasia', 'email', 'cnpj', 'cpf'])
+            ->filter(fn (Cliente $cliente) => $this->clienteMatchesSearch($cliente, $qTextNormalized, $doc))
+            ->pluck('id')
+            ->all();
+    }
+
+    private function clienteMatchesSearch(Cliente $cliente, string $qTextNormalized, string $doc): bool
+    {
+        if ($qTextNormalized !== '') {
+            foreach ([$cliente->razao_social, $cliente->nome_fantasia, $cliente->email] as $value) {
+                $normalizedValue = $this->normalizeAutocompleteSearchValue($value);
+
+                if ($normalizedValue !== '' && str_contains($normalizedValue, $qTextNormalized)) {
+                    return true;
+                }
+            }
+        }
+
+        if ($doc !== '') {
+            foreach ([$cliente->cnpj, $cliente->cpf] as $value) {
+                $normalizedValue = $this->normalizeDocumentoSearchValue($value);
+
+                if ($normalizedValue !== '' && str_contains($normalizedValue, $doc)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     /**
