@@ -442,11 +442,26 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('clientes-filter-form');
+
             window.initTailwindAutocomplete?.(
                 'cliente-search',
                 'clientes-autocomplete',
                 @json($autocompleteOptions),
-                { maxItems: 200 }
+                {
+                    maxItems: 200,
+                    onSelect: () => {
+                        if (!form) {
+                            return;
+                        }
+
+                        if (typeof form.requestSubmit === 'function') {
+                            form.requestSubmit();
+                        } else {
+                            form.submit();
+                        }
+                    },
+                }
             );
         });
     </script>
@@ -457,45 +472,25 @@
             const form = document.getElementById('clientes-filter-form');
             const status = form?.querySelector('select[name="status"]');
 
-            if (!input || !form) {
+            if (!form) {
                 return;
             }
 
-            let timer = null;
-            const delay = 900;
-            const minChars = 3;
-            let lastSubmittedQuery = (input.value || '').trim();
-
-            input.addEventListener('input', () => {
-                clearTimeout(timer);
-                const query = (input.value || '').trim();
-
-                // Evita reload precoce para consultas curtas.
-                if (query !== '' && query.length < minChars) {
+            input?.addEventListener('keydown', (event) => {
+                if (event.key !== 'Enter') {
                     return;
                 }
 
-                // Evita repetir submit com o mesmo termo.
-                if (query === lastSubmittedQuery) {
-                    return;
+                event.preventDefault();
+
+                if (typeof form.requestSubmit === 'function') {
+                    form.requestSubmit();
+                } else {
+                    form.submit();
                 }
-
-                timer = setTimeout(() => {
-                    lastSubmittedQuery = query;
-                    if (typeof form.requestSubmit === 'function') {
-                        form.requestSubmit();
-                    } else {
-                        form.submit();
-                    }
-                }, delay);
-            });
-
-            form.addEventListener('submit', () => {
-                lastSubmittedQuery = (input.value || '').trim();
             });
 
             status?.addEventListener('change', () => {
-                clearTimeout(timer);
                 if (typeof form.requestSubmit === 'function') {
                     form.requestSubmit();
                 } else {

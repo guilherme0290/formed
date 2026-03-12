@@ -19,6 +19,7 @@ use App\Models\User;
 use App\Services\FuncionarioArquivosZipService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
