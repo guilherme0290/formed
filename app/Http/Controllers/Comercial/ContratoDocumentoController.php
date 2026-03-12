@@ -74,7 +74,7 @@ class ContratoDocumentoController extends Controller
     {
         $user = auth()->user();
 
-        $contrato->loadMissing(['cliente', 'empresa', 'itens.servico', 'parametroOrigem']);
+        $contrato->loadMissing(['cliente', 'empresa', 'itens.servico', 'parametroOrigem.itens']);
 
         $itens = $contrato->itens
             ->where('ativo', true)
@@ -159,6 +159,27 @@ class ContratoDocumentoController extends Controller
 
         $totalItens = array_reduce($itens, fn ($carry, $item) => $carry + (float) ($item['valor_total'] ?? 0), 0.0);
 
+        $treinamentosParametro = [];
+        if ($parametro && $parametro->relationLoaded('itens')) {
+            $treinamentosParametro = $parametro->itens
+                ->filter(function ($item) {
+                    $tipo = strtoupper((string) ($item->tipo ?? ''));
+                    return in_array($tipo, ['TREINAMENTO_NR', 'PACOTE_TREINAMENTOS'], true);
+                })
+                ->map(function ($item) {
+                    $tipo = strtoupper((string) ($item->tipo ?? ''));
+                    return [
+                        'categoria' => $tipo === 'PACOTE_TREINAMENTOS' ? 'PACOTE' : 'AVULSO',
+                        'nome' => (string) ($item->nome ?? $item->descricao ?? 'Treinamento'),
+                        'quantidade' => (int) ($item->quantidade ?? 1),
+                        'valor_unitario' => (float) ($item->valor_unitario ?? 0),
+                        'valor_total' => (float) ($item->valor_total ?? $item->valor_unitario ?? 0),
+                    ];
+                })
+                ->values()
+                ->all();
+        }
+
         return [
             'meta' => [
                 'titulo' => 'Contrato de Prestação de Serviços',
@@ -192,6 +213,7 @@ class ContratoDocumentoController extends Controller
                 'qtd_funcionarios' => (int) ($parametro?->esocial_qtd_funcionarios ?? 0),
                 'valor_mensal' => (float) ($parametro?->esocial_valor_mensal ?? 0),
             ],
+            'treinamentos_parametro' => $treinamentosParametro,
         ];
     }
 
@@ -204,6 +226,7 @@ class ContratoDocumentoController extends Controller
         $unidades = $payload['unidades'];
         $totais = $payload['totais'];
         $esocialPayload = $payload['esocial'] ?? [];
+        $treinamentosParametro = $payload['treinamentos_parametro'] ?? [];
 
         $dataHoje = $meta['data_hoje'] ?? now()->format('d/m/Y');
         $totalItensFmt = $this->formatMoney((float) ($totais['total_itens'] ?? 0));
@@ -241,7 +264,6 @@ class ContratoDocumentoController extends Controller
 
         $rowsGeneral = $this->buildRowsItens($generalItems, true);
         $rowsTraining = $this->buildRowsItens($trainingItems, false);
-        $rowsEsocial = $this->buildRowsItens($esocialItems, false);
         $sectionAsoPorGhe = $this->renderAsoPorGheSection($asoItems);
 
         $rowsUnidades = '';
@@ -264,9 +286,11 @@ class ContratoDocumentoController extends Controller
             $clausulasHtml = '<section class="clause"><h3>CLÁUSULAS</h3><p>Nenhuma cláusula ativa para esta empresa.</p></section>';
         }
 
-        $sectionEsocial = $this->renderSectionTable('Tabela de eSocial', $rowsEsocial, ['Serviço', 'Qtd', 'Valor unitário', 'Total']);
-        $sectionEsocialResumo = $this->renderEsocialResumo($esocialPayload, !empty($esocialItems));
-        $sectionTreinamentos = $this->renderSectionTable('Tabela de Treinamentos', $rowsTraining, ['Treinamento/Pacote', 'Qtd', 'Valor unitário', 'Total']);
+        $sectionEsocial = $this->renderEsocialTable($esocialPayload, !empty($esocialItems));
+        $rowsTreinamentosDetalhados = $this->buildRowsTreinamentosDetalhados($treinamentosParametro);
+        $sectionTreinamentos = $rowsTreinamentosDetalhados !== ''
+            ? $this->renderSectionTable('Tabela de Treinamentos', $rowsTreinamentosDetalhados, ['Categoria', 'Treinamento/Pacote', 'Qtd', 'Valor unitário', 'Total'])
+            : $this->renderSectionTable('Tabela de Treinamentos', $rowsTraining, ['Treinamento/Pacote', 'Qtd', 'Valor unitário', 'Total']);
 
         return <<<HTML
 <!doctype html>
@@ -357,7 +381,6 @@ th{background:var(--soft);text-align:left;font-weight:700;}
 
     {$sectionAsoPorGhe}
     {$sectionEsocial}
-    {$sectionEsocialResumo}
     {$sectionTreinamentos}
 
     <div class="divider"></div>
@@ -493,7 +516,7 @@ HTML;
         return $html;
     }
 
-    private function renderEsocialResumo(array $esocialPayload, bool $hasEsocialItem): string
+    private function renderEsocialTable(array $esocialPayload, bool $hasEsocialItem): string
     {
         if (!$hasEsocialItem) {
             return '';
@@ -502,11 +525,29 @@ HTML;
         $qtd = (int) ($esocialPayload['qtd_funcionarios'] ?? 0);
         $valorMensal = (float) ($esocialPayload['valor_mensal'] ?? 0);
 
-        return '<p class="small"><b>eSocial:</b> Quantidade de funcionários: '
-            . e((string) $qtd)
-            . ' • Mensalidade: R$ '
-            . $this->formatMoney($valorMensal)
-            . '</p>';
+        $descricao = 'Envio das Informações ao E-social:<br>'
+            . 'S-2210 - CAT – comunicado de acidente do trabalho<br>'
+            . 'S-2220 – ASO – Atestado de saude ocupacional<br>'
+            . 'S-2240 – LTCAT Laudo técnico das condições de ambiente do trabalho (caso tenha)';
+
+        $quantidadeLabel = $qtd > 0
+            ? 'Até ' . e((string) $qtd) . ' colaboradores'
+            : 'Conforme parametrização';
+
+        return '<div class="divider"></div>'
+            . '<h2>Tabela de eSocial</h2>'
+            . '<table>'
+            . '<thead><tr>'
+            . '<th>E-SOCIAL</th>'
+            . '<th class="right">QUANTIDADE</th>'
+            . '<th class="right">MENSALIDADE</th>'
+            . '</tr></thead>'
+            . '<tbody><tr>'
+            . '<td>' . $descricao . '</td>'
+            . '<td class="right"><b>' . $quantidadeLabel . '</b></td>'
+            . '<td class="right"><b>R$ ' . $this->formatMoney($valorMensal) . '</b></td>'
+            . '</tr></tbody>'
+            . '</table>';
     }
 
     private function buildRowsItens(array $items, bool $renderEmptyRow): string
@@ -521,6 +562,26 @@ HTML;
         foreach ($items as $item) {
             $rows .= '<tr>'
                 . '<td>' . e((string) ($item['nome'] ?? 'Serviço')) . '</td>'
+                . '<td class="right">' . e((string) ($item['quantidade'] ?? 1)) . '</td>'
+                . '<td class="right">R$ ' . $this->formatMoney((float) ($item['valor_unitario'] ?? 0)) . '</td>'
+                . '<td class="right">R$ ' . $this->formatMoney((float) ($item['valor_total'] ?? 0)) . '</td>'
+                . '</tr>';
+        }
+
+        return $rows;
+    }
+
+    private function buildRowsTreinamentosDetalhados(array $treinamentos): string
+    {
+        if (empty($treinamentos)) {
+            return '';
+        }
+
+        $rows = '';
+        foreach ($treinamentos as $item) {
+            $rows .= '<tr>'
+                . '<td>' . e((string) ($item['categoria'] ?? '')) . '</td>'
+                . '<td>' . e((string) ($item['nome'] ?? 'Treinamento')) . '</td>'
                 . '<td class="right">' . e((string) ($item['quantidade'] ?? 1)) . '</td>'
                 . '<td class="right">R$ ' . $this->formatMoney((float) ($item['valor_unitario'] ?? 0)) . '</td>'
                 . '<td class="right">R$ ' . $this->formatMoney((float) ($item['valor_total'] ?? 0)) . '</td>'
