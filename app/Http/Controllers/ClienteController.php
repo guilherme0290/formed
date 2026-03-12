@@ -537,6 +537,13 @@ class ClienteController extends Controller
                 $email = null;
             }
 
+            if ($email === null) {
+                $clienteEmail = trim((string) ($cliente->email ?? ''));
+                if ($clienteEmail !== '' && !\App\Models\User::where('email', $clienteEmail)->exists()) {
+                    $email = $clienteEmail;
+                }
+            }
+
             // evita duplicar usuário para o mesmo cliente
             $userExistente = \App\Models\User::where('cliente_id', $cliente->id)->first();
             if ($userExistente) {
