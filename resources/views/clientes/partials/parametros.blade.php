@@ -186,11 +186,11 @@
                                     Treinamentos
                                     <span id="badgeTabTreinamentos" class="hidden absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-emerald-400"></span>
                                 </button>
-                                <button type="button"
-                                        class="relative px-4 py-2 rounded-full text-sm font-semibold text-slate-600 hover:bg-slate-100"
-                                        data-tab="funcoes">
-                                    Funções
-                                </button>
+{{--                                <button type="button"--}}
+{{--                                        class="relative px-4 py-2 rounded-full text-sm font-semibold text-slate-600 hover:bg-slate-100"--}}
+{{--                                        data-tab="funcoes">--}}
+{{--                                    Funções--}}
+{{--                                </button>--}}
                             </div>
 
                             <div data-tab-panel="servicos" class="space-y-3">
