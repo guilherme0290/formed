@@ -87,6 +87,40 @@ class ClientesFilterTest extends TestCase
         $this->assertSame($clienteEncontrado->id, $clientes->first()->id);
     }
 
+    public function test_master_filter_finds_pf_cliente_by_masked_cpf(): void
+    {
+        [$empresa, $user] = $this->createAuthenticatedMasterUser();
+
+        $clienteEncontrado = Cliente::create([
+            'empresa_id' => $empresa->id,
+            'tipo_pessoa' => 'PF',
+            'razao_social' => 'Maria da Silva',
+            'cpf' => '12345678909',
+            'ativo' => true,
+        ]);
+
+        Cliente::create([
+            'empresa_id' => $empresa->id,
+            'tipo_pessoa' => 'PF',
+            'razao_social' => 'Ana Souza',
+            'cpf' => '98765432100',
+            'ativo' => true,
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->get(route('clientes.index', [
+                'documento' => '123.456.789-09',
+                'status' => 'todos',
+            ]));
+
+        $clientes = $response->viewData('clientes');
+
+        $response->assertOk();
+        $this->assertCount(1, $clientes);
+        $this->assertSame($clienteEncontrado->id, $clientes->first()->id);
+    }
+
     private function createAuthenticatedMasterUser(): array
     {
         $empresa = Empresa::create([
