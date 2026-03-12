@@ -40,7 +40,7 @@
                                id="kanban-clientes-input"
                                name="q"
                                value="{{ request('q') }}"
-                               placeholder="Pesquisar por razão social, fantasia ou CNPJ..."
+                               placeholder="Pesquisar por razão social, fantasia ou CPF/CNPJ..."
                                autocomplete="off"
                                class="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm
                                       focus:outline-none focus:ring-2 focus:ring-sky-400 focus:border-sky-400">
@@ -150,10 +150,6 @@
         document.addEventListener('DOMContentLoaded', () => {
             const input = document.getElementById('kanban-clientes-input');
             const form = document.getElementById('kanban-clientes-form');
-            let timer = null;
-            const delay = 900;
-            const minChars = 3;
-            let lastSubmittedQuery = (input?.value || '').trim();
 
             window.initTailwindAutocomplete?.(
                 'kanban-clientes-input',
@@ -163,7 +159,6 @@
                     maxItems: 200,
                     onSelect: () => {
                         if (!form) return;
-                        lastSubmittedQuery = (input?.value || '').trim();
                         if (typeof form.requestSubmit === 'function') {
                             form.requestSubmit();
                         } else {
@@ -175,25 +170,18 @@
 
             if (!input || !form) return;
 
-            input.addEventListener('input', () => {
-                clearTimeout(timer);
-                const query = (input.value || '').trim();
+            input.addEventListener('keydown', (event) => {
+                if (event.key !== 'Enter') {
+                    return;
+                }
 
-                if (query !== '' && query.length < minChars) return;
-                if (query === lastSubmittedQuery) return;
+                event.preventDefault();
 
-                timer = setTimeout(() => {
-                    lastSubmittedQuery = query;
-                    if (typeof form.requestSubmit === 'function') {
-                        form.requestSubmit();
-                    } else {
-                        form.submit();
-                    }
-                }, delay);
-            });
-
-            form.addEventListener('submit', () => {
-                lastSubmittedQuery = (input.value || '').trim();
+                if (typeof form.requestSubmit === 'function') {
+                    form.requestSubmit();
+                } else {
+                    form.submit();
+                }
             });
         });
     </script>
