@@ -37,14 +37,15 @@
     @else
         {{-- BACKDROP (mobile) --}}
         <div id="comercial-sidebar-backdrop"
-             class="fixed inset-0 bg-black/50 z-[9998] opacity-0 pointer-events-none transition-opacity duration-200 lg:hidden"></div>
+             class="fixed inset-0 bg-black/50 z-[9998] opacity-0 pointer-events-none transition-opacity duration-200 xl:hidden"></div>
 
         {{-- Sidebar esquerda --}}
         <aside id="comercial-sidebar"
                class="fixed inset-y-0 left-0 z-[9999] w-64 bg-slate-950 text-slate-100 shadow-2xl
                       transform -translate-x-full transition-all duration-200 ease-in-out
                       opacity-0 invisible pointer-events-none
-                      flex flex-col overflow-hidden">
+                      flex flex-col relative overflow-hidden
+                      xl:static xl:translate-x-0 xl:opacity-100 xl:visible xl:pointer-events-auto">
 
         <div class="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.06]">
             <img src="{{ asset('storage/logo.svg') }}" alt="FORMED" class="w-40">
@@ -55,7 +56,7 @@
             <div class="flex items-center gap-2">
                 {{-- Botão de colapse (DESKTOP) --}}
                 <button type="button"
-                        class="hidden lg:inline-flex items-center justify-center p-1.5 rounded-lg text-slate-300 hover:bg-slate-800"
+                        class="hidden xl:inline-flex items-center justify-center p-1.5 rounded-lg text-slate-300 hover:bg-slate-800"
                         data-sidebar-collapse
                         title="Recolher/expandir">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
@@ -73,13 +74,13 @@
 
             {{-- Botão fechar (somente mobile) --}}
             <button type="button"
-                    class="inline-flex items-center justify-center p-2 rounded-lg text-slate-300 hover:bg-slate-800 lg:hidden"
+                    class="inline-flex items-center justify-center p-2 rounded-lg text-slate-300 hover:bg-slate-800 xl:hidden"
                     data-sidebar-close>
                 <i class="fa-solid fa-xmark text-sm"></i>
             </button>
         </div>
 
-        <nav class="relative z-10 flex-1 px-3 mt-4 space-y-1">
+        <nav class="relative z-10 flex-1 px-3 mt-4 space-y-1 overflow-y-auto">
             @php
                 $menuState = function (bool $enabled, bool $active = false): string {
                     if (!$enabled) {
@@ -347,10 +348,10 @@
         let desktopCollapsed = false;
 
         if (isNestDevice) {
-            sidebar?.classList.remove('lg:static', 'lg:translate-x-0', 'lg:opacity-100', 'lg:visible', 'lg:pointer-events-auto');
-            backdrop?.classList.remove('lg:hidden');
-            btnToggleMob?.classList.remove('lg:hidden');
-            btnCloses.forEach((btn) => btn.classList.remove('lg:hidden'));
+            sidebar?.classList.remove('xl:static', 'xl:translate-x-0', 'xl:opacity-100', 'xl:visible', 'xl:pointer-events-auto');
+            backdrop?.classList.remove('xl:hidden');
+            btnToggleMob?.classList.remove('xl:hidden');
+            btnCloses.forEach((btn) => btn.classList.remove('xl:hidden'));
         }
 
         function mountOverlayModals() {
@@ -365,9 +366,8 @@
         mountOverlayModals();
 
         function isMobile() {
-            const isTouch = window.matchMedia('(pointer: coarse)').matches || window.matchMedia('(hover: none)').matches;
             const byWidth = window.matchMedia('(max-width: 1279.98px)').matches;
-            return isNestDevice || isTouch || byWidth;
+            return isNestDevice || byWidth;
         }
 
         function applyMobileDrawerStyles() {
@@ -542,7 +542,7 @@
         window.addEventListener('resize', syncSidebarState);
         window.addEventListener('orientationchange', syncSidebarState);
         window.visualViewport?.addEventListener('resize', syncSidebarState);
-        const mediaMobile = window.matchMedia('(max-width: 1023.98px)');
+        const mediaMobile = window.matchMedia('(max-width: 1279.98px)');
         mediaMobile.addEventListener?.('change', () => {
             syncSidebarState();
         });
