@@ -123,16 +123,16 @@
                 <span data-sidebar-label>Minhas Comissões</span>
             </a>
 
-            @php $canPropostas = $can('comercial.propostas.view'); @endphp
-            @php $activePropostas = request()->routeIs('comercial.propostas.*'); @endphp
-            <a href="{{ $canPropostas ? route('comercial.propostas.index') : 'javascript:void(0)' }}"
-               @if(!$canPropostas) title="Usuário sem permissão" aria-disabled="true" @endif
-               class="group flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition {{ $menuState($canPropostas, $activePropostas) }}">
-                <span class="{{ $iconState($canPropostas, $activePropostas) }}">
-                    <i class="fa-regular fa-file-lines w-4 text-center"></i>
-                </span>
-                <span data-sidebar-label>Propostas</span>
-            </a>
+{{--            @php $canPropostas = $can('comercial.propostas.view'); @endphp--}}
+{{--            @php $activePropostas = request()->routeIs('comercial.propostas.*'); @endphp--}}
+{{--            <a href="{{ $canPropostas ? route('comercial.propostas.index') : 'javascript:void(0)' }}"--}}
+{{--               @if(!$canPropostas) title="Usuário sem permissão" aria-disabled="true" @endif--}}
+{{--               class="group flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition {{ $menuState($canPropostas, $activePropostas) }}">--}}
+{{--                <span class="{{ $iconState($canPropostas, $activePropostas) }}">--}}
+{{--                    <i class="fa-regular fa-file-lines w-4 text-center"></i>--}}
+{{--                </span>--}}
+{{--                <span data-sidebar-label>Propostas</span>--}}
+{{--            </a>--}}
             @php $canApresentacao = $can('comercial.propostas.view'); @endphp
             @php $activeApresentacao = request()->routeIs('comercial.apresentacao.*'); @endphp
             <a href="{{ $canApresentacao ? route('comercial.apresentacao.cliente') : 'javascript:void(0)' }}"
