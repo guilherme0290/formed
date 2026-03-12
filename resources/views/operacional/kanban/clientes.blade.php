@@ -77,8 +77,8 @@
                                             {{ $cliente->razao_social ?? $cliente->nome_fantasia }}
                                         </p>
                                         <p class="text-[11px] text-slate-500">
-                                            @if($cliente->cnpj)
-                                                {{ $cliente->cnpj }}
+                                            @if($cliente->documento_principal)
+                                                {{ $cliente->documento_principal }}
                                             @else
                                                 &nbsp;
                                             @endif
@@ -112,8 +112,8 @@
                                             <p class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Sem contrato ativo</p>
                                         @endif
                                         <p class="text-[11px] text-slate-500">
-                                            @if($cliente->cnpj)
-                                                {{ $cliente->cnpj }}
+                                            @if($cliente->documento_principal)
+                                                {{ $cliente->documento_principal }}
                                             @else
                                                 &nbsp;
                                             @endif

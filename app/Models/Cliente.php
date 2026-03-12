@@ -39,9 +39,22 @@ class Cliente extends Model
         'ativo' => 'boolean',
     ];
 
+    public function getTipoPessoaAttribute($value): string
+    {
+        $tipo = strtoupper((string) $value);
+
+        if (in_array($tipo, ['PF', 'PJ'], true)) {
+            return $tipo;
+        }
+
+        return $this->cpf ? 'PF' : 'PJ';
+    }
+
     public function getDocumentoPrincipalAttribute(): ?string
     {
-        $documento = $this->cpf ?: $this->cnpj;
+        $documento = $this->tipo_pessoa === 'PF'
+            ? ($this->cpf ?: $this->cnpj)
+            : ($this->cnpj ?: $this->cpf);
 
         if (!$documento) {
             return null;
@@ -52,7 +65,7 @@ class Cliente extends Model
 
     public function getDocumentoLabelAttribute(): string
     {
-        return $this->cpf ? 'CPF' : 'CNPJ';
+        return $this->tipo_pessoa === 'PF' ? 'CPF' : 'CNPJ';
     }
 
     public function cidade()
@@ -109,4 +122,3 @@ class Cliente extends Model
         return $documento;
     }
 }
-

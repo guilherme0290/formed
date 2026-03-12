@@ -339,7 +339,7 @@
                                                         : '-';
                                         $obs          = $tarefa->descricao ?? '';
 
-                                        $clienteCnpj  = optional($tarefa->cliente)->cnpj ?? '';
+                                        $clienteCnpj  = optional($tarefa->cliente)->documento_principal ?? '';
                                         $clienteTel   = optional($tarefa->cliente)->telefone ?? '';
 
                                         $pgr  = $tarefa->pgrSolicitacao ?? null;
@@ -963,7 +963,7 @@
                             </div>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
                                 <div>
-                                    <dt class="text-[11px] text-slate-500">CNPJ</dt>
+                                    <dt class="text-[11px] text-slate-500">Documento</dt>
                                     <dd class="font-medium" id="modal-cnpj">—</dd>
                                 </div>
                                 <div>

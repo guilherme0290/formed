@@ -27,7 +27,7 @@
                 <div class="bg-slate-50 border border-slate-200 rounded-xl p-4">
                     <h3 class="text-xs font-semibold text-slate-600 mb-3">1. DETALHES DA SOLICITAÇÃO</h3>
                     <p class="text-sm font-medium text-slate-800" x-text="tarefa.cliente?.razao_social"></p>
-                    <p class="text-xs text-slate-600 mt-1" x-text="'CNPJ: ' + (tarefa.cliente?.cnpj ?? '-')"></p>
+                    <p class="text-xs text-slate-600 mt-1" x-text="'Documento: ' + (tarefa.cliente?.documento_principal ?? tarefa.cliente?.cnpj ?? tarefa.cliente?.cpf ?? '-')"></p>
                     <p class="text-xs text-slate-600" x-text="'Telefone: ' + (tarefa.cliente?.telefone ?? '-')"></p>
                     <p class="text-xs text-slate-600" x-text="'Celular: ' + (tarefa.funcionario?.celular ?? '-')"></p>
                     <p class="text-xs text-slate-600" x-text="'Responsável: ' + (tarefa.responsavel?.name ?? '-')"></p>

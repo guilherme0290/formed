@@ -55,7 +55,7 @@
     </tr>
     <tr>
         <td><strong>CNPJ/CPF</strong></td>
-        <td>{{ $conta->cliente->cnpj ?? '-' }}</td>
+        <td>{{ $conta->cliente->documento_principal ?? '-' }}</td>
         <td><strong>Emissao</strong></td>
         <td>{{ optional($conta->created_at)->format('d/m/Y') }}</td>
     </tr>

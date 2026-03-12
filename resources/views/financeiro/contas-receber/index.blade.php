@@ -660,8 +660,8 @@
                                 </p>
                             @endif
                             <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-                                @if(!empty($contaDetalheSelecionada->cliente->cnpj))
-                                    <span class="text-slate-600">CNPJ <strong class="text-slate-800">{{ $contaDetalheSelecionada->cliente->cnpj }}</strong></span>
+                                @if(!empty($contaDetalheSelecionada->cliente->documento_principal))
+                                    <span class="text-slate-600">{{ $contaDetalheSelecionada->cliente->documento_label }} <strong class="text-slate-800">{{ $contaDetalheSelecionada->cliente->documento_principal }}</strong></span>
                                     <span class="text-slate-300">•</span>
                                 @endif
                                 <span class="text-slate-600">Emissão <strong class="text-slate-800">{{ optional($contaDetalheSelecionada->created_at)->format('d/m/Y') ?? '—' }}</strong></span>

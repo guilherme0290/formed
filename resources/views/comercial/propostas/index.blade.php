@@ -92,13 +92,7 @@
                     @php
                         $cliente = $proposta->cliente;
                         $clienteTxt = $cliente?->razao_social ?? 'â€”';
-                        $cnpjRaw = $cliente?->cnpj ?? '';
-                        $cnpjDigits = preg_replace('/\D+/', '', (string) $cnpjRaw);
-                        if (strlen($cnpjDigits) === 14) {
-                            $cnpjClienteTxt = substr($cnpjDigits, 0, 2) . '.' . substr($cnpjDigits, 2, 3) . '.' . substr($cnpjDigits, 5, 3) . '/' . substr($cnpjDigits, 8, 4) . '-' . substr($cnpjDigits, 12, 2);
-                        } else {
-                            $cnpjClienteTxt = $cnpjRaw !== '' ? $cnpjRaw : 'â€”';
-                        }
+                        $cnpjClienteTxt = $cliente?->documento_principal ?? 'â€”';
                         $ref = str_pad((int) $proposta->id, 2, '0', STR_PAD_LEFT);
                         $status = strtoupper((string) ($proposta->status ?? ''));
                         $badgeByStatus = [
@@ -207,13 +201,7 @@
                             $cliente = $proposta->cliente;
                             $empresaTxt = $proposta->empresa?->nome ?? '—';
                             $clienteTxt = $cliente?->razao_social ?? '—';
-                            $cnpjRaw = $cliente?->cnpj ?? '';
-                            $cnpjDigits = preg_replace('/\D+/', '', (string) $cnpjRaw);
-                            if (strlen($cnpjDigits) === 14) {
-                                $cnpjClienteTxt = substr($cnpjDigits, 0, 2) . '.' . substr($cnpjDigits, 2, 3) . '.' . substr($cnpjDigits, 5, 3) . '/' . substr($cnpjDigits, 8, 4) . '-' . substr($cnpjDigits, 12, 2);
-                            } else {
-                                $cnpjClienteTxt = $cnpjRaw !== '' ? $cnpjRaw : '—';
-                            }
+                            $cnpjClienteTxt = $cliente?->documento_principal ?? '—';
                             $ref = str_pad((int) $proposta->id, 2, '0', STR_PAD_LEFT);
                             $status = strtoupper((string) ($proposta->status ?? ''));
 

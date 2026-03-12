@@ -108,7 +108,7 @@
                             {{ $proposta->cliente->razao_social ?? '-' }}
                         </div>
                         <div class="text-xs text-slate-500 mt-1">
-                            {{ $proposta->cliente->cnpj ?? '' }}
+                            {{ $proposta->cliente->documento_principal ?? '' }}
                         </div>
                     </div>
                 </div>

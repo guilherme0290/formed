@@ -58,7 +58,7 @@
                 <p class="text-sm text-gray-500 mb-2">{{ $cliente->nome_fantasia }}</p>
             @endif
 
-            <p><strong>CNPJ:</strong> {{ $cliente->cnpj }}</p>
+            <p><strong>{{ $cliente->documento_label }}:</strong> {{ $cliente->documento_principal ?? '-' }}</p>
             <p><strong>E-mail:</strong> {{ $cliente->email ?? '-' }}</p>
             <p><strong>Telefone:</strong> {{ $cliente->telefone ?? '-' }}</p>
             <p><strong>CEP:</strong> {{ $cliente->cep ?? '-' }}</p>
@@ -80,5 +80,4 @@
 
     </div>
 @endsection
-
 
