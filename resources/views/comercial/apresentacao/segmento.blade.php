@@ -35,7 +35,7 @@
     <div class="min-h-screen bg-slate-50">
         <div class="w-full px-2 sm:px-3 md:px-4 py-4 md:py-6">
             <div class="mb-4">
-                <a href="{{ route('comercial.apresentacao.cliente') }}"
+                <a href="{{ route('comercial.apresentacao.cliente', ['preserve' => 1]) }}"
                    class="inline-flex items-center gap-2 rounded-xl bg-white border border-slate-200 text-slate-700 px-3 py-2 text-sm hover:bg-slate-50">
                     &larr; Voltar
                 </a>

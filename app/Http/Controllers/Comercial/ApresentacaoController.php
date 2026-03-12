@@ -53,6 +53,10 @@ class ApresentacaoController extends Controller
 
     public function cliente(Request $request)
     {
+        if (!$request->boolean('preserve')) {
+            $request->session()->forget(self::SESSION_KEY);
+        }
+
         $user = $request->user();
         $empresaId = $user->empresa_id;
         $isMaster = $user->hasPapel('Master');
