@@ -94,6 +94,13 @@ class ApresentacaoController extends Controller
             abort_if(!$ok, 403);
         }
 
+        $documento = preg_replace('/\D+/', '', (string) ($data['cnpj'] ?? ''));
+        if (!in_array(strlen($documento), [11, 14], true)) {
+            return back()
+                ->withErrors(['cnpj' => 'Informe um CPF ou CNPJ válido.'])
+                ->withInput();
+        }
+
         $request->session()->put(self::SESSION_KEY . '.cliente', [
             'proposta_id' => $data['proposta_id'] ?? null,
             'cnpj' => $data['cnpj'],
