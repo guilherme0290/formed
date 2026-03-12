@@ -136,15 +136,26 @@ class PcmsoController extends Controller
             }
         }
 
+        $inserirPgrSolicitado = $request->boolean('inserir_pgr', true);
+        $funcoesRule = $inserirPgrSolicitado
+            ? ['nullable', 'array']
+            : ['required', 'array', 'min:1'];
+        $funcaoIdRule = $inserirPgrSolicitado
+            ? ['nullable', 'integer', 'exists:funcoes,id']
+            : ['required', 'integer', 'exists:funcoes,id'];
+        $funcaoQtdRule = $inserirPgrSolicitado
+            ? ['nullable', 'integer', 'min:1']
+            : ['required', 'integer', 'min:1'];
+
         // regras comuns
         $rules = [
             'inserir_pgr'            => ['nullable', 'boolean'],
             'pgr_arquivo' => ['nullable', 'file', 'mimes:pdf', 'max:10240'],
             'anexos'      => ['nullable', 'array'],
             'anexos.*'    => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:10240'],
-            'funcoes'                 => ['required', 'array', 'min:1'],
-            'funcoes.*.funcao_id'     => ['required', 'integer', 'exists:funcoes,id'],
-            'funcoes.*.quantidade'    => ['required', 'integer', 'min:1'],
+            'funcoes'                 => $funcoesRule,
+            'funcoes.*.funcao_id'     => $funcaoIdRule,
+            'funcoes.*.quantidade'    => $funcaoQtdRule,
             'funcoes.*.cbo'           => ['nullable', 'string', 'max:20'],
             'funcoes.*.descricao'     => ['nullable', 'string'],
         ];
@@ -177,6 +188,12 @@ class PcmsoController extends Controller
 
         $data = $request->validate($rules, $messages);
         $inserirPgr = (bool) ($data['inserir_pgr'] ?? true);
+        $funcoes = collect($data['funcoes'] ?? [])
+            ->filter(function ($item) {
+                return !empty($item['funcao_id']);
+            })
+            ->values()
+            ->all();
 
         $arquivoPgr = $request->file('pgr_arquivo');
         if (!$arquivoPgr) {
@@ -225,6 +242,7 @@ class PcmsoController extends Controller
             $prazoDias,
             $path,
             $inserirPgr,
+            $funcoes,
             $data,
             &$tarefaId,
             $request
@@ -257,7 +275,7 @@ class PcmsoController extends Controller
                 'tipo'                  => $tipo,
                 'pgr_origem'            => $inserirPgr ? 'arquivo_cliente' : null,
                 'pgr_arquivo_path'      => $path, // key do S3
-                'funcoes'               => $data['funcoes'],
+                'funcoes'               => $funcoes,
                 'obra_nome'             => $data['obra_nome']             ?? null,
                 'obra_cnpj_contratante' => $data['obra_cnpj_contratante'] ?? null,
                 'obra_cei_cno'          => $data['obra_cei_cno']          ?? null,
@@ -371,6 +389,17 @@ class PcmsoController extends Controller
         $cliente = $tarefa->cliente;
         $tipo    = $pcmso->tipo === 'especifico' ? 'especifico' : 'matriz';
 
+        $inserirPgrSolicitado = $request->boolean('inserir_pgr', true);
+        $funcoesRule = $inserirPgrSolicitado
+            ? ['nullable', 'array']
+            : ['required', 'array', 'min:1'];
+        $funcaoIdRule = $inserirPgrSolicitado
+            ? ['nullable', 'integer', 'exists:funcoes,id']
+            : ['required', 'integer', 'exists:funcoes,id'];
+        $funcaoQtdRule = $inserirPgrSolicitado
+            ? ['nullable', 'integer', 'min:1']
+            : ['required', 'integer', 'min:1'];
+
         // regras comuns
         $rules = [
             'inserir_pgr'            => ['nullable', 'boolean'],
@@ -378,9 +407,9 @@ class PcmsoController extends Controller
             'remover_arquivo'=> ['nullable', 'boolean'],
             'anexos'         => ['nullable', 'array'],
             'anexos.*'       => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:10240'],
-            'funcoes'                 => ['required', 'array', 'min:1'],
-            'funcoes.*.funcao_id'     => ['required', 'integer', 'exists:funcoes,id'],
-            'funcoes.*.quantidade'    => ['required', 'integer', 'min:1'],
+            'funcoes'                 => $funcoesRule,
+            'funcoes.*.funcao_id'     => $funcaoIdRule,
+            'funcoes.*.quantidade'    => $funcaoQtdRule,
             'funcoes.*.cbo'           => ['nullable', 'string', 'max:20'],
             'funcoes.*.descricao'     => ['nullable', 'string'],
         ];
@@ -413,6 +442,12 @@ class PcmsoController extends Controller
 
         $data = $request->validate($rules, $messages);
         $inserirPgr = (bool) ($data['inserir_pgr'] ?? true);
+        $funcoes = collect($data['funcoes'] ?? [])
+            ->filter(function ($item) {
+                return !empty($item['funcao_id']);
+            })
+            ->values()
+            ->all();
 
         $disk = Storage::disk('s3');
 
@@ -457,7 +492,7 @@ class PcmsoController extends Controller
         $updateData = [
             'pgr_arquivo_path' => $pathAtual, // key no S3
             'pgr_origem'       => $pathAtual ? 'arquivo_cliente' : null,
-            'funcoes'          => $data['funcoes'],
+            'funcoes'          => $funcoes,
         ];
 
         if ($tipo === 'especifico') {

@@ -4,6 +4,7 @@
 @php
     /** @var \App\Models\PcmsoSolicitacoes|null $pcmso */
     $isEdit = isset($pcmso);
+    $forcarInserirPgr = !$isEdit;
     $anexos = $anexos ?? collect();
     $origem = request()->query('origem');
      use App\Helpers\S3Helper;
@@ -40,6 +41,9 @@
                     @method('PUT')
                 @endif
                 <input type="hidden" name="origem" value="{{ $origem }}">
+                @if($forcarInserirPgr)
+                    <input type="hidden" name="inserir_pgr" value="1">
+                @endif
 
                 @if ($errors->any())
                     <div class="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-700 mb-3">
@@ -51,141 +55,193 @@
                     </div>
                 @endif
 
-                <div class="border-b border-slate-200 mb-4">
-                    <nav class="flex gap-6 text-sm">
-                        <button type="button"
-                                class="pcmso-tab-btn border-b-2 border-sky-500 text-sky-600 font-semibold pb-2"
-                                data-tab="dados">
-                            Dados do PCMSO
-                        </button>
-
-                        <button type="button"
-                                class="pcmso-tab-btn text-slate-500 hover:text-slate-700 pb-2"
-                                data-tab="anexos">
-                            Anexos
-                        </button>
-                    </nav>
-                </div>
-                <div id="pcmso-tab-dados" class="space-y-4">
-                    <section>
-                        <div class="flex items-center justify-between gap-3 mb-3">
-                            <h2 class="text-sm font-semibold text-slate-800">
-                                Funcoes e Cargos
-                            </h2>
-
-                            <x-funcoes.create-button label="Cadastrar nova função" variant="sky" :allowCreate="true" />
-                        </div>
-
-                        <div class="mb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-                            <button type="button" id="pcmso-btn-add-all-funcoes"
-                                    class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-sky-600 text-white text-xs font-semibold hover:bg-sky-700">
-                                <span>+</span>
-                                <span>Inserir todas as funções</span>
+                @if(!$forcarInserirPgr)
+                    <div class="border-b border-slate-200 mb-4">
+                        <nav class="flex gap-6 text-sm">
+                            <button type="button"
+                                    class="pcmso-tab-btn border-b-2 border-sky-500 text-sky-600 font-semibold pb-2"
+                                    data-tab="dados">
+                                Dados do PCMSO
                             </button>
-                        </div>
 
-                        @php
-                            $funcoesForm = old('funcoes');
+                            <button type="button"
+                                    class="pcmso-tab-btn text-slate-500 hover:text-slate-700 pb-2"
+                                    data-tab="anexos">
+                                Anexos
+                            </button>
+                        </nav>
+                    </div>
+                @endif
+                <div id="pcmso-tab-dados" class="space-y-4">
+                    @if(!$forcarInserirPgr)
+                        <section>
+                            <div class="flex items-center justify-between gap-3 mb-3">
+                                <h2 class="text-sm font-semibold text-slate-800">
+                                    Funcoes e Cargos
+                                </h2>
 
-                            if ($funcoesForm === null) {
-                                if (isset($pcmso) && is_array($pcmso->funcoes)) {
-                                    $funcoesForm = $pcmso->funcoes;
-                                } else {
-                                    $funcoesForm = [
-                                        ['funcao_id' => null, 'quantidade' => 1, 'cbo' => null, 'descricao' => null],
-                                    ];
+                                <x-funcoes.create-button label="Cadastrar nova função" variant="sky" :allowCreate="true" />
+                            </div>
+
+                            <div class="mb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                                <button type="button" id="pcmso-btn-add-all-funcoes"
+                                        class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-sky-600 text-white text-xs font-semibold hover:bg-sky-700">
+                                    <span>+</span>
+                                    <span>Inserir todas as funções</span>
+                                </button>
+                            </div>
+
+                            @php
+                                $funcoesForm = old('funcoes');
+
+                                if ($funcoesForm === null) {
+                                    if (isset($pcmso) && is_array($pcmso->funcoes)) {
+                                        $funcoesForm = $pcmso->funcoes;
+                                    } else {
+                                        $funcoesForm = [
+                                            ['funcao_id' => null, 'quantidade' => 1, 'cbo' => null, 'descricao' => null],
+                                        ];
+                                    }
                                 }
-                            }
-                        @endphp
+                            @endphp
 
-                        <div id="pcmso-funcoes-wrapper" class="space-y-3">
-                            @foreach($funcoesForm as $idx => $f)
-                                <div class="funcao-item rounded-xl border border-slate-200 bg-slate-50 px-4 py-3"
-                                     data-funcao-index="{{ $idx }}">
-                                    <div class="flex items-center justify-between mb-2">
-                                        <span class="badge-funcao text-[11px] px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 font-semibold">
-                                            Funcao {{ $idx + 1 }}
-                                        </span>
+                            <div id="pcmso-funcoes-wrapper" class="space-y-3">
+                                @foreach($funcoesForm as $idx => $f)
+                                    <div class="funcao-item rounded-xl border border-slate-200 bg-slate-50 px-4 py-3"
+                                         data-funcao-index="{{ $idx }}">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <span class="badge-funcao text-[11px] px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 font-semibold">
+                                                Funcao {{ $idx + 1 }}
+                                            </span>
 
-                                        <button type="button"
-                                                class="btn-remove-funcao inline-flex items-center gap-1 text-[11px] text-red-600 hover:text-red-800">
-                                            Remover
-                                        </button>
-                                    </div>
-
-                                    <div class="grid grid-cols-12 gap-3">
-                                        <div class="col-span-5 funcao-select-wrapper">
-                                            <x-funcoes.select-with-create
-                                                name="funcoes[{{ $idx }}][funcao_id]"
-                                                field-id="funcoes_{{ $idx }}_funcao_id"
-                                                label="Cargo"
-                                                help-text="Funcoes listadas por GHE, pre-configuradas pelo vendedor/comercial."
-                                                :funcoes="$funcoes"
-                                                :selected="old('funcoes.'.$idx.'.funcao_id', $f['funcao_id'] ?? null)"
-                                                :show-create="false"
-                                                :allowCreate="true"
-                                            />
+                                            <button type="button"
+                                                    class="btn-remove-funcao inline-flex items-center gap-1 text-[11px] text-red-600 hover:text-red-800">
+                                                Remover
+                                            </button>
                                         </div>
 
-                                        <div class="col-span-2">
-                                            <label class="block text-xs font-medium text-slate-500 mb-1">Qtd</label>
-                                            <div class="flex items-center rounded-xl border border-slate-300 bg-white overflow-hidden shadow-sm">
-                                                <button type="button"
-                                                        class="h-9 w-9 inline-flex items-center justify-center bg-slate-100 text-slate-700 font-bold text-base border-r border-slate-200 transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-inset"
-                                                        data-qty-dec
-                                                        aria-label="Diminuir quantidade">
-                                                    -
-                                                </button>
-                                                <input type="number"
-                                                       name="funcoes[{{ $idx }}][quantidade]"
-                                                       class="w-full border-0 text-center text-sm font-semibold text-slate-800 px-2 py-2 focus:ring-0"
-                                                       value="{{ old('funcoes.'.$idx.'.quantidade', $f['quantidade'] ?? 1) }}"
-                                                       min="1">
-                                                <button type="button"
-                                                        class="h-9 w-9 inline-flex items-center justify-center bg-emerald-50 text-emerald-700 font-bold text-base border-l border-slate-200 transition hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-inset"
-                                                        data-qty-inc
-                                                        aria-label="Aumentar quantidade">
-                                                    +
-                                                </button>
+                                        <div class="grid grid-cols-12 gap-3">
+                                            <div class="col-span-5 funcao-select-wrapper">
+                                                <x-funcoes.select-with-create
+                                                    name="funcoes[{{ $idx }}][funcao_id]"
+                                                    field-id="funcoes_{{ $idx }}_funcao_id"
+                                                    label="Cargo"
+                                                    help-text="Funcoes listadas por GHE, pre-configuradas pelo vendedor/comercial."
+                                                    :funcoes="$funcoes"
+                                                    :selected="old('funcoes.'.$idx.'.funcao_id', $f['funcao_id'] ?? null)"
+                                                    :show-create="false"
+                                                    :allowCreate="true"
+                                                />
+                                            </div>
+
+                                            <div class="col-span-2">
+                                                <label class="block text-xs font-medium text-slate-500 mb-1">Qtd</label>
+                                                <div class="flex items-center rounded-xl border border-slate-300 bg-white overflow-hidden shadow-sm">
+                                                    <button type="button"
+                                                            class="h-9 w-9 inline-flex items-center justify-center bg-slate-100 text-slate-700 font-bold text-base border-r border-slate-200 transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-inset"
+                                                            data-qty-dec
+                                                            aria-label="Diminuir quantidade">
+                                                        -
+                                                    </button>
+                                                    <input type="number"
+                                                           name="funcoes[{{ $idx }}][quantidade]"
+                                                           class="w-full border-0 text-center text-sm font-semibold text-slate-800 px-2 py-2 focus:ring-0"
+                                                           value="{{ old('funcoes.'.$idx.'.quantidade', $f['quantidade'] ?? 1) }}"
+                                                           min="1">
+                                                    <button type="button"
+                                                            class="h-9 w-9 inline-flex items-center justify-center bg-emerald-50 text-emerald-700 font-bold text-base border-l border-slate-200 transition hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-inset"
+                                                            data-qty-inc
+                                                            aria-label="Aumentar quantidade">
+                                                        +
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <div class="col-span-2">
+                                                <label class="block text-xs font-medium text-slate-500 mb-1">CBO</label>
+                                                <input type="text"
+                                                       name="funcoes[{{ $idx }}][cbo]"
+                                                       class="w-full rounded-lg border-slate-200 text-sm px-3 py-2"
+                                                       value="{{ old('funcoes.'.$idx.'.cbo', $f['cbo'] ?? '') }}"
+                                                       placeholder="0000-00">
+                                            </div>
+
+                                            <div class="col-span-3">
+                                                <label class="block text-xs font-medium text-slate-500 mb-1">
+                                                    Descricao (opcional)
+                                                </label>
+                                                <input type="text"
+                                                       name="funcoes[{{ $idx }}][descricao]"
+                                                       class="w-full rounded-lg border-slate-200 text-sm px-3 py-2"
+                                                       value="{{ old('funcoes.'.$idx.'.descricao', $f['descricao'] ?? '') }}"
+                                                       placeholder="Atividades...">
                                             </div>
                                         </div>
-
-                                        <div class="col-span-2">
-                                            <label class="block text-xs font-medium text-slate-500 mb-1">CBO</label>
-                                            <input type="text"
-                                                   name="funcoes[{{ $idx }}][cbo]"
-                                                   class="w-full rounded-lg border-slate-200 text-sm px-3 py-2"
-                                                   value="{{ old('funcoes.'.$idx.'.cbo', $f['cbo'] ?? '') }}"
-                                                   placeholder="0000-00">
-                                        </div>
-
-                                        <div class="col-span-3">
-                                            <label class="block text-xs font-medium text-slate-500 mb-1">
-                                                Descricao (opcional)
-                                            </label>
-                                            <input type="text"
-                                                   name="funcoes[{{ $idx }}][descricao]"
-                                                   class="w-full rounded-lg border-slate-200 text-sm px-3 py-2"
-                                                   value="{{ old('funcoes.'.$idx.'.descricao', $f['descricao'] ?? '') }}"
-                                                   placeholder="Atividades...">
-                                        </div>
                                     </div>
+                                @endforeach
+                            </div>
+
+                            <div class="flex justify-end mt-3">
+                                <button type="button" id="pcmso-btn-add-funcao"
+                                        class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-sky-500 text-white text-xs font-semibold hover:bg-sky-600">
+                                    <span>+</span>
+                                    <span>Adicionar</span>
+                                </button>
+                            </div>
+
+                            @error('funcoes')
+                            <p class="mt-2 text-xs text-red-600">{{ $message }}</p>
+                            @enderror
+                        </section>
+                    @endif
+
+                    @if($forcarInserirPgr)
+                        <section class="space-y-3">
+                            <div class="rounded-xl border border-slate-200 bg-white px-4 py-3">
+                                <p class="text-sm font-medium text-slate-700">Inserir PGR / Inventário de Risco *</p>
+                                <p class="text-xs text-emerald-700 mt-1">Sim (obrigatório)</p>
+                            </div>
+
+                            <div id="pcmso-anexos-upload-wrapper" class="space-y-3">
+                                <p class="text-xs text-slate-600">
+                                    Anexe aqui documentos relacionados ao PCMSO (PDF, DOC, DOCX).
+                                    Você pode arrastar e soltar ou clicar na área abaixo.
+                                </p>
+
+                                <div id="pcmso-dropzone-anexos"
+                                     class="flex flex-col items-center justify-center px-6 py-10 border-2 border-dashed rounded-2xl
+                    border-slate-300 bg-slate-50 text-center cursor-pointer
+                    hover:border-sky-400 hover:bg-sky-50 transition">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mb-2" fill="none" viewBox="0 0 24 24"
+                                         stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                              d="M3 15.75V18a3 3 0 003 3h12a3 3 0 003-3v-2.25M16.5 9.75L12 5.25m0 0L7.5 9.75M12 5.25V15"/>
+                                    </svg>
+                                    <p class="text-sm text-slate-700">
+                                        Arraste arquivos aqui
+                                    </p>
+                                    <p class="text-[11px] text-slate-400 mt-1">
+                                        ou clique para selecionar
+                                    </p>
+
+                                    <input id="pcmso-input-anexos"
+                                           type="file"
+                                           name="anexos[]"
+                                           multiple
+                                           accept=".pdf,.doc,.docx"
+                                           class="hidden">
                                 </div>
-                            @endforeach
-                        </div>
 
-                        <div class="flex justify-end mt-3">
-                            <button type="button" id="pcmso-btn-add-funcao"
-                                    class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-sky-500 text-white text-xs font-semibold hover:bg-sky-600">
-                                <span>+</span>
-                                <span>Adicionar</span>
-                            </button>
-                        </div>
-
-                        @error('funcoes')
-                        <p class="mt-2 text-xs text-red-600">{{ $message }}</p>
-                        @enderror
-                    </section>
+                                <ul id="pcmso-lista-anexos" class="mt-3 text-xs text-slate-600 space-y-1"></ul>
+                            </div>
+                            @error('anexos')
+                            <p class="mt-2 text-xs text-red-600">{{ $message }}</p>
+                            @enderror
+                            @error('pgr_arquivo')
+                            <p class="mt-2 text-xs text-red-600">{{ $message }}</p>
+                            @enderror
+                        </section>
+                    @endif
 
                     <div class="rounded-xl bg-purple-50 border border-purple-100 px-4 py-3 text-xs text-purple-800">
                         Tarefa de PCMSO Matriz será criada com prazo de <strong>10 dias</strong>.
@@ -206,6 +262,7 @@
 
                     </div>
                 </div>
+                @if(!$forcarInserirPgr)
                 <div id="pcmso-tab-anexos" class="space-y-4 hidden">
                     @php
                         $inserirPgrSelecionado = old('inserir_pgr', '1');
@@ -376,6 +433,7 @@
                         </button>
                     </div>
                 </div>
+                @endif
 
             </form>
         </div>

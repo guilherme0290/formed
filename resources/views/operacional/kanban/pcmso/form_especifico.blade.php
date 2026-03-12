@@ -5,6 +5,7 @@
 @php
     /** @var \App\Models\PcmsoSolicitacoes|null $pcmso */
     $isEdit = isset($pcmso);
+    $forcarInserirPgr = !$isEdit;
     $anexos = $anexos ?? collect();
     $origem = request()->query('origem');
     use Illuminate\Support\Str;
@@ -39,6 +40,9 @@
                     @method('PUT')
                 @endif
                 <input type="hidden" name="origem" value="{{ $origem }}">
+                @if($forcarInserirPgr)
+                    <input type="hidden" name="inserir_pgr" value="1">
+                @endif
 
                 @if ($errors->any())
                     <div class="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-700 mb-3">
@@ -50,21 +54,23 @@
                     </div>
                 @endif
 
-                <div class="border-b border-slate-200 mb-4">
-                    <nav class="flex gap-6 text-sm">
-                        <button type="button"
-                                class="pcmso-tab-btn border-b-2 border-sky-500 text-sky-600 font-semibold pb-2"
-                                data-tab="dados">
-                            Dados do PCMSO
-                        </button>
+                @if(!$forcarInserirPgr)
+                    <div class="border-b border-slate-200 mb-4">
+                        <nav class="flex gap-6 text-sm">
+                            <button type="button"
+                                    class="pcmso-tab-btn border-b-2 border-sky-500 text-sky-600 font-semibold pb-2"
+                                    data-tab="dados">
+                                Dados do PCMSO
+                            </button>
 
-                        <button type="button"
-                                class="pcmso-tab-btn text-slate-500 hover:text-slate-700 pb-2"
-                                data-tab="anexos">
-                            Anexos
-                        </button>
-                    </nav>
-                </div>
+                            <button type="button"
+                                    class="pcmso-tab-btn text-slate-500 hover:text-slate-700 pb-2"
+                                    data-tab="anexos">
+                                Anexos
+                            </button>
+                        </nav>
+                    </div>
+                @endif
                 <div id="pcmso-tab-dados" class="space-y-4">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
@@ -104,6 +110,7 @@
                         </div>
                     </div>
 
+                    @if(!$forcarInserirPgr)
                     <section>
                         <div class="flex items-center justify-between gap-3 mb-3">
                             <h2 class="text-sm font-semibold text-slate-800">
@@ -223,6 +230,55 @@
                         <p class="mt-2 text-xs text-red-600">{{ $message }}</p>
                         @enderror
                     </section>
+                    @endif
+
+                    @if($forcarInserirPgr)
+                        <section class="space-y-3">
+                            <div class="rounded-xl border border-slate-200 bg-white px-4 py-3">
+                                <p class="text-sm font-medium text-slate-700">Inserir PGR / Inventário de Risco *</p>
+                                <p class="text-xs text-emerald-700 mt-1">Sim (obrigatório)</p>
+                            </div>
+
+                            <div id="pcmso-anexos-upload-wrapper" class="space-y-3">
+                                <p class="text-xs text-slate-600">
+                                    Anexe aqui documentos relacionados ao PCMSO (PDF, DOC, DOCX).
+                                    Você pode arrastar e soltar ou clicar na área abaixo.
+                                </p>
+
+                                <div id="pcmso-dropzone-anexos"
+                                     class="flex flex-col items-center justify-center px-6 py-10 border-2 border-dashed rounded-2xl
+                    border-slate-300 bg-slate-50 text-center cursor-pointer
+                    hover:border-sky-400 hover:bg-sky-50 transition">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mb-2" fill="none" viewBox="0 0 24 24"
+                                         stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                              d="M3 15.75V18a3 3 0 003 3h12a3 3 0 003-3v-2.25M16.5 9.75L12 5.25m0 0L7.5 9.75M12 5.25V15" />
+                                    </svg>
+                                    <p class="text-sm text-slate-700">
+                                        Arraste arquivos aqui
+                                    </p>
+                                    <p class="text-[11px] text-slate-400 mt-1">
+                                        ou clique para selecionar
+                                    </p>
+
+                                    <input id="pcmso-input-anexos"
+                                           type="file"
+                                           name="anexos[]"
+                                           multiple
+                                           accept=".pdf,.doc,.docx"
+                                           class="hidden">
+                                </div>
+
+                                <ul id="pcmso-lista-anexos" class="mt-3 text-xs text-slate-600 space-y-1"></ul>
+                            </div>
+                            @error('anexos')
+                            <p class="mt-2 text-xs text-red-600">{{ $message }}</p>
+                            @enderror
+                            @error('pgr_arquivo')
+                            <p class="mt-2 text-xs text-red-600">{{ $message }}</p>
+                            @enderror
+                        </section>
+                    @endif
 
                     <div class="rounded-xl bg-purple-50 border border-purple-100 px-4 py-3 text-xs text-purple-800 space-y-1">
                         <p>Tarefa de PCMSO Específico será criada com prazo de <strong>10 dias</strong>.</p>
@@ -248,6 +304,7 @@
                 </div>
                 {{-- ABA ANEXOS --}}
                 {{-- ABA ANEXOS --}}
+                @if(!$forcarInserirPgr)
                 <div id="pcmso-tab-anexos" class="space-y-4 hidden">
                     @php
                         $inserirPgrSelecionado = old('inserir_pgr', '1');
@@ -419,6 +476,7 @@
                         </button>
                     </div>
                 </div>
+                @endif
 
             </form>
         </div>
