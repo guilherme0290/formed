@@ -205,6 +205,20 @@ window.initTailwindAutocomplete = (inputRef, listRef, options = [], config = {})
     });
 
     input.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+            if (list.classList.contains('hidden') || !filteredItems.length || activeIndex < 0) {
+                closeList();
+                return;
+            }
+
+            event.preventDefault();
+            const selected = filteredItems[activeIndex];
+            if (selected) {
+                selectItem(selected);
+            }
+            return;
+        }
+
         if (list.classList.contains('hidden')) return;
         if (!filteredItems.length) return;
 
@@ -219,16 +233,6 @@ window.initTailwindAutocomplete = (inputRef, listRef, options = [], config = {})
             event.preventDefault();
             activeIndex = (activeIndex - 1 + filteredItems.length) % filteredItems.length;
             setActive(activeIndex);
-            return;
-        }
-
-        if (event.key === 'Enter') {
-            if (activeIndex < 0) return;
-            event.preventDefault();
-            const selected = filteredItems[activeIndex];
-            if (selected) {
-                selectItem(selected);
-            }
             return;
         }
 

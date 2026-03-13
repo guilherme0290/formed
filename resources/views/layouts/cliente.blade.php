@@ -282,7 +282,8 @@
         @isset($cliente)
             @php
                 $razaoOuFantasia = $cliente->nome_fantasia ?: $cliente->razao_social;
-                $cnpjFormatado   = $cliente->cnpj ?? '';
+                $documentoFormatado = $cliente->documento_principal ?? '';
+                $documentoLabel = $cliente->documento_label ?? 'Documento';
                 $contatoNome     = optional($cliente->vendedor)->name ?? 'Comercial nao informado';
                 $contatoTelefone = optional($cliente->vendedor)->telefone ?? '(00) 0000-0000';
                 $contatoEmail    = optional($cliente->vendedor)->email ?? 'email@dominio.com';
@@ -291,7 +292,7 @@
             <section class="w-full bg-[#1450d2] text-white shadow-lg shadow-slate-900/20 py-4 md:py-6">
                 <div class="w-full px-3 sm:px-6 lg:px-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4 md:gap-6">
 
-                    {{-- Nome do cliente + CNPJ --}}
+                    {{-- Nome do cliente + documento --}}
                     <div class="flex items-start gap-3">
                         <div class="h-10 w-10 rounded-xl bg-white/10 flex items-center justify-center text-xl">
                             <span>&#127970;</span>
@@ -301,9 +302,9 @@
                                 {{ $razaoOuFantasia }}
                             </h1>
 
-                            @if($cnpjFormatado)
+                            @if($documentoFormatado)
                                 <p class="text-xs md:text-sm text-blue-100 mt-1">
-                                    CNPJ: {{ $cnpjFormatado }}
+                                    {{ $documentoLabel }}: {{ $documentoFormatado }}
                                 </p>
                             @endif
                         </div>

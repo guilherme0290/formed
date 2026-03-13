@@ -69,7 +69,7 @@
                     <div class="box">
                         <div class="muted">Cliente final</div>
                         <div class="value">{{ $proposta->cliente->razao_social ?? '-' }}</div>
-                        <div>{{ $proposta->cliente->cnpj ?? '' }}</div>
+                        <div>{{ $proposta->cliente->documento_principal ?? '' }}</div>
                     </div>
                 </td>
             </tr>

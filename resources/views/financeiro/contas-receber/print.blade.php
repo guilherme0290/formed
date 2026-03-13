@@ -374,7 +374,7 @@
                             </tr>
                         </table>
                         <div class="small" style="margin-top:4px;">
-                            <div><strong>CNPJ:</strong> {{ $cliente->cnpj ?? '—' }}</div>
+                            <div><strong>{{ $cliente->documento_label ?? 'Documento' }}:</strong> {{ $cliente->documento_principal ?? '—' }}</div>
                             <div><strong>Contato:</strong> {{ $cliente->contato ?? '—' }}</div>
                             <div><strong>Email:</strong> {{ $cliente->email ?? '—' }}</div>
                             <div><strong>Telefone:</strong> {{ $cliente->telefone ?? '—' }}</div>

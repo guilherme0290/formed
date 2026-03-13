@@ -31,10 +31,11 @@ class AcessosController extends Controller
         $status  = $r->string('status')->toString(); // 'ativos' | 'inativos' | ''
         $tipo    = $r->string('tipo')->toString();   // <- filtro de tipo
 
-        $usuarios = User::with('papel')
+        $usuarios = User::with(['papel', 'cliente'])
             ->when($q, fn($b) => $b->where(fn($w) => $w
                 ->where('name','like',"%$q%")
-                ->orWhere('email','like',"%$q%")))
+                ->orWhere('email','like',"%$q%")
+                ->orWhereHas('cliente', fn($clienteQuery) => $clienteQuery->where('email', 'like', "%$q%"))))
             ->when($papelId, fn($b) => $b->where('papel_id',$papelId))
             ->when($status==='ativos', fn($b) => $b->where('ativo',true))
             ->when($status==='inativos', fn($b) => $b->where('ativo',false))
@@ -48,6 +49,7 @@ class AcessosController extends Controller
                 return array_filter([
                     $user->name,
                     $user->email,
+                    $user->cliente?->email,
                 ]);
             })
             ->unique()

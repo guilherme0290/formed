@@ -10,9 +10,10 @@
 
     $senhaPadraoTab = old('password', $senhaSugerida ?? \Illuminate\Support\Str::password(10));
     $emailSugeridoTab = old('email', $cliente->email ?? '');
-    $documentoSugeridoTab = old('documento', $cliente->cnpj ?? '');
+    $documentoSugeridoTab = old('documento', $cliente->documento_principal ?? '');
+    $documentoLabelTab = $cliente->documento_label ?? 'Documento';
     $temEmailTab = trim((string) ($cliente->email ?? '')) !== '';
-    $temDocumentoTab = trim((string) ($cliente->cnpj ?? '')) !== '';
+    $temDocumentoTab = trim((string) ($cliente->documento_principal ?? '')) !== '';
     $loginTipoPadraoTab = $temDocumentoTab ? 'documento' : 'email';
     $loginTipoAtualTab = old('login_tipo', $loginTipoPadraoTab);
     if (!$temEmailTab && $loginTipoAtualTab === 'email') {
@@ -84,7 +85,7 @@
                                     <label class="flex items-center gap-2 text-sm text-slate-700">
                                         <input type="radio" name="login_tipo" value="documento" class="h-4 w-4"
                                                {{ $loginTipoAtualTab === 'documento' ? 'checked' : '' }}>
-                                        <span>CNPJ</span>
+                                        <span>{{ $documentoLabelTab }}</span>
                                     </label>
                                     <label class="flex items-center gap-2 text-sm text-slate-700">
                                         <input type="radio" name="login_tipo" value="email" class="h-4 w-4"
@@ -98,13 +99,13 @@
                         @endif
 
                         <div id="acessoTabDocumentoGroup" class="space-y-1">
-                                <label class="text-sm font-semibold text-slate-700">CNPJ (login)</label>
+                                <label class="text-sm font-semibold text-slate-700">{{ $documentoLabelTab }} (login)</label>
                                 <input type="text"
                                        id="acessoTabDocumentoInput"
                                        name="documento"
                                        value="{{ $documentoSugeridoTab }}"
                                        class="w-full rounded-xl border border-slate-200 px-3 py-2"
-                                       placeholder="00.000.000/0000-00">
+                                       placeholder="{{ $documentoLabelTab === 'CPF' ? '000.000.000-00' : '00.000.000/0000-00' }}">
                         </div>
 
                         <div id="acessoTabEmailGroup" class="space-y-1">
@@ -165,6 +166,8 @@
         const radios = form.querySelectorAll('input[name="login_tipo"]');
         const documentoGroup = document.getElementById('acessoTabDocumentoGroup');
         const emailGroup = document.getElementById('acessoTabEmailGroup');
+        const documentoDigits = '{{ preg_replace('/\D+/', '', (string) ($cliente->documento_principal ?? '')) }}';
+        const documentoIsCpf = documentoDigits.length === 11;
 
         function getLoginTipo() {
             const checked = form.querySelector('input[name="login_tipo"]:checked');
@@ -208,8 +211,16 @@
             }).catch(() => {});
         }
 
-        function formatCnpj(value) {
-            const digits = (value || '').replace(/\D+/g, '').slice(0, 14);
+        function formatDocumento(value) {
+            const digits = (value || '').replace(/\D+/g, '').slice(0, documentoIsCpf ? 11 : 14);
+
+            if (documentoIsCpf) {
+                if (digits.length <= 3) return digits;
+                if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+                if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+                return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+            }
+
             if (digits.length <= 2) return digits;
             if (digits.length <= 5) return `${digits.slice(0, 2)}.${digits.slice(2)}`;
             if (digits.length <= 8) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5)}`;
@@ -218,7 +229,7 @@
         }
 
         documentoInput?.addEventListener('input', () => {
-            documentoInput.value = formatCnpj(documentoInput.value);
+            documentoInput.value = formatDocumento(documentoInput.value);
         });
         btnGerar?.addEventListener('click', gerarSenha);
         btnCopiar?.addEventListener('click', copiarSenha);
