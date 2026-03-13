@@ -155,6 +155,13 @@ class AsoController extends Controller
             $funcaoIdCheck = $data['funcao_id'] ?? $funcionario->funcao_id;
             $this->assertGheParaFuncao($empresaId, $cliente->id, $funcaoIdCheck);
             $this->assertGheParaFuncaoTipo($empresaId, $cliente->id, $funcaoIdCheck, $data['tipo_aso']);
+            $this->assertNaoExisteAsoDuplicadoAtivo(
+                $empresaId,
+                $cliente->id,
+                $funcionario->id,
+                (string) $data['tipo_aso'],
+                (string) $data['data_aso']
+            );
 
             if (!empty($data['vai_fazer_treinamento']) && !empty($data['treinamentos'])) {
                 $labels = [];
@@ -495,6 +502,14 @@ class AsoController extends Controller
             $funcaoIdCheck = $data['funcao_id'] ?? $funcionario->funcao_id;
             $this->assertGheParaFuncao($empresaId, $cliente->id, $funcaoIdCheck);
             $this->assertGheParaFuncaoTipo($empresaId, $cliente->id, $funcaoIdCheck, $data['tipo_aso']);
+            $this->assertNaoExisteAsoDuplicadoAtivo(
+                $empresaId,
+                $cliente->id,
+                $funcionario->id,
+                (string) $data['tipo_aso'],
+                (string) $data['data_aso'],
+                (int) $tarefa->id
+            );
 
             if (!empty($data['vai_fazer_treinamento']) && !empty($treinamentos)) {
                 $labels = [];
@@ -913,6 +928,38 @@ class AsoController extends Controller
             'valor' => $pacote['valor'] ?? 0,
             'codigos' => $pacote['codigos'] ?? [],
         ];
+    }
+
+    private function assertNaoExisteAsoDuplicadoAtivo(
+        int $empresaId,
+        int $clienteId,
+        int $funcionarioId,
+        string $tipoAso,
+        string $dataAso,
+        ?int $ignorarTarefaId = null
+    ): void {
+        $duplicado = AsoSolicitacoes::query()
+            ->where('empresa_id', $empresaId)
+            ->where('cliente_id', $clienteId)
+            ->where('funcionario_id', $funcionarioId)
+            ->where('tipo_aso', $tipoAso)
+            ->whereDate('data_aso', $dataAso)
+            ->when($ignorarTarefaId, function ($query, $ignorarTarefaId) {
+                $query->where('tarefa_id', '!=', $ignorarTarefaId);
+            })
+            ->whereHas('tarefa', function ($query) {
+                $query->whereNull('deleted_at')
+                    ->whereNull('finalizado_em');
+            })
+            ->first();
+
+        if (!$duplicado) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'tipo_aso' => 'Ja existe um ASO pendente para este colaborador com o mesmo tipo e data informados.',
+        ]);
     }
 
     private function getTreinamentosDisponiveis(int $empresaId): array

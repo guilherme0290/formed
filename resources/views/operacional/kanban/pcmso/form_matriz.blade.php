@@ -7,6 +7,7 @@
     $forcarInserirPgr = !$isEdit;
     $anexos = $anexos ?? collect();
     $origem = request()->query('origem');
+    $duplicidadeAtiva = $duplicidadeAtiva ?? null;
      use App\Helpers\S3Helper;
      use Illuminate\Support\Facades\Storage;
      use Illuminate\Support\Str;
@@ -31,6 +32,7 @@
             </div>
 
             <form method="POST"
+                  id="pcmso-form"
                   action="{{ $isEdit
                         ? route('operacional.kanban.pcmso.update', ['tarefa' => $pcmso->tarefa_id, 'origem' => $origem])
                         : route('operacional.pcmso.store-com-pgr', ['cliente' => $cliente, 'tipo' => 'matriz', 'origem' => $origem]) }}"
@@ -41,6 +43,11 @@
                     @method('PUT')
                 @endif
                 <input type="hidden" name="origem" value="{{ $origem }}">
+                @if(!$isEdit)
+                    <input type="hidden" name="_submission_token" value="{{ $submissionToken ?? '' }}">
+                    <input type="hidden" name="confirmar_pcmso_existente" id="confirmar_pcmso_existente" value="{{ old('confirmar_pcmso_existente', 0) }}">
+                    <input type="hidden" name="duplicidade_referencia_tarefa_id" id="duplicidade_referencia_tarefa_id" value="{{ old('duplicidade_referencia_tarefa_id', $duplicidadeAtiva->tarefa_id ?? '') }}">
+                @endif
                 @if($forcarInserirPgr)
                     <input type="hidden" name="inserir_pgr" value="1">
                 @endif
@@ -716,6 +723,61 @@
                         form.action = url;
                         form.submit();
                     });
+                });
+            });
+        </script>
+    @endpush
+    @push('scripts')
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const form = document.getElementById('pcmso-form');
+                const confirmInput = document.getElementById('confirmar_pcmso_existente');
+                const referenceInput = document.getElementById('duplicidade_referencia_tarefa_id');
+                const duplicateWarning = @json(!$isEdit && $duplicidadeAtiva
+                    ? "Ja existe um PCMSO Matriz pendente para este cliente. Deseja criar outro mesmo assim?"
+                    : null);
+                const duplicateReference = @json(!$isEdit ? ($duplicidadeAtiva->tarefa_id ?? null) : null);
+                const duplicateDocumentError = @json(collect($errors->get('pgr_arquivo'))
+                    ->first(function ($message) {
+                        return str_contains((string) $message, 'Ja existe um documento pendente para este PCMSO. Escolha outro arquivo.');
+                    }));
+
+                if (duplicateDocumentError) {
+                    window.uiAlert?.(duplicateDocumentError, {
+                        icon: 'error',
+                        title: 'Atenção',
+                    });
+                }
+
+                if (!form || !confirmInput || !duplicateWarning) {
+                    return;
+                }
+
+                form.addEventListener('submit', async function (event) {
+                    if (confirmInput.value === '1') {
+                        return;
+                    }
+
+                    event.preventDefault();
+
+                    const confirmed = typeof window.uiConfirm === 'function'
+                        ? await window.uiConfirm(duplicateWarning, {
+                            icon: 'warning',
+                            title: 'PCMSO já existente',
+                            confirmText: 'Criar outro',
+                            cancelText: 'Cancelar',
+                        })
+                        : window.confirm(duplicateWarning);
+
+                    if (!confirmed) {
+                        return;
+                    }
+
+                    confirmInput.value = '1';
+                    if (referenceInput && duplicateReference) {
+                        referenceInput.value = String(duplicateReference);
+                    }
+                    form.submit();
                 });
             });
         </script>

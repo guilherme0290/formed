@@ -103,6 +103,16 @@
     $rotaVoltar = $origem === 'cliente'
         ? route('cliente.dashboard')
         : route('operacional.kanban.servicos', $cliente);
+    $mensagemErroAsoDuplicado = collect($errors->get('tipo_aso'))
+        ->first(function ($message) {
+            return str_contains((string) $message, 'Ja existe um ASO pendente para este colaborador com o mesmo tipo e data informados.');
+        });
+    $errosVisiveis = $errors->all();
+    if ($mensagemErroAsoDuplicado) {
+        $errosVisiveis = array_values(array_filter($errosVisiveis, function ($message) use ($mensagemErroAsoDuplicado) {
+            return (string) $message !== (string) $mensagemErroAsoDuplicado;
+        }));
+    }
 @endphp
 
 @section('title', 'Agendar ASO')
@@ -135,11 +145,11 @@
 
             {{-- Conteúdo / Form --}}
             <div class="px-4 sm:px-5 md:px-6 py-5 md:py-6">
-                @if($errors->any())
+                @if(!empty($errosVisiveis))
                     <div class="mb-4 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-700">
                         <p class="font-medium mb-1">Ocorreram alguns erros ao salvar:</p>
                         <ul class="list-disc list-inside space-y-0.5">
-                            @foreach($errors->all() as $err)
+                            @foreach($errosVisiveis as $err)
                                 <li>{{ $err }}</li>
                             @endforeach
                         </ul>
@@ -888,6 +898,25 @@
     </div>
 
     @push('scripts')
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const duplicateAsoError = @json($mensagemErroAsoDuplicado);
+
+                if (!duplicateAsoError) {
+                    return;
+                }
+
+                if (typeof window.uiAlert === 'function') {
+                    window.uiAlert(duplicateAsoError, {
+                        icon: 'error',
+                        title: 'Atenção',
+                    });
+                    return;
+                }
+
+                window.alert(duplicateAsoError);
+            });
+        </script>
         {{-- Máscara + validação de CPF --}}
         <script>
             document.addEventListener('DOMContentLoaded', function () {
