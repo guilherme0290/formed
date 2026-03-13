@@ -18,16 +18,24 @@ class PcmsoSolicitacoes extends Model
         'pgr_origem',
         'pgr_solicitacao_id',
         'pgr_arquivo_path',
+        'pgr_arquivo_nome',
+        'pgr_arquivo_checksum',
         'funcoes',
         'obra_nome',
         'obra_cnpj_contratante',
         'obra_cei_cno',
         'obra_endereco',
         'prazo_dias',
+        'duplicidade_confirmada',
+        'duplicidade_confirmada_por',
+        'duplicidade_confirmada_em',
+        'duplicidade_referencia_tarefa_id',
     ];
 
     protected $casts = [
         'funcoes' => 'array',
+        'duplicidade_confirmada' => 'boolean',
+        'duplicidade_confirmada_em' => 'datetime',
     ];
 
     public function empresa()
@@ -53,6 +61,16 @@ class PcmsoSolicitacoes extends Model
     public function pgr()
     {
         return $this->belongsTo(PgrSolicitacoes::class, 'pgr_solicitacao_id');
+    }
+
+    public function duplicidadeConfirmadaPor()
+    {
+        return $this->belongsTo(User::class, 'duplicidade_confirmada_por');
+    }
+
+    public function duplicidadeReferenciaTarefa()
+    {
+        return $this->belongsTo(Tarefa::class, 'duplicidade_referencia_tarefa_id');
     }
 
     public function setCnpjAttribute($value)
