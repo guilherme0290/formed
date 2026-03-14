@@ -395,11 +395,9 @@ class TarefaController extends Controller
             ];
         }
 
-        $codigos = [];
-        if (is_array($aso->treinamento_pacote) && !empty($aso->treinamento_pacote['codigos'])) {
+        $codigos = (array) ($aso->treinamentos ?? []);
+        if (empty($codigos) && is_array($aso->treinamento_pacote) && !empty($aso->treinamento_pacote['codigos'])) {
             $codigos = (array) $aso->treinamento_pacote['codigos'];
-        } else {
-            $codigos = (array) ($aso->treinamentos ?? []);
         }
 
         $codigos = array_values(array_unique(array_filter(array_map(

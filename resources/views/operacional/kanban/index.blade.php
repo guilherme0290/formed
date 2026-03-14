@@ -395,9 +395,20 @@
                                                 'nr_10' => 'NR-10 - Elétrica',
                                             ];
 
+                                            $codigosTreinamentosInformados = array_values(array_unique(array_filter(array_map(
+                                                static fn ($v) => trim((string) $v),
+                                                (array) ($aso->treinamentos ?? [])
+                                            ))));
+                                            if (empty($codigosTreinamentosInformados) && is_array($aso->treinamento_pacote ?? null)) {
+                                                $codigosTreinamentosInformados = array_values(array_unique(array_filter(array_map(
+                                                    static fn ($v) => trim((string) $v),
+                                                    (array) ($aso->treinamento_pacote['codigos'] ?? [])
+                                                ))));
+                                            }
+
                                             $labelsTrein = [];
-                                            foreach ((array) $aso->treinamentos as $code) {
-                                                $labelsTrein[] = $mapTrein[$code] ?? strtoupper($code);
+                                            foreach ($codigosTreinamentosInformados as $code) {
+                                                $labelsTrein[] = $mapTrein[$code] ?? $code;
                                             }
                                             $asoTreinamentosLista = implode(', ', $labelsTrein);
 
@@ -480,10 +491,9 @@
                                         $asoTreinamentoEsperado = 0;
                                         if ($aso && $aso->vai_fazer_treinamento) {
                                             $codigosTreinamentos = [];
-                                            if (is_array($aso->treinamento_pacote ?? null) && !empty($aso->treinamento_pacote['codigos'])) {
+                                            $codigosTreinamentos = (array) ($aso->treinamentos ?? []);
+                                            if (empty($codigosTreinamentos) && is_array($aso->treinamento_pacote ?? null)) {
                                                 $codigosTreinamentos = (array) ($aso->treinamento_pacote['codigos'] ?? []);
-                                            } else {
-                                                $codigosTreinamentos = (array) ($aso->treinamentos ?? []);
                                             }
                                             $codigosTreinamentos = array_values(array_unique(array_filter(array_map(
                                                 static fn ($v) => trim((string) $v),
