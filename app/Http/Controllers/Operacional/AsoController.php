@@ -97,6 +97,7 @@ class AsoController extends Controller
         }
 
         $pacoteSelecionado = $this->resolvePacoteTreinamento($data, $pacotesTreinamentos);
+        $this->validarSelecaoTreinamentos($data, $pacoteSelecionado);
 
         $tarefa = DB::transaction(function () use ($data, $empresaId, $cliente, $usuario, $request, $pacoteSelecionado) {
 
@@ -410,7 +411,7 @@ class AsoController extends Controller
             'tipo_aso' => ['required', 'in:admissional,periodico,demissional,mudanca_funcao,retorno_trabalho'],
             'data_admissao' => ['nullable', 'date_format:Y-m-d', 'required_if:tipo_aso,admissional'],
             'data_demissao' => ['nullable', 'date_format:Y-m-d', 'required_if:tipo_aso,demissional'],
-            'data_aso' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
+            'data_aso' => ['required', 'date_format:Y-m-d'],
             'unidade_id' => ['required', 'integer', Rule::in($unidadesPermitidasIds)],
             'vai_fazer_treinamento' => ['nullable', 'boolean'],
             'treinamento_modo' => ['nullable', Rule::in(['avulsos', 'pacotes'])],
@@ -444,6 +445,7 @@ class AsoController extends Controller
         }
 
         $pacoteSelecionado = $this->resolvePacoteTreinamento($data, $pacotesTreinamentos);
+        $this->validarSelecaoTreinamentos($data, $pacoteSelecionado);
 
         DB::transaction(function () use ($data, $empresaId, $cliente, $tarefa, $request, $pacoteSelecionado) {
 
@@ -930,6 +932,31 @@ class AsoController extends Controller
         ];
     }
 
+    private function validarSelecaoTreinamentos(array $data, ?array $pacoteSelecionado): void
+    {
+        if (empty($data['vai_fazer_treinamento'])) {
+            return;
+        }
+
+        $modo = (string) ($data['treinamento_modo'] ?? 'avulsos');
+        $treinamentosSelecionados = array_values(array_filter(array_map(
+            static fn ($value) => trim((string) $value),
+            (array) ($data['treinamentos'] ?? [])
+        )));
+
+        if ($modo === 'pacotes' && empty($pacoteSelecionado)) {
+            throw ValidationException::withMessages([
+                'pacote_id' => 'Selecione um pacote de treinamento para continuar.',
+            ]);
+        }
+
+        if ($modo !== 'pacotes' && empty($treinamentosSelecionados)) {
+            throw ValidationException::withMessages([
+                'treinamentos' => 'Selecione pelo menos um treinamento NR para continuar.',
+            ]);
+        }
+    }
+
     private function assertNaoExisteAsoDuplicadoAtivo(
         int $empresaId,
         int $clienteId,
@@ -1324,6 +1351,8 @@ class AsoController extends Controller
             'vai_fazer_treinamento' => 'vai fazer treinamento',
             'treinamentos' => 'treinamentos',
             'treinamentos.*' => 'treinamento',
+            'treinamento_modo' => 'modo de treinamento',
+            'pacote_id' => 'pacote de treinamento',
             'email_aso' => 'e-mail para envio do ASO',
             'pcmso_elaborado_formed' => 'PCMSO elaborado pela Formed',
             'anexos' => 'anexos',

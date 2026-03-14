@@ -51,11 +51,18 @@
             ? $aso->data_aso->format('Y-m-d')
             : ($dataAso ?? '')
     );
+    $hojeIso = now()->toDateString();
+    $dataAsoMin = $hojeIso;
+    if ($isEdit && !empty($dataAsoValue) && $dataAsoValue < $hojeIso) {
+        $dataAsoMin = $dataAsoValue;
+    }
     $dataAdmissaoValue = old(
         'data_admissao',
         $aso && $aso->data_admissao
             ? $aso->data_admissao->format('Y-m-d')
-            : ''
+            : (isset($tarefa) && $tarefa?->funcionario?->data_admissao
+                ? $tarefa->funcionario->data_admissao->format('Y-m-d')
+                : '')
     );
     $dataDemissaoValue = old(
         'data_demissao',
@@ -650,7 +657,7 @@
                                                id="campo_data_aso"
                                                name="data_aso"
                                                value="{{ $dataAsoValue }}"
-                                               min="{{ now()->toDateString() }}"
+                                               min="{{ $dataAsoMin }}"
                                                class="absolute right-0 top-0 h-full w-10 opacity-0 pointer-events-none js-date-hidden">
                                     </div>
                                 </div>
@@ -1029,6 +1036,8 @@
                 function toggleCamposFuncionario() {
                     const temFuncionario = selectFuncionario.value !== '';
                     const tipoAso = selectTipoAso ? selectTipoAso.value : '';
+                    const campoDataAdmissaoHidden = document.getElementById('campo_data_admissao');
+                    const temDataAdmissao = !!((campoDataAdmissaoHidden?.value || '').trim());
 
                     // Campos de cadastro do funcionário (sempre travam quando tem funcionário)
                     campos.forEach(function (campo) {
@@ -1066,13 +1075,15 @@
                     }
 
                     if (campoDataAdmissaoTexto) {
-                        campoDataAdmissaoTexto.readOnly = temFuncionario;
-                        campoDataAdmissaoTexto.classList.toggle('bg-slate-100', temFuncionario);
-                        campoDataAdmissaoTexto.classList.toggle('cursor-not-allowed', temFuncionario);
-                        campoDataAdmissaoTexto.classList.toggle('bg-white', !temFuncionario);
+                        const bloquearDataAdmissao = temFuncionario && temDataAdmissao;
+                        campoDataAdmissaoTexto.readOnly = bloquearDataAdmissao;
+                        campoDataAdmissaoTexto.classList.toggle('bg-slate-100', bloquearDataAdmissao);
+                        campoDataAdmissaoTexto.classList.toggle('cursor-not-allowed', bloquearDataAdmissao);
+                        campoDataAdmissaoTexto.classList.toggle('bg-white', !bloquearDataAdmissao);
                     }
                     if (botaoDataAdmissao) {
-                        botaoDataAdmissao.disabled = temFuncionario;
+                        const bloquearDataAdmissao = temFuncionario && temDataAdmissao;
+                        botaoDataAdmissao.disabled = bloquearDataAdmissao;
                     }
                 }
 
@@ -1157,6 +1168,7 @@
                             selectFuncao.value = String(dados.funcao_id);
                             selectFuncao.dispatchEvent(new Event('change'));
                         }
+                        toggleCamposFuncionario();
                     };
 
                     selectFuncionario.addEventListener('change', function () {
@@ -1172,6 +1184,7 @@
                                 selectFuncao.value = '';
                                 selectFuncao.dispatchEvent(new Event('change'));
                             }
+                            toggleCamposFuncionario();
                             return;
                         }
                         if (!funcionarioUrlTemplate) {
