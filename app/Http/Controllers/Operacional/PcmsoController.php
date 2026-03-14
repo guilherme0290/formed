@@ -20,6 +20,9 @@ use App\Services\TempoTarefaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Validation\ValidationException;
 
 class PcmsoController extends Controller
 {
@@ -87,12 +90,16 @@ class PcmsoController extends Controller
         $funcaoQtdMap = $this->funcionarioCountByFuncao($cliente, $usuario->empresa_id);
 
         if ($tipo === 'matriz') {
+            $duplicidadeAtiva = $this->buscarDuplicidadeAtivaPcmso($cliente->empresa_id, $cliente->id, $tipo);
+
             return view('operacional.kanban.pcmso.form_matriz', [
                 'cliente' => $cliente,
                 'tipo'    => $tipo,
                 'funcoes' => $funcoes,
                 'anexos'  => collect(),
                 'origem'  => $origem,
+                'submissionToken' => $this->issueSubmissionToken($request),
+                'duplicidadeAtiva' => $duplicidadeAtiva,
                 'funcaoQtdMap' => $funcaoQtdMap,
             ]);
         }
@@ -104,12 +111,16 @@ class PcmsoController extends Controller
                 ->with('erro', 'PCMSO Específico não está disponível no contrato ativo do cliente.');
         }
 
+        $duplicidadeAtiva = $this->buscarDuplicidadeAtivaPcmso($cliente->empresa_id, $cliente->id, $tipo);
+
         return view('operacional.kanban.pcmso.form_especifico', [
             'cliente' => $cliente,
             'tipo'    => $tipo,
             'funcoes' => $funcoes,
             'anexos'  => collect(),
             'origem'  => $origem,
+            'submissionToken' => $this->issueSubmissionToken($request),
+            'duplicidadeAtiva' => $duplicidadeAtiva,
             'valorPcmsoEspecifico' => $pcmsoEspecificoInfo['valor'] ?? null,
             'funcaoQtdMap' => $funcaoQtdMap,
         ]);
@@ -150,6 +161,8 @@ class PcmsoController extends Controller
         // regras comuns
         $rules = [
             'inserir_pgr'            => ['nullable', 'boolean'],
+            'confirmar_pcmso_existente' => ['nullable', 'boolean'],
+            'duplicidade_referencia_tarefa_id' => ['nullable', 'integer'],
             'pgr_arquivo' => ['nullable', 'file', 'mimes:pdf', 'max:10240'],
             'anexos'      => ['nullable', 'array'],
             'anexos.*'    => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:10240'],
@@ -209,6 +222,32 @@ class PcmsoController extends Controller
                 ->withErrors(['anexos' => 'Anexe o PGR em PDF na aba de anexos.']);
         }
 
+        $tipoLabel = $tipo === 'matriz' ? 'Matriz' : 'Especifico';
+        $duplicidadeAtiva = $this->buscarDuplicidadeAtivaPcmso($empresaId, $cliente->id, $tipo);
+        $confirmouDuplicidade = $request->boolean('confirmar_pcmso_existente');
+        if ($duplicidadeAtiva && !$confirmouDuplicidade) {
+            throw ValidationException::withMessages([
+                'confirmar_pcmso_existente' => "Ja existe um PCMSO {$tipoLabel} pendente para este cliente. Confirme para criar outro.",
+            ]);
+        }
+
+        $checksumArquivoPgr = $arquivoPgr instanceof UploadedFile
+            ? hash_file('sha256', $arquivoPgr->getRealPath())
+            : null;
+        $nomeArquivoPgr = $arquivoPgr?->getClientOriginalName();
+
+        if ($checksumArquivoPgr && $nomeArquivoPgr) {
+            $this->assertDocumentoPcmsoNaoDuplicado(
+                $empresaId,
+                $cliente->id,
+                $tipo,
+                $nomeArquivoPgr,
+                $checksumArquivoPgr
+            );
+        }
+
+        $this->consumeSubmissionToken($request);
+
         // armazena PDF do PGR no S3 quando o usuário optar por inserir
         // o campo pgr_arquivo_path vai guardar a "key" do S3 (ex: pcmso_pgr/1/arquivo.pdf)
         $path = $inserirPgr
@@ -241,9 +280,13 @@ class PcmsoController extends Controller
             $tipoLabel,
             $prazoDias,
             $path,
+            $nomeArquivoPgr,
+            $checksumArquivoPgr,
             $inserirPgr,
             $funcoes,
             $data,
+            $confirmouDuplicidade,
+            $duplicidadeAtiva,
             &$tarefaId,
             $request
         ) {
@@ -281,6 +324,12 @@ class PcmsoController extends Controller
                 'obra_cei_cno'          => $data['obra_cei_cno']          ?? null,
                 'obra_endereco'         => $data['obra_endereco']         ?? null,
                 'prazo_dias'            => $prazoDias,
+                'pgr_arquivo_nome'      => $nomeArquivoPgr,
+                'pgr_arquivo_checksum'  => $checksumArquivoPgr,
+                'duplicidade_confirmada' => $confirmouDuplicidade && $duplicidadeAtiva !== null,
+                'duplicidade_confirmada_por' => $confirmouDuplicidade && $duplicidadeAtiva !== null ? $usuario->id : null,
+                'duplicidade_confirmada_em' => $confirmouDuplicidade && $duplicidadeAtiva !== null ? now() : null,
+                'duplicidade_referencia_tarefa_id' => $confirmouDuplicidade && $duplicidadeAtiva !== null ? $duplicidadeAtiva->tarefa_id : null,
             ]);
 
             // log inicial da tarefa
@@ -292,6 +341,17 @@ class PcmsoController extends Controller
                 'acao'          => 'criado',
                 'observacao'    => 'Tarefa PCMSO criada pelo usuário.',
             ]);
+
+            if ($confirmouDuplicidade && $duplicidadeAtiva !== null) {
+                TarefaLog::create([
+                    'tarefa_id'      => $tarefa->id,
+                    'user_id'        => $usuario->id,
+                    'de_coluna_id'   => optional($colunaInicial)->id,
+                    'para_coluna_id' => optional($colunaInicial)->id,
+                    'acao'           => 'duplicidade_confirmada',
+                    'observacao'     => "Usuario confirmou a criacao de outro PCMSO {$tipoLabel} mesmo com tarefa ativa #{$duplicidadeAtiva->tarefa_id}.",
+                ]);
+            }
 
             // anexos adicionais (também já estão indo pro S3 via helper)
             Anexos::salvarDoRequest($request, 'anexos', [
@@ -564,6 +624,83 @@ class PcmsoController extends Controller
             ->concat($extras)
             ->unique('id')
             ->values();
+    }
+
+    private function issueSubmissionToken(Request $request): string
+    {
+        $session = $request->session();
+        $tokens = (array) $session->get('pcmso_submission_tokens', []);
+        $limite = now()->subHours(2)->timestamp;
+
+        $tokens = array_filter($tokens, function ($timestamp) use ($limite) {
+            return (int) $timestamp >= $limite;
+        });
+
+        $token = (string) Str::uuid();
+        $tokens[$token] = now()->timestamp;
+
+        $session->put('pcmso_submission_tokens', $tokens);
+
+        return $token;
+    }
+
+    private function consumeSubmissionToken(Request $request): string
+    {
+        $token = trim((string) $request->input('_submission_token'));
+        $tokens = (array) $request->session()->get('pcmso_submission_tokens', []);
+
+        if ($token === '' || !array_key_exists($token, $tokens)) {
+            throw ValidationException::withMessages([
+                '_submission_token' => 'Este formulario de PCMSO ja foi enviado ou expirou. Recarregue a tela e tente novamente.',
+            ]);
+        }
+
+        unset($tokens[$token]);
+        $request->session()->put('pcmso_submission_tokens', $tokens);
+
+        return $token;
+    }
+
+    private function buscarDuplicidadeAtivaPcmso(int $empresaId, int $clienteId, string $tipo): ?PcmsoSolicitacoes
+    {
+        return PcmsoSolicitacoes::query()
+            ->where('empresa_id', $empresaId)
+            ->where('cliente_id', $clienteId)
+            ->where('tipo', $tipo)
+            ->whereHas('tarefa', function ($query) {
+                $query->whereNull('deleted_at')
+                    ->whereNull('finalizado_em');
+            })
+            ->latest('id')
+            ->first();
+    }
+
+    private function assertDocumentoPcmsoNaoDuplicado(
+        int $empresaId,
+        int $clienteId,
+        string $tipo,
+        string $nomeArquivo,
+        string $checksumArquivo
+    ): void {
+        $duplicado = PcmsoSolicitacoes::query()
+            ->where('empresa_id', $empresaId)
+            ->where('cliente_id', $clienteId)
+            ->where('tipo', $tipo)
+            ->where('pgr_arquivo_nome', $nomeArquivo)
+            ->where('pgr_arquivo_checksum', $checksumArquivo)
+            ->whereHas('tarefa', function ($query) {
+                $query->whereNull('deleted_at')
+                    ->whereNull('finalizado_em');
+            })
+            ->first();
+
+        if (!$duplicado) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'pgr_arquivo' => 'Ja existe um documento pendente para este PCMSO. Escolha outro arquivo.',
+        ]);
     }
 
     private function funcionarioCountByFuncao(Cliente $cliente, int $empresaId): array

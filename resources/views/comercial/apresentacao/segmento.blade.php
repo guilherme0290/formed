@@ -35,7 +35,7 @@
     <div class="min-h-screen bg-slate-50">
         <div class="w-full px-2 sm:px-3 md:px-4 py-4 md:py-6">
             <div class="mb-4">
-                <a href="{{ route('comercial.apresentacao.cliente') }}"
+                <a href="{{ route('comercial.apresentacao.cliente', ['preserve' => 1]) }}"
                    class="inline-flex items-center gap-2 rounded-xl bg-white border border-slate-200 text-slate-700 px-3 py-2 text-sm hover:bg-slate-50">
                     &larr; Voltar
                 </a>
@@ -49,7 +49,7 @@
                 <div class="p-7 space-y-6">
                     <div class="rounded-2xl bg-blue-50/80 border border-blue-100 px-5 py-4 text-sm text-slate-700 shadow-sm">
                         <div class="text-xs text-slate-500">Cliente: <span class="font-semibold text-slate-800">{{ $cliente['razao_social'] ?? '—' }}</span></div>
-                        <div class="text-xs text-slate-500 mt-1">CNPJ: <span class="font-semibold text-slate-800">{{ $cliente['cnpj'] ?? '—' }}</span></div>
+                        <div class="text-xs text-slate-500 mt-1">CPF/CNPJ: <span class="font-semibold text-slate-800">{{ $cliente['cnpj'] ?? '—' }}</span></div>
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">

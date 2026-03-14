@@ -15,8 +15,10 @@ class Cliente extends Model
     protected $fillable = [
         'empresa_id',
         'vendedor_id',
+        'tipo_pessoa',
         'razao_social',
         'nome_fantasia',
+        'cpf',
         'cnpj',
         'email',
         'telefone',
@@ -36,6 +38,35 @@ class Cliente extends Model
     protected $casts = [
         'ativo' => 'boolean',
     ];
+
+    public function getTipoPessoaAttribute($value): string
+    {
+        $tipo = strtoupper((string) $value);
+
+        if (in_array($tipo, ['PF', 'PJ'], true)) {
+            return $tipo;
+        }
+
+        return $this->cpf ? 'PF' : 'PJ';
+    }
+
+    public function getDocumentoPrincipalAttribute(): ?string
+    {
+        $documento = $this->tipo_pessoa === 'PF'
+            ? ($this->cpf ?: $this->cnpj)
+            : ($this->cnpj ?: $this->cpf);
+
+        if (!$documento) {
+            return null;
+        }
+
+        return $this->formatDocumento($documento);
+    }
+
+    public function getDocumentoLabelAttribute(): string
+    {
+        return $this->tipo_pessoa === 'PF' ? 'CPF' : 'CNPJ';
+    }
 
     public function cidade()
     {
@@ -71,6 +102,23 @@ class Cliente extends Model
             'funcao_id'
         )->withTimestamps();
     }
+
+    private function formatDocumento(?string $documento): ?string
+    {
+        $digits = preg_replace('/\D+/', '', (string) $documento) ?? '';
+
+        if ($digits === '') {
+            return null;
+        }
+
+        if (strlen($digits) === 11) {
+            return preg_replace('/(\d{3})(\d{3})(\d{3})(\d{2})/', '$1.$2.$3-$4', $digits);
+        }
+
+        if (strlen($digits) === 14) {
+            return preg_replace('/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/', '$1.$2.$3/$4-$5', $digits);
+        }
+
+        return $documento;
+    }
 }
-
-

@@ -11,6 +11,7 @@ class ClientesApiController extends Controller
     public function index(Request $r)
     {
         $q = trim($r->get('q',''));
+        $qDigits = preg_replace('/\D+/', '', $q);
 
         $base = Cliente::query()->orderBy('razao_social');
 
@@ -19,15 +20,35 @@ class ClientesApiController extends Controller
         );
 
         $base->when($q, fn($qq) =>
-        $qq->where(function($w) use ($q){
-            $w->where('razao_social','like',"%{$q}%")
-                ->orWhere('nome_fantasia','like',"%{$q}%")
-                ->orWhere('cnpj','like',"%{$q}%");
-        })
+            $qq->where(function($w) use ($q, $qDigits){
+                $w->where('razao_social','like',"%{$q}%")
+                    ->orWhere('nome_fantasia','like',"%{$q}%")
+                    ->orWhere('cnpj','like',"%{$q}%")
+                    ->orWhere('cpf','like',"%{$q}%");
+
+                if ($qDigits !== '') {
+                    $w->orWhereRaw(
+                        "REPLACE(REPLACE(REPLACE(cnpj, '.', ''), '/', ''), '-', '') LIKE ?",
+                        ["%{$qDigits}%"]
+                    )->orWhereRaw(
+                        "REPLACE(REPLACE(cpf, '.', ''), '-', '') LIKE ?",
+                        ["%{$qDigits}%"]
+                    );
+                }
+            })
         );
 
         return $base->limit(20)->get([
-            'id','razao_social','nome_fantasia','cnpj'
+            'id', 'razao_social', 'nome_fantasia', 'cpf', 'cnpj', 'tipo_pessoa',
+        ])->map(fn (Cliente $cliente) => [
+            'id' => $cliente->id,
+            'razao_social' => $cliente->razao_social,
+            'nome_fantasia' => $cliente->nome_fantasia,
+            'cpf' => $cliente->cpf,
+            'cnpj' => $cliente->documento_principal,
+            'tipo' => $cliente->documento_label,
+            'tipo_pessoa' => $cliente->tipo_pessoa,
+            'documento_principal' => $cliente->documento_principal,
         ]);
     }
 }

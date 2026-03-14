@@ -53,6 +53,10 @@ class ApresentacaoController extends Controller
 
     public function cliente(Request $request)
     {
+        if (!$request->boolean('preserve')) {
+            $request->session()->forget(self::SESSION_KEY);
+        }
+
         $user = $request->user();
         $empresaId = $user->empresa_id;
         $isMaster = $user->hasPapel('Master');
@@ -92,6 +96,13 @@ class ApresentacaoController extends Controller
                 ->when(!$isMaster, fn ($q) => $q->where('vendedor_id', $user->id))
                 ->exists();
             abort_if(!$ok, 403);
+        }
+
+        $documento = preg_replace('/\D+/', '', (string) ($data['cnpj'] ?? ''));
+        if (!in_array(strlen($documento), [11, 14], true)) {
+            return back()
+                ->withErrors(['cnpj' => 'Informe um CPF ou CNPJ válido.'])
+                ->withInput();
         }
 
         $request->session()->put(self::SESSION_KEY . '.cliente', [

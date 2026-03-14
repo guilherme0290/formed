@@ -18,7 +18,8 @@
     $telefoneLimpo = preg_replace('/\\D+/', '', $cliente->telefone ?? '');
     $senhaPadrao = $senhaSugerida ?? \Illuminate\Support\Str::password(10);
     $emailSugerido = $cliente->email ?? '';
-    $documentoSugerido = $cliente->cnpj ?? '';
+    $documentoSugerido = $cliente->documento_principal ?? '';
+    $documentoLabel = $cliente->documento_label ?? 'Documento';
     $temEmail = trim($emailSugerido) !== '';
     $temDocumento = trim($documentoSugerido) !== '';
     $loginTipoPadrao = $temDocumento ? 'documento' : 'email';
@@ -74,7 +75,7 @@
                                        value="documento"
                                        class="h-4 w-4 text-slate-900"
                                        {{ $loginTipoAtual === 'documento' ? 'checked' : '' }}>
-                                <span>CNPJ</span>
+                                <span>{{ $documentoLabel }}</span>
                             </label>
 
                             <label class="flex items-center gap-2 text-sm font-semibold text-slate-700">
@@ -92,11 +93,12 @@
                 @endif
 
                 <div id="documentoGroup" class="space-y-1">
-                    <label class="text-sm font-semibold text-slate-700">CNPJ (login)</label>
+                    <label class="text-sm font-semibold text-slate-700">{{ $documentoLabel }} (login)</label>
                     <input type="text" name="documento" id="documentoInput" value="{{ old('documento', $documentoSugerido) }}"
                            {{ $loginTipoAtual === 'documento' ? 'required' : '' }}
                            {{ $loginTipoAtual === 'documento' ? '' : 'disabled' }}
-                           class="w-full rounded-xl border border-slate-200 px-3 py-2" placeholder="00.000.000/0000-00">
+                           class="w-full rounded-xl border border-slate-200 px-3 py-2"
+                           placeholder="{{ $documentoLabel === 'CPF' ? '000.000.000-00' : '00.000.000/0000-00' }}">
                 </div>
                 <div id="emailGroup" class="space-y-1">
                     <label class="text-sm font-semibold text-slate-700">E-mail (login)</label>
@@ -200,6 +202,8 @@
             const emailModalSubject = document.getElementById('emailModalSubject');
             const emailModalBody = document.getElementById('emailModalBody');
             const emailModalLink = document.getElementById('emailModalLink');
+            const documentoDigits = '{{ preg_replace('/\D+/', '', (string) ($cliente->documento_principal ?? '')) }}';
+            const documentoIsCpf = documentoDigits.length === 11;
 
             function gerarSenha() {
                 const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789@$!';
@@ -318,7 +322,19 @@
             });
 
             function formatDocumento(value) {
-                const digits = (value || '').replace(/\D+/g, '').slice(0, 14);
+                const digits = (value || '').replace(/\D+/g, '').slice(0, documentoIsCpf ? 11 : 14);
+
+                if (documentoIsCpf) {
+                    if (digits.length <= 3) return digits;
+                    if (digits.length <= 6) {
+                        return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+                    }
+                    if (digits.length <= 9) {
+                        return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+                    }
+                    return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+                }
+
                 if (digits.length <= 2) return digits;
                 if (digits.length <= 5) {
                     return `${digits.slice(0, 2)}.${digits.slice(2)}`;

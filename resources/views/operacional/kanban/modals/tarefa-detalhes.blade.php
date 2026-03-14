@@ -21,7 +21,7 @@
                         <p class="text-xs text-slate-500">Razão Social</p>
                     </div>
                     <div>
-                        <p class="font-semibold">{{ $tarefa->cliente->cnpj }}</p>
+                        <p class="font-semibold">{{ $tarefa->cliente->documento_principal ?? '-' }}</p>
                         <p class="text-xs text-slate-500">CNPJ</p>
                     </div>
                     <div>

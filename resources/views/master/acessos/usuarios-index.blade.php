@@ -68,7 +68,7 @@
         </div>
 
         {{-- Filtros --}}
-        <form method="GET" action="{{ route('master.acessos') }}" class="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-12">
+        <form method="GET" action="{{ route('master.acessos') }}" class="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-12" id="usuarios-filter-form">
             <input type="hidden" name="tab" value="usuarios">
             <div class="relative lg:col-span-4">
                 <input name="q" id="usuarios-autocomplete-input" value="{{ request('q') }}"
@@ -81,7 +81,7 @@
             <select name="papel_id" class="w-full rounded-xl border-slate-200 bg-slate-50/80 px-3 py-2 pr-10 text-sm lg:col-span-2">
                 <option value="">Todos os perfis</option>
                 @foreach($papeis as $p)
-                    @continue(in_array(strtolower($p->nome), ['cliente', 'parceiros'], true))
+                    @continue(in_array(strtolower($p->nome), ['parceiros'], true))
                     <option value="{{ $p->id }}" @selected(request('papel_id') == $p->id)>{{ $p->nome }}</option>
                 @endforeach
             </select>
@@ -117,9 +117,12 @@
             </thead>
             <tbody class="divide-y divide-slate-100">
             @forelse($usuarios as $u)
+                @php
+                    $emailExibicao = $u->email ?: ($u->cliente->email ?? null);
+                @endphp
                 <tr class="transition hover:bg-slate-50/70">
                     <td class="px-4 py-3 font-medium text-slate-900">{{ $u->name }}</td>
-                    <td class="px-4 py-3 text-slate-600">{{ $u->email }}</td>
+                    <td class="px-4 py-3 text-slate-600">{{ $emailExibicao ?: '—' }}</td>
                     <td class="px-4 py-3">
                         <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
                             {{ optional($u->papel)->nome ?? '—' }}
@@ -302,11 +305,28 @@
     @push('scripts')
         <script>
             document.addEventListener('DOMContentLoaded', () => {
+                const form = document.getElementById('usuarios-filter-form');
+                const input = document.getElementById('usuarios-autocomplete-input');
+
                 window.initTailwindAutocomplete?.(
                     'usuarios-autocomplete-input',
                     'usuarios-autocomplete-list',
                     @json($usuariosAutocomplete ?? [])
                 );
+
+                input?.addEventListener('keydown', (event) => {
+                    if (event.key !== 'Enter') {
+                        return;
+                    }
+
+                    event.preventDefault();
+
+                    if (typeof form?.requestSubmit === 'function') {
+                        form.requestSubmit();
+                    } else {
+                        form?.submit();
+                    }
+                });
             });
         </script>
     @endpush

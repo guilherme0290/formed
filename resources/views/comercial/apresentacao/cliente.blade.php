@@ -40,15 +40,15 @@
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label class="text-xs font-semibold text-slate-600">CNPJ *</label>
+                        <label class="text-xs font-semibold text-slate-600">CPF/CNPJ *</label>
                         <div class="mt-1 flex flex-col sm:flex-row gap-2">
                             <input id="cnpj" name="cnpj" type="text" required
                                    value="{{ old('cnpj', $draft['cnpj'] ?? '') }}"
                                    class="w-full sm:flex-1 rounded-xl border border-slate-200 text-sm px-3 py-2"
-                                   placeholder="00.000.000/0000-00">
+                                   placeholder="Digite o CPF ou CNPJ">
                             <button type="button" id="btnBuscarCnpj"
                                     class="w-full sm:w-auto rounded-xl bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 text-sm font-semibold whitespace-nowrap">
-                                Buscar
+                                Buscar CNPJ
                             </button>
                         </div>
                         <p id="cnpjMsg" class="text-[11px] text-slate-500 mt-1 hidden"></p>
@@ -118,8 +118,14 @@
                     cnpjMsg?.classList.add('hidden');
                 }
 
-                function maskCnpj(value) {
+                function maskDocumento(value) {
                     const digits = String(value || '').replace(/\D+/g, '').slice(0, 14);
+                    if (digits.length <= 11) {
+                        if (digits.length <= 3) return digits;
+                        if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+                        if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+                        return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+                    }
                     if (digits.length <= 2) return digits;
                     if (digits.length <= 5) return `${digits.slice(0, 2)}.${digits.slice(2)}`;
                     if (digits.length <= 8) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5)}`;
@@ -136,9 +142,9 @@
                 }
 
                 if (cnpj) {
-                    cnpj.value = maskCnpj(cnpj.value);
+                    cnpj.value = maskDocumento(cnpj.value);
                     cnpj.addEventListener('input', () => {
-                        cnpj.value = maskCnpj(cnpj.value);
+                        cnpj.value = maskDocumento(cnpj.value);
                     });
                 }
 
@@ -153,7 +159,13 @@
                     clearMsg();
                     const raw = (cnpj?.value || '').trim();
                     const digits = raw.replace(/\D+/g, '');
-                    if (!digits) return setMsg('err', 'Informe um CNPJ.');
+                    if (!digits) return setMsg('err', 'Informe um CPF ou CNPJ.');
+                    if (digits.length === 11) {
+                        return setMsg('err', 'Busca automática disponível apenas para CNPJ. Para CPF, preencha os dados manualmente.');
+                    }
+                    if (digits.length !== 14) {
+                        return setMsg('err', 'Informe um CPF ou CNPJ válido.');
+                    }
 
                     btnBuscar.disabled = true;
                     btnBuscar.textContent = 'Buscando...';
@@ -182,4 +194,3 @@
         </script>
     @endpush
 @endsection
-

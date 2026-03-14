@@ -148,7 +148,7 @@
                     <input type="hidden" name="redirect" id="redirectInput" value="{{ $redirect }}">
 
                     <div class="space-y-1.5">
-                        <label class="block text-xs font-medium text-slate-300">E-mail ou CNPJ</label>
+                        <label class="block text-xs font-medium text-slate-300">E-mail ou CPF/CNPJ</label>
                         <div class="relative">
                             <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-500 text-sm">
                                 @
@@ -162,9 +162,9 @@
                                 class="w-full rounded-xl border border-slate-700 bg-slate-900/60 px-8 py-2.5 text-sm text-slate-100
                                        placeholder:text-slate-500
                                        focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                placeholder="Digite seu e-mail ou CNPJ">
+                                placeholder="Digite seu e-mail ou CPF/CNPJ">
                         </div>
-                        <p class="mt-1 text-[11px] text-slate-500">Use e-mail ou CNPJ.</p>
+                        <p class="mt-1 text-[11px] text-slate-500">Use e-mail, CPF ou CNPJ.</p>
                     </div>
 
                     <div class="space-y-1.5">
@@ -238,8 +238,16 @@
         const input = document.getElementById('loginInput');
         if (!input) return;
 
-        function formatCnpj(value) {
+        function formatDocumento(value) {
             const digits = (value || '').replace(/\D+/g, '').slice(0, 14);
+
+            if (digits.length <= 11) {
+                if (digits.length <= 3) return digits;
+                if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+                if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+                return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+            }
+
             if (digits.length <= 2) return digits;
             if (digits.length <= 5) return `${digits.slice(0, 2)}.${digits.slice(2)}`;
             if (digits.length <= 8) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5)}`;
@@ -271,7 +279,7 @@
             }
             const cursor = input.selectionStart ?? value.length;
             const digitsBefore = countDigits(value, cursor);
-            const formatted = formatCnpj(value);
+            const formatted = formatDocumento(value);
             input.value = formatted;
             const newPos = positionFromDigits(formatted, digitsBefore);
             input.setSelectionRange(newPos, newPos);
