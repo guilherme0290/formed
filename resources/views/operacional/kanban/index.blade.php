@@ -488,7 +488,8 @@
                                             ];
                                         })->values();
 
-                                        $asoTreinamentoEsperado = 0;
+                                        $isTreinamentoTask = (bool) ($tarefa->treinamentoNr && $tarefa->treinamentoNrDetalhes);
+                                        $certificadosEsperados = 0;
                                         if ($aso && $aso->vai_fazer_treinamento) {
                                             $codigosTreinamentos = [];
                                             $codigosTreinamentos = (array) ($aso->treinamentos ?? []);
@@ -499,16 +500,34 @@
                                                 static fn ($v) => trim((string) $v),
                                                 $codigosTreinamentos
                                             ))));
-                                            $asoTreinamentoEsperado = count($codigosTreinamentos);
-                                            if ($asoTreinamentoEsperado === 0) {
-                                                $asoTreinamentoEsperado = 1;
+                                            $certificadosEsperados = count($codigosTreinamentos);
+                                            if ($certificadosEsperados === 0) {
+                                                $certificadosEsperados = 1;
+                                            }
+                                        } elseif ($isTreinamentoTask) {
+                                            $treinamentoPayloadCertificados = (array) ($tarefa->treinamentoNrDetalhes->treinamentos ?? []);
+                                            $treinamentoModoCertificados = (string) ($treinamentoPayloadCertificados['modo'] ?? '');
+                                            if ($treinamentoModoCertificados === 'pacote') {
+                                                $codigosTreinamentos = (array) data_get($treinamentoPayloadCertificados, 'pacote.codigos', []);
+                                            } elseif (array_key_exists('codigos', $treinamentoPayloadCertificados)) {
+                                                $codigosTreinamentos = (array) ($treinamentoPayloadCertificados['codigos'] ?? []);
+                                            } else {
+                                                $codigosTreinamentos = (array) $treinamentoPayloadCertificados;
+                                            }
+                                            $codigosTreinamentos = array_values(array_unique(array_filter(array_map(
+                                                static fn ($v) => trim((string) $v),
+                                                $codigosTreinamentos
+                                            ))));
+                                            $certificadosEsperados = count($codigosTreinamentos);
+                                            if ($certificadosEsperados === 0) {
+                                                $certificadosEsperados = 1;
                                             }
                                         }
-                                        $asoTreinamentoEnviado = $anexos->filter(function ($anexo) {
+                                        $certificadosEnviados = $anexos->filter(function ($anexo) {
                                             return mb_strtolower((string) ($anexo->servico ?? '')) === 'certificado_treinamento';
                                         })->count();
-                                        $asoTreinamentoPendente = $asoTreinamentoEsperado > 0
-                                            && $asoTreinamentoEnviado < $asoTreinamentoEsperado;
+                                        $certificadosPendentes = $certificadosEsperados > 0
+                                            && $certificadosEnviados < $certificadosEsperados;
                                         $documentoComplementarPgrPcmso = $anexos->first(function ($anexo) {
                                             return mb_strtolower((string) ($anexo->servico ?? '')) === 'documento_complementar_pgr_pcmso';
                                         });
@@ -560,9 +579,10 @@
                                     data-aso-pacote="{{ $asoPacoteNome }}"
                                     data-aso-email="{{ $asoEmail }}"
                                     data-is-aso="{{ $isAsoTask ? '1' : '0' }}"
-                                    data-certificados-pendentes="{{ $asoTreinamentoPendente ? '1' : '0' }}"
-                                    data-certificados-enviados="{{ $asoTreinamentoEnviado }}"
-                                    data-certificados-total="{{ $asoTreinamentoEsperado }}"
+                                    data-is-treinamento-task="{{ $isTreinamentoTask ? '1' : '0' }}"
+                                    data-certificados-pendentes="{{ $certificadosPendentes ? '1' : '0' }}"
+                                    data-certificados-enviados="{{ $certificadosEnviados }}"
+                                    data-certificados-total="{{ $certificadosEsperados }}"
                                     data-certificados-upload-url="{{ route('operacional.tarefas.certificados', $tarefa) }}"
 
                                     data-observacao-interna="{{ e($tarefa->observacao_interna) }}"
@@ -838,14 +858,14 @@
                                                 {{ $badgeLabel }}
                                             </span>
 
-                                            @if($asoTreinamentoEsperado > 0)
+                                            @if($certificadosEsperados > 0)
                                                 @php
-                                                    $certBadgeClass = $asoTreinamentoPendente
+                                                    $certBadgeClass = $certificadosPendentes
                                                         ? 'bg-amber-50 border-amber-200 text-amber-700'
                                                         : 'bg-emerald-50 border-emerald-200 text-emerald-700';
                                                 @endphp
                                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border {{ $certBadgeClass }}">
-                                                    Trein. {{ $asoTreinamentoEnviado }}/{{ $asoTreinamentoEsperado }}
+                                                    Trein. {{ $certificadosEnviados }}/{{ $certificadosEsperados }}
                                                 </span>
                                             @endif
 
@@ -2103,6 +2123,7 @@
                 if (arquivoWrapper && arquivoLink) {
                     const urlArquivo = card.dataset.arquivoClienteUrl || '';
                     const isAsoTask = card.dataset.isAso === '1';
+                    const isTreinamentoTask = card.dataset.isTreinamentoTask === '1';
                     const totalCertificados = Number(card.dataset.certificadosTotal || '0');
                     const enviadosCertificados = Number(card.dataset.certificadosEnviados || '0');
                     const pendentesCertificados = card.dataset.certificadosPendentes === '1';
@@ -2114,126 +2135,133 @@
                     const urlArt = card.dataset.artPgrUrl || '';
                     const temDocumentoArt = !!urlArt;
 
-                    arquivoWrapper.classList.remove('hidden');
-
-                    if (arquivoDescricao) {
-                        arquivoDescricao.textContent = isPgrComPcmso
-                            ? (requerArt
-                                ? 'Anexe os arquivos finais do PGR, do PCMSO e da ART entregues ao cliente.'
-                                : 'Anexe os arquivos finais do PGR e do PCMSO entregues ao cliente.')
-                            : 'Este é o documento principal concluído desta tarefa, disponibilizado ao cliente.';
-                    }
-                    if (arquivoAjuda) {
-                        arquivoAjuda.textContent = getDocumentoFinalAjuda(card);
-                    }
-
-                    if (temDocumentoFinal) {
-                        arquivoLink.href = urlArquivo;
-                        arquivoLink.classList.remove('hidden');
-
-                        if (arquivoStatus) {
-                            arquivoStatus.textContent = isPgrComPcmso
-                                ? 'PGR: Documento anexado.'
-                                : 'Status: Documento final anexado.';
-                        }
-                        if (arquivoReplaceBtn) {
-                            arquivoReplaceBtn.textContent = isPgrComPcmso ? 'Atualizar PGR' : 'Enviar nova versão';
-                            arquivoReplaceBtn.title = isPgrComPcmso
-                                ? 'Substitui o documento final do PGR'
-                                : 'Substitui o documento final atual da tarefa';
-                        }
-                        if (arquivoImpacto) {
-                            arquivoImpacto.textContent = isPgrComPcmso
-                                ? 'O arquivo do PGR ficará disponível para o cliente.'
-                                : 'A nova versão substituirá o documento atual da tarefa.';
+                    if (isTreinamentoTask && !isAsoTask) {
+                        arquivoWrapper.classList.add('hidden');
+                        if (btnNotificarCliente) {
+                            btnNotificarCliente.classList.add('hidden');
                         }
                     } else {
-                        arquivoLink.href = '#';
-                        arquivoLink.classList.add('hidden');
+                        arquivoWrapper.classList.remove('hidden');
 
-                        if (arquivoStatus) {
-                            arquivoStatus.textContent = isPgrComPcmso
-                                ? 'PGR: Documento ainda não anexado.'
-                                : 'Status: Documento final ainda não anexado.';
+                        if (arquivoDescricao) {
+                            arquivoDescricao.textContent = isPgrComPcmso
+                                ? (requerArt
+                                    ? 'Anexe os arquivos finais do PGR, do PCMSO e da ART entregues ao cliente.'
+                                    : 'Anexe os arquivos finais do PGR e do PCMSO entregues ao cliente.')
+                                : 'Este é o documento principal concluído desta tarefa, disponibilizado ao cliente.';
                         }
-                        if (arquivoReplaceBtn) {
-                            arquivoReplaceBtn.textContent = isPgrComPcmso ? 'Anexar PGR' : 'Anexar documento final';
-                            arquivoReplaceBtn.title = isPgrComPcmso
-                                ? 'Anexar o documento final do PGR'
-                                : 'Anexar o documento final da tarefa';
+                        if (arquivoAjuda) {
+                            arquivoAjuda.textContent = getDocumentoFinalAjuda(card);
                         }
-                        if (arquivoImpacto) {
-                            arquivoImpacto.textContent = isPgrComPcmso
-                                ? ''
-                                : 'Quando anexado, este documento ficará disponível para o cliente.';
-                        }
-                    }
 
-                    if (arquivoComplementarWrapper && arquivoComplementarStatus && arquivoComplementarLink && arquivoComplementarBtn) {
-                        if (isPgrComPcmso) {
-                            arquivoComplementarWrapper.classList.remove('hidden');
+                        if (temDocumentoFinal) {
+                            arquivoLink.href = urlArquivo;
+                            arquivoLink.classList.remove('hidden');
 
-                            if (temDocumentoComplementar) {
-                                arquivoComplementarLink.href = urlComplementar;
-                                arquivoComplementarLink.classList.remove('hidden');
-                                arquivoComplementarStatus.textContent = 'PCMSO: Documento anexado.';
-                                arquivoComplementarBtn.textContent = 'Atualizar PCMSO';
-                                arquivoComplementarBtn.title = 'Substitui o documento final do PCMSO';
+                            if (arquivoStatus) {
+                                arquivoStatus.textContent = isPgrComPcmso
+                                    ? 'PGR: Documento anexado.'
+                                    : 'Status: Documento final anexado.';
+                            }
+                            if (arquivoReplaceBtn) {
+                                arquivoReplaceBtn.textContent = isPgrComPcmso ? 'Atualizar PGR' : 'Enviar nova versão';
+                                arquivoReplaceBtn.title = isPgrComPcmso
+                                    ? 'Substitui o documento final do PGR'
+                                    : 'Substitui o documento final atual da tarefa';
+                            }
+                            if (arquivoImpacto) {
+                                arquivoImpacto.textContent = isPgrComPcmso
+                                    ? 'O arquivo do PGR ficará disponível para o cliente.'
+                                    : 'A nova versão substituirá o documento atual da tarefa.';
+                            }
+                        } else {
+                            arquivoLink.href = '#';
+                            arquivoLink.classList.add('hidden');
+
+                            if (arquivoStatus) {
+                                arquivoStatus.textContent = isPgrComPcmso
+                                    ? 'PGR: Documento ainda não anexado.'
+                                    : 'Status: Documento final ainda não anexado.';
+                            }
+                            if (arquivoReplaceBtn) {
+                                arquivoReplaceBtn.textContent = isPgrComPcmso ? 'Anexar PGR' : 'Anexar documento final';
+                                arquivoReplaceBtn.title = isPgrComPcmso
+                                    ? 'Anexar o documento final do PGR'
+                                    : 'Anexar o documento final da tarefa';
+                            }
+                            if (arquivoImpacto) {
+                                arquivoImpacto.textContent = isPgrComPcmso
+                                    ? ''
+                                    : 'Quando anexado, este documento ficará disponível para o cliente.';
+                            }
+                        }
+
+                        if (arquivoComplementarWrapper && arquivoComplementarStatus && arquivoComplementarLink && arquivoComplementarBtn) {
+                            if (isPgrComPcmso) {
+                                arquivoComplementarWrapper.classList.remove('hidden');
+
+                                if (temDocumentoComplementar) {
+                                    arquivoComplementarLink.href = urlComplementar;
+                                    arquivoComplementarLink.classList.remove('hidden');
+                                    arquivoComplementarStatus.textContent = 'PCMSO: Documento anexado.';
+                                    arquivoComplementarBtn.textContent = 'Atualizar PCMSO';
+                                    arquivoComplementarBtn.title = 'Substitui o documento final do PCMSO';
+                                } else {
+                                    arquivoComplementarLink.href = '#';
+                                    arquivoComplementarLink.classList.add('hidden');
+                                    arquivoComplementarStatus.textContent = 'PCMSO: Documento ainda não anexado.';
+                                    arquivoComplementarBtn.textContent = 'Anexar PCMSO';
+                                    arquivoComplementarBtn.title = 'Anexar o documento final do PCMSO';
+                                }
                             } else {
+                                arquivoComplementarWrapper.classList.add('hidden');
                                 arquivoComplementarLink.href = '#';
                                 arquivoComplementarLink.classList.add('hidden');
-                                arquivoComplementarStatus.textContent = 'PCMSO: Documento ainda não anexado.';
-                                arquivoComplementarBtn.textContent = 'Anexar PCMSO';
-                                arquivoComplementarBtn.title = 'Anexar o documento final do PCMSO';
+                                arquivoComplementarStatus.textContent = 'Status: Documento complementar ainda não anexado.';
                             }
-                        } else {
-                            arquivoComplementarWrapper.classList.add('hidden');
-                            arquivoComplementarLink.href = '#';
-                            arquivoComplementarLink.classList.add('hidden');
-                            arquivoComplementarStatus.textContent = 'Status: Documento complementar ainda não anexado.';
                         }
-                    }
 
-                    if (arquivoArtWrapper && arquivoArtStatus && arquivoArtLink && arquivoArtBtn) {
-                        if (isPgrComPcmso && requerArt) {
-                            arquivoArtWrapper.classList.remove('hidden');
+                        if (arquivoArtWrapper && arquivoArtStatus && arquivoArtLink && arquivoArtBtn) {
+                            if (isPgrComPcmso && requerArt) {
+                                arquivoArtWrapper.classList.remove('hidden');
 
-                            if (temDocumentoArt) {
-                                arquivoArtLink.href = urlArt;
-                                arquivoArtLink.classList.remove('hidden');
-                                arquivoArtStatus.textContent = 'ART: Documento anexado.';
-                                arquivoArtBtn.textContent = 'Atualizar ART';
-                                arquivoArtBtn.title = 'Substitui o documento final da ART';
+                                if (temDocumentoArt) {
+                                    arquivoArtLink.href = urlArt;
+                                    arquivoArtLink.classList.remove('hidden');
+                                    arquivoArtStatus.textContent = 'ART: Documento anexado.';
+                                    arquivoArtBtn.textContent = 'Atualizar ART';
+                                    arquivoArtBtn.title = 'Substitui o documento final da ART';
+                                } else {
+                                    arquivoArtLink.href = '#';
+                                    arquivoArtLink.classList.add('hidden');
+                                    arquivoArtStatus.textContent = 'ART: Documento ainda não anexado.';
+                                    arquivoArtBtn.textContent = 'Anexar ART';
+                                    arquivoArtBtn.title = 'Anexar o documento final da ART';
+                                }
                             } else {
+                                arquivoArtWrapper.classList.add('hidden');
                                 arquivoArtLink.href = '#';
                                 arquivoArtLink.classList.add('hidden');
-                                arquivoArtStatus.textContent = 'ART: Documento ainda não anexado.';
-                                arquivoArtBtn.textContent = 'Anexar ART';
-                                arquivoArtBtn.title = 'Anexar o documento final da ART';
+                                arquivoArtStatus.textContent = 'Status: ART ainda não anexada.';
                             }
-                        } else {
-                            arquivoArtWrapper.classList.add('hidden');
-                            arquivoArtLink.href = '#';
-                            arquivoArtLink.classList.add('hidden');
-                            arquivoArtStatus.textContent = 'Status: ART ainda não anexada.';
                         }
-                    }
 
-                    if (btnNotificarCliente) {
-                        const podeNotificar = isPgrComPcmso
-                            ? (temDocumentoFinal && temDocumentoComplementar && (!requerArt || temDocumentoArt))
-                            : temDocumentoFinal;
-                        btnNotificarCliente.classList.toggle('hidden', !podeNotificar);
-                    }
+                        if (btnNotificarCliente) {
+                            const podeNotificar = isPgrComPcmso
+                                ? (temDocumentoFinal && temDocumentoComplementar && (!requerArt || temDocumentoArt))
+                                : temDocumentoFinal;
+                            btnNotificarCliente.classList.toggle('hidden', !podeNotificar);
+                        }
 
-                    if (arquivoAjuda && isAsoTask && totalCertificados > 0 && !temDocumentoFinal) {
-                        arquivoAjuda.textContent += ' Após anexar o documento final do ASO, os certificados de treinamento serão liberados abaixo.';
-                    }
+                        if (arquivoAjuda && isAsoTask && totalCertificados > 0 && !temDocumentoFinal) {
+                            arquivoAjuda.textContent += ' Após anexar o documento final do ASO, os certificados de treinamento serão liberados abaixo.';
+                        }
 
-                    if (arquivoStatus && isAsoTask && totalCertificados > 0 && temDocumentoFinal) {
-                        arquivoStatus.textContent += pendentesCertificados
-                            ? ` Certificados pendentes: ${enviadosCertificados}/${totalCertificados}.`
-                            : ` Certificados concluídos: ${enviadosCertificados}/${totalCertificados}.`;
+                        if (arquivoStatus && isAsoTask && totalCertificados > 0 && temDocumentoFinal) {
+                            arquivoStatus.textContent += pendentesCertificados
+                                ? ` Certificados pendentes: ${enviadosCertificados}/${totalCertificados}.`
+                                : ` Certificados concluídos: ${enviadosCertificados}/${totalCertificados}.`;
+                        }
                     }
                 }
                 // ===============================
@@ -2336,17 +2364,19 @@
                     const enviados = Number(card.dataset.certificadosEnviados || '0');
                     const pendentes = card.dataset.certificadosPendentes === '1';
                     const isAso = card.dataset.isAso === '1';
+                    const isTreinamentoTask = card.dataset.isTreinamentoTask === '1';
                     const temDocumentoAso = !!card.dataset.arquivoClienteUrl;
 
-                    if (isAso && total > 0) {
+                    if ((isAso || isTreinamentoTask) && total > 0) {
                         certificadosWrapper.classList.remove('hidden');
                         if (certificadosUploadBtn) {
-                            certificadosUploadBtn.disabled = !temDocumentoAso;
-                            certificadosUploadBtn.classList.toggle('opacity-60', !temDocumentoAso);
-                            certificadosUploadBtn.classList.toggle('cursor-not-allowed', !temDocumentoAso);
+                            const bloqueado = isAso && !temDocumentoAso;
+                            certificadosUploadBtn.disabled = bloqueado;
+                            certificadosUploadBtn.classList.toggle('opacity-60', bloqueado);
+                            certificadosUploadBtn.classList.toggle('cursor-not-allowed', bloqueado);
                         }
 
-                        if (!temDocumentoAso) {
+                        if (isAso && !temDocumentoAso) {
                             certificadosStatus.textContent = `Esta tarefa espera ${total} certificado(s). Anexe primeiro o documento final do ASO para liberar o envio.`;
                         } else {
                             certificadosStatus.textContent = pendentes
@@ -2365,13 +2395,16 @@
 
                 if (finalizarBtn) {
                     const temDocumentoFinal = !!card.dataset.arquivoClienteUrl;
+                    const isTreinamentoTask = card.dataset.isTreinamentoTask === '1';
                     const precisaDocumentoComplementar = card.dataset.pgrPcmso === '1';
                     const precisaArt = card.dataset.pgrComArt === '1';
                     const temDocumentoComplementar = !!card.dataset.pcmsoPgrUrl;
                     const temDocumentoArt = !!card.dataset.artPgrUrl;
-                    const podeFinalizar = temDocumentoFinal
-                        && (!precisaDocumentoComplementar || temDocumentoComplementar)
-                        && (!precisaArt || temDocumentoArt);
+                    const podeFinalizar = isTreinamentoTask
+                        ? true
+                        : temDocumentoFinal
+                            && (!precisaDocumentoComplementar || temDocumentoComplementar)
+                            && (!precisaArt || temDocumentoArt);
 
                     finalizarBtn.disabled = !podeFinalizar;
                     finalizarBtn.classList.toggle('opacity-60', !podeFinalizar);

@@ -111,7 +111,11 @@ class TarefaController extends Controller
 
     public function finalizarComDocumentoExistente(Tarefa $tarefa, PrecificacaoService $precificacaoService, VendaService $vendaService, ComissaoService $comissaoService)
     {
-        if (blank($tarefa->path_documento_cliente)) {
+        $pendenciaCertificados = $this->resolverPendenciaCertificadosTreinamento($tarefa);
+        $permiteSemDocumento = $pendenciaCertificados['requer_certificados']
+            && !($pendenciaCertificados['exige_documento_base'] ?? false);
+
+        if (blank($tarefa->path_documento_cliente) && !$permiteSemDocumento) {
             return response()->json([
                 'ok' => false,
                 'error' => 'Anexe primeiro o documento final da tarefa antes de finalizar.',
@@ -228,7 +232,7 @@ class TarefaController extends Controller
             ], 422);
         }
 
-        if (empty($tarefa->path_documento_cliente)) {
+        if (($pendenciaInicial['exige_documento_base'] ?? false) && empty($tarefa->path_documento_cliente)) {
             return response()->json([
                 'ok' => false,
                 'error' => 'Anexe primeiro o documento final do ASO para liberar os certificados.',
@@ -266,18 +270,47 @@ class TarefaController extends Controller
             ->where('tarefa_id', $tarefa->id)
             ->first();
 
-        if (!$aso || !(bool) $aso->vai_fazer_treinamento) {
+        $codigos = [];
+        $origem = null;
+        $exigeDocumentoBase = false;
+
+        if ($aso && (bool) $aso->vai_fazer_treinamento) {
+            $codigos = (array) ($aso->treinamentos ?? []);
+            if (empty($codigos) && is_array($aso->treinamento_pacote) && !empty($aso->treinamento_pacote['codigos'])) {
+                $codigos = (array) $aso->treinamento_pacote['codigos'];
+            }
+            $origem = 'aso';
+            $exigeDocumentoBase = true;
+        } else {
+            $treinamentoDetalhes = $tarefa->relationLoaded('treinamentoNrDetalhes')
+                ? $tarefa->treinamentoNrDetalhes
+                : $tarefa->treinamentoNrDetalhes()->first();
+
+            if ($treinamentoDetalhes) {
+                $payload = (array) ($treinamentoDetalhes->treinamentos ?? []);
+                $modo = (string) ($payload['modo'] ?? '');
+
+                if ($modo === 'pacote') {
+                    $codigos = (array) data_get($payload, 'pacote.codigos', []);
+                } elseif (array_key_exists('codigos', $payload)) {
+                    $codigos = (array) ($payload['codigos'] ?? []);
+                } else {
+                    $codigos = (array) $payload;
+                }
+
+                $origem = 'treinamento_nr';
+            }
+        }
+
+        if ($origem === null) {
             return [
                 'requer_certificados' => false,
                 'total_esperado' => 0,
                 'enviados' => 0,
                 'pendente' => false,
+                'origem' => null,
+                'exige_documento_base' => false,
             ];
-        }
-
-        $codigos = (array) ($aso->treinamentos ?? []);
-        if (empty($codigos) && is_array($aso->treinamento_pacote) && !empty($aso->treinamento_pacote['codigos'])) {
-            $codigos = (array) $aso->treinamento_pacote['codigos'];
         }
 
         $codigos = array_values(array_unique(array_filter(array_map(
@@ -300,6 +333,8 @@ class TarefaController extends Controller
             'total_esperado' => $totalEsperado,
             'enviados' => $certificadosEnviados,
             'pendente' => $certificadosEnviados < $totalEsperado,
+            'origem' => $origem,
+            'exige_documento_base' => $exigeDocumentoBase,
         ];
     }
 
@@ -430,8 +465,12 @@ class TarefaController extends Controller
                 'para_coluna_id' => $colunaDestino->id,
                 'acao' => 'movido',
                 'observacao' => $moverParaAguardandoFornecedor
-                    ? 'ASO com documento anexado. Aguardando certificados de treinamento.'
-                    : 'Finalizada com documento anexado',
+                    ? (($pendenciaCertificados['origem'] ?? null) === 'treinamento_nr'
+                        ? 'Treinamento aguardando certificados.'
+                        : 'ASO com documento anexado. Aguardando certificados de treinamento.')
+                    : (($pendenciaCertificados['origem'] ?? null) === 'treinamento_nr'
+                        ? 'Treinamento finalizado com certificados anexados.'
+                        : 'Finalizada com documento anexado'),
             ]);
 
             $log->load(['deColuna', 'paraColuna', 'user']);
