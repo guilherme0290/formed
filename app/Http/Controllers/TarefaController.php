@@ -18,6 +18,7 @@ use App\Services\PrecificacaoService;
 use App\Services\VendaService;
 use App\Services\ComissaoService;
 use App\Services\AsoGheService;
+use Throwable;
 
 class TarefaController extends Controller
 {
@@ -92,158 +93,31 @@ class TarefaController extends Controller
                 'arquivo_cliente.max' => 'O arquivo do cliente deve ter no máximo 10 MB.',
             ]
         );
+        $path = S3Helper::upload($request->file('arquivo_cliente'), 'tarefas');
 
-        // coluna "finalizada"
-        $colunaFinalizada = KanbanColuna::where('empresa_id', $tarefa->empresa_id)
-            ->where('slug', 'finalizada')
-            ->firstOrFail();
-        $colunaAguardandoFornecedor = KanbanColuna::where('empresa_id', $tarefa->empresa_id)
-            ->where('slug', 'aguardando-fornecedor')
-            ->first()
-            ?? KanbanColuna::where('empresa_id', $tarefa->empresa_id)
-                ->where('slug', 'aguardando')
-                ->first();
-
-        $colunaAtualId = (int) $tarefa->coluna_id;
-
-        DB::beginTransaction();
-
-        try {
-
-            try {
-                $dataRef = now()->startOfDay();
-                $contratoAtivo = ClienteContrato::query()
-                    ->where('empresa_id', $tarefa->empresa_id)
-                    ->where('cliente_id', $tarefa->cliente_id)
-                    ->where('status', 'ATIVO')
-                    ->where(function ($q) use ($dataRef) {
-                        $q->whereNull('vigencia_inicio')->orWhere('vigencia_inicio', '<=', $dataRef);
-                    })
-                    ->where(function ($q) use ($dataRef) {
-                        $q->whereNull('vigencia_fim')->orWhere('vigencia_fim', '>=', $dataRef);
-                    })
-                    ->with('itens')
-                    ->latest('vigencia_inicio')
-                    ->first();
-                $asoServicoId = app(AsoGheService::class)->resolveServicoAsoIdFromContrato($contratoAtivo);
-                $isAso = $asoServicoId && (int) $tarefa->servico_id === (int) $asoServicoId;
-
-                $servicoTreinamentoId = (int) Servico::where('empresa_id', $tarefa->empresa_id)
-                    ->where('nome', 'Treinamentos NRs')
-                    ->value('id');
-                $servicoPgrId = (int) Servico::where('empresa_id', $tarefa->empresa_id)
-                    ->where('nome', 'PGR')
-                    ->value('id');
-                $servicoPcmsoId = (int) Servico::where('empresa_id', $tarefa->empresa_id)
-                    ->where('nome', 'PCMSO')
-                    ->value('id');
-
-                if ($isAso) {
-                    $resultado = $precificacaoService->precificarAso($tarefa);
-                    $venda = $vendaService->criarVendaPorTarefaItens($tarefa, $resultado['contrato'], $resultado['itensVenda']);
-
-                    $vendedorId = optional($tarefa->cliente)->vendedor_id;
-                    $comissaoService->gerarPorVenda($venda, $resultado['itemContrato'], $vendedorId ?: auth()->id());
-                } elseif ($servicoTreinamentoId && (int) $tarefa->servico_id === $servicoTreinamentoId) {
-                    $resultado = $precificacaoService->precificarTreinamentosNr($tarefa);
-                    $venda = $vendaService->criarVendaPorTarefaItens($tarefa, $resultado['contrato'], $resultado['itensVenda']);
-
-                    $vendedorId = optional($tarefa->cliente)->vendedor_id;
-                    $comissaoService->gerarPorVenda($venda, $resultado['itemContrato'], $vendedorId ?: auth()->id());
-                } elseif ($servicoPgrId && (int) $tarefa->servico_id === $servicoPgrId) {
-                    $resultado = $precificacaoService->precificarPgr($tarefa);
-                    $venda = $vendaService->criarVendaPorTarefaItens($tarefa, $resultado['contrato'], $resultado['itensVenda']);
-
-                    $vendedorId = optional($tarefa->cliente)->vendedor_id;
-                    $comissaoService->gerarPorVenda($venda, $resultado['itemContrato'], $vendedorId ?: auth()->id());
-                } elseif ($servicoPcmsoId && (int) $tarefa->servico_id === $servicoPcmsoId) {
-                    $resultado = $precificacaoService->precificarPcmso($tarefa);
-                    $venda = $vendaService->criarVendaPorTarefaItens($tarefa, $resultado['contrato'], $resultado['itensVenda']);
-
-                    $vendedorId = optional($tarefa->cliente)->vendedor_id;
-                    $comissaoService->gerarPorVenda($venda, $resultado['itemContrato'], $vendedorId ?: auth()->id());
-                } else {
-                    $resultado = $precificacaoService->validarServicoNoContrato(
-                        (int) $tarefa->cliente_id,
-                        (int) $tarefa->servico_id,
-                        (int) $tarefa->empresa_id
-                    );
-                    $venda = $vendaService->criarVendaPorTarefa($tarefa, $resultado['contrato'], $resultado['item']);
-
-                    $vendedorId = optional($tarefa->cliente)->vendedor_id;
-                    $comissaoService->gerarPorVenda($venda, $resultado['item'], $vendedorId ?: auth()->id());
-                }
-
-            } catch (\Throwable $e) {
-                $mensagem = 'Não é possível concluir esta tarefa porque o cliente não possui preço definido para este serviço na proposta/contrato ativo. Solicite ao Comercial para ajustar a proposta e fechar novamente, ou cadastrar o valor do serviço no contrato do cliente.';
-                if (method_exists($e, 'errors')) {
-                    $mensagem = collect($e->errors())->flatten()->first() ?? $mensagem;
-                }
-                return response()->json([
-                    'ok' => false,
-                    'error' => $mensagem,
-                ], 422);
-            }
-
-            $path = S3Helper::upload($request->file('arquivo_cliente'), 'tarefas');
-
+        $token = Str::uuid()->toString();
+        while (Tarefa::where('documento_token', $token)->exists()) {
             $token = Str::uuid()->toString();
-            while (Tarefa::where('documento_token', $token)->exists()) {
-                $token = Str::uuid()->toString();
-            }
-
-            $pendenciaCertificados = $this->resolverPendenciaCertificadosTreinamento($tarefa);
-            $moverParaAguardandoFornecedor = $pendenciaCertificados['pendente']
-                && $colunaAguardandoFornecedor;
-            $colunaDestino = $moverParaAguardandoFornecedor ? $colunaAguardandoFornecedor : $colunaFinalizada;
-
-            $tarefa->update([
-                'coluna_id'               => $colunaDestino->id,
-                'finalizado_em'           => $moverParaAguardandoFornecedor ? null : now(),
-                'path_documento_cliente'  => $path,
-                'documento_token'         => $token,
-            ]);
-
-            $log = TarefaLog::create([
-                'tarefa_id'      => $tarefa->id,
-                'user_id'        => Auth::id(),
-                'de_coluna_id'   => $colunaAtualId,
-                'para_coluna_id' => $colunaDestino->id,
-                'acao'           => 'movido',
-                'observacao'     => $moverParaAguardandoFornecedor
-                    ? 'ASO finalizado com documento. Aguardando certificados de treinamento.'
-                    : 'Finalizada com arquivo anexado',
-            ]);
-
-            $log->load(['deColuna','paraColuna','user']);
-
-            DB::commit();
-
-
-
-            return response()->json([
-                'ok'           => true,
-                'status_label' => $colunaDestino->nome,
-                'documento_url' => $tarefa->documento_link,
-                'coluna_destino_slug' => $colunaDestino->slug,
-                'finalizada_total' => !$moverParaAguardandoFornecedor,
-                'certificados' => $pendenciaCertificados,
-                'log'          => [
-                    'de'   => optional($log->deColuna)->nome ?? 'Início',
-                    'para' => optional($log->paraColuna)->nome ?? '-',
-                    'user' => optional($log->user)->name ?? 'Sistema',
-                    'data' => optional($log->created_at)->format('d/m H:i'),
-                ],
-            ]);
-
-        } catch (\Throwable $e) {
-            DB::rollBack();
-
-            return response()->json([
-                'ok'    => false,
-                'error' => 'Erro ao finalizar a tarefa.',
-            ], 500);
         }
+
+        $tarefa->update([
+            'path_documento_cliente' => $path,
+            'documento_token' => $token,
+        ]);
+
+        return $this->finalizarTarefaPersistida($tarefa, $precificacaoService, $vendaService, $comissaoService);
+    }
+
+    public function finalizarComDocumentoExistente(Tarefa $tarefa, PrecificacaoService $precificacaoService, VendaService $vendaService, ComissaoService $comissaoService)
+    {
+        if (blank($tarefa->path_documento_cliente)) {
+            return response()->json([
+                'ok' => false,
+                'error' => 'Anexe primeiro o documento final da tarefa antes de finalizar.',
+            ], 422);
+        }
+
+        return $this->finalizarTarefaPersistida($tarefa, $precificacaoService, $vendaService, $comissaoService);
     }
 
     public function downloadDocumento(string $token)
@@ -340,42 +214,10 @@ class TarefaController extends Controller
         }
 
         $pendenciaAtual = $this->resolverPendenciaCertificadosTreinamento($tarefa->fresh());
-        $colunaAtualId = (int) $tarefa->coluna_id;
-        $movidaParaFinalizada = false;
-
-        if (!$pendenciaAtual['pendente']) {
-            $colunaFinalizada = KanbanColuna::query()
-                ->where('empresa_id', $tarefa->empresa_id)
-                ->where('slug', 'finalizada')
-                ->first();
-
-            if ($colunaFinalizada && (int) $tarefa->coluna_id !== (int) $colunaFinalizada->id) {
-                $tarefa->update([
-                    'coluna_id' => $colunaFinalizada->id,
-                    'finalizado_em' => now(),
-                ]);
-
-                TarefaLog::create([
-                    'tarefa_id' => $tarefa->id,
-                    'user_id' => Auth::id(),
-                    'de_coluna_id' => $colunaAtualId,
-                    'para_coluna_id' => $colunaFinalizada->id,
-                    'acao' => 'movido',
-                    'observacao' => 'Certificados de treinamento concluídos. Tarefa finalizada.',
-                ]);
-                $movidaParaFinalizada = true;
-            } else {
-                $tarefa->update([
-                    'finalizado_em' => now(),
-                ]);
-                $movidaParaFinalizada = true;
-            }
-        }
 
         return response()->json([
             'ok' => true,
             'certificados' => $pendenciaAtual,
-            'movida_para_finalizada' => $movidaParaFinalizada,
             'status_label' => $tarefa->fresh()->coluna?->nome,
         ]);
     }
@@ -421,6 +263,157 @@ class TarefaController extends Controller
             'enviados' => $certificadosEnviados,
             'pendente' => $certificadosEnviados < $totalEsperado,
         ];
+    }
+
+    private function finalizarTarefaPersistida(Tarefa $tarefa, PrecificacaoService $precificacaoService, VendaService $vendaService, ComissaoService $comissaoService)
+    {
+        $colunaFinalizada = KanbanColuna::where('empresa_id', $tarefa->empresa_id)
+            ->where('slug', 'finalizada')
+            ->firstOrFail();
+        $colunaAguardandoFornecedor = KanbanColuna::where('empresa_id', $tarefa->empresa_id)
+            ->where('slug', 'aguardando-fornecedor')
+            ->first()
+            ?? KanbanColuna::where('empresa_id', $tarefa->empresa_id)
+                ->where('slug', 'aguardando')
+                ->first();
+
+        $colunaAtualId = (int) $tarefa->coluna_id;
+
+        DB::beginTransaction();
+
+        try {
+            try {
+                $dataRef = now()->startOfDay();
+                $contratoAtivo = ClienteContrato::query()
+                    ->where('empresa_id', $tarefa->empresa_id)
+                    ->where('cliente_id', $tarefa->cliente_id)
+                    ->where('status', 'ATIVO')
+                    ->where(function ($q) use ($dataRef) {
+                        $q->whereNull('vigencia_inicio')->orWhere('vigencia_inicio', '<=', $dataRef);
+                    })
+                    ->where(function ($q) use ($dataRef) {
+                        $q->whereNull('vigencia_fim')->orWhere('vigencia_fim', '>=', $dataRef);
+                    })
+                    ->with('itens')
+                    ->latest('vigencia_inicio')
+                    ->first();
+                $asoServicoId = app(AsoGheService::class)->resolveServicoAsoIdFromContrato($contratoAtivo);
+                $isAso = $asoServicoId && (int) $tarefa->servico_id === (int) $asoServicoId;
+
+                $servicoTreinamentoId = (int) Servico::where('empresa_id', $tarefa->empresa_id)
+                    ->where('nome', 'Treinamentos NRs')
+                    ->value('id');
+                $servicoPgrId = (int) Servico::where('empresa_id', $tarefa->empresa_id)
+                    ->where('nome', 'PGR')
+                    ->value('id');
+                $servicoPcmsoId = (int) Servico::where('empresa_id', $tarefa->empresa_id)
+                    ->where('nome', 'PCMSO')
+                    ->value('id');
+
+                if ($isAso) {
+                    $resultado = $precificacaoService->precificarAso($tarefa);
+                    $venda = $vendaService->criarVendaPorTarefaItens($tarefa, $resultado['contrato'], $resultado['itensVenda']);
+
+                    $vendedorId = optional($tarefa->cliente)->vendedor_id;
+                    $comissaoService->gerarPorVenda($venda, $resultado['itemContrato'], $vendedorId ?: auth()->id());
+                } elseif ($servicoTreinamentoId && (int) $tarefa->servico_id === $servicoTreinamentoId) {
+                    $resultado = $precificacaoService->precificarTreinamentosNr($tarefa);
+                    $venda = $vendaService->criarVendaPorTarefaItens($tarefa, $resultado['contrato'], $resultado['itensVenda']);
+
+                    $vendedorId = optional($tarefa->cliente)->vendedor_id;
+                    $comissaoService->gerarPorVenda($venda, $resultado['itemContrato'], $vendedorId ?: auth()->id());
+                } elseif ($servicoPgrId && (int) $tarefa->servico_id === $servicoPgrId) {
+                    $resultado = $precificacaoService->precificarPgr($tarefa);
+                    $venda = $vendaService->criarVendaPorTarefaItens($tarefa, $resultado['contrato'], $resultado['itensVenda']);
+
+                    $vendedorId = optional($tarefa->cliente)->vendedor_id;
+                    $comissaoService->gerarPorVenda($venda, $resultado['itemContrato'], $vendedorId ?: auth()->id());
+                } elseif ($servicoPcmsoId && (int) $tarefa->servico_id === $servicoPcmsoId) {
+                    $resultado = $precificacaoService->precificarPcmso($tarefa);
+                    $venda = $vendaService->criarVendaPorTarefaItens($tarefa, $resultado['contrato'], $resultado['itensVenda']);
+
+                    $vendedorId = optional($tarefa->cliente)->vendedor_id;
+                    $comissaoService->gerarPorVenda($venda, $resultado['itemContrato'], $vendedorId ?: auth()->id());
+                } else {
+                    $resultado = $precificacaoService->validarServicoNoContrato(
+                        (int) $tarefa->cliente_id,
+                        (int) $tarefa->servico_id,
+                        (int) $tarefa->empresa_id
+                    );
+                    $venda = $vendaService->criarVendaPorTarefa($tarefa, $resultado['contrato'], $resultado['item']);
+
+                    $vendedorId = optional($tarefa->cliente)->vendedor_id;
+                    $comissaoService->gerarPorVenda($venda, $resultado['item'], $vendedorId ?: auth()->id());
+                }
+            } catch (Throwable $e) {
+                $mensagem = 'Não é possível concluir esta tarefa porque o cliente não possui preço definido para este serviço na proposta/contrato ativo. Solicite ao Comercial para ajustar a proposta e fechar novamente, ou cadastrar o valor do serviço no contrato do cliente.';
+                if (method_exists($e, 'errors')) {
+                    $mensagem = collect($e->errors())->flatten()->first() ?? $mensagem;
+                } elseif (filled($e->getMessage())) {
+                    $mensagem = $e->getMessage();
+                }
+
+                DB::rollBack();
+
+                return response()->json([
+                    'ok' => false,
+                    'error' => $mensagem,
+                ], 422);
+            }
+
+            $pendenciaCertificados = $this->resolverPendenciaCertificadosTreinamento($tarefa->fresh());
+            $moverParaAguardandoFornecedor = $pendenciaCertificados['pendente'] && $colunaAguardandoFornecedor;
+            $colunaDestino = $moverParaAguardandoFornecedor ? $colunaAguardandoFornecedor : $colunaFinalizada;
+            $mensagemRetorno = $moverParaAguardandoFornecedor
+                ? sprintf(
+                    'A tarefa ainda não pode ser concluída. Ela espera %d certificado(s) e recebeu %d.',
+                    (int) ($pendenciaCertificados['total_esperado'] ?? 0),
+                    (int) ($pendenciaCertificados['enviados'] ?? 0)
+                )
+                : 'Tarefa finalizada com sucesso.';
+
+            $tarefa->update([
+                'coluna_id' => $colunaDestino->id,
+                'finalizado_em' => $moverParaAguardandoFornecedor ? null : now(),
+            ]);
+
+            $log = TarefaLog::create([
+                'tarefa_id' => $tarefa->id,
+                'user_id' => Auth::id(),
+                'de_coluna_id' => $colunaAtualId,
+                'para_coluna_id' => $colunaDestino->id,
+                'acao' => 'movido',
+                'observacao' => $moverParaAguardandoFornecedor
+                    ? 'ASO com documento anexado. Aguardando certificados de treinamento.'
+                    : 'Finalizada com documento anexado',
+            ]);
+
+            $log->load(['deColuna', 'paraColuna', 'user']);
+            DB::commit();
+
+            return response()->json([
+                'ok' => true,
+                'status_label' => $colunaDestino->nome,
+                'documento_url' => $tarefa->fresh()->documento_link,
+                'coluna_destino_slug' => $colunaDestino->slug,
+                'finalizada_total' => !$moverParaAguardandoFornecedor,
+                'certificados' => $pendenciaCertificados,
+                'message' => $mensagemRetorno,
+                'log' => [
+                    'de' => optional($log->deColuna)->nome ?? 'Início',
+                    'para' => optional($log->paraColuna)->nome ?? '-',
+                    'user' => optional($log->user)->name ?? 'Sistema',
+                    'data' => optional($log->created_at)->format('d/m H:i'),
+                ],
+            ]);
+        } catch (Throwable $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'ok' => false,
+                'error' => filled($e->getMessage()) ? $e->getMessage() : 'Erro ao finalizar a tarefa.',
+            ], 500);
+        }
     }
 
 }

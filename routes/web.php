@@ -153,6 +153,10 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
                 [TarefaController::class, 'finalizarComArquivo']
             )->name('finalizar-com-arquivo');
 
+            Route::post('{tarefa}/finalizar-documento-existente',
+                [TarefaController::class, 'finalizarComDocumentoExistente']
+            )->name('finalizar-documento-existente');
+
             Route::post('{tarefa}/documento-cliente',
                 [TarefaController::class, 'substituirDocumentoCliente']
             )->name('documento-cliente');

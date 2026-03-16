@@ -524,6 +524,7 @@
                                     data-move-url="{{ route('operacional.tarefas.mover', $tarefa) }}"
                                     data-finalizar-url="{{ route('operacional.tarefas.finalizar-com-arquivo', $tarefa) }}
                                     "
+                                    data-finalizar-documento-existente-url="{{ route('operacional.tarefas.finalizar-documento-existente', $tarefa) }}"
                                     data-substituir-doc-url="{{ route('operacional.tarefas.documento-cliente', $tarefa) }}"
                                     data-prioridade="{{ ucfirst($tarefa->prioridade) }}"
                                     data-status="{{ $coluna->nome }}"
@@ -922,7 +923,7 @@
     <div id="tarefa-modal"
          data-overlay-root="true"
          class="fixed inset-0 z-[90] hidden items-center justify-center bg-black/50 p-4 overflow-y-auto">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden">
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden">
             {{-- Cabeçalho --}}
             {{-- Cabeçalho (VERSÃO DEBUG) --}}
             <div
@@ -1459,6 +1460,15 @@
                                     @if(!$canUpdateTask) disabled @endif>
                                 Mover para: Atrasado
                             </button>
+
+                            <button
+                                type="button"
+                                id="modal-finalizar-btn"
+                                class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg
+                                       bg-sky-600 text-white text-sm font-semibold shadow-sm
+                                       hover:bg-sky-700 transition">
+                                Finalizar tarefa
+                            </button>
                         </div>
                     </section>
                     {{-- 5. Documento final da tarefa --}}
@@ -1594,6 +1604,37 @@
                     </section>
 
 
+                </div>
+            </div>
+
+            <div id="modal-pendencia-wrapper"
+                 class="absolute inset-0 z-30 hidden items-center justify-center bg-slate-950/45 p-4">
+                <div class="w-full max-w-md rounded-2xl bg-white px-8 py-7 shadow-2xl">
+                    <div class="text-center">
+                        <div class="mx-auto flex h-20 w-20 items-center justify-center rounded-full border-4 border-sky-400 text-4xl font-bold text-sky-400">
+                            !
+                        </div>
+                        <h3 class="mt-6 text-2xl font-bold tracking-tight text-slate-600">
+                            Alerta de pendencia
+                        </h3>
+                        <p id="modal-pendencia-texto" class="mt-5 text-[15px] font-medium leading-7 text-slate-600">
+                            —
+                        </p>
+                    </div>
+                    <div class="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-center">
+                        <button
+                            type="button"
+                            id="modal-pendencia-continuar-btn"
+                            class="inline-flex min-w-[170px] items-center justify-center rounded-lg bg-indigo-500 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-600">
+                            Continuar alterando
+                        </button>
+                        <button
+                            type="button"
+                            id="modal-pendencia-fechar-btn"
+                            class="inline-flex min-w-[140px] items-center justify-center rounded-lg bg-slate-500 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-600">
+                            Fechar tarefa
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1771,6 +1812,11 @@
             const certificadosStatus = document.getElementById('modal-certificados-status');
             const certificadosInput = document.getElementById('modal-certificados-input');
             const certificadosUploadBtn = document.getElementById('modal-certificados-upload-btn');
+            const finalizarBtn = document.getElementById('modal-finalizar-btn');
+            const pendenciaWrapper = document.getElementById('modal-pendencia-wrapper');
+            const pendenciaTexto = document.getElementById('modal-pendencia-texto');
+            const pendenciaContinuarBtn = document.getElementById('modal-pendencia-continuar-btn');
+            const pendenciaFecharBtn = document.getElementById('modal-pendencia-fechar-btn');
 
 
             // PGR
@@ -1931,6 +1977,7 @@
             function openDetalhesModal(card) {
                 if (!card) return;
                 detalhesCurrentCard = card;
+                hidePendenciaInline();
 
                 const isCancelada = card.dataset.cancelada === '1';
                 modal.dataset.cancelada = isCancelada ? '1' : '0';
@@ -2115,15 +2162,37 @@
                     const isAso = card.dataset.isAso === '1';
                     const temDocumentoAso = !!card.dataset.arquivoClienteUrl;
 
-                    if (isAso && total > 0 && temDocumentoAso) {
+                    if (isAso && total > 0) {
                         certificadosWrapper.classList.remove('hidden');
-                        certificadosStatus.textContent = pendentes
-                            ? `Aguardando certificados: ${enviados}/${total}.`
-                            : `Certificados concluídos: ${enviados}/${total}.`;
+                        if (certificadosUploadBtn) {
+                            certificadosUploadBtn.disabled = !temDocumentoAso;
+                            certificadosUploadBtn.classList.toggle('opacity-60', !temDocumentoAso);
+                            certificadosUploadBtn.classList.toggle('cursor-not-allowed', !temDocumentoAso);
+                        }
+
+                        if (!temDocumentoAso) {
+                            certificadosStatus.textContent = `Esta tarefa espera ${total} certificado(s). Anexe primeiro o documento final do ASO para liberar o envio.`;
+                        } else {
+                            certificadosStatus.textContent = pendentes
+                                ? `Aguardando certificados: ${enviados}/${total}.`
+                                : `Certificados concluídos: ${enviados}/${total}.`;
+                        }
                     } else {
                         certificadosWrapper.classList.add('hidden');
                         certificadosStatus.textContent = '—';
+                        if (certificadosUploadBtn) {
+                            certificadosUploadBtn.disabled = false;
+                            certificadosUploadBtn.classList.remove('opacity-60', 'cursor-not-allowed');
+                        }
                     }
+                }
+
+                if (finalizarBtn) {
+                    const temDocumentoFinal = !!card.dataset.arquivoClienteUrl;
+
+                    finalizarBtn.disabled = !temDocumentoFinal;
+                    finalizarBtn.classList.toggle('opacity-60', !temDocumentoFinal);
+                    finalizarBtn.classList.toggle('cursor-not-allowed', !temDocumentoFinal);
                 }
 
                 if (exclusaoAnexoWrapper && exclusaoAnexoList) {
@@ -2602,6 +2671,52 @@
                 window.location.reload();
             }
 
+            function hideModalWithoutReload() {
+                if (!modal) return;
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+
+            function closeOverlayAlerts() {
+                if (window.Swal && typeof window.Swal.close === 'function') {
+                    window.Swal.close();
+                }
+
+                const overlayRoot = document.getElementById('app-overlay-root');
+                if (overlayRoot) {
+                    overlayRoot.querySelectorAll('.swal2-container').forEach((el) => el.remove());
+                    overlayRoot.classList.add('pointer-events-none');
+                }
+
+                document.querySelectorAll('.swal2-container').forEach((el) => el.remove());
+                document.body.classList.remove('swal2-shown', 'swal2-height-auto');
+                document.documentElement.classList.remove('swal2-shown', 'swal2-height-auto');
+            }
+
+            function hidePendenciaInline() {
+                if (pendenciaWrapper) {
+                    pendenciaWrapper.classList.add('hidden');
+                    pendenciaWrapper.classList.remove('flex');
+                    pendenciaWrapper.style.display = 'none';
+                    pendenciaWrapper.setAttribute('aria-hidden', 'true');
+                }
+                if (pendenciaTexto) {
+                    pendenciaTexto.textContent = '—';
+                }
+            }
+
+            function showPendenciaInline(message) {
+                if (pendenciaTexto) {
+                    pendenciaTexto.textContent = message || 'A tarefa ainda possui pendencias.';
+                }
+                if (pendenciaWrapper) {
+                    pendenciaWrapper.classList.remove('hidden');
+                    pendenciaWrapper.classList.add('flex');
+                    pendenciaWrapper.style.display = 'flex';
+                    pendenciaWrapper.setAttribute('aria-hidden', 'false');
+                }
+            }
+
             if (closeBtn) {
                 closeBtn.addEventListener('click', closeModal);
             }
@@ -2661,6 +2776,7 @@
 
             let finalizarCurrentCard = null;
             let finalizarUrl = null;
+            let finalizarSkipReloadOnClose = false;
 
             function openFinalizarModal(card, url) {
                 console.log(finalizarModal)
@@ -2697,6 +2813,60 @@
                 finalizarUrl = null;
             }
 
+            async function handleFinalizacaoResponse(card, data, options = {}) {
+                if (!card || !data || !data.ok) return;
+
+                if (data.documento_url) {
+                    card.dataset.arquivoClienteUrl = data.documento_url;
+                }
+
+                const statusName = data.status_label || 'Finalizada';
+                card.dataset.status = statusName;
+                card.dataset.finalizado = data.finalizada_total ? '1' : '0';
+                if (data?.certificados) {
+                    card.dataset.certificadosPendentes = data.certificados.pendente ? '1' : '0';
+                    card.dataset.certificadosEnviados = String(data.certificados.enviados ?? 0);
+                    card.dataset.certificadosTotal = String(data.certificados.total_esperado ?? 0);
+                }
+
+                const statusSpan = card.querySelector('[data-role="card-status-label"]');
+                if (statusSpan) {
+                    statusSpan.textContent = statusName;
+                }
+
+                if (!data.finalizada_total && data?.certificados?.pendente) {
+                    const colunaAguardando = document.querySelector('.kanban-column[data-coluna-slug="aguardando-fornecedor"], .kanban-column[data-coluna-slug="aguardando"]');
+                    const colunaAguardandoId = colunaAguardando?.dataset?.colunaId;
+                    if (colunaAguardandoId) {
+                        moveCardToColumn(card, colunaAguardandoId, statusName);
+                    }
+
+                    if (options.fromDetalhes) {
+                        openDetalhesModal(card);
+                        showPendenciaInline(`${data.message || 'A tarefa ainda possui pendencias.'} Deseja continuar alterando a tarefa agora para anexar o que falta?`);
+                        return;
+                    }
+
+                    window.location.reload();
+                    return;
+                }
+
+                hidePendenciaInline();
+
+                if (options.closeModal) {
+                    closeFinalizarModal();
+                }
+
+                if (data.message) {
+                    window.uiAlert(data.message, {
+                        icon: 'success',
+                        title: 'Sucesso',
+                    });
+                }
+
+                setTimeout(() => window.location.reload(), 250);
+            }
+
             [finalizarCloseBtn, finalizarCloseXBtn].forEach((btn) => {
                 if (!btn) return;
 
@@ -2704,7 +2874,10 @@
                     console.log('fechar');
                     closeFinalizarModal();
                     // se quiser voltar o card pra coluna original:
-                    window.location.reload();
+                    if (!finalizarSkipReloadOnClose) {
+                        window.location.reload();
+                    }
+                    finalizarSkipReloadOnClose = false;
                 });
             });
 
@@ -2712,7 +2885,10 @@
                 finalizarModal.addEventListener('click', function (e) {
                     if (e.target === finalizarModal) {
                         closeFinalizarModal();
-                        window.location.reload();
+                        if (!finalizarSkipReloadOnClose) {
+                            window.location.reload();
+                        }
+                        finalizarSkipReloadOnClose = false;
                     }
                 });
             }
@@ -2775,7 +2951,7 @@
 
                             return data;
                         })
-                        .then(data => {
+                        .then(async (data) => {
                             if (!data || !data.ok) {
                                 const error =
                                     data?.error
@@ -2786,27 +2962,7 @@
                                 return;
                             }
 
-                            // Atualiza dataset do card com a URL do arquivo, se voltou do backend
-                            if (data.documento_url) {
-                                finalizarCurrentCard.dataset.arquivoClienteUrl = data.documento_url;
-                            }
-
-                            // atualiza status do card
-                            const statusName = data.status_label || 'Finalizada';
-                            finalizarCurrentCard.dataset.status = statusName;
-                            finalizarCurrentCard.dataset.finalizado = data.finalizada_total ? '1' : '0';
-                            if (data?.certificados) {
-                                finalizarCurrentCard.dataset.certificadosPendentes = data.certificados.pendente ? '1' : '0';
-                                finalizarCurrentCard.dataset.certificadosEnviados = String(data.certificados.enviados ?? 0);
-                                finalizarCurrentCard.dataset.certificadosTotal = String(data.certificados.total_esperado ?? 0);
-                            }
-
-                            const statusSpan = finalizarCurrentCard.querySelector('[data-role="card-status-label"]');
-                            if (statusSpan) {
-                                statusSpan.textContent = statusName;
-                            }
-
-                            if (finalizarNotificar && finalizarNotificar.checked) {
+                            if (data.finalizada_total && finalizarNotificar && finalizarNotificar.checked) {
                                 const arquivoUrl = data.documento_url || '';
                                 const payload = buildWhatsappMensagem(finalizarCurrentCard, arquivoUrl);
 
@@ -2820,11 +2976,13 @@
                                 } else if (whatsappPopup && !whatsappPopup.closed) {
                                     whatsappPopup.close();
                                 }
+                            } else if (whatsappPopup && !whatsappPopup.closed) {
+                                whatsappPopup.close();
                             }
 
-                            closeFinalizarModal();
-                            // Para evitar descompasso de contadores/ordem, recarrega a página
-                            window.location.reload();
+                            finalizarSkipReloadOnClose = !data.finalizada_total && !!data?.certificados?.pendente;
+                            await handleFinalizacaoResponse(finalizarCurrentCard, data, { closeModal: true });
+                            finalizarSkipReloadOnClose = false;
                         })
                         .catch((error) => {
                             if (whatsappPopup && !whatsappPopup.closed) {
@@ -2980,26 +3138,6 @@
                         if (data.status_label) {
                             detalhesCurrentCard.dataset.status = String(data.status_label);
                         }
-                        if (data.movida_para_finalizada) {
-                            detalhesCurrentCard.dataset.finalizado = '1';
-                            const colunaFinalizadaEl = document.querySelector('.kanban-column[data-coluna-slug="finalizada"]');
-                            const colunaFinalizadaId = colunaFinalizadaEl?.dataset?.colunaId;
-                            if (colunaFinalizadaId) {
-                                moveCardToColumn(detalhesCurrentCard, colunaFinalizadaId, data.status_label || 'Finalizada');
-                            }
-                        }
-
-                        if (data.movida_para_finalizada) {
-                            window.uiAlert('Certificados concluídos. Tarefa movida para Finalizada.', {
-                                icon: 'success',
-                                title: 'Sucesso',
-                            });
-                        } else {
-                            window.uiAlert(`Certificados enviados (${enviados}/${total}).`, {
-                                icon: 'success',
-                                title: 'Sucesso',
-                            });
-                        }
 
                         if (certificadosInput) {
                             certificadosInput.value = '';
@@ -3103,6 +3241,61 @@
                 certificadosInput.addEventListener('change', function () {
                     if (!certificadosInput.files?.length) return;
                     uploadCertificadosTreinamento(certificadosInput.files);
+                });
+            }
+
+            if (finalizarBtn) {
+                finalizarBtn.addEventListener('click', async function () {
+                    if (!detalhesCurrentCard) return;
+
+                    const url = detalhesCurrentCard.dataset.finalizarDocumentoExistenteUrl;
+                    if (!url) {
+                        window.uiAlert('Não foi possível finalizar esta tarefa.');
+                        return;
+                    }
+
+                    finalizarBtn.disabled = true;
+                    try {
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                'Accept': 'application/json',
+                            },
+                        });
+                        const data = await parseJsonResponse(response);
+                        if (!response.ok) {
+                            const error =
+                                data?.error
+                                || data?.message
+                                || (data?.errors ? Object.values(data.errors).flat()[0] : null)
+                                || 'Erro ao finalizar tarefa.';
+                            throw new Error(error);
+                        }
+
+                        await handleFinalizacaoResponse(detalhesCurrentCard, data, { fromDetalhes: true });
+                    } catch (error) {
+                        window.uiAlert(error?.message || 'Erro ao finalizar tarefa.');
+                    } finally {
+                        finalizarBtn.disabled = false;
+                    }
+                });
+            }
+
+            if (pendenciaContinuarBtn) {
+                pendenciaContinuarBtn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    hidePendenciaInline();
+                });
+            }
+
+            if (pendenciaFecharBtn) {
+                pendenciaFecharBtn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    hidePendenciaInline();
+                    window.location.reload();
                 });
             }
 
