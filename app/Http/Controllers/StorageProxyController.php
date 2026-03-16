@@ -24,10 +24,38 @@ class StorageProxyController extends Controller
             abort(403);
         }
 
-        if (!Storage::disk('public')->exists($path)) {
+        $resolved = $this->resolveLocalPath($path);
+        if ($resolved === null) {
             abort(404);
         }
 
-        return response()->file(Storage::disk('public')->path($path));
+        return response()->file($resolved['full_path']);
+    }
+
+    private function resolveLocalPath(string $path): ?array
+    {
+        $candidates = collect([
+            $path,
+            ltrim($path, '/'),
+            preg_replace('#^public/#', '', ltrim($path, '/')),
+            preg_replace('#^storage/#', '', ltrim($path, '/')),
+        ])
+            ->filter(fn ($candidate) => is_string($candidate) && $candidate !== '')
+            ->unique()
+            ->values();
+
+        foreach (['public', 'local'] as $disk) {
+            foreach ($candidates as $candidate) {
+                if (Storage::disk($disk)->exists($candidate)) {
+                    return [
+                        'disk' => $disk,
+                        'path' => $candidate,
+                        'full_path' => Storage::disk($disk)->path($candidate),
+                    ];
+                }
+            }
+        }
+
+        return null;
     }
 }

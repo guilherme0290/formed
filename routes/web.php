@@ -1281,6 +1281,10 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
 Route::get('operacional/tarefas/documento/{token}', [TarefaController::class, 'downloadDocumento'])
     ->name('operacional.tarefas.documento');
 
+Route::get('operacional/tarefas/{tarefa}/pacote', [TarefaController::class, 'downloadPacotePublico'])
+    ->middleware('signed')
+    ->name('operacional.tarefas.pacote-publico');
+
 Route::get('/storage-local', [StorageProxyController::class, 'show'])
     ->middleware('signed')
     ->name('storage.proxy');

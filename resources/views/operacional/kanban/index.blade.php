@@ -57,7 +57,7 @@
             <div class="flex-1">
                 <form method="GET" class="relative">
                     @php
-                        $temFiltrosAtivos = !empty($filtroBusca) || !empty($filtroServico) || !empty($filtroResponsavel) || !empty($filtroColuna) || !empty($filtroDe) || !empty($filtroAte);
+                        $temFiltrosAtivos = !empty($filtroBusca) || !empty($filtroServico) || !empty($filtroResponsavel) || !empty($filtroCliente) || !empty($filtroColuna) || !empty($filtroDe) || !empty($filtroAte);
                     @endphp
                     <span class="absolute inset-y-0 left-3 flex items-center text-slate-400 text-sm">🔍</span>
                     <input type="text"
@@ -73,6 +73,7 @@
                          class="absolute z-20 mt-1 w-full max-h-64 overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg hidden"></div>
                     <input type="hidden" name="servico_id" value="{{ $filtroServico }}">
                     <input type="hidden" name="responsavel_id" value="{{ $filtroResponsavel }}">
+                    <input type="hidden" name="cliente_id" value="{{ $filtroCliente }}">
                     <input type="hidden" name="coluna_id" value="{{ $filtroColuna }}">
                     <input type="hidden" name="de" value="{{ $filtroDe }}">
                     <input type="hidden" name="ate" value="{{ $filtroAte }}">
@@ -146,6 +147,31 @@
                             </option>
                         @endforeach
                     </select>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-500 tracking-wide mb-1">
+                        Cliente
+                    </label>
+                    @php
+                        $clienteSelecionado = collect($clientes ?? [])->firstWhere('id', (int) $filtroCliente);
+                        $clienteSelecionadoNome = $clienteSelecionado
+                            ? ($clienteSelecionado->razao_social ?: ($clienteSelecionado->nome_fantasia ?: 'Cliente #'.$clienteSelecionado->id))
+                            : '';
+                    @endphp
+                    <div class="relative">
+                        <input type="text"
+                               id="kanban-cliente-autocomplete-input"
+                               value="{{ $clienteSelecionadoNome }}"
+                               placeholder="Digite o nome do cliente"
+                               autocomplete="off"
+                               class="w-full rounded-xl border border-slate-200 bg-slate-50/60 py-2 px-3 text-sm
+                                  text-slate-700
+                                  focus:bg-white focus:ring-2 focus:ring-sky-400 focus:border-sky-400">
+                        <div id="kanban-cliente-autocomplete-list"
+                             class="absolute z-20 mt-1 w-full max-h-64 overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg hidden"></div>
+                        <input type="hidden" name="cliente_id" id="kanban-cliente-id" value="{{ $filtroCliente }}">
+                    </div>
                 </div>
 
                 <div>
@@ -553,6 +579,7 @@
                                     data-substituir-doc-url="{{ route('operacional.tarefas.documento-cliente', $tarefa) }}"
                                     data-substituir-doc-complementar-url="{{ route('operacional.tarefas.documento-complementar', $tarefa) }}"
                                     data-substituir-doc-art-url="{{ route('operacional.tarefas.documento-art', $tarefa) }}"
+                                    data-whatsapp-bundle-url="{{ \Illuminate\Support\Facades\URL::temporarySignedRoute('operacional.tarefas.pacote-publico', now()->addDays(7), ['tarefa' => $tarefa->id]) }}"
                                     data-prioridade="{{ ucfirst($tarefa->prioridade) }}"
                                     data-status="{{ $coluna->nome }}"
                                     data-finalizado="{{ (!empty($tarefa->finalizado_em) || ($coluna->finaliza ?? false)) ? '1' : '0' }}"
@@ -1504,6 +1531,15 @@
                                        hover:bg-sky-700 transition">
                                 Finalizar tarefa
                             </button>
+
+                            <button
+                                type="button"
+                                id="btn-notificar-cliente"
+                                class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg
+                                   bg-emerald-600 text-white text-sm font-semibold shadow-sm
+                                   hover:bg-emerald-700 transition hidden">
+                                Notificar cliente (WhatsApp)
+                            </button>
                         </div>
                     </section>
                     {{-- 5. Documento final da tarefa --}}
@@ -1605,14 +1641,6 @@
                                 </button>
                             </div>
                         </div>
-                        <button
-                            type="button"
-                            id="btn-notificar-cliente"
-                            class="mt-3 w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg
-                               bg-emerald-600 text-white text-sm font-semibold shadow-sm
-                               hover:bg-emerald-700 transition hidden">
-                            Notificar cliente (WhatsApp)
-                        </button>
                     </section>
                     {{-- 5b. Documentos da tarefa (ASO, PGR, PCMSO etc) --}}
                     <section id="modal-docs-wrapper"
@@ -1968,13 +1996,91 @@
                 return raw || '—';
             }
 
+            function collectWhatsappLinks(card, fallbackDocumentoUrl = '') {
+                if (!card) return [];
+
+                const links = [];
+                const appendLink = (label, url) => {
+                    const normalizedUrl = String(url || '').trim();
+                    if (!normalizedUrl) return;
+                    if (links.some((item) => item.url === normalizedUrl)) return;
+                    links.push({ label, url: normalizedUrl });
+                };
+
+                const isPgrComPcmso = card.dataset.pgrPcmso === '1';
+                const isAsoTask = card.dataset.isAso === '1';
+                const isTreinamentoTask = card.dataset.isTreinamentoTask === '1';
+                const documentoPrincipalUrl = fallbackDocumentoUrl || card.dataset.arquivoClienteUrl || '';
+
+                if (documentoPrincipalUrl) {
+                    appendLink(
+                        isPgrComPcmso ? 'PGR' : (isAsoTask ? 'ASO' : 'Documento final'),
+                        documentoPrincipalUrl
+                    );
+                }
+
+                if (card.dataset.pcmsoPgrUrl) {
+                    appendLink('PCMSO', card.dataset.pcmsoPgrUrl);
+                }
+
+                if (card.dataset.artPgrUrl) {
+                    appendLink('ART', card.dataset.artPgrUrl);
+                }
+
+                let anexos = [];
+                try {
+                    anexos = card.dataset.anexos ? JSON.parse(card.dataset.anexos) : [];
+                } catch (error) {
+                    anexos = [];
+                }
+
+                anexos
+                    .filter((anexo) => String(anexo?.servico || '').toLowerCase() === 'certificado_treinamento')
+                    .forEach((anexo, index) => appendLink(`Certificado ${index + 1}`, anexo?.url || ''));
+
+                if (isTreinamentoTask && !links.length) {
+                    anexos
+                        .filter((anexo) => String(anexo?.servico || '').toLowerCase() !== 'cancelamento_tarefa')
+                        .forEach((anexo, index) => appendLink(`Documento ${index + 1}`, anexo?.url || ''));
+                }
+
+                return links;
+            }
+
             function buildWhatsappMensagem(card, arquivoUrl) {
                 const telefone = (card?.dataset?.telefone || '').replace(/\D/g, '');
                 if (!telefone) return null;
 
-                const servico = card?.dataset?.servico || 'documento';
-                const links = arquivoUrl ? [arquivoUrl] : [];
-                const linksTexto = links.length ? `\n\nLinks:\n${links.join('\n')}` : '';
+                let servico = card?.dataset?.servico || 'documento';
+                const funcionario = String(card?.dataset?.funcionario || '').split('|')[0].trim();
+
+                if (card?.dataset?.isTreinamentoTask === '1') {
+                    let participante = '';
+
+                    try {
+                        const participantes = card?.dataset?.treinamentoParticipantes
+                            ? JSON.parse(card.dataset.treinamentoParticipantes)
+                            : [];
+                        participante = String(participantes?.[0] || '').trim();
+                    } catch (error) {
+                        participante = '';
+                    }
+
+                    const colaborador = funcionario || participante;
+                    if (colaborador) {
+                        servico = `Treinamentos NRs do colaborador ${colaborador}`;
+                    }
+                } else if (funcionario) {
+                    servico = `${servico} do colaborador ${funcionario}`;
+                }
+
+                const links = collectWhatsappLinks(card, arquivoUrl);
+                const bundleUrl = String(card?.dataset?.whatsappBundleUrl || '').trim();
+                const linksTexto = links.length > 1 && bundleUrl
+                    ? `\n\nBaixar pacote ZIP:\n${bundleUrl}`
+                    : (links.length
+                        ? `\n\nLinks:\n${links.map((item) => `${item.label}: ${item.url}`).join('\n')}`
+                        : '');
                 const mensagem = `Olá! Segue abaixo o anexo do ${servico}.\n\nEnviado pela Formed.${linksTexto}`;
 
                 return { telefone, mensagem };
@@ -2137,9 +2243,6 @@
 
                     if (isTreinamentoTask && !isAsoTask) {
                         arquivoWrapper.classList.add('hidden');
-                        if (btnNotificarCliente) {
-                            btnNotificarCliente.classList.add('hidden');
-                        }
                     } else {
                         arquivoWrapper.classList.remove('hidden');
 
@@ -2246,13 +2349,6 @@
                             }
                         }
 
-                        if (btnNotificarCliente) {
-                            const podeNotificar = isPgrComPcmso
-                                ? (temDocumentoFinal && temDocumentoComplementar && (!requerArt || temDocumentoArt))
-                                : temDocumentoFinal;
-                            btnNotificarCliente.classList.toggle('hidden', !podeNotificar);
-                        }
-
                         if (arquivoAjuda && isAsoTask && totalCertificados > 0 && !temDocumentoFinal) {
                             arquivoAjuda.textContent += ' Após anexar o documento final do ASO, os certificados de treinamento serão liberados abaixo.';
                         }
@@ -2262,6 +2358,11 @@
                                 ? ` Certificados pendentes: ${enviadosCertificados}/${totalCertificados}.`
                                 : ` Certificados concluídos: ${enviadosCertificados}/${totalCertificados}.`;
                         }
+                    }
+
+                    if (btnNotificarCliente) {
+                        const podeNotificar = collectWhatsappLinks(card).length > 0;
+                        btnNotificarCliente.classList.toggle('hidden', !podeNotificar);
                     }
                 }
                 // ===============================
@@ -2954,13 +3055,13 @@
             if (btnNotificarCliente) {
                 btnNotificarCliente.addEventListener('click', function () {
                     if (!detalhesCurrentCard) return;
-                    const arquivoUrl = detalhesCurrentCard.dataset.arquivoClienteUrl || '';
-                    if (!arquivoUrl) {
+                    const links = collectWhatsappLinks(detalhesCurrentCard);
+                    if (!links.length) {
                         window.uiAlert('Nenhum documento anexado para enviar.');
                         return;
                     }
 
-                    const payload = buildWhatsappMensagem(detalhesCurrentCard, arquivoUrl);
+                    const payload = buildWhatsappMensagem(detalhesCurrentCard);
                     if (!payload) {
                         window.uiAlert('Telefone do cliente não informado.');
                         return;
@@ -3987,6 +4088,85 @@
                 @json($clienteAutocomplete ?? []),
                 { maxItems: 200 }
             );
+        });
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const input = document.getElementById('kanban-cliente-autocomplete-input');
+            const list = document.getElementById('kanban-cliente-autocomplete-list');
+            const hidden = document.getElementById('kanban-cliente-id');
+            if (!input || !list || !hidden) return;
+
+            const clientes = @json(collect($clientes ?? [])->map(function ($cliente) {
+                return [
+                    'id' => (int) $cliente->id,
+                    'label' => $cliente->razao_social ?: ($cliente->nome_fantasia ?: ('Cliente #'.$cliente->id)),
+                ];
+            })->values());
+
+            const normalize = (value) => String(value || '')
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase()
+                .replace(/[^a-z0-9]/g, '');
+
+            const closeList = () => list.classList.add('hidden');
+
+            const render = (items) => {
+                list.innerHTML = '';
+                if (!items.length) {
+                    closeList();
+                    return;
+                }
+
+                items.slice(0, 30).forEach((cliente) => {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 transition';
+                    btn.textContent = cliente.label;
+                    btn.addEventListener('click', () => {
+                        input.value = cliente.label;
+                        hidden.value = String(cliente.id);
+                        closeList();
+                    });
+                    list.appendChild(btn);
+                });
+
+                list.classList.remove('hidden');
+            };
+
+            const syncFromInput = () => {
+                const query = normalize(input.value);
+                if (!query) {
+                    hidden.value = '';
+                    closeList();
+                    return;
+                }
+
+                const exact = clientes.find((cliente) => normalize(cliente.label) === query);
+                hidden.value = exact ? String(exact.id) : '';
+
+                const filtered = clientes.filter((cliente) => normalize(cliente.label).includes(query));
+                render(filtered);
+            };
+
+            input.addEventListener('input', syncFromInput);
+            input.addEventListener('focus', syncFromInput);
+            input.form?.addEventListener('submit', () => {
+                const query = normalize(input.value);
+                if (!query) {
+                    hidden.value = '';
+                    return;
+                }
+
+                const firstMatch = clientes.find((cliente) => normalize(cliente.label).includes(query));
+                hidden.value = firstMatch ? String(firstMatch.id) : '';
+            });
+
+            document.addEventListener('click', (event) => {
+                if (event.target === input || list.contains(event.target)) return;
+                closeList();
+            });
         });
     </script>
     <script>

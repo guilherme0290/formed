@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 class Tarefa extends Model
 {
@@ -92,11 +93,31 @@ class Tarefa extends Model
 
     public function getDocumentoLinkAttribute(): ?string
     {
-        if ($this->documento_token) {
-            return route('operacional.tarefas.documento', ['token' => $this->documento_token]);
+        if (!$this->path_documento_cliente) {
+            return null;
         }
 
-        return $this->arquivo_cliente_url;
+        $token = $this->documento_token ?: $this->garantirDocumentoToken();
+
+        return $token
+            ? route('operacional.tarefas.documento', ['token' => $token])
+            : $this->arquivo_cliente_url;
+    }
+
+    private function garantirDocumentoToken(): ?string
+    {
+        if (!$this->exists || !$this->path_documento_cliente) {
+            return null;
+        }
+
+        $token = Str::uuid()->toString();
+        while (static::query()->where('documento_token', $token)->exists()) {
+            $token = Str::uuid()->toString();
+        }
+
+        $this->forceFill(['documento_token' => $token])->saveQuietly();
+
+        return $this->documento_token;
     }
 
     public function ultimoLogMovimentacao(): ?TarefaLog
