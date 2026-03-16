@@ -176,19 +176,6 @@ class TarefaController extends Controller
 
     public function substituirDocumentoComplementar(Request $request, Tarefa $tarefa)
     {
-        $request->validate(
-            [
-                'arquivo_cliente' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'],
-            ],
-            [
-                'arquivo_cliente.required' => 'Selecione um arquivo do cliente.',
-                'arquivo_cliente.file' => 'O arquivo do cliente deve ser um arquivo válido.',
-                'arquivo_cliente.uploaded' => 'Não foi possível enviar o arquivo do cliente. Tente novamente.',
-                'arquivo_cliente.mimes' => 'O arquivo do cliente deve ser do tipo: pdf, jpg, jpeg ou png.',
-                'arquivo_cliente.max' => 'O arquivo do cliente deve ter no máximo 10 MB.',
-            ]
-        );
-
         if (!(bool) optional($tarefa->pgr)->com_pcms0) {
             return response()->json([
                 'ok' => false,
@@ -196,45 +183,31 @@ class TarefaController extends Controller
             ], 422);
         }
 
-        $anexoExistente = Anexos::query()
-            ->where('tarefa_id', $tarefa->id)
-            ->whereRaw('LOWER(COALESCE(servico, "")) = ?', ['documento_complementar_pgr_pcmso'])
-            ->latest('id')
-            ->first();
+        return $this->substituirDocumentoAdicional(
+            request: $request,
+            tarefa: $tarefa,
+            servico: 'documento_complementar_pgr_pcmso',
+            pasta: 'tarefas-complementares',
+            observacao: 'Documento complementar do PGR + PCMSO anexado'
+        );
+    }
 
-        $path = S3Helper::upload($request->file('arquivo_cliente'), 'tarefas-complementares');
-
-        $payload = [
-            'empresa_id' => $tarefa->empresa_id,
-            'cliente_id' => $tarefa->cliente_id,
-            'tarefa_id' => $tarefa->id,
-            'uploaded_by' => (int) Auth::id(),
-            'servico' => 'documento_complementar_pgr_pcmso',
-            'nome_original' => $request->file('arquivo_cliente')->getClientOriginalName(),
-            'path' => $path,
-            'mime_type' => $request->file('arquivo_cliente')->getClientMimeType(),
-            'tamanho' => $request->file('arquivo_cliente')->getSize(),
-        ];
-
-        if ($anexoExistente) {
-            $anexoExistente->update($payload);
-        } else {
-            $anexoExistente = Anexos::create($payload);
+    public function substituirDocumentoArt(Request $request, Tarefa $tarefa)
+    {
+        if (!(bool) optional($tarefa->pgr)->com_art) {
+            return response()->json([
+                'ok' => false,
+                'error' => 'Esta tarefa não exige ART.',
+            ], 422);
         }
 
-        TarefaLog::create([
-            'tarefa_id' => $tarefa->id,
-            'user_id' => Auth::id(),
-            'de_coluna_id' => $tarefa->coluna_id,
-            'para_coluna_id' => $tarefa->coluna_id,
-            'acao' => 'documento',
-            'observacao' => 'Documento complementar do PGR + PCMSO anexado',
-        ]);
-
-        return response()->json([
-            'ok' => true,
-            'documento_url' => $anexoExistente->fresh()->url,
-        ]);
+        return $this->substituirDocumentoAdicional(
+            request: $request,
+            tarefa: $tarefa,
+            servico: 'documento_art_pgr_pcmso',
+            pasta: 'tarefas-art',
+            observacao: 'Documento ART do PGR + PCMSO anexado'
+        );
     }
 
     public function uploadCertificadosTreinamento(Request $request, Tarefa $tarefa)
@@ -506,8 +479,13 @@ class TarefaController extends Controller
             ->where('tarefa_id', $tarefa->id)
             ->whereRaw('LOWER(COALESCE(servico, "")) = ?', ['documento_complementar_pgr_pcmso'])
             ->exists();
+        $requerArt = (bool) ($pgr?->com_art);
+        $temDocumentoArt = !$requerArt || Anexos::query()
+            ->where('tarefa_id', $tarefa->id)
+            ->whereRaw('LOWER(COALESCE(servico, "")) = ?', ['documento_art_pgr_pcmso'])
+            ->exists();
 
-        if ($temDocumentoPrincipal && $temDocumentoComplementar) {
+        if ($temDocumentoPrincipal && $temDocumentoComplementar && $temDocumentoArt) {
             return [
                 'pendente' => false,
                 'message' => null,
@@ -516,8 +494,66 @@ class TarefaController extends Controller
 
         return [
             'pendente' => true,
-            'message' => 'Para finalizar PGR + PCMSO, anexe os dois documentos finais: PGR e PCMSO.',
+            'message' => $requerArt
+                ? 'Para finalizar PGR + PCMSO com ART, anexe os documentos finais de PGR, PCMSO e ART.'
+                : 'Para finalizar PGR + PCMSO, anexe os dois documentos finais: PGR e PCMSO.',
         ];
+    }
+
+    private function substituirDocumentoAdicional(Request $request, Tarefa $tarefa, string $servico, string $pasta, string $observacao)
+    {
+        $request->validate(
+            [
+                'arquivo_cliente' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'],
+            ],
+            [
+                'arquivo_cliente.required' => 'Selecione um arquivo do cliente.',
+                'arquivo_cliente.file' => 'O arquivo do cliente deve ser um arquivo válido.',
+                'arquivo_cliente.uploaded' => 'Não foi possível enviar o arquivo do cliente. Tente novamente.',
+                'arquivo_cliente.mimes' => 'O arquivo do cliente deve ser do tipo: pdf, jpg, jpeg ou png.',
+                'arquivo_cliente.max' => 'O arquivo do cliente deve ter no máximo 10 MB.',
+            ]
+        );
+
+        $anexoExistente = Anexos::query()
+            ->where('tarefa_id', $tarefa->id)
+            ->whereRaw('LOWER(COALESCE(servico, "")) = ?', [mb_strtolower($servico)])
+            ->latest('id')
+            ->first();
+
+        $path = S3Helper::upload($request->file('arquivo_cliente'), $pasta);
+
+        $payload = [
+            'empresa_id' => $tarefa->empresa_id,
+            'cliente_id' => $tarefa->cliente_id,
+            'tarefa_id' => $tarefa->id,
+            'uploaded_by' => (int) Auth::id(),
+            'servico' => $servico,
+            'nome_original' => $request->file('arquivo_cliente')->getClientOriginalName(),
+            'path' => $path,
+            'mime_type' => $request->file('arquivo_cliente')->getClientMimeType(),
+            'tamanho' => $request->file('arquivo_cliente')->getSize(),
+        ];
+
+        if ($anexoExistente) {
+            $anexoExistente->update($payload);
+        } else {
+            $anexoExistente = Anexos::create($payload);
+        }
+
+        TarefaLog::create([
+            'tarefa_id' => $tarefa->id,
+            'user_id' => Auth::id(),
+            'de_coluna_id' => $tarefa->coluna_id,
+            'para_coluna_id' => $tarefa->coluna_id,
+            'acao' => 'documento',
+            'observacao' => $observacao,
+        ]);
+
+        return response()->json([
+            'ok' => true,
+            'documento_url' => $anexoExistente->fresh()->url,
+        ]);
     }
 
 }

@@ -165,6 +165,10 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
                 [TarefaController::class, 'substituirDocumentoComplementar']
             )->name('documento-complementar');
 
+            Route::post('{tarefa}/documento-art',
+                [TarefaController::class, 'substituirDocumentoArt']
+            )->name('documento-art');
+
             Route::post('{tarefa}/certificados',
                 [TarefaController::class, 'uploadCertificadosTreinamento']
             )->name('certificados');

@@ -512,6 +512,9 @@
                                         $documentoComplementarPgrPcmso = $anexos->first(function ($anexo) {
                                             return mb_strtolower((string) ($anexo->servico ?? '')) === 'documento_complementar_pgr_pcmso';
                                         });
+                                        $documentoArtPgrPcmso = $anexos->first(function ($anexo) {
+                                            return mb_strtolower((string) ($anexo->servico ?? '')) === 'documento_art_pgr_pcmso';
+                                        });
                                     @endphp
                                     data-tem-anexos="{{ $anexos->isNotEmpty() ? '1' : '0' }}"
                                     data-anexos='@json($anexosPayload)'
@@ -530,6 +533,7 @@
                                     data-finalizar-documento-existente-url="{{ route('operacional.tarefas.finalizar-documento-existente', $tarefa) }}"
                                     data-substituir-doc-url="{{ route('operacional.tarefas.documento-cliente', $tarefa) }}"
                                     data-substituir-doc-complementar-url="{{ route('operacional.tarefas.documento-complementar', $tarefa) }}"
+                                    data-substituir-doc-art-url="{{ route('operacional.tarefas.documento-art', $tarefa) }}"
                                     data-prioridade="{{ ucfirst($tarefa->prioridade) }}"
                                     data-status="{{ $coluna->nome }}"
                                     data-finalizado="{{ (!empty($tarefa->finalizado_em) || ($coluna->finaliza ?? false)) ? '1' : '0' }}"
@@ -603,6 +607,9 @@
                                     @endif
                                     @if($documentoComplementarPgrPcmso)
                                         data-pcmso-pgr-url="{{ $documentoComplementarPgrPcmso->url }}"
+                                    @endif
+                                    @if($documentoArtPgrPcmso)
+                                        data-art-pgr-url="{{ $documentoArtPgrPcmso->url }}"
                                     @endif
 
                                     {{-- APR --}}
@@ -1551,6 +1558,33 @@
                                 </button>
                             </div>
                         </div>
+                        <div id="modal-arquivo-art-wrapper" class="mt-4 hidden border-t border-emerald-100 pt-4">
+                            <p id="modal-arquivo-art-status" class="text-[12px] text-emerald-900 font-semibold mb-2">
+                                Status: ART ainda não anexada.
+                            </p>
+                            <a id="modal-arquivo-art-link"
+                               href="#"
+                               target="_blank"
+                               class="inline-flex items-center gap-2 text-xs font-semibold text-emerald-700 hover:text-emerald-900 underline hidden">
+                                📎 Visualizar ART
+                            </a>
+                            <div class="mt-3 flex flex-col gap-2">
+                                <input
+                                    type="file"
+                                    id="modal-arquivo-art-input"
+                                    class="hidden"
+                                    accept=".pdf,.jpg,.jpeg,.png"
+                                >
+                                <button
+                                    type="button"
+                                    id="modal-arquivo-art-btn"
+                                    class="inline-flex items-center justify-center px-3 py-2 rounded-lg
+                                       border border-emerald-200 bg-white text-emerald-700 text-xs font-semibold
+                                       hover:bg-emerald-50 transition">
+                                    Anexar ART
+                                </button>
+                            </div>
+                        </div>
                         <button
                             type="button"
                             id="btn-notificar-cliente"
@@ -1891,6 +1925,11 @@
             const arquivoComplementarLink = document.getElementById('modal-arquivo-complementar-link');
             const arquivoComplementarInput = document.getElementById('modal-arquivo-complementar-input');
             const arquivoComplementarBtn = document.getElementById('modal-arquivo-complementar-btn');
+            const arquivoArtWrapper = document.getElementById('modal-arquivo-art-wrapper');
+            const arquivoArtStatus = document.getElementById('modal-arquivo-art-status');
+            const arquivoArtLink = document.getElementById('modal-arquivo-art-link');
+            const arquivoArtInput = document.getElementById('modal-arquivo-art-input');
+            const arquivoArtBtn = document.getElementById('modal-arquivo-art-btn');
             const arquivoDescricao = document.getElementById('modal-arquivo-descricao');
             const arquivoStatus = document.getElementById('modal-arquivo-status');
             const arquivoAjuda = document.getElementById('modal-arquivo-ajuda');
@@ -1929,7 +1968,9 @@
                     return 'Anexe o ASO final assinado/emitido para o cliente.';
                 }
                 if (card?.dataset?.pgrPcmso === '1') {
-                    return 'Anexe os documentos finais do PGR e do PCMSO entregues ao cliente.';
+                    return card?.dataset?.pgrComArt === '1'
+                        ? 'Anexe os documentos finais do PGR, do PCMSO e da ART entregues ao cliente.'
+                        : 'Anexe os documentos finais do PGR e do PCMSO entregues ao cliente.';
                 }
                 if (servico.includes('pgr')) {
                     return 'Anexe o documento final do PGR entregue ao cliente.';
@@ -2067,14 +2108,19 @@
                     const pendentesCertificados = card.dataset.certificadosPendentes === '1';
                     const temDocumentoFinal = !!urlArquivo;
                     const isPgrComPcmso = card.dataset.pgrPcmso === '1';
+                    const requerArt = card.dataset.pgrComArt === '1';
                     const urlComplementar = card.dataset.pcmsoPgrUrl || '';
                     const temDocumentoComplementar = !!urlComplementar;
+                    const urlArt = card.dataset.artPgrUrl || '';
+                    const temDocumentoArt = !!urlArt;
 
                     arquivoWrapper.classList.remove('hidden');
 
                     if (arquivoDescricao) {
                         arquivoDescricao.textContent = isPgrComPcmso
-                            ? 'Anexe os arquivos finais do PGR e do PCMSO entregues ao cliente.'
+                            ? (requerArt
+                                ? 'Anexe os arquivos finais do PGR, do PCMSO e da ART entregues ao cliente.'
+                                : 'Anexe os arquivos finais do PGR e do PCMSO entregues ao cliente.')
                             : 'Este é o documento principal concluído desta tarefa, disponibilizado ao cliente.';
                     }
                     if (arquivoAjuda) {
@@ -2148,9 +2194,34 @@
                         }
                     }
 
+                    if (arquivoArtWrapper && arquivoArtStatus && arquivoArtLink && arquivoArtBtn) {
+                        if (isPgrComPcmso && requerArt) {
+                            arquivoArtWrapper.classList.remove('hidden');
+
+                            if (temDocumentoArt) {
+                                arquivoArtLink.href = urlArt;
+                                arquivoArtLink.classList.remove('hidden');
+                                arquivoArtStatus.textContent = 'ART: Documento anexado.';
+                                arquivoArtBtn.textContent = 'Atualizar ART';
+                                arquivoArtBtn.title = 'Substitui o documento final da ART';
+                            } else {
+                                arquivoArtLink.href = '#';
+                                arquivoArtLink.classList.add('hidden');
+                                arquivoArtStatus.textContent = 'ART: Documento ainda não anexado.';
+                                arquivoArtBtn.textContent = 'Anexar ART';
+                                arquivoArtBtn.title = 'Anexar o documento final da ART';
+                            }
+                        } else {
+                            arquivoArtWrapper.classList.add('hidden');
+                            arquivoArtLink.href = '#';
+                            arquivoArtLink.classList.add('hidden');
+                            arquivoArtStatus.textContent = 'Status: ART ainda não anexada.';
+                        }
+                    }
+
                     if (btnNotificarCliente) {
                         const podeNotificar = isPgrComPcmso
-                            ? (temDocumentoFinal && temDocumentoComplementar)
+                            ? (temDocumentoFinal && temDocumentoComplementar && (!requerArt || temDocumentoArt))
                             : temDocumentoFinal;
                         btnNotificarCliente.classList.toggle('hidden', !podeNotificar);
                     }
@@ -2194,6 +2265,13 @@
                         });
                     }
 
+                    if (card.dataset.artPgrUrl) {
+                        anexos.push({
+                            label: 'Documento final - ART',
+                            url: card.dataset.artPgrUrl
+                        });
+                    }
+
                     // 👉 Aqui no futuro você pode ir plugando mais anexos:
                     // if (card.dataset.algumaOutraCoisaUrl) { ... }
 
@@ -2208,7 +2286,12 @@
                         return 'Documento';
                     };
 
-                    const anexosDocs = anexos.filter(a => !a || a.servico !== 'cancelamento_tarefa');
+                    const anexosDocs = anexos.filter((a) => {
+                        const servico = String(a?.servico || '').toLowerCase();
+                        return servico !== 'cancelamento_tarefa'
+                            && servico !== 'documento_complementar_pgr_pcmso'
+                            && servico !== 'documento_art_pgr_pcmso';
+                    });
 
                     if (anexosDocs.length) {
                         docsWrapper.classList.remove('hidden');
@@ -2283,8 +2366,12 @@
                 if (finalizarBtn) {
                     const temDocumentoFinal = !!card.dataset.arquivoClienteUrl;
                     const precisaDocumentoComplementar = card.dataset.pgrPcmso === '1';
+                    const precisaArt = card.dataset.pgrComArt === '1';
                     const temDocumentoComplementar = !!card.dataset.pcmsoPgrUrl;
-                    const podeFinalizar = temDocumentoFinal && (!precisaDocumentoComplementar || temDocumentoComplementar);
+                    const temDocumentoArt = !!card.dataset.artPgrUrl;
+                    const podeFinalizar = temDocumentoFinal
+                        && (!precisaDocumentoComplementar || temDocumentoComplementar)
+                        && (!precisaArt || temDocumentoArt);
 
                     finalizarBtn.disabled = !podeFinalizar;
                     finalizarBtn.classList.toggle('opacity-60', !podeFinalizar);
@@ -3243,6 +3330,62 @@
                     });
             }
 
+            function uploadDocumentoArt(file) {
+                if (!file || !detalhesCurrentCard) return;
+                const url = detalhesCurrentCard.dataset.substituirDocArtUrl;
+                if (!url) {
+                    window.uiAlert('Não foi possível enviar o documento ART desta tarefa.');
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('arquivo_cliente', file);
+
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json',
+                    },
+                    body: formData,
+                })
+                    .then(async (r) => {
+                        const contentType = r.headers.get('content-type') || '';
+                        const isJson = contentType.includes('application/json');
+                        const data = isJson ? await r.json() : null;
+
+                        if (!r.ok) {
+                            const error =
+                                data?.error
+                                || data?.message
+                                || (data?.errors ? Object.values(data.errors).flat()[0] : null)
+                                || 'Erro ao enviar documento ART.';
+                            throw new Error(error);
+                        }
+
+                        return data;
+                    })
+                    .then((data) => {
+                        if (!data || !data.ok) {
+                            const error =
+                                data?.error
+                                || data?.message
+                                || (data?.errors ? Object.values(data.errors).flat()[0] : null)
+                                || 'Erro ao enviar documento ART.';
+                            window.uiAlert(error);
+                            return;
+                        }
+
+                        if (data.documento_url) {
+                            detalhesCurrentCard.dataset.artPgrUrl = data.documento_url;
+                            openDetalhesModal(detalhesCurrentCard);
+                        }
+                    })
+                    .catch((error) => {
+                        window.uiAlert(error?.message || 'Erro ao enviar documento ART.');
+                    });
+            }
+
             function uploadCertificadosTreinamento(files) {
                 if (!files?.length || !detalhesCurrentCard) return;
                 const url = detalhesCurrentCard.dataset.certificadosUploadUrl;
@@ -3326,6 +3469,19 @@
                     const file = arquivoComplementarInput.files?.[0];
                     if (!file) return;
                     uploadDocumentoComplementar(file);
+                });
+            }
+
+            if (arquivoArtBtn && arquivoArtInput) {
+                arquivoArtBtn.addEventListener('click', function () {
+                    arquivoArtInput.value = '';
+                    arquivoArtInput.click();
+                });
+
+                arquivoArtInput.addEventListener('change', function () {
+                    const file = arquivoArtInput.files?.[0];
+                    if (!file) return;
+                    uploadDocumentoArt(file);
                 });
             }
 
