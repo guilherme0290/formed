@@ -463,7 +463,7 @@ class TarefaController extends Controller
             $colunaDestino = $moverParaAguardandoFornecedor ? $colunaAguardandoFornecedor : $colunaFinalizada;
             $mensagemRetorno = $moverParaAguardandoFornecedor
                 ? sprintf(
-                    'A tarefa ainda não pode ser concluída. Ela espera %d certificado(s) e recebeu %d.',
+                    'A tarefa foi movida para Aguardando fornecedor. Ela ainda não pode ser concluída porque espera %d certificado(s) e recebeu %d.',
                     (int) ($pendenciaCertificados['total_esperado'] ?? 0),
                     (int) ($pendenciaCertificados['enviados'] ?? 0)
                 )

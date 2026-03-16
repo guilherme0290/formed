@@ -321,8 +321,10 @@ class PainelController extends Controller
             $colunaSlug = (string) ($tarefa->coluna?->slug ?? '');
             $documentoAnexado = filled($tarefa->path_documento_cliente);
             $aguardandoConclusaoComDocumento = $documentoAnexado;
+            $colunaPausadaFornecedor = in_array($colunaSlug, ['aguardando', 'aguardando-fornecedor'], true);
             $estaFinalizada = !empty($tarefa->finalizado_em)
                 || ($tarefa->coluna?->finaliza ?? false)
+                || $colunaPausadaFornecedor
                 || $aguardandoConclusaoComDocumento;
             $estaAtrasada = $fimPrevisto && $fimPrevisto->lt($agora) && !$estaFinalizada;
 
