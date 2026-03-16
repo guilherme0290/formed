@@ -200,6 +200,8 @@
                                         $servicoTreinamentoId = (int) config('services.treinamento_id');
                                         $servicoExameId = (int) config('services.exame_id');
                                         $servicoAsoId = (int) (config('services.aso_id') ?? 0);
+                                        $servicoArtDisponivel = $servicoArtDisponivel ?? null;
+                                        $artRenderizado = false;
                                         $serviceButtonStyles = [
                                             'aso' => 'border-slate-200 border-l-4 border-l-sky-500 bg-white text-sky-900 hover:bg-sky-50',
                                             'pgr' => 'border-slate-200 border-l-4 border-l-emerald-500 bg-white text-emerald-900 hover:bg-emerald-50',
@@ -207,24 +209,26 @@
                                             'ltcat' => 'border-slate-200 border-l-4 border-l-orange-500 bg-white text-orange-900 hover:bg-orange-50',
                                             'ltip' => 'border-slate-200 border-l-4 border-l-red-600 bg-white text-red-900 hover:bg-red-50',
                                             'apr' => 'border-slate-200 border-l-4 border-l-amber-600 bg-white text-amber-900 hover:bg-amber-50',
+                                            'art' => 'border-slate-200 border-l-4 border-l-cyan-600 bg-white text-cyan-900 hover:bg-cyan-50',
                                             'pae' => 'border-slate-200 border-l-4 border-l-rose-600 bg-white text-rose-900 hover:bg-rose-50',
                                             'default' => 'border-slate-200 border-l-4 border-l-slate-500 bg-white text-slate-700 hover:bg-slate-50',
                                         ];
                                     @endphp
                                     @foreach($servicos as $servico)
+                                        @php
+                                            $nomeServico = mb_strtolower((string) $servico->nome, 'UTF-8');
+                                        @endphp
                                         @if(
                                             (int) $servico->id === $servicoTreinamentoId
                                             || (int) $servico->id === $servicoExameId
                                             || ($servicoAsoId > 0 && (int) $servico->id === $servicoAsoId)
+                                            || $nomeServico === 'aso'
                                         )
                                             @continue
                                         @endif
                                         @php
-                                            $nomeServico = mb_strtolower((string) $servico->nome, 'UTF-8');
                                             $colorKey = 'default';
-                                            if (str_contains($nomeServico, 'aso')) {
-                                                $colorKey = 'aso';
-                                            } elseif (str_contains($nomeServico, 'pgr')) {
+                                            if (str_contains($nomeServico, 'pgr')) {
                                                 $colorKey = 'pgr';
                                             } elseif (str_contains($nomeServico, 'pcmso')) {
                                                 $colorKey = 'pcmso';
@@ -239,6 +243,11 @@
                                             }
                                             $btnServiceClass = $serviceButtonStyles[$colorKey] ?? $serviceButtonStyles['default'];
                                         @endphp
+                                        @php
+                                            if ($nomeServico === 'art') {
+                                                $artRenderizado = true;
+                                            }
+                                        @endphp
                                         <button type="button"
                                                 class="w-full px-3 py-2 rounded-xl border text-sm {{ $btnServiceClass }}"
                                                 data-action="add-servico"
@@ -247,6 +256,15 @@
                                             + {{ $servico->nome }}
                                         </button>
                                     @endforeach
+                                    @if(!$artRenderizado && $servicoArtDisponivel)
+                                        <button type="button"
+                                                class="w-full px-3 py-2 rounded-xl border text-sm {{ $serviceButtonStyles['art'] }}"
+                                                data-action="add-servico"
+                                                data-servico-id="{{ $servicoArtDisponivel->id }}"
+                                                data-servico-nome="{{ e($servicoArtDisponivel->nome) }}">
+                                            + {{ $servicoArtDisponivel->nome }}
+                                        </button>
+                                    @endif
                                     <button type="button"
                                             id="btnToggleEsocial"
                                             class="w-full px-3 py-2 rounded-xl border border-slate-200 border-l-4 border-l-violet-600 bg-white text-violet-800 text-sm hover:bg-violet-50">

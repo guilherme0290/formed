@@ -76,11 +76,23 @@ const ensureLucideLoaded = () => {
 window.uiAlert = async (message, options = {}) => {
     const swal = await ensureSwalLoaded();
     if (swal) {
+        const overlayRoot = document.getElementById('app-overlay-root') || document.body;
+        if (overlayRoot.classList) {
+            overlayRoot.classList.remove('pointer-events-none');
+            overlayRoot.classList.add('pointer-events-auto');
+        }
         return swal.fire({
+            target: overlayRoot,
             icon: options.icon || 'info',
             title: options.title || 'Atenção',
             text: message,
             confirmButtonText: options.confirmText || 'OK',
+            didClose: () => {
+                if (overlayRoot.classList) {
+                    overlayRoot.classList.remove('pointer-events-auto');
+                    overlayRoot.classList.add('pointer-events-none');
+                }
+            },
         });
     }
 
@@ -91,13 +103,25 @@ window.uiAlert = async (message, options = {}) => {
 window.uiConfirm = async (message, options = {}) => {
     const swal = await ensureSwalLoaded();
     if (swal) {
+        const overlayRoot = document.getElementById('app-overlay-root') || document.body;
+        if (overlayRoot.classList) {
+            overlayRoot.classList.remove('pointer-events-none');
+            overlayRoot.classList.add('pointer-events-auto');
+        }
         return swal.fire({
+            target: overlayRoot,
             icon: options.icon || 'warning',
             title: options.title || 'Confirmar ação',
             text: message,
             showCancelButton: true,
             confirmButtonText: options.confirmText || 'Confirmar',
             cancelButtonText: options.cancelText || 'Cancelar',
+            didClose: () => {
+                if (overlayRoot.classList) {
+                    overlayRoot.classList.remove('pointer-events-auto');
+                    overlayRoot.classList.add('pointer-events-none');
+                }
+            },
         }).then((result) => result.isConfirmed);
     }
 

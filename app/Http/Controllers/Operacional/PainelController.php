@@ -306,7 +306,12 @@ class PainelController extends Controller
         $payload = [];
         foreach ($tarefas as $tarefa) {
             $fimPrevisto = $tarefa->fim_previsto;
-            $estaFinalizada = !empty($tarefa->finalizado_em) || ($tarefa->coluna?->finaliza ?? false);
+            $colunaSlug = (string) ($tarefa->coluna?->slug ?? '');
+            $documentoAnexado = filled($tarefa->path_documento_cliente);
+            $aguardandoConclusaoComDocumento = $documentoAnexado;
+            $estaFinalizada = !empty($tarefa->finalizado_em)
+                || ($tarefa->coluna?->finaliza ?? false)
+                || $aguardandoConclusaoComDocumento;
             $estaAtrasada = $fimPrevisto && $fimPrevisto->lt($agora) && !$estaFinalizada;
 
             if ($estaAtrasada && $colunaAtraso && (int) $tarefa->coluna_id !== (int) $colunaAtraso->id) {

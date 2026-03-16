@@ -153,9 +153,21 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
                 [TarefaController::class, 'finalizarComArquivo']
             )->name('finalizar-com-arquivo');
 
+            Route::post('{tarefa}/finalizar-documento-existente',
+                [TarefaController::class, 'finalizarComDocumentoExistente']
+            )->name('finalizar-documento-existente');
+
             Route::post('{tarefa}/documento-cliente',
                 [TarefaController::class, 'substituirDocumentoCliente']
             )->name('documento-cliente');
+
+            Route::post('{tarefa}/documento-complementar',
+                [TarefaController::class, 'substituirDocumentoComplementar']
+            )->name('documento-complementar');
+
+            Route::post('{tarefa}/documento-art',
+                [TarefaController::class, 'substituirDocumentoArt']
+            )->name('documento-art');
 
             Route::post('{tarefa}/certificados',
                 [TarefaController::class, 'uploadCertificadosTreinamento']

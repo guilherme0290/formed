@@ -617,12 +617,8 @@ class ClienteController extends Controller
 
         $routePrefix = $this->routePrefix();
 
-        $esocialId = config('services.esocial_id');
-        $servicos = Servico::where('empresa_id', $empresaId)
-            ->where('ativo', true)
-            ->when($esocialId, fn($q) => $q->where('id', '!=', $esocialId))
-            ->orderBy('nome')
-            ->get();
+        $servicos = $this->servicosDisponiveisParaCliente($empresaId);
+        $servicoArtDisponivel = $this->servicoArtDisponivelParaCliente($empresaId);
         $funcoes = Funcao::where('empresa_id', $empresaId)->orderBy('nome')->get(['id', 'nome', 'ativo']);
         $clienteFuncoesIds = $cliente->funcoes()
             ->where('funcoes.empresa_id', $empresaId)
@@ -795,6 +791,7 @@ class ClienteController extends Controller
             'modo'            => 'edit',
             'routePrefix'     => $routePrefix,
             'servicos'        => $servicos,
+            'servicoArtDisponivel' => $servicoArtDisponivel,
             'funcoes'         => $funcoes,
             'clienteFuncoesIds' => $clienteFuncoesIds,
             'funcionariosPorFuncao' => $funcionariosPorFuncao,
@@ -812,6 +809,53 @@ class ClienteController extends Controller
             'userExistente'    => $userExistente,
             'senhaSugerida'    => $senhaSugerida,
         ]);
+    }
+
+    private function servicosDisponiveisParaCliente(int $empresaId)
+    {
+        $esocialId = config('services.esocial_id');
+
+        $servicos = Servico::query()
+            ->where('empresa_id', $empresaId)
+            ->where('ativo', true)
+            ->when($esocialId, fn ($q) => $q->where('id', '!=', $esocialId))
+            ->orderBy('nome')
+            ->get();
+
+        $temArt = $servicos->contains(function ($servico) {
+            return mb_strtolower((string) $servico->nome, 'UTF-8') === 'art';
+        });
+
+        if (!$temArt) {
+            $servicoArt = Servico::query()
+                ->where('ativo', true)
+                ->whereRaw('LOWER(nome) = ?', ['art'])
+                ->when($esocialId, fn ($q) => $q->where('id', '!=', $esocialId))
+                ->orderByRaw('CASE WHEN empresa_id = ? THEN 0 WHEN empresa_id = 1 THEN 1 ELSE 2 END', [$empresaId])
+                ->orderBy('id')
+                ->first();
+
+            if ($servicoArt) {
+                $servicos->push($servicoArt);
+                $servicos = $servicos->sortBy('nome', SORT_NATURAL | SORT_FLAG_CASE)->values();
+            }
+        }
+
+        return $servicos;
+    }
+
+    private function servicoArtDisponivelParaCliente(int $empresaId): ?Servico
+    {
+        return Servico::query()
+            ->whereRaw('LOWER(nome) = ?', ['art'])
+            ->where(function ($query) use ($empresaId) {
+                $query->where('empresa_id', $empresaId)
+                    ->orWhere('empresa_id', 1);
+            })
+            ->orderByRaw('CASE WHEN empresa_id = ? THEN 0 WHEN empresa_id = 1 THEN 1 ELSE 2 END', [$empresaId])
+            ->orderByDesc('ativo')
+            ->orderBy('id')
+            ->first();
     }
 
     public function downloadArquivosFuncionario(

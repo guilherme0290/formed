@@ -509,6 +509,12 @@
                                         })->count();
                                         $asoTreinamentoPendente = $asoTreinamentoEsperado > 0
                                             && $asoTreinamentoEnviado < $asoTreinamentoEsperado;
+                                        $documentoComplementarPgrPcmso = $anexos->first(function ($anexo) {
+                                            return mb_strtolower((string) ($anexo->servico ?? '')) === 'documento_complementar_pgr_pcmso';
+                                        });
+                                        $documentoArtPgrPcmso = $anexos->first(function ($anexo) {
+                                            return mb_strtolower((string) ($anexo->servico ?? '')) === 'documento_art_pgr_pcmso';
+                                        });
                                     @endphp
                                     data-tem-anexos="{{ $anexos->isNotEmpty() ? '1' : '0' }}"
                                     data-anexos='@json($anexosPayload)'
@@ -524,7 +530,10 @@
                                     data-move-url="{{ route('operacional.tarefas.mover', $tarefa) }}"
                                     data-finalizar-url="{{ route('operacional.tarefas.finalizar-com-arquivo', $tarefa) }}
                                     "
+                                    data-finalizar-documento-existente-url="{{ route('operacional.tarefas.finalizar-documento-existente', $tarefa) }}"
                                     data-substituir-doc-url="{{ route('operacional.tarefas.documento-cliente', $tarefa) }}"
+                                    data-substituir-doc-complementar-url="{{ route('operacional.tarefas.documento-complementar', $tarefa) }}"
+                                    data-substituir-doc-art-url="{{ route('operacional.tarefas.documento-art', $tarefa) }}"
                                     data-prioridade="{{ ucfirst($tarefa->prioridade) }}"
                                     data-status="{{ $coluna->nome }}"
                                     data-finalizado="{{ (!empty($tarefa->finalizado_em) || ($coluna->finaliza ?? false)) ? '1' : '0' }}"
@@ -579,6 +588,7 @@
                                         @endphp
                                         data-pgr-tipo="{{ $pgr->tipo }}"
                                         data-pgr-com-art="{{ $pgr->com_art ? '1' : '0' }}"
+                                        data-pgr-pcmso="{{ $pgr->com_pcms0 ? '1' : '0' }}"
                                         data-pgr-qtd-homens="{{ $pgr->qtd_homens }}"
                                         data-pgr-qtd-mulheres="{{ $pgr->qtd_mulheres }}"
                                         data-pgr-total-trabalhadores="{{ $pgr->total_trabalhadores }}"
@@ -594,6 +604,12 @@
                                     @endif
                                     @if($tarefa->documento_link)
                                         data-arquivo-cliente-url="{{ $tarefa->documento_link }}"
+                                    @endif
+                                    @if($documentoComplementarPgrPcmso)
+                                        data-pcmso-pgr-url="{{ $documentoComplementarPgrPcmso->url }}"
+                                    @endif
+                                    @if($documentoArtPgrPcmso)
+                                        data-art-pgr-url="{{ $documentoArtPgrPcmso->url }}"
                                     @endif
 
                                     {{-- APR --}}
@@ -922,7 +938,7 @@
     <div id="tarefa-modal"
          data-overlay-root="true"
          class="fixed inset-0 z-[90] hidden items-center justify-center bg-black/50 p-4 overflow-y-auto">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden">
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden">
             {{-- Cabeçalho --}}
             {{-- Cabeçalho (VERSÃO DEBUG) --}}
             <div
@@ -1459,6 +1475,15 @@
                                     @if(!$canUpdateTask) disabled @endif>
                                 Mover para: Atrasado
                             </button>
+
+                            <button
+                                type="button"
+                                id="modal-finalizar-btn"
+                                class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg
+                                       bg-sky-600 text-white text-sm font-semibold shadow-sm
+                                       hover:bg-sky-700 transition">
+                                Finalizar tarefa
+                            </button>
                         </div>
                     </section>
                     {{-- 5. Documento final da tarefa --}}
@@ -1505,6 +1530,60 @@
                             <p id="modal-arquivo-impacto" class="text-[11px] text-emerald-700/90">
                                 Quando anexado, este documento ficará disponível para o cliente.
                             </p>
+                        </div>
+                        <div id="modal-arquivo-complementar-wrapper" class="mt-4 hidden border-t border-emerald-100 pt-4">
+                            <p id="modal-arquivo-complementar-status" class="text-[12px] text-emerald-900 font-semibold mb-2">
+                                Status: Documento complementar ainda não anexado.
+                            </p>
+                            <a id="modal-arquivo-complementar-link"
+                               href="#"
+                               target="_blank"
+                               class="inline-flex items-center gap-2 text-xs font-semibold text-emerald-700 hover:text-emerald-900 underline hidden">
+                                📎 Visualizar documento complementar
+                            </a>
+                            <div class="mt-3 flex flex-col gap-2">
+                                <input
+                                    type="file"
+                                    id="modal-arquivo-complementar-input"
+                                    class="hidden"
+                                    accept=".pdf,.jpg,.jpeg,.png"
+                                >
+                                <button
+                                    type="button"
+                                    id="modal-arquivo-complementar-btn"
+                                    class="inline-flex items-center justify-center px-3 py-2 rounded-lg
+                                       border border-emerald-200 bg-white text-emerald-700 text-xs font-semibold
+                                       hover:bg-emerald-50 transition">
+                                    Anexar documento complementar
+                                </button>
+                            </div>
+                        </div>
+                        <div id="modal-arquivo-art-wrapper" class="mt-4 hidden border-t border-emerald-100 pt-4">
+                            <p id="modal-arquivo-art-status" class="text-[12px] text-emerald-900 font-semibold mb-2">
+                                Status: ART ainda não anexada.
+                            </p>
+                            <a id="modal-arquivo-art-link"
+                               href="#"
+                               target="_blank"
+                               class="inline-flex items-center gap-2 text-xs font-semibold text-emerald-700 hover:text-emerald-900 underline hidden">
+                                📎 Visualizar ART
+                            </a>
+                            <div class="mt-3 flex flex-col gap-2">
+                                <input
+                                    type="file"
+                                    id="modal-arquivo-art-input"
+                                    class="hidden"
+                                    accept=".pdf,.jpg,.jpeg,.png"
+                                >
+                                <button
+                                    type="button"
+                                    id="modal-arquivo-art-btn"
+                                    class="inline-flex items-center justify-center px-3 py-2 rounded-lg
+                                       border border-emerald-200 bg-white text-emerald-700 text-xs font-semibold
+                                       hover:bg-emerald-50 transition">
+                                    Anexar ART
+                                </button>
+                            </div>
                         </div>
                         <button
                             type="button"
@@ -1594,6 +1673,37 @@
                     </section>
 
 
+                </div>
+            </div>
+
+            <div id="modal-pendencia-wrapper"
+                 class="absolute inset-0 z-30 hidden items-center justify-center bg-slate-950/45 p-4">
+                <div class="w-full max-w-md rounded-2xl bg-white px-8 py-7 shadow-2xl">
+                    <div class="text-center">
+                        <div class="mx-auto flex h-20 w-20 items-center justify-center rounded-full border-4 border-sky-400 text-4xl font-bold text-sky-400">
+                            !
+                        </div>
+                        <h3 class="mt-6 text-2xl font-bold tracking-tight text-slate-600">
+                            Alerta de pendencia
+                        </h3>
+                        <p id="modal-pendencia-texto" class="mt-5 text-[15px] font-medium leading-7 text-slate-600">
+                            —
+                        </p>
+                    </div>
+                    <div class="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-center">
+                        <button
+                            type="button"
+                            id="modal-pendencia-continuar-btn"
+                            class="inline-flex min-w-[170px] items-center justify-center rounded-lg bg-indigo-500 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-600">
+                            Continuar alterando
+                        </button>
+                        <button
+                            type="button"
+                            id="modal-pendencia-fechar-btn"
+                            class="inline-flex min-w-[140px] items-center justify-center rounded-lg bg-slate-500 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-600">
+                            Fechar tarefa
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1771,6 +1881,11 @@
             const certificadosStatus = document.getElementById('modal-certificados-status');
             const certificadosInput = document.getElementById('modal-certificados-input');
             const certificadosUploadBtn = document.getElementById('modal-certificados-upload-btn');
+            const finalizarBtn = document.getElementById('modal-finalizar-btn');
+            const pendenciaWrapper = document.getElementById('modal-pendencia-wrapper');
+            const pendenciaTexto = document.getElementById('modal-pendencia-texto');
+            const pendenciaContinuarBtn = document.getElementById('modal-pendencia-continuar-btn');
+            const pendenciaFecharBtn = document.getElementById('modal-pendencia-fechar-btn');
 
 
             // PGR
@@ -1805,6 +1920,16 @@
             const btnNotificarCliente = document.getElementById('btn-notificar-cliente');
             const arquivoReplaceInput = document.getElementById('modal-arquivo-replace-input');
             const arquivoReplaceBtn = document.getElementById('modal-arquivo-replace-btn');
+            const arquivoComplementarWrapper = document.getElementById('modal-arquivo-complementar-wrapper');
+            const arquivoComplementarStatus = document.getElementById('modal-arquivo-complementar-status');
+            const arquivoComplementarLink = document.getElementById('modal-arquivo-complementar-link');
+            const arquivoComplementarInput = document.getElementById('modal-arquivo-complementar-input');
+            const arquivoComplementarBtn = document.getElementById('modal-arquivo-complementar-btn');
+            const arquivoArtWrapper = document.getElementById('modal-arquivo-art-wrapper');
+            const arquivoArtStatus = document.getElementById('modal-arquivo-art-status');
+            const arquivoArtLink = document.getElementById('modal-arquivo-art-link');
+            const arquivoArtInput = document.getElementById('modal-arquivo-art-input');
+            const arquivoArtBtn = document.getElementById('modal-arquivo-art-btn');
             const arquivoDescricao = document.getElementById('modal-arquivo-descricao');
             const arquivoStatus = document.getElementById('modal-arquivo-status');
             const arquivoAjuda = document.getElementById('modal-arquivo-ajuda');
@@ -1841,6 +1966,11 @@
 
                 if (isAsoTask) {
                     return 'Anexe o ASO final assinado/emitido para o cliente.';
+                }
+                if (card?.dataset?.pgrPcmso === '1') {
+                    return card?.dataset?.pgrComArt === '1'
+                        ? 'Anexe os documentos finais do PGR, do PCMSO e da ART entregues ao cliente.'
+                        : 'Anexe os documentos finais do PGR e do PCMSO entregues ao cliente.';
                 }
                 if (servico.includes('pgr')) {
                     return 'Anexe o documento final do PGR entregue ao cliente.';
@@ -1931,6 +2061,7 @@
             function openDetalhesModal(card) {
                 if (!card) return;
                 detalhesCurrentCard = card;
+                hidePendenciaInline();
 
                 const isCancelada = card.dataset.cancelada === '1';
                 modal.dataset.cancelada = isCancelada ? '1' : '0';
@@ -1976,11 +2107,21 @@
                     const enviadosCertificados = Number(card.dataset.certificadosEnviados || '0');
                     const pendentesCertificados = card.dataset.certificadosPendentes === '1';
                     const temDocumentoFinal = !!urlArquivo;
+                    const isPgrComPcmso = card.dataset.pgrPcmso === '1';
+                    const requerArt = card.dataset.pgrComArt === '1';
+                    const urlComplementar = card.dataset.pcmsoPgrUrl || '';
+                    const temDocumentoComplementar = !!urlComplementar;
+                    const urlArt = card.dataset.artPgrUrl || '';
+                    const temDocumentoArt = !!urlArt;
 
                     arquivoWrapper.classList.remove('hidden');
 
                     if (arquivoDescricao) {
-                        arquivoDescricao.textContent = 'Este é o documento principal concluído desta tarefa, disponibilizado ao cliente.';
+                        arquivoDescricao.textContent = isPgrComPcmso
+                            ? (requerArt
+                                ? 'Anexe os arquivos finais do PGR, do PCMSO e da ART entregues ao cliente.'
+                                : 'Anexe os arquivos finais do PGR e do PCMSO entregues ao cliente.')
+                            : 'Este é o documento principal concluído desta tarefa, disponibilizado ao cliente.';
                     }
                     if (arquivoAjuda) {
                         arquivoAjuda.textContent = getDocumentoFinalAjuda(card);
@@ -1991,35 +2132,98 @@
                         arquivoLink.classList.remove('hidden');
 
                         if (arquivoStatus) {
-                            arquivoStatus.textContent = 'Status: Documento final anexado.';
+                            arquivoStatus.textContent = isPgrComPcmso
+                                ? 'PGR: Documento anexado.'
+                                : 'Status: Documento final anexado.';
                         }
                         if (arquivoReplaceBtn) {
-                            arquivoReplaceBtn.textContent = 'Enviar nova versão';
-                            arquivoReplaceBtn.title = 'Substitui o documento final atual da tarefa';
+                            arquivoReplaceBtn.textContent = isPgrComPcmso ? 'Atualizar PGR' : 'Enviar nova versão';
+                            arquivoReplaceBtn.title = isPgrComPcmso
+                                ? 'Substitui o documento final do PGR'
+                                : 'Substitui o documento final atual da tarefa';
                         }
                         if (arquivoImpacto) {
-                            arquivoImpacto.textContent = 'A nova versão substituirá o documento atual da tarefa.';
-                        }
-                        if (btnNotificarCliente) {
-                            btnNotificarCliente.classList.remove('hidden');
+                            arquivoImpacto.textContent = isPgrComPcmso
+                                ? 'O arquivo do PGR ficará disponível para o cliente.'
+                                : 'A nova versão substituirá o documento atual da tarefa.';
                         }
                     } else {
                         arquivoLink.href = '#';
                         arquivoLink.classList.add('hidden');
 
                         if (arquivoStatus) {
-                            arquivoStatus.textContent = 'Status: Documento final ainda não anexado.';
+                            arquivoStatus.textContent = isPgrComPcmso
+                                ? 'PGR: Documento ainda não anexado.'
+                                : 'Status: Documento final ainda não anexado.';
                         }
                         if (arquivoReplaceBtn) {
-                            arquivoReplaceBtn.textContent = 'Anexar documento final';
-                            arquivoReplaceBtn.title = 'Anexar o documento final da tarefa';
+                            arquivoReplaceBtn.textContent = isPgrComPcmso ? 'Anexar PGR' : 'Anexar documento final';
+                            arquivoReplaceBtn.title = isPgrComPcmso
+                                ? 'Anexar o documento final do PGR'
+                                : 'Anexar o documento final da tarefa';
                         }
                         if (arquivoImpacto) {
-                            arquivoImpacto.textContent = 'Quando anexado, este documento ficará disponível para o cliente.';
+                            arquivoImpacto.textContent = isPgrComPcmso
+                                ? ''
+                                : 'Quando anexado, este documento ficará disponível para o cliente.';
                         }
-                        if (btnNotificarCliente) {
-                            btnNotificarCliente.classList.add('hidden');
+                    }
+
+                    if (arquivoComplementarWrapper && arquivoComplementarStatus && arquivoComplementarLink && arquivoComplementarBtn) {
+                        if (isPgrComPcmso) {
+                            arquivoComplementarWrapper.classList.remove('hidden');
+
+                            if (temDocumentoComplementar) {
+                                arquivoComplementarLink.href = urlComplementar;
+                                arquivoComplementarLink.classList.remove('hidden');
+                                arquivoComplementarStatus.textContent = 'PCMSO: Documento anexado.';
+                                arquivoComplementarBtn.textContent = 'Atualizar PCMSO';
+                                arquivoComplementarBtn.title = 'Substitui o documento final do PCMSO';
+                            } else {
+                                arquivoComplementarLink.href = '#';
+                                arquivoComplementarLink.classList.add('hidden');
+                                arquivoComplementarStatus.textContent = 'PCMSO: Documento ainda não anexado.';
+                                arquivoComplementarBtn.textContent = 'Anexar PCMSO';
+                                arquivoComplementarBtn.title = 'Anexar o documento final do PCMSO';
+                            }
+                        } else {
+                            arquivoComplementarWrapper.classList.add('hidden');
+                            arquivoComplementarLink.href = '#';
+                            arquivoComplementarLink.classList.add('hidden');
+                            arquivoComplementarStatus.textContent = 'Status: Documento complementar ainda não anexado.';
                         }
+                    }
+
+                    if (arquivoArtWrapper && arquivoArtStatus && arquivoArtLink && arquivoArtBtn) {
+                        if (isPgrComPcmso && requerArt) {
+                            arquivoArtWrapper.classList.remove('hidden');
+
+                            if (temDocumentoArt) {
+                                arquivoArtLink.href = urlArt;
+                                arquivoArtLink.classList.remove('hidden');
+                                arquivoArtStatus.textContent = 'ART: Documento anexado.';
+                                arquivoArtBtn.textContent = 'Atualizar ART';
+                                arquivoArtBtn.title = 'Substitui o documento final da ART';
+                            } else {
+                                arquivoArtLink.href = '#';
+                                arquivoArtLink.classList.add('hidden');
+                                arquivoArtStatus.textContent = 'ART: Documento ainda não anexado.';
+                                arquivoArtBtn.textContent = 'Anexar ART';
+                                arquivoArtBtn.title = 'Anexar o documento final da ART';
+                            }
+                        } else {
+                            arquivoArtWrapper.classList.add('hidden');
+                            arquivoArtLink.href = '#';
+                            arquivoArtLink.classList.add('hidden');
+                            arquivoArtStatus.textContent = 'Status: ART ainda não anexada.';
+                        }
+                    }
+
+                    if (btnNotificarCliente) {
+                        const podeNotificar = isPgrComPcmso
+                            ? (temDocumentoFinal && temDocumentoComplementar && (!requerArt || temDocumentoArt))
+                            : temDocumentoFinal;
+                        btnNotificarCliente.classList.toggle('hidden', !podeNotificar);
                     }
 
                     if (arquivoAjuda && isAsoTask && totalCertificados > 0 && !temDocumentoFinal) {
@@ -2048,7 +2252,7 @@
                     // 1) Documento final da tarefa (path_documento_cliente)
                     if (card.dataset.arquivoClienteUrl) {
                         anexos.push({
-                            label: 'Documento final da tarefa',
+                            label: isPgrComPcmso ? 'Documento final - PGR' : 'Documento final da tarefa',
                             url: card.dataset.arquivoClienteUrl
                         });
                     }
@@ -2056,8 +2260,15 @@
                     // 2) PGR anexado ao PCMSO (se existir)
                     if (card.dataset.pcmsoPgrUrl) {
                         anexos.push({
-                            label: 'PGR anexado (PCMSO)',
+                            label: isPgrComPcmso ? 'Documento final - PCMSO' : 'PGR anexado (PCMSO)',
                             url: card.dataset.pcmsoPgrUrl
+                        });
+                    }
+
+                    if (card.dataset.artPgrUrl) {
+                        anexos.push({
+                            label: 'Documento final - ART',
+                            url: card.dataset.artPgrUrl
                         });
                     }
 
@@ -2075,7 +2286,12 @@
                         return 'Documento';
                     };
 
-                    const anexosDocs = anexos.filter(a => !a || a.servico !== 'cancelamento_tarefa');
+                    const anexosDocs = anexos.filter((a) => {
+                        const servico = String(a?.servico || '').toLowerCase();
+                        return servico !== 'cancelamento_tarefa'
+                            && servico !== 'documento_complementar_pgr_pcmso'
+                            && servico !== 'documento_art_pgr_pcmso';
+                    });
 
                     if (anexosDocs.length) {
                         docsWrapper.classList.remove('hidden');
@@ -2086,9 +2302,16 @@
                                             <a href="${a.url}" target="_blank" class="underline text-[13px] font-medium">
                                                 ${mapAnexoLabel(a)}
                                             </a>
-                                            <span class="text-[11px] text-slate-500">
-                                                (${a.tamanho || '-'} · ${a.mime || '-'}${a.data ? ' · ' + a.data : ''}${a.uploaded_by ? ' · ' + a.uploaded_by : ''})
-                                            </span>
+                                            ${(a.tamanho || a.mime || a.data || a.uploaded_by) ? `
+                                                <span class="text-[11px] text-slate-500">
+                                                    (${[
+                                                        a.tamanho || null,
+                                                        a.mime || null,
+                                                        a.data || null,
+                                                        a.uploaded_by || null,
+                                                    ].filter(Boolean).join(' · ')})
+                                                </span>
+                                            ` : ''}
                                         </div>
                                         ${a.delete_url ? `
                                             <button
@@ -2115,15 +2338,44 @@
                     const isAso = card.dataset.isAso === '1';
                     const temDocumentoAso = !!card.dataset.arquivoClienteUrl;
 
-                    if (isAso && total > 0 && temDocumentoAso) {
+                    if (isAso && total > 0) {
                         certificadosWrapper.classList.remove('hidden');
-                        certificadosStatus.textContent = pendentes
-                            ? `Aguardando certificados: ${enviados}/${total}.`
-                            : `Certificados concluídos: ${enviados}/${total}.`;
+                        if (certificadosUploadBtn) {
+                            certificadosUploadBtn.disabled = !temDocumentoAso;
+                            certificadosUploadBtn.classList.toggle('opacity-60', !temDocumentoAso);
+                            certificadosUploadBtn.classList.toggle('cursor-not-allowed', !temDocumentoAso);
+                        }
+
+                        if (!temDocumentoAso) {
+                            certificadosStatus.textContent = `Esta tarefa espera ${total} certificado(s). Anexe primeiro o documento final do ASO para liberar o envio.`;
+                        } else {
+                            certificadosStatus.textContent = pendentes
+                                ? `Aguardando certificados: ${enviados}/${total}.`
+                                : `Certificados concluídos: ${enviados}/${total}.`;
+                        }
                     } else {
                         certificadosWrapper.classList.add('hidden');
                         certificadosStatus.textContent = '—';
+                        if (certificadosUploadBtn) {
+                            certificadosUploadBtn.disabled = false;
+                            certificadosUploadBtn.classList.remove('opacity-60', 'cursor-not-allowed');
+                        }
                     }
+                }
+
+                if (finalizarBtn) {
+                    const temDocumentoFinal = !!card.dataset.arquivoClienteUrl;
+                    const precisaDocumentoComplementar = card.dataset.pgrPcmso === '1';
+                    const precisaArt = card.dataset.pgrComArt === '1';
+                    const temDocumentoComplementar = !!card.dataset.pcmsoPgrUrl;
+                    const temDocumentoArt = !!card.dataset.artPgrUrl;
+                    const podeFinalizar = temDocumentoFinal
+                        && (!precisaDocumentoComplementar || temDocumentoComplementar)
+                        && (!precisaArt || temDocumentoArt);
+
+                    finalizarBtn.disabled = !podeFinalizar;
+                    finalizarBtn.classList.toggle('opacity-60', !podeFinalizar);
+                    finalizarBtn.classList.toggle('cursor-not-allowed', !podeFinalizar);
                 }
 
                 if (exclusaoAnexoWrapper && exclusaoAnexoList) {
@@ -2602,6 +2854,52 @@
                 window.location.reload();
             }
 
+            function hideModalWithoutReload() {
+                if (!modal) return;
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+
+            function closeOverlayAlerts() {
+                if (window.Swal && typeof window.Swal.close === 'function') {
+                    window.Swal.close();
+                }
+
+                const overlayRoot = document.getElementById('app-overlay-root');
+                if (overlayRoot) {
+                    overlayRoot.querySelectorAll('.swal2-container').forEach((el) => el.remove());
+                    overlayRoot.classList.add('pointer-events-none');
+                }
+
+                document.querySelectorAll('.swal2-container').forEach((el) => el.remove());
+                document.body.classList.remove('swal2-shown', 'swal2-height-auto');
+                document.documentElement.classList.remove('swal2-shown', 'swal2-height-auto');
+            }
+
+            function hidePendenciaInline() {
+                if (pendenciaWrapper) {
+                    pendenciaWrapper.classList.add('hidden');
+                    pendenciaWrapper.classList.remove('flex');
+                    pendenciaWrapper.style.display = 'none';
+                    pendenciaWrapper.setAttribute('aria-hidden', 'true');
+                }
+                if (pendenciaTexto) {
+                    pendenciaTexto.textContent = '—';
+                }
+            }
+
+            function showPendenciaInline(message) {
+                if (pendenciaTexto) {
+                    pendenciaTexto.textContent = message || 'A tarefa ainda possui pendencias.';
+                }
+                if (pendenciaWrapper) {
+                    pendenciaWrapper.classList.remove('hidden');
+                    pendenciaWrapper.classList.add('flex');
+                    pendenciaWrapper.style.display = 'flex';
+                    pendenciaWrapper.setAttribute('aria-hidden', 'false');
+                }
+            }
+
             if (closeBtn) {
                 closeBtn.addEventListener('click', closeModal);
             }
@@ -2661,6 +2959,7 @@
 
             let finalizarCurrentCard = null;
             let finalizarUrl = null;
+            let finalizarSkipReloadOnClose = false;
 
             function openFinalizarModal(card, url) {
                 console.log(finalizarModal)
@@ -2697,6 +2996,60 @@
                 finalizarUrl = null;
             }
 
+            async function handleFinalizacaoResponse(card, data, options = {}) {
+                if (!card || !data || !data.ok) return;
+
+                if (data.documento_url) {
+                    card.dataset.arquivoClienteUrl = data.documento_url;
+                }
+
+                const statusName = data.status_label || 'Finalizada';
+                card.dataset.status = statusName;
+                card.dataset.finalizado = data.finalizada_total ? '1' : '0';
+                if (data?.certificados) {
+                    card.dataset.certificadosPendentes = data.certificados.pendente ? '1' : '0';
+                    card.dataset.certificadosEnviados = String(data.certificados.enviados ?? 0);
+                    card.dataset.certificadosTotal = String(data.certificados.total_esperado ?? 0);
+                }
+
+                const statusSpan = card.querySelector('[data-role="card-status-label"]');
+                if (statusSpan) {
+                    statusSpan.textContent = statusName;
+                }
+
+                if (!data.finalizada_total && data?.certificados?.pendente) {
+                    const colunaAguardando = document.querySelector('.kanban-column[data-coluna-slug="aguardando-fornecedor"], .kanban-column[data-coluna-slug="aguardando"]');
+                    const colunaAguardandoId = colunaAguardando?.dataset?.colunaId;
+                    if (colunaAguardandoId) {
+                        moveCardToColumn(card, colunaAguardandoId, statusName);
+                    }
+
+                    if (options.fromDetalhes) {
+                        openDetalhesModal(card);
+                        showPendenciaInline(`${data.message || 'A tarefa ainda possui pendencias.'} Deseja continuar alterando a tarefa agora para anexar o que falta?`);
+                        return;
+                    }
+
+                    window.location.reload();
+                    return;
+                }
+
+                hidePendenciaInline();
+
+                if (options.closeModal) {
+                    closeFinalizarModal();
+                }
+
+                if (data.message) {
+                    window.uiAlert(data.message, {
+                        icon: 'success',
+                        title: 'Sucesso',
+                    });
+                }
+
+                setTimeout(() => window.location.reload(), 250);
+            }
+
             [finalizarCloseBtn, finalizarCloseXBtn].forEach((btn) => {
                 if (!btn) return;
 
@@ -2704,7 +3057,10 @@
                     console.log('fechar');
                     closeFinalizarModal();
                     // se quiser voltar o card pra coluna original:
-                    window.location.reload();
+                    if (!finalizarSkipReloadOnClose) {
+                        window.location.reload();
+                    }
+                    finalizarSkipReloadOnClose = false;
                 });
             });
 
@@ -2712,7 +3068,10 @@
                 finalizarModal.addEventListener('click', function (e) {
                     if (e.target === finalizarModal) {
                         closeFinalizarModal();
-                        window.location.reload();
+                        if (!finalizarSkipReloadOnClose) {
+                            window.location.reload();
+                        }
+                        finalizarSkipReloadOnClose = false;
                     }
                 });
             }
@@ -2775,7 +3134,7 @@
 
                             return data;
                         })
-                        .then(data => {
+                        .then(async (data) => {
                             if (!data || !data.ok) {
                                 const error =
                                     data?.error
@@ -2786,27 +3145,7 @@
                                 return;
                             }
 
-                            // Atualiza dataset do card com a URL do arquivo, se voltou do backend
-                            if (data.documento_url) {
-                                finalizarCurrentCard.dataset.arquivoClienteUrl = data.documento_url;
-                            }
-
-                            // atualiza status do card
-                            const statusName = data.status_label || 'Finalizada';
-                            finalizarCurrentCard.dataset.status = statusName;
-                            finalizarCurrentCard.dataset.finalizado = data.finalizada_total ? '1' : '0';
-                            if (data?.certificados) {
-                                finalizarCurrentCard.dataset.certificadosPendentes = data.certificados.pendente ? '1' : '0';
-                                finalizarCurrentCard.dataset.certificadosEnviados = String(data.certificados.enviados ?? 0);
-                                finalizarCurrentCard.dataset.certificadosTotal = String(data.certificados.total_esperado ?? 0);
-                            }
-
-                            const statusSpan = finalizarCurrentCard.querySelector('[data-role="card-status-label"]');
-                            if (statusSpan) {
-                                statusSpan.textContent = statusName;
-                            }
-
-                            if (finalizarNotificar && finalizarNotificar.checked) {
+                            if (data.finalizada_total && finalizarNotificar && finalizarNotificar.checked) {
                                 const arquivoUrl = data.documento_url || '';
                                 const payload = buildWhatsappMensagem(finalizarCurrentCard, arquivoUrl);
 
@@ -2820,11 +3159,13 @@
                                 } else if (whatsappPopup && !whatsappPopup.closed) {
                                     whatsappPopup.close();
                                 }
+                            } else if (whatsappPopup && !whatsappPopup.closed) {
+                                whatsappPopup.close();
                             }
 
-                            closeFinalizarModal();
-                            // Para evitar descompasso de contadores/ordem, recarrega a página
-                            window.location.reload();
+                            finalizarSkipReloadOnClose = !data.finalizada_total && !!data?.certificados?.pendente;
+                            await handleFinalizacaoResponse(finalizarCurrentCard, data, { closeModal: true });
+                            finalizarSkipReloadOnClose = false;
                         })
                         .catch((error) => {
                             if (whatsappPopup && !whatsappPopup.closed) {
@@ -2933,6 +3274,118 @@
                     });
             }
 
+            function uploadDocumentoComplementar(file) {
+                if (!file || !detalhesCurrentCard) return;
+                const url = detalhesCurrentCard.dataset.substituirDocComplementarUrl;
+                if (!url) {
+                    window.uiAlert('Não foi possível enviar o documento complementar desta tarefa.');
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('arquivo_cliente', file);
+
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json',
+                    },
+                    body: formData,
+                })
+                    .then(async (r) => {
+                        const contentType = r.headers.get('content-type') || '';
+                        const isJson = contentType.includes('application/json');
+                        const data = isJson ? await r.json() : null;
+
+                        if (!r.ok) {
+                            const error =
+                                data?.error
+                                || data?.message
+                                || (data?.errors ? Object.values(data.errors).flat()[0] : null)
+                                || 'Erro ao enviar documento complementar.';
+                            throw new Error(error);
+                        }
+
+                        return data;
+                    })
+                    .then((data) => {
+                        if (!data || !data.ok) {
+                            const error =
+                                data?.error
+                                || data?.message
+                                || (data?.errors ? Object.values(data.errors).flat()[0] : null)
+                                || 'Erro ao enviar documento complementar.';
+                            window.uiAlert(error);
+                            return;
+                        }
+
+                        if (data.documento_url) {
+                            detalhesCurrentCard.dataset.pcmsoPgrUrl = data.documento_url;
+                            openDetalhesModal(detalhesCurrentCard);
+                        }
+                    })
+                    .catch((error) => {
+                        window.uiAlert(error?.message || 'Erro ao enviar documento complementar.');
+                    });
+            }
+
+            function uploadDocumentoArt(file) {
+                if (!file || !detalhesCurrentCard) return;
+                const url = detalhesCurrentCard.dataset.substituirDocArtUrl;
+                if (!url) {
+                    window.uiAlert('Não foi possível enviar o documento ART desta tarefa.');
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('arquivo_cliente', file);
+
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json',
+                    },
+                    body: formData,
+                })
+                    .then(async (r) => {
+                        const contentType = r.headers.get('content-type') || '';
+                        const isJson = contentType.includes('application/json');
+                        const data = isJson ? await r.json() : null;
+
+                        if (!r.ok) {
+                            const error =
+                                data?.error
+                                || data?.message
+                                || (data?.errors ? Object.values(data.errors).flat()[0] : null)
+                                || 'Erro ao enviar documento ART.';
+                            throw new Error(error);
+                        }
+
+                        return data;
+                    })
+                    .then((data) => {
+                        if (!data || !data.ok) {
+                            const error =
+                                data?.error
+                                || data?.message
+                                || (data?.errors ? Object.values(data.errors).flat()[0] : null)
+                                || 'Erro ao enviar documento ART.';
+                            window.uiAlert(error);
+                            return;
+                        }
+
+                        if (data.documento_url) {
+                            detalhesCurrentCard.dataset.artPgrUrl = data.documento_url;
+                            openDetalhesModal(detalhesCurrentCard);
+                        }
+                    })
+                    .catch((error) => {
+                        window.uiAlert(error?.message || 'Erro ao enviar documento ART.');
+                    });
+            }
+
             function uploadCertificadosTreinamento(files) {
                 if (!files?.length || !detalhesCurrentCard) return;
                 const url = detalhesCurrentCard.dataset.certificadosUploadUrl;
@@ -2980,26 +3433,6 @@
                         if (data.status_label) {
                             detalhesCurrentCard.dataset.status = String(data.status_label);
                         }
-                        if (data.movida_para_finalizada) {
-                            detalhesCurrentCard.dataset.finalizado = '1';
-                            const colunaFinalizadaEl = document.querySelector('.kanban-column[data-coluna-slug="finalizada"]');
-                            const colunaFinalizadaId = colunaFinalizadaEl?.dataset?.colunaId;
-                            if (colunaFinalizadaId) {
-                                moveCardToColumn(detalhesCurrentCard, colunaFinalizadaId, data.status_label || 'Finalizada');
-                            }
-                        }
-
-                        if (data.movida_para_finalizada) {
-                            window.uiAlert('Certificados concluídos. Tarefa movida para Finalizada.', {
-                                icon: 'success',
-                                title: 'Sucesso',
-                            });
-                        } else {
-                            window.uiAlert(`Certificados enviados (${enviados}/${total}).`, {
-                                icon: 'success',
-                                title: 'Sucesso',
-                            });
-                        }
 
                         if (certificadosInput) {
                             certificadosInput.value = '';
@@ -3023,6 +3456,32 @@
                     const file = arquivoReplaceInput.files?.[0];
                     if (!file) return;
                     uploadDocumentoClienteTemporario(file);
+                });
+            }
+
+            if (arquivoComplementarBtn && arquivoComplementarInput) {
+                arquivoComplementarBtn.addEventListener('click', function () {
+                    arquivoComplementarInput.value = '';
+                    arquivoComplementarInput.click();
+                });
+
+                arquivoComplementarInput.addEventListener('change', function () {
+                    const file = arquivoComplementarInput.files?.[0];
+                    if (!file) return;
+                    uploadDocumentoComplementar(file);
+                });
+            }
+
+            if (arquivoArtBtn && arquivoArtInput) {
+                arquivoArtBtn.addEventListener('click', function () {
+                    arquivoArtInput.value = '';
+                    arquivoArtInput.click();
+                });
+
+                arquivoArtInput.addEventListener('change', function () {
+                    const file = arquivoArtInput.files?.[0];
+                    if (!file) return;
+                    uploadDocumentoArt(file);
                 });
             }
 
@@ -3103,6 +3562,61 @@
                 certificadosInput.addEventListener('change', function () {
                     if (!certificadosInput.files?.length) return;
                     uploadCertificadosTreinamento(certificadosInput.files);
+                });
+            }
+
+            if (finalizarBtn) {
+                finalizarBtn.addEventListener('click', async function () {
+                    if (!detalhesCurrentCard) return;
+
+                    const url = detalhesCurrentCard.dataset.finalizarDocumentoExistenteUrl;
+                    if (!url) {
+                        window.uiAlert('Não foi possível finalizar esta tarefa.');
+                        return;
+                    }
+
+                    finalizarBtn.disabled = true;
+                    try {
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                'Accept': 'application/json',
+                            },
+                        });
+                        const data = await parseJsonResponse(response);
+                        if (!response.ok) {
+                            const error =
+                                data?.error
+                                || data?.message
+                                || (data?.errors ? Object.values(data.errors).flat()[0] : null)
+                                || 'Erro ao finalizar tarefa.';
+                            throw new Error(error);
+                        }
+
+                        await handleFinalizacaoResponse(detalhesCurrentCard, data, { fromDetalhes: true });
+                    } catch (error) {
+                        window.uiAlert(error?.message || 'Erro ao finalizar tarefa.');
+                    } finally {
+                        finalizarBtn.disabled = false;
+                    }
+                });
+            }
+
+            if (pendenciaContinuarBtn) {
+                pendenciaContinuarBtn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    hidePendenciaInline();
+                });
+            }
+
+            if (pendenciaFecharBtn) {
+                pendenciaFecharBtn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    hidePendenciaInline();
+                    window.location.reload();
                 });
             }
 
