@@ -89,6 +89,7 @@ class TarefaController extends Controller
             [
                 'arquivo_cliente.required' => 'Selecione um arquivo do cliente.',
                 'arquivo_cliente.file' => 'O arquivo do cliente deve ser um arquivo válido.',
+                'arquivo_cliente.uploaded' => 'Não foi possível enviar o arquivo do cliente. Tente novamente.',
                 'arquivo_cliente.mimes' => 'O arquivo do cliente deve ser do tipo: pdf, jpg, jpeg ou png.',
                 'arquivo_cliente.max' => 'O arquivo do cliente deve ter no máximo 10 MB.',
             ]
@@ -140,6 +141,7 @@ class TarefaController extends Controller
             [
                 'arquivo_cliente.required' => 'Selecione um arquivo do cliente.',
                 'arquivo_cliente.file' => 'O arquivo do cliente deve ser um arquivo válido.',
+                'arquivo_cliente.uploaded' => 'Não foi possível enviar o arquivo do cliente. Tente novamente.',
                 'arquivo_cliente.mimes' => 'O arquivo do cliente deve ser do tipo: pdf, jpg, jpeg ou png.',
                 'arquivo_cliente.max' => 'O arquivo do cliente deve ter no máximo 10 MB.',
             ]
@@ -169,6 +171,69 @@ class TarefaController extends Controller
         return response()->json([
             'ok' => true,
             'documento_url' => $tarefa->documento_link,
+        ]);
+    }
+
+    public function substituirDocumentoComplementar(Request $request, Tarefa $tarefa)
+    {
+        $request->validate(
+            [
+                'arquivo_cliente' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'],
+            ],
+            [
+                'arquivo_cliente.required' => 'Selecione um arquivo do cliente.',
+                'arquivo_cliente.file' => 'O arquivo do cliente deve ser um arquivo válido.',
+                'arquivo_cliente.uploaded' => 'Não foi possível enviar o arquivo do cliente. Tente novamente.',
+                'arquivo_cliente.mimes' => 'O arquivo do cliente deve ser do tipo: pdf, jpg, jpeg ou png.',
+                'arquivo_cliente.max' => 'O arquivo do cliente deve ter no máximo 10 MB.',
+            ]
+        );
+
+        if (!(bool) optional($tarefa->pgr)->com_pcms0) {
+            return response()->json([
+                'ok' => false,
+                'error' => 'Esta tarefa não exige documento complementar.',
+            ], 422);
+        }
+
+        $anexoExistente = Anexos::query()
+            ->where('tarefa_id', $tarefa->id)
+            ->whereRaw('LOWER(COALESCE(servico, "")) = ?', ['documento_complementar_pgr_pcmso'])
+            ->latest('id')
+            ->first();
+
+        $path = S3Helper::upload($request->file('arquivo_cliente'), 'tarefas-complementares');
+
+        $payload = [
+            'empresa_id' => $tarefa->empresa_id,
+            'cliente_id' => $tarefa->cliente_id,
+            'tarefa_id' => $tarefa->id,
+            'uploaded_by' => (int) Auth::id(),
+            'servico' => 'documento_complementar_pgr_pcmso',
+            'nome_original' => $request->file('arquivo_cliente')->getClientOriginalName(),
+            'path' => $path,
+            'mime_type' => $request->file('arquivo_cliente')->getClientMimeType(),
+            'tamanho' => $request->file('arquivo_cliente')->getSize(),
+        ];
+
+        if ($anexoExistente) {
+            $anexoExistente->update($payload);
+        } else {
+            $anexoExistente = Anexos::create($payload);
+        }
+
+        TarefaLog::create([
+            'tarefa_id' => $tarefa->id,
+            'user_id' => Auth::id(),
+            'de_coluna_id' => $tarefa->coluna_id,
+            'para_coluna_id' => $tarefa->coluna_id,
+            'acao' => 'documento',
+            'observacao' => 'Documento complementar do PGR + PCMSO anexado',
+        ]);
+
+        return response()->json([
+            'ok' => true,
+            'documento_url' => $anexoExistente->fresh()->url,
         ]);
     }
 
@@ -267,6 +332,14 @@ class TarefaController extends Controller
 
     private function finalizarTarefaPersistida(Tarefa $tarefa, PrecificacaoService $precificacaoService, VendaService $vendaService, ComissaoService $comissaoService)
     {
+        $pendenciaDocumentosCombinados = $this->resolverPendenciaDocumentosCombinados($tarefa);
+        if ($pendenciaDocumentosCombinados['pendente']) {
+            return response()->json([
+                'ok' => false,
+                'error' => $pendenciaDocumentosCombinados['message'],
+            ], 422);
+        }
+
         $colunaFinalizada = KanbanColuna::where('empresa_id', $tarefa->empresa_id)
             ->where('slug', 'finalizada')
             ->firstOrFail();
@@ -414,6 +487,37 @@ class TarefaController extends Controller
                 'error' => filled($e->getMessage()) ? $e->getMessage() : 'Erro ao finalizar a tarefa.',
             ], 500);
         }
+    }
+
+    private function resolverPendenciaDocumentosCombinados(Tarefa $tarefa): array
+    {
+        $pgr = $tarefa->pgr;
+        $requerDoisDocumentos = (bool) ($pgr?->com_pcms0);
+
+        if (!$requerDoisDocumentos) {
+            return [
+                'pendente' => false,
+                'message' => null,
+            ];
+        }
+
+        $temDocumentoPrincipal = filled($tarefa->path_documento_cliente);
+        $temDocumentoComplementar = Anexos::query()
+            ->where('tarefa_id', $tarefa->id)
+            ->whereRaw('LOWER(COALESCE(servico, "")) = ?', ['documento_complementar_pgr_pcmso'])
+            ->exists();
+
+        if ($temDocumentoPrincipal && $temDocumentoComplementar) {
+            return [
+                'pendente' => false,
+                'message' => null,
+            ];
+        }
+
+        return [
+            'pendente' => true,
+            'message' => 'Para finalizar PGR + PCMSO, anexe os dois documentos finais: PGR e PCMSO.',
+        ];
     }
 
 }

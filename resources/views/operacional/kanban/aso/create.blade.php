@@ -114,10 +114,19 @@
         ->first(function ($message) {
             return str_contains((string) $message, 'Ja existe um ASO pendente para este colaborador com o mesmo tipo e data informados.');
         });
+    $mensagemErroTreinamentoAgenda = collect($errors->get('treinamentos'))
+        ->first(function ($message) {
+            return str_contains((string) $message, 'Selecione pelo menos um treinamento NR para continuar.');
+        });
     $errosVisiveis = $errors->all();
     if ($mensagemErroAsoDuplicado) {
         $errosVisiveis = array_values(array_filter($errosVisiveis, function ($message) use ($mensagemErroAsoDuplicado) {
             return (string) $message !== (string) $mensagemErroAsoDuplicado;
+        }));
+    }
+    if ($mensagemErroTreinamentoAgenda) {
+        $errosVisiveis = array_values(array_filter($errosVisiveis, function ($message) use ($mensagemErroTreinamentoAgenda) {
+            return (string) $message !== (string) $mensagemErroTreinamentoAgenda;
         }));
     }
 @endphp
@@ -1545,10 +1554,14 @@
                 const tabDados = document.getElementById('tab-dados');
                 const tabAnexos = document.getElementById('tab-anexos');
                 const dadosPanes = document.querySelectorAll('[data-step-pane]');
+                const erroTreinamentoAgenda = @json($mensagemErroTreinamentoAgenda);
                 const initialStep = @json(
                     ($errors->has('anexos') || $errors->has('pcmso_elaborado_formed'))
                         ? 'anexos'
+                        : (($mensagemErroTreinamentoAgenda ?? null)
+                            ? 'agenda'
                         : 'colaborador'
+                    )
                 );
                 let currentStep = initialStep;
 
@@ -1786,6 +1799,13 @@
                 });
 
                 setStep(initialStep);
+
+                if (erroTreinamentoAgenda && typeof window.uiAlert === 'function') {
+                    window.uiAlert(erroTreinamentoAgenda, {
+                        icon: 'warning',
+                        title: 'Atenção',
+                    });
+                }
 
                 // ====== DROPZONE ======
                 const dropzone = document.getElementById('dropzone-anexos');
