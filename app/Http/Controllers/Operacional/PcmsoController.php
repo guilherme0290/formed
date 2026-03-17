@@ -133,6 +133,7 @@ class PcmsoController extends Controller
     {
         $usuario   = $request->user();
         $empresaId = $usuario->empresa_id;
+        $uploadMax = ini_get('upload_max_filesize') ?: '2MB';
 
         abort_if($cliente->empresa_id !== $empresaId, 403);
 
@@ -186,8 +187,12 @@ class PcmsoController extends Controller
         $messages = [
             'pgr_arquivo.required' => 'Anexe o arquivo do PGR em PDF.',
             'pgr_arquivo.file' => 'O arquivo do PGR precisa ser um arquivo valido.',
+            'pgr_arquivo.uploaded' => "O upload do arquivo do PGR falhou. Verifique se ele nao ultrapassa o limite atual do servidor ({$uploadMax}).",
             'pgr_arquivo.mimes' => 'O arquivo do PGR deve ser um PDF.',
             'pgr_arquivo.max' => 'O arquivo do PGR deve ter no maximo 10MB.',
+            'anexos.*.uploaded' => "Um dos anexos falhou no upload. Verifique se o arquivo nao ultrapassa o limite atual do servidor ({$uploadMax}).",
+            'anexos.*.mimes' => 'Os anexos devem ser PDF, DOC ou DOCX.',
+            'anexos.*.max' => 'Cada anexo deve ter no maximo 10MB.',
             'obra_nome.required' => 'Informe o nome da obra.',
             'funcoes.required' => 'Adicione ao menos uma funcao.',
             'funcoes.array' => 'Formato invalido para funcoes.',
@@ -440,6 +445,7 @@ class PcmsoController extends Controller
 
         $usuario   = $request->user();
         $empresaId = $usuario->empresa_id;
+        $uploadMax = ini_get('upload_max_filesize') ?: '2MB';
 
         abort_if($tarefa->empresa_id !== $empresaId, 403);
 
@@ -487,8 +493,12 @@ class PcmsoController extends Controller
         $messages = [
             'pgr_arquivo.required' => 'Anexe o arquivo do PGR em PDF.',
             'pgr_arquivo.file' => 'O arquivo do PGR precisa ser um arquivo valido.',
+            'pgr_arquivo.uploaded' => "O upload do arquivo do PGR falhou. Verifique se ele nao ultrapassa o limite atual do servidor ({$uploadMax}).",
             'pgr_arquivo.mimes' => 'O arquivo do PGR deve ser um PDF.',
             'pgr_arquivo.max' => 'O arquivo do PGR deve ter no maximo 10MB.',
+            'anexos.*.uploaded' => "Um dos anexos falhou no upload. Verifique se o arquivo nao ultrapassa o limite atual do servidor ({$uploadMax}).",
+            'anexos.*.mimes' => 'Os anexos devem ser PDF, DOC ou DOCX.',
+            'anexos.*.max' => 'Cada anexo deve ter no maximo 10MB.',
             'obra_nome.required' => 'Informe o nome da obra.',
             'funcoes.required' => 'Adicione ao menos uma funcao.',
             'funcoes.array' => 'Formato invalido para funcoes.',

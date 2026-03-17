@@ -53,7 +53,7 @@
                 @endif
 
                 @if ($errors->any())
-                    <div class="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-700 mb-3">
+                    <div data-validation-summary="1" class="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-700 mb-3">
                         <ul class="list-disc ms-4">
                             @foreach ($errors->all() as $err)
                                 <li>{{ $err }}</li>

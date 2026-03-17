@@ -260,7 +260,7 @@
                 <input type="hidden" name="wizard_step" id="wizard-step" value="{{ $wizardStep }}">
 
                 @if ($errors->any())
-                    <div class="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-700 mb-2">
+                    <div data-validation-summary="1" class="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-700 mb-2">
                         <ul class="list-disc ms-4">
                             @foreach($errors->all() as $err)
                                 <li>{{ $err }}</li>
