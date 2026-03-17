@@ -57,7 +57,7 @@
             <div class="flex-1">
                 <form method="GET" class="relative">
                     @php
-                        $temFiltrosAtivos = !empty($filtroBusca) || !empty($filtroServico) || !empty($filtroResponsavel) || !empty($filtroColuna) || !empty($filtroDe) || !empty($filtroAte);
+                        $temFiltrosAtivos = !empty($filtroBusca) || !empty($filtroServico) || !empty($filtroResponsavel) || !empty($filtroCliente) || !empty($filtroColuna) || !empty($filtroDe) || !empty($filtroAte);
                     @endphp
                     <span class="absolute inset-y-0 left-3 flex items-center text-slate-400 text-sm">🔍</span>
                     <input type="text"
@@ -73,6 +73,7 @@
                          class="absolute z-20 mt-1 w-full max-h-64 overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg hidden"></div>
                     <input type="hidden" name="servico_id" value="{{ $filtroServico }}">
                     <input type="hidden" name="responsavel_id" value="{{ $filtroResponsavel }}">
+                    <input type="hidden" name="cliente_id" value="{{ $filtroCliente }}">
                     <input type="hidden" name="coluna_id" value="{{ $filtroColuna }}">
                     <input type="hidden" name="de" value="{{ $filtroDe }}">
                     <input type="hidden" name="ate" value="{{ $filtroAte }}">
@@ -488,7 +489,8 @@
                                             ];
                                         })->values();
 
-                                        $asoTreinamentoEsperado = 0;
+                                        $isTreinamentoTask = (bool) ($tarefa->treinamentoNr && $tarefa->treinamentoNrDetalhes);
+                                        $certificadosEsperados = 0;
                                         if ($aso && $aso->vai_fazer_treinamento) {
                                             $codigosTreinamentos = [];
                                             $codigosTreinamentos = (array) ($aso->treinamentos ?? []);
@@ -499,16 +501,40 @@
                                                 static fn ($v) => trim((string) $v),
                                                 $codigosTreinamentos
                                             ))));
-                                            $asoTreinamentoEsperado = count($codigosTreinamentos);
-                                            if ($asoTreinamentoEsperado === 0) {
-                                                $asoTreinamentoEsperado = 1;
+                                            $certificadosEsperados = count($codigosTreinamentos);
+                                            if ($certificadosEsperados === 0) {
+                                                $certificadosEsperados = 1;
+                                            }
+                                        } elseif ($isTreinamentoTask) {
+                                            $treinamentoPayloadCertificados = (array) ($tarefa->treinamentoNrDetalhes->treinamentos ?? []);
+                                            $treinamentoModoCertificados = (string) ($treinamentoPayloadCertificados['modo'] ?? '');
+                                            if ($treinamentoModoCertificados === 'pacote') {
+                                                $codigosTreinamentos = (array) data_get($treinamentoPayloadCertificados, 'pacote.codigos', []);
+                                            } elseif (array_key_exists('codigos', $treinamentoPayloadCertificados)) {
+                                                $codigosTreinamentos = (array) ($treinamentoPayloadCertificados['codigos'] ?? []);
+                                            } else {
+                                                $codigosTreinamentos = (array) $treinamentoPayloadCertificados;
+                                            }
+                                            $codigosTreinamentos = array_values(array_unique(array_filter(array_map(
+                                                static fn ($v) => trim((string) $v),
+                                                $codigosTreinamentos
+                                            ))));
+                                            $certificadosEsperados = count($codigosTreinamentos);
+                                            if ($certificadosEsperados === 0) {
+                                                $certificadosEsperados = 1;
                                             }
                                         }
-                                        $asoTreinamentoEnviado = $anexos->filter(function ($anexo) {
+                                        $certificadosEnviados = $anexos->filter(function ($anexo) {
                                             return mb_strtolower((string) ($anexo->servico ?? '')) === 'certificado_treinamento';
                                         })->count();
-                                        $asoTreinamentoPendente = $asoTreinamentoEsperado > 0
-                                            && $asoTreinamentoEnviado < $asoTreinamentoEsperado;
+                                        $certificadosPendentes = $certificadosEsperados > 0
+                                            && $certificadosEnviados < $certificadosEsperados;
+                                        $documentoComplementarPgrPcmso = $anexos->first(function ($anexo) {
+                                            return mb_strtolower((string) ($anexo->servico ?? '')) === 'documento_complementar_pgr_pcmso';
+                                        });
+                                        $documentoArtPgrPcmso = $anexos->first(function ($anexo) {
+                                            return mb_strtolower((string) ($anexo->servico ?? '')) === 'documento_art_pgr_pcmso';
+                                        });
                                     @endphp
                                     data-tem-anexos="{{ $anexos->isNotEmpty() ? '1' : '0' }}"
                                     data-anexos='@json($anexosPayload)'
@@ -524,7 +550,11 @@
                                     data-move-url="{{ route('operacional.tarefas.mover', $tarefa) }}"
                                     data-finalizar-url="{{ route('operacional.tarefas.finalizar-com-arquivo', $tarefa) }}
                                     "
+                                    data-finalizar-documento-existente-url="{{ route('operacional.tarefas.finalizar-documento-existente', $tarefa) }}"
                                     data-substituir-doc-url="{{ route('operacional.tarefas.documento-cliente', $tarefa) }}"
+                                    data-substituir-doc-complementar-url="{{ route('operacional.tarefas.documento-complementar', $tarefa) }}"
+                                    data-substituir-doc-art-url="{{ route('operacional.tarefas.documento-art', $tarefa) }}"
+                                    data-whatsapp-bundle-url="{{ \Illuminate\Support\Facades\URL::temporarySignedRoute('operacional.tarefas.pacote-publico', now()->addDays(7), ['tarefa' => $tarefa->id]) }}"
                                     data-prioridade="{{ ucfirst($tarefa->prioridade) }}"
                                     data-status="{{ $coluna->nome }}"
                                     data-finalizado="{{ (!empty($tarefa->finalizado_em) || ($coluna->finaliza ?? false)) ? '1' : '0' }}"
@@ -551,9 +581,10 @@
                                     data-aso-pacote="{{ $asoPacoteNome }}"
                                     data-aso-email="{{ $asoEmail }}"
                                     data-is-aso="{{ $isAsoTask ? '1' : '0' }}"
-                                    data-certificados-pendentes="{{ $asoTreinamentoPendente ? '1' : '0' }}"
-                                    data-certificados-enviados="{{ $asoTreinamentoEnviado }}"
-                                    data-certificados-total="{{ $asoTreinamentoEsperado }}"
+                                    data-is-treinamento-task="{{ $isTreinamentoTask ? '1' : '0' }}"
+                                    data-certificados-pendentes="{{ $certificadosPendentes ? '1' : '0' }}"
+                                    data-certificados-enviados="{{ $certificadosEnviados }}"
+                                    data-certificados-total="{{ $certificadosEsperados }}"
                                     data-certificados-upload-url="{{ route('operacional.tarefas.certificados', $tarefa) }}"
 
                                     data-observacao-interna="{{ e($tarefa->observacao_interna) }}"
@@ -579,6 +610,7 @@
                                         @endphp
                                         data-pgr-tipo="{{ $pgr->tipo }}"
                                         data-pgr-com-art="{{ $pgr->com_art ? '1' : '0' }}"
+                                        data-pgr-pcmso="{{ $pgr->com_pcms0 ? '1' : '0' }}"
                                         data-pgr-qtd-homens="{{ $pgr->qtd_homens }}"
                                         data-pgr-qtd-mulheres="{{ $pgr->qtd_mulheres }}"
                                         data-pgr-total-trabalhadores="{{ $pgr->total_trabalhadores }}"
@@ -594,6 +626,12 @@
                                     @endif
                                     @if($tarefa->documento_link)
                                         data-arquivo-cliente-url="{{ $tarefa->documento_link }}"
+                                    @endif
+                                    @if($documentoComplementarPgrPcmso)
+                                        data-pcmso-pgr-url="{{ $documentoComplementarPgrPcmso->url }}"
+                                    @endif
+                                    @if($documentoArtPgrPcmso)
+                                        data-art-pgr-url="{{ $documentoArtPgrPcmso->url }}"
                                     @endif
 
                                     {{-- APR --}}
@@ -822,14 +860,14 @@
                                                 {{ $badgeLabel }}
                                             </span>
 
-                                            @if($asoTreinamentoEsperado > 0)
+                                            @if($certificadosEsperados > 0)
                                                 @php
-                                                    $certBadgeClass = $asoTreinamentoPendente
+                                                    $certBadgeClass = $certificadosPendentes
                                                         ? 'bg-amber-50 border-amber-200 text-amber-700'
                                                         : 'bg-emerald-50 border-emerald-200 text-emerald-700';
                                                 @endphp
                                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border {{ $certBadgeClass }}">
-                                                    Trein. {{ $asoTreinamentoEnviado }}/{{ $asoTreinamentoEsperado }}
+                                                    Trein. {{ $certificadosEnviados }}/{{ $certificadosEsperados }}
                                                 </span>
                                             @endif
 
@@ -922,7 +960,7 @@
     <div id="tarefa-modal"
          data-overlay-root="true"
          class="fixed inset-0 z-[90] hidden items-center justify-center bg-black/50 p-4 overflow-y-auto">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden">
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden">
             {{-- Cabeçalho --}}
             {{-- Cabeçalho (VERSÃO DEBUG) --}}
             <div
@@ -1459,6 +1497,24 @@
                                     @if(!$canUpdateTask) disabled @endif>
                                 Mover para: Atrasado
                             </button>
+
+                            <button
+                                type="button"
+                                id="modal-finalizar-btn"
+                                class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg
+                                       bg-sky-600 text-white text-sm font-semibold shadow-sm
+                                       hover:bg-sky-700 transition">
+                                Finalizar tarefa
+                            </button>
+
+                            <button
+                                type="button"
+                                id="btn-notificar-cliente"
+                                class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg
+                                   bg-emerald-600 text-white text-sm font-semibold shadow-sm
+                                   hover:bg-emerald-700 transition hidden">
+                                Notificar cliente (WhatsApp)
+                            </button>
                         </div>
                     </section>
                     {{-- 5. Documento final da tarefa --}}
@@ -1506,14 +1562,60 @@
                                 Quando anexado, este documento ficará disponível para o cliente.
                             </p>
                         </div>
-                        <button
-                            type="button"
-                            id="btn-notificar-cliente"
-                            class="mt-3 w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg
-                               bg-emerald-600 text-white text-sm font-semibold shadow-sm
-                               hover:bg-emerald-700 transition hidden">
-                            Notificar cliente (WhatsApp)
-                        </button>
+                        <div id="modal-arquivo-complementar-wrapper" class="mt-4 hidden border-t border-emerald-100 pt-4">
+                            <p id="modal-arquivo-complementar-status" class="text-[12px] text-emerald-900 font-semibold mb-2">
+                                Status: Documento complementar ainda não anexado.
+                            </p>
+                            <a id="modal-arquivo-complementar-link"
+                               href="#"
+                               target="_blank"
+                               class="inline-flex items-center gap-2 text-xs font-semibold text-emerald-700 hover:text-emerald-900 underline hidden">
+                                📎 Visualizar documento complementar
+                            </a>
+                            <div class="mt-3 flex flex-col gap-2">
+                                <input
+                                    type="file"
+                                    id="modal-arquivo-complementar-input"
+                                    class="hidden"
+                                    accept=".pdf,.jpg,.jpeg,.png"
+                                >
+                                <button
+                                    type="button"
+                                    id="modal-arquivo-complementar-btn"
+                                    class="inline-flex items-center justify-center px-3 py-2 rounded-lg
+                                       border border-emerald-200 bg-white text-emerald-700 text-xs font-semibold
+                                       hover:bg-emerald-50 transition">
+                                    Anexar documento complementar
+                                </button>
+                            </div>
+                        </div>
+                        <div id="modal-arquivo-art-wrapper" class="mt-4 hidden border-t border-emerald-100 pt-4">
+                            <p id="modal-arquivo-art-status" class="text-[12px] text-emerald-900 font-semibold mb-2">
+                                Status: ART ainda não anexada.
+                            </p>
+                            <a id="modal-arquivo-art-link"
+                               href="#"
+                               target="_blank"
+                               class="inline-flex items-center gap-2 text-xs font-semibold text-emerald-700 hover:text-emerald-900 underline hidden">
+                                📎 Visualizar ART
+                            </a>
+                            <div class="mt-3 flex flex-col gap-2">
+                                <input
+                                    type="file"
+                                    id="modal-arquivo-art-input"
+                                    class="hidden"
+                                    accept=".pdf,.jpg,.jpeg,.png"
+                                >
+                                <button
+                                    type="button"
+                                    id="modal-arquivo-art-btn"
+                                    class="inline-flex items-center justify-center px-3 py-2 rounded-lg
+                                       border border-emerald-200 bg-white text-emerald-700 text-xs font-semibold
+                                       hover:bg-emerald-50 transition">
+                                    Anexar ART
+                                </button>
+                            </div>
+                        </div>
                     </section>
                     {{-- 5b. Documentos da tarefa (ASO, PGR, PCMSO etc) --}}
                     <section id="modal-docs-wrapper"
@@ -1537,21 +1639,34 @@
                             CERTIFICADOS DE TREINAMENTO
                         </h3>
                         <p id="modal-certificados-status" class="text-[12px] text-amber-800 mb-2">—</p>
-                        <input
-                            type="file"
-                            id="modal-certificados-input"
-                            class="hidden"
-                            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                            multiple
-                        >
-                        <button
-                            type="button"
-                            id="modal-certificados-upload-btn"
-                            class="inline-flex items-center justify-center px-3 py-2 rounded-lg
+                        <div id="modal-certificados-dropzone"
+                             class="mt-3 rounded-2xl border-2 border-dashed border-amber-300 bg-white/70 px-6 py-8 text-center transition cursor-pointer hover:bg-amber-50">
+                            <input
+                                type="file"
+                                id="modal-certificados-input"
+                                class="hidden"
+                                accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                                multiple
+                            >
+                            <div class="flex flex-col items-center justify-center gap-2 text-amber-700">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 16V4m0 0l-4 4m4-4l4 4M4 16.5v1.25A2.25 2.25 0 0 0 6.25 20h11.5A2.25 2.25 0 0 0 20 17.75V16.5" />
+                                </svg>
+                                <div class="text-sm font-semibold">Arraste os certificados aqui</div>
+                                <div class="text-xs text-amber-600/80">ou clique para selecionar varios arquivos</div>
+                            </div>
+                        </div>
+                        <ul id="modal-certificados-file-list" class="mt-3 space-y-1 text-xs text-amber-900 hidden"></ul>
+                        <div class="mt-3 flex justify-end">
+                            <button
+                                type="button"
+                                id="modal-certificados-upload-btn"
+                                class="inline-flex items-center justify-center px-3 py-2 rounded-lg
                                    border border-amber-200 bg-white text-amber-700 text-xs font-semibold
                                    hover:bg-amber-50 transition">
-                            Anexar certificados
-                        </button>
+                                Enviar certificados
+                            </button>
+                        </div>
                     </section>
 
                     {{-- 6. Adicionar observação interna --}}
@@ -1594,6 +1709,37 @@
                     </section>
 
 
+                </div>
+            </div>
+
+            <div id="modal-pendencia-wrapper"
+                 class="absolute inset-0 z-30 hidden items-center justify-center bg-slate-950/45 p-4">
+                <div class="w-full max-w-md rounded-2xl bg-white px-8 py-7 shadow-2xl">
+                    <div class="text-center">
+                        <div class="mx-auto flex h-20 w-20 items-center justify-center rounded-full border-4 border-sky-400 text-4xl font-bold text-sky-400">
+                            !
+                        </div>
+                        <h3 class="mt-6 text-2xl font-bold tracking-tight text-slate-600">
+                            Alerta de pendencia
+                        </h3>
+                        <p id="modal-pendencia-texto" class="mt-5 text-[15px] font-medium leading-7 text-slate-600">
+                            —
+                        </p>
+                    </div>
+                    <div class="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-center">
+                        <button
+                            type="button"
+                            id="modal-pendencia-continuar-btn"
+                            class="inline-flex min-w-[170px] items-center justify-center rounded-lg bg-indigo-500 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-600">
+                            Continuar alterando
+                        </button>
+                        <button
+                            type="button"
+                            id="modal-pendencia-fechar-btn"
+                            class="inline-flex min-w-[140px] items-center justify-center rounded-lg bg-slate-500 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-600">
+                            Fechar tarefa
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1771,6 +1917,13 @@
             const certificadosStatus = document.getElementById('modal-certificados-status');
             const certificadosInput = document.getElementById('modal-certificados-input');
             const certificadosUploadBtn = document.getElementById('modal-certificados-upload-btn');
+            const certificadosDropzone = document.getElementById('modal-certificados-dropzone');
+            const certificadosFileList = document.getElementById('modal-certificados-file-list');
+            const finalizarBtn = document.getElementById('modal-finalizar-btn');
+            const pendenciaWrapper = document.getElementById('modal-pendencia-wrapper');
+            const pendenciaTexto = document.getElementById('modal-pendencia-texto');
+            const pendenciaContinuarBtn = document.getElementById('modal-pendencia-continuar-btn');
+            const pendenciaFecharBtn = document.getElementById('modal-pendencia-fechar-btn');
 
 
             // PGR
@@ -1805,6 +1958,16 @@
             const btnNotificarCliente = document.getElementById('btn-notificar-cliente');
             const arquivoReplaceInput = document.getElementById('modal-arquivo-replace-input');
             const arquivoReplaceBtn = document.getElementById('modal-arquivo-replace-btn');
+            const arquivoComplementarWrapper = document.getElementById('modal-arquivo-complementar-wrapper');
+            const arquivoComplementarStatus = document.getElementById('modal-arquivo-complementar-status');
+            const arquivoComplementarLink = document.getElementById('modal-arquivo-complementar-link');
+            const arquivoComplementarInput = document.getElementById('modal-arquivo-complementar-input');
+            const arquivoComplementarBtn = document.getElementById('modal-arquivo-complementar-btn');
+            const arquivoArtWrapper = document.getElementById('modal-arquivo-art-wrapper');
+            const arquivoArtStatus = document.getElementById('modal-arquivo-art-status');
+            const arquivoArtLink = document.getElementById('modal-arquivo-art-link');
+            const arquivoArtInput = document.getElementById('modal-arquivo-art-input');
+            const arquivoArtBtn = document.getElementById('modal-arquivo-art-btn');
             const arquivoDescricao = document.getElementById('modal-arquivo-descricao');
             const arquivoStatus = document.getElementById('modal-arquivo-status');
             const arquivoAjuda = document.getElementById('modal-arquivo-ajuda');
@@ -1823,13 +1986,91 @@
                 return raw || '—';
             }
 
+            function collectWhatsappLinks(card, fallbackDocumentoUrl = '') {
+                if (!card) return [];
+
+                const links = [];
+                const appendLink = (label, url) => {
+                    const normalizedUrl = String(url || '').trim();
+                    if (!normalizedUrl) return;
+                    if (links.some((item) => item.url === normalizedUrl)) return;
+                    links.push({ label, url: normalizedUrl });
+                };
+
+                const isPgrComPcmso = card.dataset.pgrPcmso === '1';
+                const isAsoTask = card.dataset.isAso === '1';
+                const isTreinamentoTask = card.dataset.isTreinamentoTask === '1';
+                const documentoPrincipalUrl = fallbackDocumentoUrl || card.dataset.arquivoClienteUrl || '';
+
+                if (documentoPrincipalUrl) {
+                    appendLink(
+                        isPgrComPcmso ? 'PGR' : (isAsoTask ? 'ASO' : 'Documento final'),
+                        documentoPrincipalUrl
+                    );
+                }
+
+                if (card.dataset.pcmsoPgrUrl) {
+                    appendLink('PCMSO', card.dataset.pcmsoPgrUrl);
+                }
+
+                if (card.dataset.artPgrUrl) {
+                    appendLink('ART', card.dataset.artPgrUrl);
+                }
+
+                let anexos = [];
+                try {
+                    anexos = card.dataset.anexos ? JSON.parse(card.dataset.anexos) : [];
+                } catch (error) {
+                    anexos = [];
+                }
+
+                anexos
+                    .filter((anexo) => String(anexo?.servico || '').toLowerCase() === 'certificado_treinamento')
+                    .forEach((anexo, index) => appendLink(`Certificado ${index + 1}`, anexo?.url || ''));
+
+                if (isTreinamentoTask && !links.length) {
+                    anexos
+                        .filter((anexo) => String(anexo?.servico || '').toLowerCase() !== 'cancelamento_tarefa')
+                        .forEach((anexo, index) => appendLink(`Documento ${index + 1}`, anexo?.url || ''));
+                }
+
+                return links;
+            }
+
             function buildWhatsappMensagem(card, arquivoUrl) {
                 const telefone = (card?.dataset?.telefone || '').replace(/\D/g, '');
                 if (!telefone) return null;
 
-                const servico = card?.dataset?.servico || 'documento';
-                const links = arquivoUrl ? [arquivoUrl] : [];
-                const linksTexto = links.length ? `\n\nLinks:\n${links.join('\n')}` : '';
+                let servico = card?.dataset?.servico || 'documento';
+                const funcionario = String(card?.dataset?.funcionario || '').split('|')[0].trim();
+
+                if (card?.dataset?.isTreinamentoTask === '1') {
+                    let participante = '';
+
+                    try {
+                        const participantes = card?.dataset?.treinamentoParticipantes
+                            ? JSON.parse(card.dataset.treinamentoParticipantes)
+                            : [];
+                        participante = String(participantes?.[0] || '').trim();
+                    } catch (error) {
+                        participante = '';
+                    }
+
+                    const colaborador = funcionario || participante;
+                    if (colaborador) {
+                        servico = `Treinamentos NRs do colaborador ${colaborador}`;
+                    }
+                } else if (funcionario) {
+                    servico = `${servico} do colaborador ${funcionario}`;
+                }
+
+                const links = collectWhatsappLinks(card, arquivoUrl);
+                const bundleUrl = String(card?.dataset?.whatsappBundleUrl || '').trim();
+                const linksTexto = links.length > 1 && bundleUrl
+                    ? `\n\nBaixar pacote ZIP:\n${bundleUrl}`
+                    : (links.length
+                        ? `\n\nLinks:\n${links.map((item) => `${item.label}: ${item.url}`).join('\n')}`
+                        : '');
                 const mensagem = `Olá! Segue abaixo o anexo do ${servico}.\n\nEnviado pela Formed.${linksTexto}`;
 
                 return { telefone, mensagem };
@@ -1841,6 +2082,11 @@
 
                 if (isAsoTask) {
                     return 'Anexe o ASO final assinado/emitido para o cliente.';
+                }
+                if (card?.dataset?.pgrPcmso === '1') {
+                    return card?.dataset?.pgrComArt === '1'
+                        ? 'Anexe os documentos finais do PGR, do PCMSO e da ART entregues ao cliente.'
+                        : 'Anexe os documentos finais do PGR e do PCMSO entregues ao cliente.';
                 }
                 if (servico.includes('pgr')) {
                     return 'Anexe o documento final do PGR entregue ao cliente.';
@@ -1931,6 +2177,11 @@
             function openDetalhesModal(card) {
                 if (!card) return;
                 detalhesCurrentCard = card;
+                hidePendenciaInline();
+                renderCertificadosSelecionados([]);
+                if (certificadosInput) {
+                    certificadosInput.value = '';
+                }
 
                 const isCancelada = card.dataset.cancelada === '1';
                 modal.dataset.cancelada = isCancelada ? '1' : '0';
@@ -1972,64 +2223,140 @@
                 if (arquivoWrapper && arquivoLink) {
                     const urlArquivo = card.dataset.arquivoClienteUrl || '';
                     const isAsoTask = card.dataset.isAso === '1';
+                    const isTreinamentoTask = card.dataset.isTreinamentoTask === '1';
                     const totalCertificados = Number(card.dataset.certificadosTotal || '0');
                     const enviadosCertificados = Number(card.dataset.certificadosEnviados || '0');
                     const pendentesCertificados = card.dataset.certificadosPendentes === '1';
                     const temDocumentoFinal = !!urlArquivo;
+                    const isPgrComPcmso = card.dataset.pgrPcmso === '1';
+                    const requerArt = card.dataset.pgrComArt === '1';
+                    const urlComplementar = card.dataset.pcmsoPgrUrl || '';
+                    const temDocumentoComplementar = !!urlComplementar;
+                    const urlArt = card.dataset.artPgrUrl || '';
+                    const temDocumentoArt = !!urlArt;
 
-                    arquivoWrapper.classList.remove('hidden');
-
-                    if (arquivoDescricao) {
-                        arquivoDescricao.textContent = 'Este é o documento principal concluído desta tarefa, disponibilizado ao cliente.';
-                    }
-                    if (arquivoAjuda) {
-                        arquivoAjuda.textContent = getDocumentoFinalAjuda(card);
-                    }
-
-                    if (temDocumentoFinal) {
-                        arquivoLink.href = urlArquivo;
-                        arquivoLink.classList.remove('hidden');
-
-                        if (arquivoStatus) {
-                            arquivoStatus.textContent = 'Status: Documento final anexado.';
-                        }
-                        if (arquivoReplaceBtn) {
-                            arquivoReplaceBtn.textContent = 'Enviar nova versão';
-                            arquivoReplaceBtn.title = 'Substitui o documento final atual da tarefa';
-                        }
-                        if (arquivoImpacto) {
-                            arquivoImpacto.textContent = 'A nova versão substituirá o documento atual da tarefa.';
-                        }
-                        if (btnNotificarCliente) {
-                            btnNotificarCliente.classList.remove('hidden');
-                        }
+                    if (isTreinamentoTask && !isAsoTask) {
+                        arquivoWrapper.classList.add('hidden');
                     } else {
-                        arquivoLink.href = '#';
-                        arquivoLink.classList.add('hidden');
+                        arquivoWrapper.classList.remove('hidden');
 
-                        if (arquivoStatus) {
-                            arquivoStatus.textContent = 'Status: Documento final ainda não anexado.';
+                        if (arquivoDescricao) {
+                            arquivoDescricao.textContent = isPgrComPcmso
+                                ? (requerArt
+                                    ? 'Anexe os arquivos finais do PGR, do PCMSO e da ART entregues ao cliente.'
+                                    : 'Anexe os arquivos finais do PGR e do PCMSO entregues ao cliente.')
+                                : 'Este é o documento principal concluído desta tarefa, disponibilizado ao cliente.';
                         }
-                        if (arquivoReplaceBtn) {
-                            arquivoReplaceBtn.textContent = 'Anexar documento final';
-                            arquivoReplaceBtn.title = 'Anexar o documento final da tarefa';
+                        if (arquivoAjuda) {
+                            arquivoAjuda.textContent = getDocumentoFinalAjuda(card);
                         }
-                        if (arquivoImpacto) {
-                            arquivoImpacto.textContent = 'Quando anexado, este documento ficará disponível para o cliente.';
+
+                        if (temDocumentoFinal) {
+                            arquivoLink.href = urlArquivo;
+                            arquivoLink.classList.remove('hidden');
+
+                            if (arquivoStatus) {
+                                arquivoStatus.textContent = isPgrComPcmso
+                                    ? 'PGR: Documento anexado.'
+                                    : 'Status: Documento final anexado.';
+                            }
+                            if (arquivoReplaceBtn) {
+                                arquivoReplaceBtn.textContent = isPgrComPcmso ? 'Atualizar PGR' : 'Enviar nova versão';
+                                arquivoReplaceBtn.title = isPgrComPcmso
+                                    ? 'Substitui o documento final do PGR'
+                                    : 'Substitui o documento final atual da tarefa';
+                            }
+                            if (arquivoImpacto) {
+                                arquivoImpacto.textContent = isPgrComPcmso
+                                    ? 'O arquivo do PGR ficará disponível para o cliente.'
+                                    : 'A nova versão substituirá o documento atual da tarefa.';
+                            }
+                        } else {
+                            arquivoLink.href = '#';
+                            arquivoLink.classList.add('hidden');
+
+                            if (arquivoStatus) {
+                                arquivoStatus.textContent = isPgrComPcmso
+                                    ? 'PGR: Documento ainda não anexado.'
+                                    : 'Status: Documento final ainda não anexado.';
+                            }
+                            if (arquivoReplaceBtn) {
+                                arquivoReplaceBtn.textContent = isPgrComPcmso ? 'Anexar PGR' : 'Anexar documento final';
+                                arquivoReplaceBtn.title = isPgrComPcmso
+                                    ? 'Anexar o documento final do PGR'
+                                    : 'Anexar o documento final da tarefa';
+                            }
+                            if (arquivoImpacto) {
+                                arquivoImpacto.textContent = isPgrComPcmso
+                                    ? ''
+                                    : 'Quando anexado, este documento ficará disponível para o cliente.';
+                            }
                         }
-                        if (btnNotificarCliente) {
-                            btnNotificarCliente.classList.add('hidden');
+
+                        if (arquivoComplementarWrapper && arquivoComplementarStatus && arquivoComplementarLink && arquivoComplementarBtn) {
+                            if (isPgrComPcmso) {
+                                arquivoComplementarWrapper.classList.remove('hidden');
+
+                                if (temDocumentoComplementar) {
+                                    arquivoComplementarLink.href = urlComplementar;
+                                    arquivoComplementarLink.classList.remove('hidden');
+                                    arquivoComplementarStatus.textContent = 'PCMSO: Documento anexado.';
+                                    arquivoComplementarBtn.textContent = 'Atualizar PCMSO';
+                                    arquivoComplementarBtn.title = 'Substitui o documento final do PCMSO';
+                                } else {
+                                    arquivoComplementarLink.href = '#';
+                                    arquivoComplementarLink.classList.add('hidden');
+                                    arquivoComplementarStatus.textContent = 'PCMSO: Documento ainda não anexado.';
+                                    arquivoComplementarBtn.textContent = 'Anexar PCMSO';
+                                    arquivoComplementarBtn.title = 'Anexar o documento final do PCMSO';
+                                }
+                            } else {
+                                arquivoComplementarWrapper.classList.add('hidden');
+                                arquivoComplementarLink.href = '#';
+                                arquivoComplementarLink.classList.add('hidden');
+                                arquivoComplementarStatus.textContent = 'Status: Documento complementar ainda não anexado.';
+                            }
+                        }
+
+                        if (arquivoArtWrapper && arquivoArtStatus && arquivoArtLink && arquivoArtBtn) {
+                            if (isPgrComPcmso && requerArt) {
+                                arquivoArtWrapper.classList.remove('hidden');
+
+                                if (temDocumentoArt) {
+                                    arquivoArtLink.href = urlArt;
+                                    arquivoArtLink.classList.remove('hidden');
+                                    arquivoArtStatus.textContent = 'ART: Documento anexado.';
+                                    arquivoArtBtn.textContent = 'Atualizar ART';
+                                    arquivoArtBtn.title = 'Substitui o documento final da ART';
+                                } else {
+                                    arquivoArtLink.href = '#';
+                                    arquivoArtLink.classList.add('hidden');
+                                    arquivoArtStatus.textContent = 'ART: Documento ainda não anexado.';
+                                    arquivoArtBtn.textContent = 'Anexar ART';
+                                    arquivoArtBtn.title = 'Anexar o documento final da ART';
+                                }
+                            } else {
+                                arquivoArtWrapper.classList.add('hidden');
+                                arquivoArtLink.href = '#';
+                                arquivoArtLink.classList.add('hidden');
+                                arquivoArtStatus.textContent = 'Status: ART ainda não anexada.';
+                            }
+                        }
+
+                        if (arquivoAjuda && isAsoTask && totalCertificados > 0 && !temDocumentoFinal) {
+                            arquivoAjuda.textContent += ' Após anexar o documento final do ASO, os certificados de treinamento serão liberados abaixo.';
+                        }
+
+                        if (arquivoStatus && isAsoTask && totalCertificados > 0 && temDocumentoFinal) {
+                            arquivoStatus.textContent += pendentesCertificados
+                                ? ` Certificados pendentes: ${enviadosCertificados}/${totalCertificados}.`
+                                : ` Certificados concluídos: ${enviadosCertificados}/${totalCertificados}.`;
                         }
                     }
 
-                    if (arquivoAjuda && isAsoTask && totalCertificados > 0 && !temDocumentoFinal) {
-                        arquivoAjuda.textContent += ' Após anexar o documento final do ASO, os certificados de treinamento serão liberados abaixo.';
-                    }
-
-                    if (arquivoStatus && isAsoTask && totalCertificados > 0 && temDocumentoFinal) {
-                        arquivoStatus.textContent += pendentesCertificados
-                            ? ` Certificados pendentes: ${enviadosCertificados}/${totalCertificados}.`
-                            : ` Certificados concluídos: ${enviadosCertificados}/${totalCertificados}.`;
+                    if (btnNotificarCliente) {
+                        const podeNotificar = collectWhatsappLinks(card).length > 0;
+                        btnNotificarCliente.classList.toggle('hidden', !podeNotificar);
                     }
                 }
                 // ===============================
@@ -2048,7 +2375,7 @@
                     // 1) Documento final da tarefa (path_documento_cliente)
                     if (card.dataset.arquivoClienteUrl) {
                         anexos.push({
-                            label: 'Documento final da tarefa',
+                            label: isPgrComPcmso ? 'Documento final - PGR' : 'Documento final da tarefa',
                             url: card.dataset.arquivoClienteUrl
                         });
                     }
@@ -2056,8 +2383,15 @@
                     // 2) PGR anexado ao PCMSO (se existir)
                     if (card.dataset.pcmsoPgrUrl) {
                         anexos.push({
-                            label: 'PGR anexado (PCMSO)',
+                            label: isPgrComPcmso ? 'Documento final - PCMSO' : 'PGR anexado (PCMSO)',
                             url: card.dataset.pcmsoPgrUrl
+                        });
+                    }
+
+                    if (card.dataset.artPgrUrl) {
+                        anexos.push({
+                            label: 'Documento final - ART',
+                            url: card.dataset.artPgrUrl
                         });
                     }
 
@@ -2075,7 +2409,12 @@
                         return 'Documento';
                     };
 
-                    const anexosDocs = anexos.filter(a => !a || a.servico !== 'cancelamento_tarefa');
+                    const anexosDocs = anexos.filter((a) => {
+                        const servico = String(a?.servico || '').toLowerCase();
+                        return servico !== 'cancelamento_tarefa'
+                            && servico !== 'documento_complementar_pgr_pcmso'
+                            && servico !== 'documento_art_pgr_pcmso';
+                    });
 
                     if (anexosDocs.length) {
                         docsWrapper.classList.remove('hidden');
@@ -2086,9 +2425,16 @@
                                             <a href="${a.url}" target="_blank" class="underline text-[13px] font-medium">
                                                 ${mapAnexoLabel(a)}
                                             </a>
-                                            <span class="text-[11px] text-slate-500">
-                                                (${a.tamanho || '-'} · ${a.mime || '-'}${a.data ? ' · ' + a.data : ''}${a.uploaded_by ? ' · ' + a.uploaded_by : ''})
-                                            </span>
+                                            ${(a.tamanho || a.mime || a.data || a.uploaded_by) ? `
+                                                <span class="text-[11px] text-slate-500">
+                                                    (${[
+                                                        a.tamanho || null,
+                                                        a.mime || null,
+                                                        a.data || null,
+                                                        a.uploaded_by || null,
+                                                    ].filter(Boolean).join(' · ')})
+                                                </span>
+                                            ` : ''}
                                         </div>
                                         ${a.delete_url ? `
                                             <button
@@ -2113,17 +2459,58 @@
                     const enviados = Number(card.dataset.certificadosEnviados || '0');
                     const pendentes = card.dataset.certificadosPendentes === '1';
                     const isAso = card.dataset.isAso === '1';
+                    const isTreinamentoTask = card.dataset.isTreinamentoTask === '1';
                     const temDocumentoAso = !!card.dataset.arquivoClienteUrl;
 
-                    if (isAso && total > 0 && temDocumentoAso) {
+                    if ((isAso || isTreinamentoTask) && total > 0) {
                         certificadosWrapper.classList.remove('hidden');
-                        certificadosStatus.textContent = pendentes
-                            ? `Aguardando certificados: ${enviados}/${total}.`
-                            : `Certificados concluídos: ${enviados}/${total}.`;
+                        if (certificadosUploadBtn) {
+                            const bloqueado = isAso && !temDocumentoAso;
+                            certificadosUploadBtn.disabled = bloqueado;
+                            certificadosUploadBtn.classList.toggle('opacity-60', bloqueado);
+                            certificadosUploadBtn.classList.toggle('cursor-not-allowed', bloqueado);
+                            if (certificadosDropzone) {
+                                certificadosDropzone.classList.toggle('opacity-60', bloqueado);
+                                certificadosDropzone.classList.toggle('cursor-not-allowed', bloqueado);
+                            }
+                        }
+
+                        if (isAso && !temDocumentoAso) {
+                            certificadosStatus.textContent = `Esta tarefa espera ${total} certificado(s). Anexe primeiro o documento final do ASO para liberar o envio.`;
+                        } else {
+                            certificadosStatus.textContent = pendentes
+                                ? `Aguardando certificados: ${enviados}/${total}.`
+                                : `Certificados concluídos: ${enviados}/${total}.`;
+                        }
                     } else {
                         certificadosWrapper.classList.add('hidden');
                         certificadosStatus.textContent = '—';
+                        if (certificadosUploadBtn) {
+                            certificadosUploadBtn.disabled = false;
+                            certificadosUploadBtn.classList.remove('opacity-60', 'cursor-not-allowed');
+                            if (certificadosDropzone) {
+                                certificadosDropzone.classList.remove('opacity-60', 'cursor-not-allowed');
+                            }
+                        }
                     }
+                }
+
+                if (finalizarBtn) {
+                    const temDocumentoFinal = !!card.dataset.arquivoClienteUrl;
+                    const isTreinamentoTask = card.dataset.isTreinamentoTask === '1';
+                    const precisaDocumentoComplementar = card.dataset.pgrPcmso === '1';
+                    const precisaArt = card.dataset.pgrComArt === '1';
+                    const temDocumentoComplementar = !!card.dataset.pcmsoPgrUrl;
+                    const temDocumentoArt = !!card.dataset.artPgrUrl;
+                    const podeFinalizar = isTreinamentoTask
+                        ? true
+                        : temDocumentoFinal
+                            && (!precisaDocumentoComplementar || temDocumentoComplementar)
+                            && (!precisaArt || temDocumentoArt);
+
+                    finalizarBtn.disabled = !podeFinalizar;
+                    finalizarBtn.classList.toggle('opacity-60', !podeFinalizar);
+                    finalizarBtn.classList.toggle('cursor-not-allowed', !podeFinalizar);
                 }
 
                 if (exclusaoAnexoWrapper && exclusaoAnexoList) {
@@ -2602,6 +2989,52 @@
                 window.location.reload();
             }
 
+            function hideModalWithoutReload() {
+                if (!modal) return;
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+
+            function closeOverlayAlerts() {
+                if (window.Swal && typeof window.Swal.close === 'function') {
+                    window.Swal.close();
+                }
+
+                const overlayRoot = document.getElementById('app-overlay-root');
+                if (overlayRoot) {
+                    overlayRoot.querySelectorAll('.swal2-container').forEach((el) => el.remove());
+                    overlayRoot.classList.add('pointer-events-none');
+                }
+
+                document.querySelectorAll('.swal2-container').forEach((el) => el.remove());
+                document.body.classList.remove('swal2-shown', 'swal2-height-auto');
+                document.documentElement.classList.remove('swal2-shown', 'swal2-height-auto');
+            }
+
+            function hidePendenciaInline() {
+                if (pendenciaWrapper) {
+                    pendenciaWrapper.classList.add('hidden');
+                    pendenciaWrapper.classList.remove('flex');
+                    pendenciaWrapper.style.display = 'none';
+                    pendenciaWrapper.setAttribute('aria-hidden', 'true');
+                }
+                if (pendenciaTexto) {
+                    pendenciaTexto.textContent = '—';
+                }
+            }
+
+            function showPendenciaInline(message) {
+                if (pendenciaTexto) {
+                    pendenciaTexto.textContent = message || 'A tarefa ainda possui pendencias.';
+                }
+                if (pendenciaWrapper) {
+                    pendenciaWrapper.classList.remove('hidden');
+                    pendenciaWrapper.classList.add('flex');
+                    pendenciaWrapper.style.display = 'flex';
+                    pendenciaWrapper.setAttribute('aria-hidden', 'false');
+                }
+            }
+
             if (closeBtn) {
                 closeBtn.addEventListener('click', closeModal);
             }
@@ -2623,13 +3056,13 @@
             if (btnNotificarCliente) {
                 btnNotificarCliente.addEventListener('click', function () {
                     if (!detalhesCurrentCard) return;
-                    const arquivoUrl = detalhesCurrentCard.dataset.arquivoClienteUrl || '';
-                    if (!arquivoUrl) {
+                    const links = collectWhatsappLinks(detalhesCurrentCard);
+                    if (!links.length) {
                         window.uiAlert('Nenhum documento anexado para enviar.');
                         return;
                     }
 
-                    const payload = buildWhatsappMensagem(detalhesCurrentCard, arquivoUrl);
+                    const payload = buildWhatsappMensagem(detalhesCurrentCard);
                     if (!payload) {
                         window.uiAlert('Telefone do cliente não informado.');
                         return;
@@ -2661,6 +3094,57 @@
 
             let finalizarCurrentCard = null;
             let finalizarUrl = null;
+            let finalizarSkipReloadOnClose = false;
+
+            function tarefaExigeDocumentoCombinado(card) {
+                return card?.dataset?.pgrPcmso === '1' || card?.dataset?.pgrComArt === '1';
+            }
+
+            function tarefaTemDocumentosSuficientes(card) {
+                if (!card) return false;
+
+                const isTreinamentoTask = card.dataset.isTreinamentoTask === '1';
+                if (isTreinamentoTask) {
+                    return true;
+                }
+
+                const temDocumentoFinal = !!(card.dataset.arquivoClienteUrl || '');
+                const precisaDocumentoComplementar = card.dataset.pgrPcmso === '1';
+                const precisaArt = card.dataset.pgrComArt === '1';
+                const temDocumentoComplementar = !!(card.dataset.pcmsoPgrUrl || '');
+                const temDocumentoArt = !!(card.dataset.artPgrUrl || '');
+
+                return temDocumentoFinal
+                    && (!precisaDocumentoComplementar || temDocumentoComplementar)
+                    && (!precisaArt || temDocumentoArt);
+            }
+
+            async function finalizarComDocumentoExistente(card, options = {}) {
+                const url = card?.dataset?.finalizarDocumentoExistenteUrl || '';
+                if (!url) {
+                    throw new Error('Não foi possível finalizar esta tarefa.');
+                }
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json',
+                    },
+                });
+                const data = await parseJsonResponse(response);
+
+                if (!response.ok) {
+                    const error =
+                        data?.error
+                        || data?.message
+                        || (data?.errors ? Object.values(data.errors).flat()[0] : null)
+                        || 'Erro ao finalizar tarefa.';
+                    throw new Error(error);
+                }
+
+                await handleFinalizacaoResponse(card, data, options);
+            }
 
             function openFinalizarModal(card, url) {
                 console.log(finalizarModal)
@@ -2697,6 +3181,59 @@
                 finalizarUrl = null;
             }
 
+            async function handleFinalizacaoResponse(card, data, options = {}) {
+                if (!card || !data || !data.ok) return;
+
+                if (data.documento_url) {
+                    card.dataset.arquivoClienteUrl = data.documento_url;
+                }
+
+                const statusName = data.status_label || 'Finalizada';
+                card.dataset.status = statusName;
+                card.dataset.finalizado = data.finalizada_total ? '1' : '0';
+                if (data?.certificados) {
+                    card.dataset.certificadosPendentes = data.certificados.pendente ? '1' : '0';
+                    card.dataset.certificadosEnviados = String(data.certificados.enviados ?? 0);
+                    card.dataset.certificadosTotal = String(data.certificados.total_esperado ?? 0);
+                }
+
+                const statusSpan = card.querySelector('[data-role="card-status-label"]');
+                if (statusSpan) {
+                    statusSpan.textContent = statusName;
+                }
+
+                if (!data.finalizada_total && data?.certificados?.pendente) {
+                    const colunaAguardando = document.querySelector('.kanban-column[data-coluna-slug="aguardando-fornecedor"], .kanban-column[data-coluna-slug="aguardando"]');
+                    const colunaAguardandoId = colunaAguardando?.dataset?.colunaId;
+                    if (colunaAguardandoId) {
+                        moveCardToColumn(card, colunaAguardandoId, statusName);
+                    }
+
+                    if (options.closeModal) {
+                        closeFinalizarModal();
+                    }
+
+                    openDetalhesModal(card);
+                    showPendenciaInline(`${data.message || 'A tarefa ainda possui pendencias.'} Deseja continuar alterando a tarefa agora para anexar o que falta?`);
+                    return;
+                }
+
+                hidePendenciaInline();
+
+                if (options.closeModal) {
+                    closeFinalizarModal();
+                }
+
+                if (data.message) {
+                    window.uiAlert(data.message, {
+                        icon: 'success',
+                        title: 'Sucesso',
+                    });
+                }
+
+                setTimeout(() => window.location.reload(), 250);
+            }
+
             [finalizarCloseBtn, finalizarCloseXBtn].forEach((btn) => {
                 if (!btn) return;
 
@@ -2704,7 +3241,10 @@
                     console.log('fechar');
                     closeFinalizarModal();
                     // se quiser voltar o card pra coluna original:
-                    window.location.reload();
+                    if (!finalizarSkipReloadOnClose) {
+                        window.location.reload();
+                    }
+                    finalizarSkipReloadOnClose = false;
                 });
             });
 
@@ -2712,7 +3252,10 @@
                 finalizarModal.addEventListener('click', function (e) {
                     if (e.target === finalizarModal) {
                         closeFinalizarModal();
-                        window.location.reload();
+                        if (!finalizarSkipReloadOnClose) {
+                            window.location.reload();
+                        }
+                        finalizarSkipReloadOnClose = false;
                     }
                 });
             }
@@ -2775,7 +3318,7 @@
 
                             return data;
                         })
-                        .then(data => {
+                        .then(async (data) => {
                             if (!data || !data.ok) {
                                 const error =
                                     data?.error
@@ -2786,27 +3329,7 @@
                                 return;
                             }
 
-                            // Atualiza dataset do card com a URL do arquivo, se voltou do backend
-                            if (data.documento_url) {
-                                finalizarCurrentCard.dataset.arquivoClienteUrl = data.documento_url;
-                            }
-
-                            // atualiza status do card
-                            const statusName = data.status_label || 'Finalizada';
-                            finalizarCurrentCard.dataset.status = statusName;
-                            finalizarCurrentCard.dataset.finalizado = data.finalizada_total ? '1' : '0';
-                            if (data?.certificados) {
-                                finalizarCurrentCard.dataset.certificadosPendentes = data.certificados.pendente ? '1' : '0';
-                                finalizarCurrentCard.dataset.certificadosEnviados = String(data.certificados.enviados ?? 0);
-                                finalizarCurrentCard.dataset.certificadosTotal = String(data.certificados.total_esperado ?? 0);
-                            }
-
-                            const statusSpan = finalizarCurrentCard.querySelector('[data-role="card-status-label"]');
-                            if (statusSpan) {
-                                statusSpan.textContent = statusName;
-                            }
-
-                            if (finalizarNotificar && finalizarNotificar.checked) {
+                            if (data.finalizada_total && finalizarNotificar && finalizarNotificar.checked) {
                                 const arquivoUrl = data.documento_url || '';
                                 const payload = buildWhatsappMensagem(finalizarCurrentCard, arquivoUrl);
 
@@ -2820,11 +3343,13 @@
                                 } else if (whatsappPopup && !whatsappPopup.closed) {
                                     whatsappPopup.close();
                                 }
+                            } else if (whatsappPopup && !whatsappPopup.closed) {
+                                whatsappPopup.close();
                             }
 
-                            closeFinalizarModal();
-                            // Para evitar descompasso de contadores/ordem, recarrega a página
-                            window.location.reload();
+                            finalizarSkipReloadOnClose = !data.finalizada_total && !!data?.certificados?.pendente;
+                            await handleFinalizacaoResponse(finalizarCurrentCard, data, { closeModal: true });
+                            finalizarSkipReloadOnClose = false;
                         })
                         .catch((error) => {
                             if (whatsappPopup && !whatsappPopup.closed) {
@@ -2933,6 +3458,118 @@
                     });
             }
 
+            function uploadDocumentoComplementar(file) {
+                if (!file || !detalhesCurrentCard) return;
+                const url = detalhesCurrentCard.dataset.substituirDocComplementarUrl;
+                if (!url) {
+                    window.uiAlert('Não foi possível enviar o documento complementar desta tarefa.');
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('arquivo_cliente', file);
+
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json',
+                    },
+                    body: formData,
+                })
+                    .then(async (r) => {
+                        const contentType = r.headers.get('content-type') || '';
+                        const isJson = contentType.includes('application/json');
+                        const data = isJson ? await r.json() : null;
+
+                        if (!r.ok) {
+                            const error =
+                                data?.error
+                                || data?.message
+                                || (data?.errors ? Object.values(data.errors).flat()[0] : null)
+                                || 'Erro ao enviar documento complementar.';
+                            throw new Error(error);
+                        }
+
+                        return data;
+                    })
+                    .then((data) => {
+                        if (!data || !data.ok) {
+                            const error =
+                                data?.error
+                                || data?.message
+                                || (data?.errors ? Object.values(data.errors).flat()[0] : null)
+                                || 'Erro ao enviar documento complementar.';
+                            window.uiAlert(error);
+                            return;
+                        }
+
+                        if (data.documento_url) {
+                            detalhesCurrentCard.dataset.pcmsoPgrUrl = data.documento_url;
+                            openDetalhesModal(detalhesCurrentCard);
+                        }
+                    })
+                    .catch((error) => {
+                        window.uiAlert(error?.message || 'Erro ao enviar documento complementar.');
+                    });
+            }
+
+            function uploadDocumentoArt(file) {
+                if (!file || !detalhesCurrentCard) return;
+                const url = detalhesCurrentCard.dataset.substituirDocArtUrl;
+                if (!url) {
+                    window.uiAlert('Não foi possível enviar o documento ART desta tarefa.');
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('arquivo_cliente', file);
+
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json',
+                    },
+                    body: formData,
+                })
+                    .then(async (r) => {
+                        const contentType = r.headers.get('content-type') || '';
+                        const isJson = contentType.includes('application/json');
+                        const data = isJson ? await r.json() : null;
+
+                        if (!r.ok) {
+                            const error =
+                                data?.error
+                                || data?.message
+                                || (data?.errors ? Object.values(data.errors).flat()[0] : null)
+                                || 'Erro ao enviar documento ART.';
+                            throw new Error(error);
+                        }
+
+                        return data;
+                    })
+                    .then((data) => {
+                        if (!data || !data.ok) {
+                            const error =
+                                data?.error
+                                || data?.message
+                                || (data?.errors ? Object.values(data.errors).flat()[0] : null)
+                                || 'Erro ao enviar documento ART.';
+                            window.uiAlert(error);
+                            return;
+                        }
+
+                        if (data.documento_url) {
+                            detalhesCurrentCard.dataset.artPgrUrl = data.documento_url;
+                            openDetalhesModal(detalhesCurrentCard);
+                        }
+                    })
+                    .catch((error) => {
+                        window.uiAlert(error?.message || 'Erro ao enviar documento ART.');
+                    });
+            }
+
             function uploadCertificadosTreinamento(files) {
                 if (!files?.length || !detalhesCurrentCard) return;
                 const url = detalhesCurrentCard.dataset.certificadosUploadUrl;
@@ -2980,30 +3617,11 @@
                         if (data.status_label) {
                             detalhesCurrentCard.dataset.status = String(data.status_label);
                         }
-                        if (data.movida_para_finalizada) {
-                            detalhesCurrentCard.dataset.finalizado = '1';
-                            const colunaFinalizadaEl = document.querySelector('.kanban-column[data-coluna-slug="finalizada"]');
-                            const colunaFinalizadaId = colunaFinalizadaEl?.dataset?.colunaId;
-                            if (colunaFinalizadaId) {
-                                moveCardToColumn(detalhesCurrentCard, colunaFinalizadaId, data.status_label || 'Finalizada');
-                            }
-                        }
-
-                        if (data.movida_para_finalizada) {
-                            window.uiAlert('Certificados concluídos. Tarefa movida para Finalizada.', {
-                                icon: 'success',
-                                title: 'Sucesso',
-                            });
-                        } else {
-                            window.uiAlert(`Certificados enviados (${enviados}/${total}).`, {
-                                icon: 'success',
-                                title: 'Sucesso',
-                            });
-                        }
 
                         if (certificadosInput) {
                             certificadosInput.value = '';
                         }
+                        renderCertificadosSelecionados([]);
                         openDetalhesModal(detalhesCurrentCard);
                     })
                     .catch((error) => {
@@ -3023,6 +3641,32 @@
                     const file = arquivoReplaceInput.files?.[0];
                     if (!file) return;
                     uploadDocumentoClienteTemporario(file);
+                });
+            }
+
+            if (arquivoComplementarBtn && arquivoComplementarInput) {
+                arquivoComplementarBtn.addEventListener('click', function () {
+                    arquivoComplementarInput.value = '';
+                    arquivoComplementarInput.click();
+                });
+
+                arquivoComplementarInput.addEventListener('change', function () {
+                    const file = arquivoComplementarInput.files?.[0];
+                    if (!file) return;
+                    uploadDocumentoComplementar(file);
+                });
+            }
+
+            if (arquivoArtBtn && arquivoArtInput) {
+                arquivoArtBtn.addEventListener('click', function () {
+                    arquivoArtInput.value = '';
+                    arquivoArtInput.click();
+                });
+
+                arquivoArtInput.addEventListener('change', function () {
+                    const file = arquivoArtInput.files?.[0];
+                    if (!file) return;
+                    uploadDocumentoArt(file);
                 });
             }
 
@@ -3095,14 +3739,94 @@
             }
 
             if (certificadosUploadBtn && certificadosInput) {
-                certificadosUploadBtn.addEventListener('click', function () {
-                    certificadosInput.value = '';
-                    certificadosInput.click();
-                });
+                if (certificadosDropzone) {
+                    certificadosDropzone.addEventListener('click', function () {
+                        if (certificadosUploadBtn.disabled) return;
+                        certificadosInput.click();
+                    });
+
+                    certificadosDropzone.addEventListener('dragover', function (e) {
+                        e.preventDefault();
+                        if (certificadosUploadBtn.disabled) return;
+                        certificadosDropzone.classList.add('border-amber-400', 'bg-amber-100/70');
+                    });
+
+                    certificadosDropzone.addEventListener('dragleave', function (e) {
+                        e.preventDefault();
+                        certificadosDropzone.classList.remove('border-amber-400', 'bg-amber-100/70');
+                    });
+
+                    certificadosDropzone.addEventListener('drop', function (e) {
+                        e.preventDefault();
+                        certificadosDropzone.classList.remove('border-amber-400', 'bg-amber-100/70');
+                        if (certificadosUploadBtn.disabled) return;
+
+                        const files = e.dataTransfer?.files;
+                        if (!files?.length) return;
+
+                        const transfer = new DataTransfer();
+                        Array.from(files).forEach((file) => transfer.items.add(file));
+                        certificadosInput.files = transfer.files;
+                        renderCertificadosSelecionados(certificadosInput.files);
+                    });
+                }
 
                 certificadosInput.addEventListener('change', function () {
-                    if (!certificadosInput.files?.length) return;
+                    renderCertificadosSelecionados(certificadosInput.files);
+                });
+
+                certificadosUploadBtn.addEventListener('click', function () {
+                    if (!certificadosInput.files?.length) {
+                        certificadosInput.click();
+                        return;
+                    }
+
                     uploadCertificadosTreinamento(certificadosInput.files);
+                });
+            }
+
+            if (finalizarBtn) {
+                finalizarBtn.addEventListener('click', async function () {
+                    if (!detalhesCurrentCard) return;
+
+                    const url = detalhesCurrentCard.dataset.finalizarDocumentoExistenteUrl;
+                    if (!url) {
+                        window.uiAlert('Não foi possível finalizar esta tarefa.');
+                        return;
+                    }
+
+                    finalizarBtn.disabled = true;
+                    try {
+                        await finalizarComDocumentoExistente(detalhesCurrentCard, { fromDetalhes: true });
+                    } catch (error) {
+                        window.uiAlert(error?.message || 'Erro ao finalizar tarefa.');
+                    } finally {
+                        finalizarBtn.disabled = false;
+                    }
+                });
+            }
+
+            if (pendenciaContinuarBtn) {
+                pendenciaContinuarBtn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    hidePendenciaInline();
+                });
+            }
+
+            if (pendenciaFecharBtn) {
+                pendenciaFecharBtn.addEventListener('click', async function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    hidePendenciaInline();
+
+                    const destino = detalhesCurrentCard?.dataset?.status || 'Aguardando fornecedor';
+                    await window.uiAlert(`A tarefa foi movida para ${destino}.`, {
+                        icon: 'success',
+                        title: 'Movimentação',
+                    });
+
+                    window.location.reload();
                 });
             }
 
@@ -3120,6 +3844,44 @@
                     card.dataset.status = colunaNome;
                 }
                 card.dataset.finalizado = (String(destino.dataset.colunaSlug || '') === 'finalizada') ? '1' : '0';
+            }
+
+            function getColumnDisplayName(colunaEl) {
+                if (!colunaEl) return '';
+                const section = colunaEl.closest('section');
+                const headerTitleEl = section ? section.querySelector('article h3') : null;
+                return (headerTitleEl?.textContent || colunaEl.dataset.colunaNome || colunaEl.dataset.colunaSlug || '').trim();
+            }
+
+            function notifyCardMovement(message, type = 'success') {
+                if (!message) return;
+                const icon = type === 'error' ? 'error' : 'success';
+                const title = type === 'error' ? 'Erro' : 'Movimentação';
+
+                window.setTimeout(() => {
+                    window.uiAlert(message, {
+                        icon,
+                        title,
+                    });
+                }, 80);
+            }
+
+            function renderCertificadosSelecionados(files) {
+                if (!certificadosFileList) return;
+
+                const items = Array.from(files || []);
+                if (!items.length) {
+                    certificadosFileList.innerHTML = '';
+                    certificadosFileList.classList.add('hidden');
+                    return;
+                }
+
+                certificadosFileList.innerHTML = items.map((file) => `
+                    <li class="rounded-lg border border-amber-200 bg-white px-3 py-2">
+                        ${file.name}
+                    </li>
+                `).join('');
+                certificadosFileList.classList.remove('hidden');
             }
 
             async function pollPrazos() {
@@ -3192,10 +3954,13 @@
                             const moveUrl = card.dataset.moveUrl;
                             const colunaOrigemEl = evt.from;
                             const colunaOrigemId = colunaOrigemEl?.dataset?.colunaId || '';
+                            const colunaOrigemNome = getColumnDisplayName(colunaOrigemEl);
+                            const colunaDestinoNome = getColumnDisplayName(colunaEl);
 
                             // segurança extra: se por algum motivo chegou aqui, não processa
                             if (card.dataset.cancelada === '1') {
                                 evt.from.insertBefore(card, evt.from.children[evt.oldIndex] || null);
+                                notifyCardMovement(`A tarefa voltou para ${colunaOrigemNome || 'a coluna de origem'}.`);
                                 return;
                             }
 
@@ -3206,15 +3971,11 @@
                             }
 
                             // Se soltou na coluna "finalizada": NÃO chama mover(),
-                            // abre o modal de finalizar com arquivo.
+                            // abre os detalhes da tarefa para anexar documentos e finalizar.
 
                             if (colunaSlug === 'finalizada') {
-                                const finalizarUrl = card.dataset.finalizarUrl;
-                                if (finalizarUrl) {
-                                    openFinalizarModal(card, finalizarUrl);
-                                } else {
-                                    window.location.reload();
-                                }
+                                openDetalhesModal(card);
+                                window.uiAlert('Anexe os documentos necessários e finalize.');
                                 return;
                             }
 
@@ -3244,58 +4005,59 @@
                                     ordem_origem: idsOrigem,
                                 }),
                             })
-                                .then(response => parseJsonResponse(response))
-                                .then(data => {
-                                    if (!data || !data.ok) return;
-
-                                    const colunaSection = card.closest('section');
-                                    const headerTitleEl = colunaSection
-                                        ? colunaSection.querySelector('header h2')
-                                        : null;
-
-                                    const statusName = data.status_label
-                                        || (headerTitleEl ? headerTitleEl.textContent.trim() : '');
-
-                                    const statusSpan = card.querySelector('[data-role="card-status-label"]');
-                                    if (statusSpan && statusName) {
-                                        statusSpan.textContent = statusName;
-                                    }
-                                    if (statusName) {
-                                        card.dataset.status = statusName;
-                                    }
-                                    card.dataset.finalizado = (colunaSlug === 'finalizada') ? '1' : '0';
-
-                                    const respBadge = card.querySelector('[data-role="card-responsavel-badge"]');
-                                    if (respBadge && cardColor) {
-                                        respBadge.style.borderColor = cardColor;
-                                        respBadge.style.color = '#0f172a';
-                                        respBadge.style.backgroundColor = cardColor + '20';
+                                .then(async (response) => {
+                                    const data = await parseJsonResponse(response);
+                                    if (!response.ok || !data?.ok) {
+                                        throw new Error(data?.error || data?.message || 'Erro ao mover a tarefa.');
                                     }
 
-                                    if (data.log) {
-                                        const logContainer = card.querySelector('[data-role="card-last-log"]');
-                                        if (logContainer) {
-                                            logContainer.innerHTML = `
-                                        <div class="flex items-center justify-between gap-2">
-                                            <span class="inline-flex items-center gap-1">
-                                                <span>🔁</span>
-                                                <span>
-                                                    ${(data.log.de || 'Início')}
-                                                    &rarr;
-                                                    ${(data.log.para || '-')}
-                                                </span>
-                                            </span>
-                                            <span class="text-[10px] text-slate-400">
-                                                ${(data.log.user || 'Sistema')}
-                                                · ${(data.log.data || '')}
-                                            </span>
-                                        </div>
-                                    `;
+                                    try {
+                                        const statusName = data.status_label || colunaDestinoNome || '';
+                                        const statusSpan = card.querySelector('[data-role="card-status-label"]');
+                                        if (statusSpan && statusName) {
+                                            statusSpan.textContent = statusName;
                                         }
+                                        if (statusName) {
+                                            card.dataset.status = statusName;
+                                        }
+                                        card.dataset.finalizado = (colunaSlug === 'finalizada') ? '1' : '0';
+                                        notifyCardMovement(`A tarefa foi movida para ${statusName || 'a nova coluna'}.`);
+
+                                        const respBadge = card.querySelector('[data-role="card-responsavel-badge"]');
+                                        if (respBadge && cardColor) {
+                                            respBadge.style.borderColor = cardColor;
+                                            respBadge.style.color = '#0f172a';
+                                            respBadge.style.backgroundColor = cardColor + '20';
+                                        }
+
+                                        if (data.log) {
+                                            const logContainer = card.querySelector('[data-role="card-last-log"]');
+                                            if (logContainer) {
+                                                logContainer.innerHTML = `
+                                                    <div class="flex items-center justify-between gap-2">
+                                                        <span class="inline-flex items-center gap-1">
+                                                            <span>🔁</span>
+                                                            <span>
+                                                                ${(data.log.de || 'Início')}
+                                                                &rarr;
+                                                                ${(data.log.para || '-')}
+                                                            </span>
+                                                        </span>
+                                                        <span class="text-[10px] text-slate-400">
+                                                            ${(data.log.user || 'Sistema')}
+                                                            · ${(data.log.data || '')}
+                                                        </span>
+                                                    </div>
+                                                `;
+                                            }
+                                        }
+                                    } catch (uiError) {
+                                        console.warn('Falha ao atualizar o card após mover a tarefa.', uiError);
                                     }
                                 })
-                                .catch(() => {
-                                    // aqui dá pra colocar um toast se quiser
+                                .catch((error) => {
+                                    evt.from.insertBefore(card, evt.from.children[evt.oldIndex] || null);
+                                    notifyCardMovement(error?.message || 'Erro ao mover a tarefa.', 'error');
                                 });
                         }
                     });
@@ -3333,6 +4095,19 @@
             const modal = document.getElementById('tarefa-modal');
             const statusText = document.getElementById('modal-status-text');
 
+            async function parseQuickMoveResponse(response) {
+                const contentType = response.headers.get('content-type') || '';
+                if (!contentType.includes('application/json')) {
+                    return null;
+                }
+
+                try {
+                    return await response.json();
+                } catch (error) {
+                    return null;
+                }
+            }
+
 
             buttons.forEach(button => {
                 button.addEventListener('click', function () {
@@ -3359,26 +4134,33 @@
                             coluna_id: colunaId
                         })
                     })
-                        .then(response => parseJsonResponse(response))
-                        .then(data => {
-                            if (data?.ok) {
+                        .then(async (response) => {
+                            const data = await parseQuickMoveResponse(response);
+                            if (!response.ok || !data?.ok) {
+                                throw new Error(data?.error || data?.message || 'Não foi possível mover a tarefa.');
+                            }
+
                                 // Se tiver um badge de status, atualiza:
                                 const statusBadge = document.querySelector('#tarefa-status-label');
                                 if (statusBadge && data.status_label) {
                                     statusBadge.textContent = data.status_label;
                                 }
 
-                                // Opcional: recarregar página/fechar modal
-                                location.reload();
-
                                 console.log('Movido com sucesso:', data);
-                            } else {
-                                window.uiAlert(data?.error || data?.message || 'Não foi possível mover a tarefa.');
-                            }
+
+                                return window.uiAlert(
+                                    `Tarefa movida para ${data.status_label || 'a nova coluna'}.`,
+                                    {
+                                        icon: 'success',
+                                        title: 'Movimentação',
+                                    }
+                                ).then(() => {
+                                    location.reload();
+                                });
                         })
                         .catch(err => {
                             console.error(err);
-                            window.uiAlert('Erro ao mover a tarefa.');
+                            window.uiAlert(err?.message || 'Erro ao mover a tarefa.');
                         });
                 });
             });
@@ -3438,7 +4220,12 @@
                 'kanban-index-autocomplete-input',
                 'kanban-index-autocomplete-list',
                 @json($clienteAutocomplete ?? []),
-                { maxItems: 200 }
+                {
+                    maxItems: 200,
+                    onSelect: (_value, { input }) => {
+                        input.form?.requestSubmit();
+                    }
+                }
             );
         });
     </script>

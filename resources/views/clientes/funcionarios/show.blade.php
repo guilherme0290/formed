@@ -232,7 +232,7 @@
                                                         </a>
                                                     @elseif($certificadosTreinamento->isNotEmpty())
                                                         @foreach($certificadosTreinamento as $certificado)
-                                                            <a href="{{ $certificado->url }}"
+                                                            <a href="{{ route('operacional.anexos.view', $certificado) }}"
                                                                target="_blank" rel="noopener"
                                                                class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold border border-blue-200 text-blue-700 bg-white hover:bg-blue-50 ml-1">
                                                                 Certificado

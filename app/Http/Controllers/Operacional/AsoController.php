@@ -272,9 +272,7 @@ class AsoController extends Controller
             'retorno_trabalho' => 'Retorno ao Trabalho',
         ];
 
-        $funcionarios = Funcionario::where('cliente_id', $cliente->id)
-            ->orderBy('nome')
-            ->get();
+        $funcionarios = $this->funcionariosDoCliente($empresaId, $cliente->id);
 
         $contratoAtivo = app(ContratoClienteService::class)
             ->getContratoAtivo($cliente->id, $empresaId, null);
@@ -604,10 +602,7 @@ class AsoController extends Controller
         abort_if($cliente->empresa_id !== $empresaId, 403);
 
         // Funcionários já cadastrados para esse cliente
-        $funcionarios = Funcionario::where('empresa_id', $empresaId)
-            ->where('cliente_id', $cliente->id)
-            ->orderBy('nome')
-            ->get();
+        $funcionarios = $this->funcionariosDoCliente($empresaId, $cliente->id);
 
         // Unidades da clínica
         $unidades = $this->unidadesParaAgendamento($empresaId, $cliente->id);
@@ -1175,6 +1170,18 @@ class AsoController extends Controller
         }
 
         return array_values($pacotes);
+    }
+
+    private function funcionariosDoCliente(int $empresaId, int $clienteId)
+    {
+        return Funcionario::query()
+            ->where('cliente_id', $clienteId)
+            ->where(function ($query) use ($empresaId) {
+                $query->where('empresa_id', $empresaId)
+                    ->orWhereNull('empresa_id');
+            })
+            ->orderBy('nome')
+            ->get();
     }
 
     private function unidadesParaAgendamento(int $empresaId, int $clienteId, ?int $incluirUnidadeId = null)

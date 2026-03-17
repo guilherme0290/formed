@@ -46,6 +46,7 @@ class PainelController extends Controller
         // Filtros
         $filtroServico     = $request->input('servico_id');
         $filtroResponsavel = $request->input('responsavel_id');
+        $filtroCliente     = $request->input('cliente_id');
         $filtroColuna      = $request->input('coluna_id');
         $filtroDe          = $request->input('de');
         $filtroAte         = $request->input('ate');
@@ -110,6 +111,10 @@ class PainelController extends Controller
                 $logQuery->where('acao', 'criado')
                     ->where('user_id', $filtroResponsavel);
             });
+        }
+
+        if ($filtroCliente) {
+            $tarefasQuery->where('cliente_id', $filtroCliente);
         }
 
         if ($filtroColuna && $filtroCanceladas == null) {
@@ -209,6 +214,11 @@ class PainelController extends Controller
             ->orderBy('name')
             ->get();
 
+        $clientes = Cliente::query()
+            ->where('empresa_id', $empresaId)
+            ->orderBy('razao_social')
+            ->get(['id', 'razao_social', 'nome_fantasia']);
+
         $clienteAutocomplete = Cliente::query()
             ->where('empresa_id', $empresaId)
             ->orderBy('razao_social')
@@ -237,9 +247,11 @@ class PainelController extends Controller
             // filtros atuais (pra dar @selected e preencher inputs)
             'servicos'          => $servicos,
             'responsaveis'      => $responsaveis,
+            'clientes'          => $clientes,
             'clienteAutocomplete' => $clienteAutocomplete,
             'filtroServico'     => $filtroServico,
             'filtroResponsavel' => $filtroResponsavel,
+            'filtroCliente'     => $filtroCliente,
             'filtroColuna'      => $filtroColuna,
             'filtroDe'          => $filtroDe,
             'filtroAte'         => $filtroAte,
@@ -306,7 +318,14 @@ class PainelController extends Controller
         $payload = [];
         foreach ($tarefas as $tarefa) {
             $fimPrevisto = $tarefa->fim_previsto;
-            $estaFinalizada = !empty($tarefa->finalizado_em) || ($tarefa->coluna?->finaliza ?? false);
+            $colunaSlug = (string) ($tarefa->coluna?->slug ?? '');
+            $documentoAnexado = filled($tarefa->path_documento_cliente);
+            $aguardandoConclusaoComDocumento = $documentoAnexado;
+            $colunaPausadaFornecedor = in_array($colunaSlug, ['aguardando', 'aguardando-fornecedor'], true);
+            $estaFinalizada = !empty($tarefa->finalizado_em)
+                || ($tarefa->coluna?->finaliza ?? false)
+                || $colunaPausadaFornecedor
+                || $aguardandoConclusaoComDocumento;
             $estaAtrasada = $fimPrevisto && $fimPrevisto->lt($agora) && !$estaFinalizada;
 
             if ($estaAtrasada && $colunaAtraso && (int) $tarefa->coluna_id !== (int) $colunaAtraso->id) {

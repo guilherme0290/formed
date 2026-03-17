@@ -242,7 +242,7 @@
                                                 </button>
                                             @else
                                                 @foreach($certificadosTreinamento as $certificado)
-                                                    <a href="{{ $certificado->url }}"
+                                                    <a href="{{ route('operacional.anexos.view', $certificado) }}"
                                                        class="inline-flex items-center px-3 py-1.5 rounded-lg border border-blue-200 text-blue-700 text-xs font-semibold hover:bg-blue-100"
                                                        target="_blank" rel="noopener">
                                                         Certificado

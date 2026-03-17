@@ -153,9 +153,21 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
                 [TarefaController::class, 'finalizarComArquivo']
             )->name('finalizar-com-arquivo');
 
+            Route::post('{tarefa}/finalizar-documento-existente',
+                [TarefaController::class, 'finalizarComDocumentoExistente']
+            )->name('finalizar-documento-existente');
+
             Route::post('{tarefa}/documento-cliente',
                 [TarefaController::class, 'substituirDocumentoCliente']
             )->name('documento-cliente');
+
+            Route::post('{tarefa}/documento-complementar',
+                [TarefaController::class, 'substituirDocumentoComplementar']
+            )->name('documento-complementar');
+
+            Route::post('{tarefa}/documento-art',
+                [TarefaController::class, 'substituirDocumentoArt']
+            )->name('documento-art');
 
             Route::post('{tarefa}/certificados',
                 [TarefaController::class, 'uploadCertificadosTreinamento']
@@ -1268,6 +1280,10 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
 
 Route::get('operacional/tarefas/documento/{token}', [TarefaController::class, 'downloadDocumento'])
     ->name('operacional.tarefas.documento');
+
+Route::get('operacional/tarefas/{tarefa}/pacote', [TarefaController::class, 'downloadPacotePublico'])
+    ->middleware('signed')
+    ->name('operacional.tarefas.pacote-publico');
 
 Route::get('/storage-local', [StorageProxyController::class, 'show'])
     ->middleware('signed')
