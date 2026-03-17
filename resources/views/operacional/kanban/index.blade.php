@@ -1525,11 +1525,11 @@
                         </h3>
 
                         <p id="modal-arquivo-descricao" class="text-[12px] text-emerald-800 mb-2">
-                            Este é o documento principal concluído desta tarefa, disponibilizado ao cliente.
+                            Documento principal da tarefa.
                         </p>
 
                         <p id="modal-arquivo-status" class="text-[12px] text-emerald-900 font-semibold mb-2">
-                            Status: Documento final ainda não anexado.
+                            Documento final ainda não anexado.
                         </p>
 
                         <p id="modal-arquivo-ajuda" class="text-[11px] text-emerald-800/90 mb-2">
@@ -1556,10 +1556,10 @@
                                 class="inline-flex items-center justify-center px-3 py-2 rounded-lg
                                    border border-emerald-200 bg-white text-emerald-700 text-xs font-semibold
                                    hover:bg-emerald-50 transition">
-                                Anexar documento final
+                                Anexar documento
                             </button>
                             <p id="modal-arquivo-impacto" class="text-[11px] text-emerald-700/90">
-                                Quando anexado, este documento ficará disponível para o cliente.
+                                Disponivel para o cliente apos o envio.
                             </p>
                         </div>
                         <div id="modal-arquivo-complementar-wrapper" class="mt-4 hidden border-t border-emerald-100 pt-4">
@@ -2245,7 +2245,7 @@
                                 ? (requerArt
                                     ? 'Anexe os arquivos finais do PGR, do PCMSO e da ART entregues ao cliente.'
                                     : 'Anexe os arquivos finais do PGR e do PCMSO entregues ao cliente.')
-                                : 'Este é o documento principal concluído desta tarefa, disponibilizado ao cliente.';
+                                : 'Documento principal da tarefa.';
                         }
                         if (arquivoAjuda) {
                             arquivoAjuda.textContent = getDocumentoFinalAjuda(card);
@@ -2258,7 +2258,7 @@
                             if (arquivoStatus) {
                                 arquivoStatus.textContent = isPgrComPcmso
                                     ? 'PGR: Documento anexado.'
-                                    : 'Status: Documento final anexado.';
+                                    : 'Documento final anexado.';
                             }
                             if (arquivoReplaceBtn) {
                                 arquivoReplaceBtn.textContent = isPgrComPcmso ? 'Atualizar PGR' : 'Enviar nova versão';
@@ -2278,10 +2278,10 @@
                             if (arquivoStatus) {
                                 arquivoStatus.textContent = isPgrComPcmso
                                     ? 'PGR: Documento ainda não anexado.'
-                                    : 'Status: Documento final ainda não anexado.';
+                                    : 'Documento final ainda não anexado.';
                             }
                             if (arquivoReplaceBtn) {
-                                arquivoReplaceBtn.textContent = isPgrComPcmso ? 'Anexar PGR' : 'Anexar documento final';
+                                arquivoReplaceBtn.textContent = isPgrComPcmso ? 'Anexar PGR' : 'Anexar documento';
                                 arquivoReplaceBtn.title = isPgrComPcmso
                                     ? 'Anexar o documento final do PGR'
                                     : 'Anexar o documento final da tarefa';
@@ -2289,7 +2289,7 @@
                             if (arquivoImpacto) {
                                 arquivoImpacto.textContent = isPgrComPcmso
                                     ? ''
-                                    : 'Quando anexado, este documento ficará disponível para o cliente.';
+                                    : 'Disponivel para o cliente apos o envio.';
                             }
                         }
 
