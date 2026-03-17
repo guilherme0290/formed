@@ -20,10 +20,16 @@
                 $dataVenda = $venda?->created_at;
                 $dataFinalizacao = $venda?->tarefa?->finalizado_em;
                 $dataReferencia = ($filtros['tipo_data'] ?? 'venda') === 'finalizacao' ? $dataFinalizacao : $dataVenda;
+                $isFinalizada = !is_null($dataFinalizacao);
 
                 return [
                     'venda' => $venda,
                     'itens' => $itensVenda,
+                    'is_finalizada' => $isFinalizada,
+                    'status_label' => $isFinalizada ? 'Finalizada (sem fatura)' : 'Venda não finalizada',
+                    'status_badge' => $isFinalizada
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                        : 'bg-amber-50 text-amber-700 border-amber-100',
                     'cliente_nome' => $venda?->cliente?->razao_social ?? $venda?->cliente?->nome_fantasia ?? 'Cliente',
                     'data_referencia' => $dataReferencia,
                     'total' => (float) $itensVenda->sum(fn ($item) => (float) ($item->subtotal_snapshot ?? 0)),
@@ -115,7 +121,7 @@
         </section>
 
         <section id="cr-filtros-vendas" class="bg-white rounded-3xl border border-slate-100 shadow-sm p-5 {{ $abaAtiva === 'vendas' ? '' : 'hidden' }}">
-            <form method="GET" class="grid gap-4 md:grid-cols-7 items-end">
+            <form method="GET" class="grid gap-4 md:grid-cols-8 items-end">
                 <input type="hidden" name="aba" value="vendas">
                 @if($contaDetalheSelecionada)
                     <input type="hidden" name="fatura_id" value="{{ $contaDetalheSelecionada->id }}">
@@ -158,6 +164,15 @@
                         </label>
                     </div>
                 </div>
+                <div>
+                    <label class="text-xs font-semibold text-slate-600">Status da Venda</label>
+                    <select name="status_finalizacao"
+                            class="w-full rounded-xl border border-slate-200 bg-white text-slate-900 text-sm px-3 py-2 h-[42px]">
+                        <option value="todas" @selected(($filtros['status_finalizacao'] ?? 'todas') === 'todas')>Todas</option>
+                        <option value="finalizadas" @selected(($filtros['status_finalizacao'] ?? '') === 'finalizadas')>Finalizadas</option>
+                        <option value="nao_finalizadas" @selected(($filtros['status_finalizacao'] ?? '') === 'nao_finalizadas')>Não finalizadas</option>
+                    </select>
+                </div>
                 <div class="flex items-end gap-2">
                     <button class="inline-flex h-[42px] items-center justify-center px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 text-white text-sm font-semibold shadow-sm hover:from-indigo-700 hover:to-indigo-600">
                         Filtrar
@@ -193,7 +208,7 @@
                 <header class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
                     <div>
                         <h2 class="text-sm font-semibold text-slate-800">Vendas (sem fatura)</h2>
-                        <p class="text-xs text-slate-500">Selecione uma ou mais vendas do mesmo cliente para gerar a fatura.</p>
+                        <p class="text-xs text-slate-500">Apenas vendas finalizadas podem ser selecionadas para gerar a fatura. Vendas não finalizadas ficam somente para visualização.</p>
                     </div>
                     <span class="text-xs text-slate-500">{{ $vendasAgrupadas->count() }} vendas</span>
                 </header>
@@ -233,6 +248,8 @@
                                             @php
                                                 $venda = $grupo['venda'];
                                                 $expandId = 'cr-venda-expand-' . ($venda->id ?? $idx);
+                                                $vendaFinalizada = (bool) ($grupo['is_finalizada'] ?? false);
+                                                $canSelectVenda = $canCreate && $vendaFinalizada;
                                             @endphp
                                             <tr class="odd:bg-white even:bg-slate-50/60 hover:bg-indigo-50/40 cursor-pointer transition"
                                                 data-expand-toggle="{{ $expandId }}"
@@ -242,9 +259,9 @@
                                                 title="Clique para ver os itens da venda">
                                                 <td class="px-3 py-3 align-middle">
                                                     <input type="checkbox"
-                                                           class="rounded border-slate-300 js-venda-master {{ $canCreate ? '' : 'opacity-60 cursor-not-allowed' }}"
+                                                           class="rounded border-slate-300 js-venda-master {{ $canSelectVenda ? '' : 'opacity-60 cursor-not-allowed' }}"
                                                            data-venda-target="{{ $expandId }}"
-                                                           @if(!$canCreate) disabled title="Usuário sem permissão" @endif>
+                                                           @if(!$canSelectVenda) disabled title="{{ !$canCreate ? 'Usuário sem permissão' : 'Venda não finalizada não pode ser faturada.' }}" @endif>
                                                 </td>
                                                 <td class="px-3 py-3 align-middle">
                                                     <div class="inline-flex flex-wrap items-center gap-2">
@@ -264,8 +281,8 @@
                                                 <td class="px-4 py-3 text-slate-800 align-middle">{{ $grupo['cliente_nome'] }}</td>
                                                 <td class="px-4 py-3 text-slate-700 align-middle">{{ $grupo['data_referencia']?->format('d/m/Y H:i') ?? '—' }}</td>
                                                 <td class="px-4 py-3 align-middle">
-                                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-semibold border bg-emerald-50 text-emerald-700 border-emerald-100">
-                                                        Sem fatura
+                                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-semibold border {{ $grupo['status_badge'] }}">
+                                                        {{ $grupo['status_label'] }}
                                                     </span>
                                                 </td>
                                                 <td class="px-4 py-3 text-right text-slate-700 align-middle">{{ $grupo['qtd_itens'] }}</td>
@@ -276,7 +293,7 @@
                                                     <div class="mt-2 rounded-xl border border-indigo-100 bg-white p-3">
                                                         <div class="flex items-center justify-between gap-2 mb-3">
                                                             <p class="text-xs font-semibold uppercase tracking-wide text-indigo-700">Itens da venda #{{ $venda->id ?? '—' }}</p>
-                                                            <span class="text-xs text-slate-500">{{ $grupo['qtd_itens'] }} itens elegíveis</span>
+                                                            <span class="text-xs text-slate-500">{{ $grupo['qtd_itens'] }} itens {{ $vendaFinalizada ? 'elegíveis' : 'somente visualização' }}</span>
                                                         </div>
 
                                                         <div class="overflow-x-auto rounded-lg border border-slate-200">
@@ -308,11 +325,11 @@
                                                                                 <input type="checkbox"
                                                                                        name="itens[]"
                                                                                        value="{{ $itemVenda->id }}"
-                                                                                       class="rounded border-slate-300 js-venda-item-checkbox {{ $canCreate ? '' : 'opacity-60 cursor-not-allowed' }}"
+                                                                                       class="rounded border-slate-300 js-venda-item-checkbox {{ $canSelectVenda ? '' : 'opacity-60 cursor-not-allowed' }}"
                                                                                        data-parent-venda="{{ $expandId }}"
                                                                                        data-cliente-id="{{ (int) ($venda->cliente_id ?? 0) }}"
                                                                                        data-item-valor="{{ number_format((float) ($itemVenda->subtotal_snapshot ?? 0), 2, '.', '') }}"
-                                                                                       @if(!$canCreate) disabled title="Usuário sem permissão" @endif>
+                                                                                       @if(!$canSelectVenda) disabled title="{{ !$canCreate ? 'Usuário sem permissão' : 'Venda não finalizada não pode ser faturada.' }}" @endif>
                                                                             </td>
                                                                             <td class="px-3 py-2 text-slate-700">{{ $servicoNome }}</td>
                                                                             <td class="px-3 py-2 text-slate-700">{{ $itemVenda->descricao_snapshot ?? '—' }}</td>
@@ -329,7 +346,7 @@
                                         @empty
                                             <tr>
                                                 <td colspan="7" class="px-4 py-8 text-center text-sm text-slate-500">
-                                                    Nenhuma venda sem fatura encontrada com os filtros atuais.
+                                                    Nenhuma venda encontrada com os filtros atuais.
                                                 </td>
                                             </tr>
                                         @endforelse
@@ -361,7 +378,7 @@
                                     class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold shadow-sm {{ $canCreate ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white hover:from-indigo-700 hover:to-violet-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}"
                                     @if(!$canCreate) disabled title="Usuário sem permissão" @else title="Selecione ao menos um item para criar a fatura." @endif>
                                 <span class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/20 text-[12px]">+</span>
-                                Criar Fatura
+                                <span id="crBtnCriarFaturaTexto">Criar Fatura</span>
                             </button>
                         </div>
                     </footer>
@@ -577,6 +594,7 @@
                                                         </a>
 
                                                         <a href="{{ $detalheUrlLinha }}#cr-open-modal-email"
+                                                           data-cr-open-modal-email-link
                                                            class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-xs font-semibold {{ $podeEmailLinha ? 'bg-sky-600 text-white hover:bg-sky-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed pointer-events-none' }}"
                                                            title="{{ $podeEmailLinha ? 'Enviar fatura por e-mail' : 'Usuário sem permissão' }}"
                                                            aria-label="Enviar por e-mail">
@@ -584,6 +602,7 @@
                                                         </a>
 
                                                         <a href="{{ $detalheUrlLinha }}#cr-open-modal-baixa"
+                                                           data-cr-open-modal-baixa-link
                                                            class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-xs font-semibold {{ $podeRegistrarBaixaLinha ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed pointer-events-none' }}"
                                                            title="{{ $podeRegistrarBaixaLinha ? 'Registrar baixa' : (!$canUpdate ? 'Usuário sem permissão' : 'Registrar baixa disponível apenas para faturas em aberto.') }}"
                                                            aria-label="Registrar baixa">
@@ -1216,6 +1235,7 @@
             const resumoItens = document.getElementById('crResumoItens');
             const resumoTotal = document.getElementById('crResumoTotal');
             const btnCriar = document.getElementById('crBtnCriarFatura');
+            const btnCriarTexto = document.getElementById('crBtnCriarFaturaTexto');
             const filtrosVendasSection = document.getElementById('cr-filtros-vendas');
             const chkSelecionarTodos = document.getElementById('crSelecionarTodosHeader');
             const canCreate = btnCriar && !btnCriar.disabled;
@@ -1335,14 +1355,17 @@
                     hiddenClienteFatura.value = clientesSelecionados.length === 1 ? clientesSelecionados[0] : '';
                 }
                 if (btnCriar && canCreate) {
-                    const desabilitar = checkedItems.length === 0 || temClientesDiferentes;
+                    const desabilitar = checkedItems.length === 0;
                     btnCriar.disabled = desabilitar;
                     btnCriar.classList.toggle('opacity-60', desabilitar);
                     btnCriar.classList.toggle('cursor-not-allowed', desabilitar);
+                    if (btnCriarTexto) {
+                        btnCriarTexto.textContent = temClientesDiferentes ? 'Gerar Fatura em Lote' : 'Criar Fatura';
+                    }
                     if (checkedItems.length === 0) {
                         btnCriar.title = 'Selecione ao menos um item para criar a fatura.';
                     } else if (temClientesDiferentes) {
-                        btnCriar.title = 'Não é possível criar fatura com vendas de clientes diferentes.';
+                        btnCriar.title = 'Serão geradas faturas em lote, uma por cliente selecionado.';
                     } else {
                         btnCriar.title = 'Criar fatura com os itens selecionados.';
                     }
@@ -1505,6 +1528,8 @@
             const abrirModalEmailFatura = document.getElementById('crAbrirModalEmailFatura');
             const modalEmailFatura = document.getElementById('crModalEmailFatura');
             const fecharModalEmailFaturaBtns = document.querySelectorAll('[data-cr-fechar-modal-email-fatura]');
+            const openModalBaixaLinks = document.querySelectorAll('[data-cr-open-modal-baixa-link]');
+            const openModalEmailLinks = document.querySelectorAll('[data-cr-open-modal-email-link]');
 
             function openModalBaixa() {
                 if (!modalBaixaDetalhe) return false;
@@ -1542,6 +1567,45 @@
                 btn.addEventListener('click', function () {
                     modalEmailFatura?.classList.add('hidden');
                 });
+            });
+
+            function isSameUrlWithoutHash(anchorUrl) {
+                try {
+                    const target = new URL(anchorUrl, window.location.origin);
+                    return target.pathname === window.location.pathname
+                        && target.search === window.location.search;
+                } catch (e) {
+                    return false;
+                }
+            }
+
+            openModalBaixaLinks.forEach(function (link) {
+                link.addEventListener('click', function (event) {
+                    const href = link.getAttribute('href') || '';
+                    if (!href || !isSameUrlWithoutHash(href)) return;
+                    event.preventDefault();
+                    window.history.replaceState(null, '', href);
+                    openModalBaixa();
+                });
+            });
+
+            openModalEmailLinks.forEach(function (link) {
+                link.addEventListener('click', function (event) {
+                    const href = link.getAttribute('href') || '';
+                    if (!href || !isSameUrlWithoutHash(href)) return;
+                    event.preventDefault();
+                    window.history.replaceState(null, '', href);
+                    openModalEmail();
+                });
+            });
+
+            window.addEventListener('hashchange', function () {
+                if (window.location.hash === '#cr-open-modal-baixa') {
+                    openModalBaixa();
+                }
+                if (window.location.hash === '#cr-open-modal-email') {
+                    openModalEmail();
+                }
             });
 
             ativarTab(initialTab || 'vendas');

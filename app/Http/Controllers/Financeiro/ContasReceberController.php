@@ -50,6 +50,10 @@ class ContasReceberController extends Controller
             ->get();
 
         $tipoData = $request->input('tipo_data', 'venda');
+        $statusFinalizacao = $request->input('status_finalizacao', 'todas');
+        if (!in_array($statusFinalizacao, ['todas', 'finalizadas', 'nao_finalizadas'], true)) {
+            $statusFinalizacao = 'todas';
+        }
         $dataInicio = $request->input('data_inicio');
         $dataFim = $request->input('data_fim');
         $clienteId = $request->input('cliente_id');
@@ -75,6 +79,19 @@ class ContasReceberController extends Controller
         if ($clienteId) {
             $vendaItensQuery->whereHas('venda', function ($q) use ($clienteId) {
                 $q->where('cliente_id', $clienteId);
+            });
+        }
+
+        if ($statusFinalizacao === 'finalizadas') {
+            $vendaItensQuery->whereHas('venda.tarefa', function ($q) {
+                $q->whereNotNull('finalizado_em');
+            });
+        } elseif ($statusFinalizacao === 'nao_finalizadas') {
+            $vendaItensQuery->where(function ($q) {
+                $q->whereDoesntHave('venda.tarefa')
+                    ->orWhereHas('venda.tarefa', function ($q2) {
+                        $q2->whereNull('finalizado_em');
+                    });
             });
         }
 
@@ -306,6 +323,7 @@ class ContasReceberController extends Controller
             'formasPagamento' => $this->formasPagamento(),
             'filtros' => [
                 'tipo_data' => $tipoData,
+                'status_finalizacao' => $statusFinalizacao,
                 'data_inicio' => $dataInicio,
                 'data_fim' => $dataFim,
                 'cliente_id' => $clienteId,
@@ -371,6 +389,13 @@ class ContasReceberController extends Controller
             return back()->with('error', 'Algumas vendas selecionadas não estão em aberto.');
         }
 
+        $vendaNaoFinalizada = $itens->contains(function (VendaItem $item) {
+            return !$item->venda?->tarefa || is_null($item->venda?->tarefa?->finalizado_em);
+        });
+        if ($vendaNaoFinalizada) {
+            return back()->with('error', 'Não é possível criar fatura com venda não finalizada.');
+        }
+
         $jaUsados = ContaReceberItem::query()
             ->whereIn('venda_item_id', $data['itens'])
             ->where('status', '!=', 'CANCELADO')
@@ -396,7 +421,7 @@ class ContasReceberController extends Controller
     public function store(Request $request, ContaReceberService $service): RedirectResponse
     {
         $data = $request->validate([
-            'cliente_id' => ['required', 'exists:clientes,id'],
+            'cliente_id' => ['nullable', 'exists:clientes,id'],
             'itens' => ['nullable', 'array'],
             'itens.*' => ['integer', 'exists:venda_itens,id'],
             'vencimento' => ['nullable', 'date'],
@@ -413,17 +438,24 @@ class ContasReceberController extends Controller
         $itensIds = $data['itens'] ?? [];
         $manualItems = $data['manual_items'] ?? [];
 
-        $cliente = Cliente::query()
-            ->where('id', $data['cliente_id'])
-            ->where('empresa_id', $empresaId)
-            ->first();
+        $cliente = null;
+        if (!empty($data['cliente_id'])) {
+            $cliente = Cliente::query()
+                ->where('id', $data['cliente_id'])
+                ->where('empresa_id', $empresaId)
+                ->first();
 
-        if (!$cliente) {
-            return back()->with('error', 'Cliente inválido para a empresa selecionada.');
+            if (!$cliente) {
+                return back()->with('error', 'Cliente inválido para a empresa selecionada.');
+            }
         }
 
         if (empty($itensIds) && empty($manualItems)) {
             return back()->with('error', 'Inclua ao menos um item para gerar a conta a receber.');
+        }
+
+        if (!empty($manualItems) && !$cliente) {
+            return back()->with('error', 'Informe o cliente para incluir itens avulsos.');
         }
 
         foreach ($manualItems as $index => $manualItem) {
@@ -443,13 +475,15 @@ class ContasReceberController extends Controller
             ->get();
 
         if ($vendaItens->isNotEmpty()) {
-            $clienteId = $vendaItens->first()->venda?->cliente_id;
-            $mesmoCliente = $vendaItens->every(function (VendaItem $item) use ($clienteId) {
-                return $item->venda?->cliente_id === $clienteId;
+            $clienteInvalido = $vendaItens->contains(function (VendaItem $item) {
+                return !$item->venda || !$item->venda->cliente_id;
             });
+            if ($clienteInvalido) {
+                return back()->with('error', 'Algumas vendas selecionadas não possuem cliente válido.');
+            }
 
-            if (!$mesmoCliente || $clienteId != $data['cliente_id']) {
-                return back()->with('error', 'Os itens selecionados precisam pertencer ao mesmo cliente.');
+            if ($cliente && !$vendaItens->every(fn (VendaItem $item) => (int) $item->venda?->cliente_id === (int) $cliente->id)) {
+                return back()->with('error', 'Os itens selecionados não pertencem ao cliente informado.');
             }
 
             $statusInvalido = $vendaItens->contains(function (VendaItem $item) {
@@ -457,6 +491,13 @@ class ContasReceberController extends Controller
             });
             if ($statusInvalido) {
                 return back()->with('error', 'Algumas vendas selecionadas não estão em aberto.');
+            }
+
+            $vendaNaoFinalizada = $vendaItens->contains(function (VendaItem $item) {
+                return !$item->venda?->tarefa || is_null($item->venda?->tarefa?->finalizado_em);
+            });
+            if ($vendaNaoFinalizada) {
+                return back()->with('error', 'Não é possível criar fatura com venda não finalizada.');
             }
 
             $jaUsados = ContaReceberItem::query()
@@ -469,33 +510,37 @@ class ContasReceberController extends Controller
             }
         }
 
-        $emissaoReferencia = now();
-        $vencimentoCalculado = $data['vencimento'] ?? null;
-        if (!$vencimentoCalculado) {
-            $metaVencimento = $this->resolverVencimentoPropostoCliente((int) $data['cliente_id'], $empresaId, $emissaoReferencia);
-            $vencimentoCalculado = optional($metaVencimento['data'])->toDateString() ?? $emissaoReferencia->toDateString();
-        }
+        $contasCriadas = DB::transaction(function () use ($data, $empresaId, $vendaItens, $manualItems, $service, $cliente) {
+            $contasPorCliente = [];
+            $vendaIds = collect();
 
-        $conta = DB::transaction(function () use ($data, $empresaId, $vendaItens, $manualItems, $service) {
-            $conta = ContaReceber::create([
-                'empresa_id' => $empresaId,
-                'cliente_id' => $data['cliente_id'],
-                'status' => 'FECHADA',
-                'total' => 0,
-                'total_baixado' => 0,
-                'vencimento' => null,
-                'pago_em' => $data['pago_em'] ?? null,
-            ]);
+            $resolverContaCliente = function (int $clienteId) use (&$contasPorCliente, $empresaId, $data) {
+                if (!isset($contasPorCliente[$clienteId])) {
+                    $contasPorCliente[$clienteId] = ContaReceber::create([
+                        'empresa_id' => $empresaId,
+                        'cliente_id' => $clienteId,
+                        'status' => 'FECHADA',
+                        'total' => 0,
+                        'total_baixado' => 0,
+                        'vencimento' => null,
+                        'pago_em' => $data['pago_em'] ?? null,
+                    ]);
+                }
+
+                return $contasPorCliente[$clienteId];
+            };
 
             foreach ($vendaItens as $vendaItem) {
                 $venda = $vendaItem->venda;
+                $clienteIdItem = (int) ($venda?->cliente_id ?? 0);
+                $conta = $resolverContaCliente($clienteIdItem);
                 $dataRealizacao = $venda?->tarefa?->finalizado_em ?? $venda?->created_at;
                 $descricao = $vendaItem->servico?->nome ?? $vendaItem->descricao_snapshot;
 
                 ContaReceberItem::create([
                     'conta_receber_id' => $conta->id,
                     'empresa_id' => $empresaId,
-                    'cliente_id' => $data['cliente_id'],
+                    'cliente_id' => $clienteIdItem,
                     'venda_id' => $venda?->id,
                     'venda_item_id' => $vendaItem->id,
                     'servico_id' => $vendaItem->servico_id,
@@ -508,14 +553,18 @@ class ContasReceberController extends Controller
 
                 if ($venda) {
                     $venda->update(['status' => 'FECHADA']);
+                    $vendaIds->push((int) $venda->id);
                 }
             }
 
             foreach ($manualItems as $manualItem) {
+                $clienteManualId = (int) ($cliente?->id ?? 0);
+                $conta = $resolverContaCliente($clienteManualId);
+
                 ContaReceberItem::create([
                     'conta_receber_id' => $conta->id,
                     'empresa_id' => $empresaId,
-                    'cliente_id' => $data['cliente_id'],
+                    'cliente_id' => $clienteManualId,
                     'servico_id' => $manualItem['servico_id'] ?? null,
                     'descricao' => $manualItem['descricao'] ?? null,
                     'data_realizacao' => $manualItem['data_realizacao'] ?? null,
@@ -525,31 +574,55 @@ class ContasReceberController extends Controller
                 ]);
             }
 
-            $service->recalcularConta($conta);
+            foreach ($contasPorCliente as $conta) {
+                $service->recalcularConta($conta);
+            }
 
-            $vendaIds = $vendaItens->pluck('venda_id')->filter()->unique();
-            foreach ($vendaIds as $vendaId) {
+            foreach ($vendaIds->unique() as $vendaId) {
                 $service->atualizarStatusVenda($vendaId);
             }
+
+            return collect(array_values($contasPorCliente));
+        });
+
+        $contasComVencimento = $contasCriadas->map(function (ContaReceber $conta) use ($data, $empresaId) {
+            $emissaoReferencia = now();
+            $vencimentoCalculado = $data['vencimento'] ?? null;
+            if (!$vencimentoCalculado) {
+                $metaVencimento = $this->resolverVencimentoPropostoCliente((int) $conta->cliente_id, $empresaId, $emissaoReferencia);
+                $vencimentoCalculado = optional($metaVencimento['data'])->toDateString() ?? $emissaoReferencia->toDateString();
+            }
+
+            $conta->update([
+                'vencimento' => $vencimentoCalculado,
+            ]);
+
+            ContaReceberItem::query()
+                ->where('conta_receber_id', $conta->id)
+                ->where('status', '!=', 'CANCELADO')
+                ->update(['vencimento' => $vencimentoCalculado]);
 
             return $conta;
         });
 
-        $conta->update([
-            'vencimento' => $vencimentoCalculado,
-        ]);
+        if ($contasComVencimento->count() === 1) {
+            $conta = $contasComVencimento->first();
 
-        ContaReceberItem::query()
-            ->where('conta_receber_id', $conta->id)
-            ->where('status', '!=', 'CANCELADO')
-            ->update(['vencimento' => $vencimentoCalculado]);
+            return redirect()
+                ->route('financeiro.contas-receber', [
+                    'aba' => 'detalhe',
+                    'fatura_id' => $conta->id,
+                ])
+                ->with('success', 'Conta a receber gerada com sucesso.');
+        }
+
+        $ids = $contasComVencimento->pluck('id')->map(fn ($id) => '#'.$id)->implode(', ');
 
         return redirect()
             ->route('financeiro.contas-receber', [
-                'aba' => 'detalhe',
-                'fatura_id' => $conta->id,
+                'aba' => 'faturas',
             ])
-            ->with('success', 'Conta a receber gerada com sucesso.');
+            ->with('success', 'Faturas geradas em lote com sucesso: '.$ids.'.');
     }
 
     public function updateDatas(Request $request, ContaReceber $contaReceber): RedirectResponse
