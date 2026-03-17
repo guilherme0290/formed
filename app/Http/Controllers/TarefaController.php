@@ -18,6 +18,7 @@ use App\Services\PrecificacaoService;
 use App\Services\VendaService;
 use App\Services\ComissaoService;
 use App\Services\AsoGheService;
+use App\Services\FuncionarioArquivosZipService;
 use Throwable;
 
 class TarefaController extends Controller
@@ -134,6 +135,21 @@ class TarefaController extends Controller
         $url = S3Helper::temporaryUrl($tarefa->path_documento_cliente, 10);
 
         return redirect()->away($url);
+    }
+
+    public function downloadPacotePublico(Request $request, Tarefa $tarefa, FuncionarioArquivosZipService $zipService)
+    {
+        abort_unless($request->hasValidSignature(), 403);
+
+        try {
+            $zipPath = $zipService->gerarZipPorIds($tarefa->cliente, [$tarefa->id], null, true);
+        } catch (\RuntimeException $e) {
+            abort(404, $e->getMessage());
+        }
+
+        return response()
+            ->download($zipPath, 'tarefa-' . $tarefa->id . '-arquivos.zip')
+            ->deleteFileAfterSend(true);
     }
 
     public function substituirDocumentoCliente(Request $request, Tarefa $tarefa)
@@ -447,7 +463,7 @@ class TarefaController extends Controller
             $colunaDestino = $moverParaAguardandoFornecedor ? $colunaAguardandoFornecedor : $colunaFinalizada;
             $mensagemRetorno = $moverParaAguardandoFornecedor
                 ? sprintf(
-                    'A tarefa ainda não pode ser concluída. Ela espera %d certificado(s) e recebeu %d.',
+                    'A tarefa foi movida para Aguardando fornecedor. Ela ainda não pode ser concluída porque espera %d certificado(s) e recebeu %d.',
                     (int) ($pendenciaCertificados['total_esperado'] ?? 0),
                     (int) ($pendenciaCertificados['enviados'] ?? 0)
                 )

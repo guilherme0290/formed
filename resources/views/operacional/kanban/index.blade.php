@@ -57,7 +57,7 @@
             <div class="flex-1">
                 <form method="GET" class="relative">
                     @php
-                        $temFiltrosAtivos = !empty($filtroBusca) || !empty($filtroServico) || !empty($filtroResponsavel) || !empty($filtroColuna) || !empty($filtroDe) || !empty($filtroAte);
+                        $temFiltrosAtivos = !empty($filtroBusca) || !empty($filtroServico) || !empty($filtroResponsavel) || !empty($filtroCliente) || !empty($filtroColuna) || !empty($filtroDe) || !empty($filtroAte);
                     @endphp
                     <span class="absolute inset-y-0 left-3 flex items-center text-slate-400 text-sm">🔍</span>
                     <input type="text"
@@ -73,6 +73,7 @@
                          class="absolute z-20 mt-1 w-full max-h-64 overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg hidden"></div>
                     <input type="hidden" name="servico_id" value="{{ $filtroServico }}">
                     <input type="hidden" name="responsavel_id" value="{{ $filtroResponsavel }}">
+                    <input type="hidden" name="cliente_id" value="{{ $filtroCliente }}">
                     <input type="hidden" name="coluna_id" value="{{ $filtroColuna }}">
                     <input type="hidden" name="de" value="{{ $filtroDe }}">
                     <input type="hidden" name="ate" value="{{ $filtroAte }}">
@@ -553,6 +554,7 @@
                                     data-substituir-doc-url="{{ route('operacional.tarefas.documento-cliente', $tarefa) }}"
                                     data-substituir-doc-complementar-url="{{ route('operacional.tarefas.documento-complementar', $tarefa) }}"
                                     data-substituir-doc-art-url="{{ route('operacional.tarefas.documento-art', $tarefa) }}"
+                                    data-whatsapp-bundle-url="{{ \Illuminate\Support\Facades\URL::temporarySignedRoute('operacional.tarefas.pacote-publico', now()->addDays(7), ['tarefa' => $tarefa->id]) }}"
                                     data-prioridade="{{ ucfirst($tarefa->prioridade) }}"
                                     data-status="{{ $coluna->nome }}"
                                     data-finalizado="{{ (!empty($tarefa->finalizado_em) || ($coluna->finaliza ?? false)) ? '1' : '0' }}"
@@ -1504,6 +1506,15 @@
                                        hover:bg-sky-700 transition">
                                 Finalizar tarefa
                             </button>
+
+                            <button
+                                type="button"
+                                id="btn-notificar-cliente"
+                                class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg
+                                   bg-emerald-600 text-white text-sm font-semibold shadow-sm
+                                   hover:bg-emerald-700 transition hidden">
+                                Notificar cliente (WhatsApp)
+                            </button>
                         </div>
                     </section>
                     {{-- 5. Documento final da tarefa --}}
@@ -1605,14 +1616,6 @@
                                 </button>
                             </div>
                         </div>
-                        <button
-                            type="button"
-                            id="btn-notificar-cliente"
-                            class="mt-3 w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg
-                               bg-emerald-600 text-white text-sm font-semibold shadow-sm
-                               hover:bg-emerald-700 transition hidden">
-                            Notificar cliente (WhatsApp)
-                        </button>
                     </section>
                     {{-- 5b. Documentos da tarefa (ASO, PGR, PCMSO etc) --}}
                     <section id="modal-docs-wrapper"
@@ -1636,21 +1639,34 @@
                             CERTIFICADOS DE TREINAMENTO
                         </h3>
                         <p id="modal-certificados-status" class="text-[12px] text-amber-800 mb-2">—</p>
-                        <input
-                            type="file"
-                            id="modal-certificados-input"
-                            class="hidden"
-                            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                            multiple
-                        >
-                        <button
-                            type="button"
-                            id="modal-certificados-upload-btn"
-                            class="inline-flex items-center justify-center px-3 py-2 rounded-lg
+                        <div id="modal-certificados-dropzone"
+                             class="mt-3 rounded-2xl border-2 border-dashed border-amber-300 bg-white/70 px-6 py-8 text-center transition cursor-pointer hover:bg-amber-50">
+                            <input
+                                type="file"
+                                id="modal-certificados-input"
+                                class="hidden"
+                                accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                                multiple
+                            >
+                            <div class="flex flex-col items-center justify-center gap-2 text-amber-700">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 16V4m0 0l-4 4m4-4l4 4M4 16.5v1.25A2.25 2.25 0 0 0 6.25 20h11.5A2.25 2.25 0 0 0 20 17.75V16.5" />
+                                </svg>
+                                <div class="text-sm font-semibold">Arraste os certificados aqui</div>
+                                <div class="text-xs text-amber-600/80">ou clique para selecionar varios arquivos</div>
+                            </div>
+                        </div>
+                        <ul id="modal-certificados-file-list" class="mt-3 space-y-1 text-xs text-amber-900 hidden"></ul>
+                        <div class="mt-3 flex justify-end">
+                            <button
+                                type="button"
+                                id="modal-certificados-upload-btn"
+                                class="inline-flex items-center justify-center px-3 py-2 rounded-lg
                                    border border-amber-200 bg-white text-amber-700 text-xs font-semibold
                                    hover:bg-amber-50 transition">
-                            Anexar certificados
-                        </button>
+                                Enviar certificados
+                            </button>
+                        </div>
                     </section>
 
                     {{-- 6. Adicionar observação interna --}}
@@ -1901,6 +1917,8 @@
             const certificadosStatus = document.getElementById('modal-certificados-status');
             const certificadosInput = document.getElementById('modal-certificados-input');
             const certificadosUploadBtn = document.getElementById('modal-certificados-upload-btn');
+            const certificadosDropzone = document.getElementById('modal-certificados-dropzone');
+            const certificadosFileList = document.getElementById('modal-certificados-file-list');
             const finalizarBtn = document.getElementById('modal-finalizar-btn');
             const pendenciaWrapper = document.getElementById('modal-pendencia-wrapper');
             const pendenciaTexto = document.getElementById('modal-pendencia-texto');
@@ -1968,13 +1986,91 @@
                 return raw || '—';
             }
 
+            function collectWhatsappLinks(card, fallbackDocumentoUrl = '') {
+                if (!card) return [];
+
+                const links = [];
+                const appendLink = (label, url) => {
+                    const normalizedUrl = String(url || '').trim();
+                    if (!normalizedUrl) return;
+                    if (links.some((item) => item.url === normalizedUrl)) return;
+                    links.push({ label, url: normalizedUrl });
+                };
+
+                const isPgrComPcmso = card.dataset.pgrPcmso === '1';
+                const isAsoTask = card.dataset.isAso === '1';
+                const isTreinamentoTask = card.dataset.isTreinamentoTask === '1';
+                const documentoPrincipalUrl = fallbackDocumentoUrl || card.dataset.arquivoClienteUrl || '';
+
+                if (documentoPrincipalUrl) {
+                    appendLink(
+                        isPgrComPcmso ? 'PGR' : (isAsoTask ? 'ASO' : 'Documento final'),
+                        documentoPrincipalUrl
+                    );
+                }
+
+                if (card.dataset.pcmsoPgrUrl) {
+                    appendLink('PCMSO', card.dataset.pcmsoPgrUrl);
+                }
+
+                if (card.dataset.artPgrUrl) {
+                    appendLink('ART', card.dataset.artPgrUrl);
+                }
+
+                let anexos = [];
+                try {
+                    anexos = card.dataset.anexos ? JSON.parse(card.dataset.anexos) : [];
+                } catch (error) {
+                    anexos = [];
+                }
+
+                anexos
+                    .filter((anexo) => String(anexo?.servico || '').toLowerCase() === 'certificado_treinamento')
+                    .forEach((anexo, index) => appendLink(`Certificado ${index + 1}`, anexo?.url || ''));
+
+                if (isTreinamentoTask && !links.length) {
+                    anexos
+                        .filter((anexo) => String(anexo?.servico || '').toLowerCase() !== 'cancelamento_tarefa')
+                        .forEach((anexo, index) => appendLink(`Documento ${index + 1}`, anexo?.url || ''));
+                }
+
+                return links;
+            }
+
             function buildWhatsappMensagem(card, arquivoUrl) {
                 const telefone = (card?.dataset?.telefone || '').replace(/\D/g, '');
                 if (!telefone) return null;
 
-                const servico = card?.dataset?.servico || 'documento';
-                const links = arquivoUrl ? [arquivoUrl] : [];
-                const linksTexto = links.length ? `\n\nLinks:\n${links.join('\n')}` : '';
+                let servico = card?.dataset?.servico || 'documento';
+                const funcionario = String(card?.dataset?.funcionario || '').split('|')[0].trim();
+
+                if (card?.dataset?.isTreinamentoTask === '1') {
+                    let participante = '';
+
+                    try {
+                        const participantes = card?.dataset?.treinamentoParticipantes
+                            ? JSON.parse(card.dataset.treinamentoParticipantes)
+                            : [];
+                        participante = String(participantes?.[0] || '').trim();
+                    } catch (error) {
+                        participante = '';
+                    }
+
+                    const colaborador = funcionario || participante;
+                    if (colaborador) {
+                        servico = `Treinamentos NRs do colaborador ${colaborador}`;
+                    }
+                } else if (funcionario) {
+                    servico = `${servico} do colaborador ${funcionario}`;
+                }
+
+                const links = collectWhatsappLinks(card, arquivoUrl);
+                const bundleUrl = String(card?.dataset?.whatsappBundleUrl || '').trim();
+                const linksTexto = links.length > 1 && bundleUrl
+                    ? `\n\nBaixar pacote ZIP:\n${bundleUrl}`
+                    : (links.length
+                        ? `\n\nLinks:\n${links.map((item) => `${item.label}: ${item.url}`).join('\n')}`
+                        : '');
                 const mensagem = `Olá! Segue abaixo o anexo do ${servico}.\n\nEnviado pela Formed.${linksTexto}`;
 
                 return { telefone, mensagem };
@@ -2082,6 +2178,10 @@
                 if (!card) return;
                 detalhesCurrentCard = card;
                 hidePendenciaInline();
+                renderCertificadosSelecionados([]);
+                if (certificadosInput) {
+                    certificadosInput.value = '';
+                }
 
                 const isCancelada = card.dataset.cancelada === '1';
                 modal.dataset.cancelada = isCancelada ? '1' : '0';
@@ -2137,9 +2237,6 @@
 
                     if (isTreinamentoTask && !isAsoTask) {
                         arquivoWrapper.classList.add('hidden');
-                        if (btnNotificarCliente) {
-                            btnNotificarCliente.classList.add('hidden');
-                        }
                     } else {
                         arquivoWrapper.classList.remove('hidden');
 
@@ -2246,13 +2343,6 @@
                             }
                         }
 
-                        if (btnNotificarCliente) {
-                            const podeNotificar = isPgrComPcmso
-                                ? (temDocumentoFinal && temDocumentoComplementar && (!requerArt || temDocumentoArt))
-                                : temDocumentoFinal;
-                            btnNotificarCliente.classList.toggle('hidden', !podeNotificar);
-                        }
-
                         if (arquivoAjuda && isAsoTask && totalCertificados > 0 && !temDocumentoFinal) {
                             arquivoAjuda.textContent += ' Após anexar o documento final do ASO, os certificados de treinamento serão liberados abaixo.';
                         }
@@ -2262,6 +2352,11 @@
                                 ? ` Certificados pendentes: ${enviadosCertificados}/${totalCertificados}.`
                                 : ` Certificados concluídos: ${enviadosCertificados}/${totalCertificados}.`;
                         }
+                    }
+
+                    if (btnNotificarCliente) {
+                        const podeNotificar = collectWhatsappLinks(card).length > 0;
+                        btnNotificarCliente.classList.toggle('hidden', !podeNotificar);
                     }
                 }
                 // ===============================
@@ -2374,6 +2469,10 @@
                             certificadosUploadBtn.disabled = bloqueado;
                             certificadosUploadBtn.classList.toggle('opacity-60', bloqueado);
                             certificadosUploadBtn.classList.toggle('cursor-not-allowed', bloqueado);
+                            if (certificadosDropzone) {
+                                certificadosDropzone.classList.toggle('opacity-60', bloqueado);
+                                certificadosDropzone.classList.toggle('cursor-not-allowed', bloqueado);
+                            }
                         }
 
                         if (isAso && !temDocumentoAso) {
@@ -2389,6 +2488,9 @@
                         if (certificadosUploadBtn) {
                             certificadosUploadBtn.disabled = false;
                             certificadosUploadBtn.classList.remove('opacity-60', 'cursor-not-allowed');
+                            if (certificadosDropzone) {
+                                certificadosDropzone.classList.remove('opacity-60', 'cursor-not-allowed');
+                            }
                         }
                     }
                 }
@@ -2954,13 +3056,13 @@
             if (btnNotificarCliente) {
                 btnNotificarCliente.addEventListener('click', function () {
                     if (!detalhesCurrentCard) return;
-                    const arquivoUrl = detalhesCurrentCard.dataset.arquivoClienteUrl || '';
-                    if (!arquivoUrl) {
+                    const links = collectWhatsappLinks(detalhesCurrentCard);
+                    if (!links.length) {
                         window.uiAlert('Nenhum documento anexado para enviar.');
                         return;
                     }
 
-                    const payload = buildWhatsappMensagem(detalhesCurrentCard, arquivoUrl);
+                    const payload = buildWhatsappMensagem(detalhesCurrentCard);
                     if (!payload) {
                         window.uiAlert('Telefone do cliente não informado.');
                         return;
@@ -2993,6 +3095,56 @@
             let finalizarCurrentCard = null;
             let finalizarUrl = null;
             let finalizarSkipReloadOnClose = false;
+
+            function tarefaExigeDocumentoCombinado(card) {
+                return card?.dataset?.pgrPcmso === '1' || card?.dataset?.pgrComArt === '1';
+            }
+
+            function tarefaTemDocumentosSuficientes(card) {
+                if (!card) return false;
+
+                const isTreinamentoTask = card.dataset.isTreinamentoTask === '1';
+                if (isTreinamentoTask) {
+                    return true;
+                }
+
+                const temDocumentoFinal = !!(card.dataset.arquivoClienteUrl || '');
+                const precisaDocumentoComplementar = card.dataset.pgrPcmso === '1';
+                const precisaArt = card.dataset.pgrComArt === '1';
+                const temDocumentoComplementar = !!(card.dataset.pcmsoPgrUrl || '');
+                const temDocumentoArt = !!(card.dataset.artPgrUrl || '');
+
+                return temDocumentoFinal
+                    && (!precisaDocumentoComplementar || temDocumentoComplementar)
+                    && (!precisaArt || temDocumentoArt);
+            }
+
+            async function finalizarComDocumentoExistente(card, options = {}) {
+                const url = card?.dataset?.finalizarDocumentoExistenteUrl || '';
+                if (!url) {
+                    throw new Error('Não foi possível finalizar esta tarefa.');
+                }
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json',
+                    },
+                });
+                const data = await parseJsonResponse(response);
+
+                if (!response.ok) {
+                    const error =
+                        data?.error
+                        || data?.message
+                        || (data?.errors ? Object.values(data.errors).flat()[0] : null)
+                        || 'Erro ao finalizar tarefa.';
+                    throw new Error(error);
+                }
+
+                await handleFinalizacaoResponse(card, data, options);
+            }
 
             function openFinalizarModal(card, url) {
                 console.log(finalizarModal)
@@ -3057,13 +3209,12 @@
                         moveCardToColumn(card, colunaAguardandoId, statusName);
                     }
 
-                    if (options.fromDetalhes) {
-                        openDetalhesModal(card);
-                        showPendenciaInline(`${data.message || 'A tarefa ainda possui pendencias.'} Deseja continuar alterando a tarefa agora para anexar o que falta?`);
-                        return;
+                    if (options.closeModal) {
+                        closeFinalizarModal();
                     }
 
-                    window.location.reload();
+                    openDetalhesModal(card);
+                    showPendenciaInline(`${data.message || 'A tarefa ainda possui pendencias.'} Deseja continuar alterando a tarefa agora para anexar o que falta?`);
                     return;
                 }
 
@@ -3470,6 +3621,7 @@
                         if (certificadosInput) {
                             certificadosInput.value = '';
                         }
+                        renderCertificadosSelecionados([]);
                         openDetalhesModal(detalhesCurrentCard);
                     })
                     .catch((error) => {
@@ -3587,13 +3739,48 @@
             }
 
             if (certificadosUploadBtn && certificadosInput) {
-                certificadosUploadBtn.addEventListener('click', function () {
-                    certificadosInput.value = '';
-                    certificadosInput.click();
-                });
+                if (certificadosDropzone) {
+                    certificadosDropzone.addEventListener('click', function () {
+                        if (certificadosUploadBtn.disabled) return;
+                        certificadosInput.click();
+                    });
+
+                    certificadosDropzone.addEventListener('dragover', function (e) {
+                        e.preventDefault();
+                        if (certificadosUploadBtn.disabled) return;
+                        certificadosDropzone.classList.add('border-amber-400', 'bg-amber-100/70');
+                    });
+
+                    certificadosDropzone.addEventListener('dragleave', function (e) {
+                        e.preventDefault();
+                        certificadosDropzone.classList.remove('border-amber-400', 'bg-amber-100/70');
+                    });
+
+                    certificadosDropzone.addEventListener('drop', function (e) {
+                        e.preventDefault();
+                        certificadosDropzone.classList.remove('border-amber-400', 'bg-amber-100/70');
+                        if (certificadosUploadBtn.disabled) return;
+
+                        const files = e.dataTransfer?.files;
+                        if (!files?.length) return;
+
+                        const transfer = new DataTransfer();
+                        Array.from(files).forEach((file) => transfer.items.add(file));
+                        certificadosInput.files = transfer.files;
+                        renderCertificadosSelecionados(certificadosInput.files);
+                    });
+                }
 
                 certificadosInput.addEventListener('change', function () {
-                    if (!certificadosInput.files?.length) return;
+                    renderCertificadosSelecionados(certificadosInput.files);
+                });
+
+                certificadosUploadBtn.addEventListener('click', function () {
+                    if (!certificadosInput.files?.length) {
+                        certificadosInput.click();
+                        return;
+                    }
+
                     uploadCertificadosTreinamento(certificadosInput.files);
                 });
             }
@@ -3610,24 +3797,7 @@
 
                     finalizarBtn.disabled = true;
                     try {
-                        const response = await fetch(url, {
-                            method: 'POST',
-                            headers: {
-                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                                'Accept': 'application/json',
-                            },
-                        });
-                        const data = await parseJsonResponse(response);
-                        if (!response.ok) {
-                            const error =
-                                data?.error
-                                || data?.message
-                                || (data?.errors ? Object.values(data.errors).flat()[0] : null)
-                                || 'Erro ao finalizar tarefa.';
-                            throw new Error(error);
-                        }
-
-                        await handleFinalizacaoResponse(detalhesCurrentCard, data, { fromDetalhes: true });
+                        await finalizarComDocumentoExistente(detalhesCurrentCard, { fromDetalhes: true });
                     } catch (error) {
                         window.uiAlert(error?.message || 'Erro ao finalizar tarefa.');
                     } finally {
@@ -3645,10 +3815,17 @@
             }
 
             if (pendenciaFecharBtn) {
-                pendenciaFecharBtn.addEventListener('click', function (e) {
+                pendenciaFecharBtn.addEventListener('click', async function (e) {
                     e.preventDefault();
                     e.stopPropagation();
                     hidePendenciaInline();
+
+                    const destino = detalhesCurrentCard?.dataset?.status || 'Aguardando fornecedor';
+                    await window.uiAlert(`A tarefa foi movida para ${destino}.`, {
+                        icon: 'success',
+                        title: 'Movimentação',
+                    });
+
                     window.location.reload();
                 });
             }
@@ -3667,6 +3844,44 @@
                     card.dataset.status = colunaNome;
                 }
                 card.dataset.finalizado = (String(destino.dataset.colunaSlug || '') === 'finalizada') ? '1' : '0';
+            }
+
+            function getColumnDisplayName(colunaEl) {
+                if (!colunaEl) return '';
+                const section = colunaEl.closest('section');
+                const headerTitleEl = section ? section.querySelector('article h3') : null;
+                return (headerTitleEl?.textContent || colunaEl.dataset.colunaNome || colunaEl.dataset.colunaSlug || '').trim();
+            }
+
+            function notifyCardMovement(message, type = 'success') {
+                if (!message) return;
+                const icon = type === 'error' ? 'error' : 'success';
+                const title = type === 'error' ? 'Erro' : 'Movimentação';
+
+                window.setTimeout(() => {
+                    window.uiAlert(message, {
+                        icon,
+                        title,
+                    });
+                }, 80);
+            }
+
+            function renderCertificadosSelecionados(files) {
+                if (!certificadosFileList) return;
+
+                const items = Array.from(files || []);
+                if (!items.length) {
+                    certificadosFileList.innerHTML = '';
+                    certificadosFileList.classList.add('hidden');
+                    return;
+                }
+
+                certificadosFileList.innerHTML = items.map((file) => `
+                    <li class="rounded-lg border border-amber-200 bg-white px-3 py-2">
+                        ${file.name}
+                    </li>
+                `).join('');
+                certificadosFileList.classList.remove('hidden');
             }
 
             async function pollPrazos() {
@@ -3739,10 +3954,13 @@
                             const moveUrl = card.dataset.moveUrl;
                             const colunaOrigemEl = evt.from;
                             const colunaOrigemId = colunaOrigemEl?.dataset?.colunaId || '';
+                            const colunaOrigemNome = getColumnDisplayName(colunaOrigemEl);
+                            const colunaDestinoNome = getColumnDisplayName(colunaEl);
 
                             // segurança extra: se por algum motivo chegou aqui, não processa
                             if (card.dataset.cancelada === '1') {
                                 evt.from.insertBefore(card, evt.from.children[evt.oldIndex] || null);
+                                notifyCardMovement(`A tarefa voltou para ${colunaOrigemNome || 'a coluna de origem'}.`);
                                 return;
                             }
 
@@ -3753,15 +3971,11 @@
                             }
 
                             // Se soltou na coluna "finalizada": NÃO chama mover(),
-                            // abre o modal de finalizar com arquivo.
+                            // abre os detalhes da tarefa para anexar documentos e finalizar.
 
                             if (colunaSlug === 'finalizada') {
-                                const finalizarUrl = card.dataset.finalizarUrl;
-                                if (finalizarUrl) {
-                                    openFinalizarModal(card, finalizarUrl);
-                                } else {
-                                    window.location.reload();
-                                }
+                                openDetalhesModal(card);
+                                window.uiAlert('Anexe os documentos necessários e finalize.');
                                 return;
                             }
 
@@ -3791,58 +4005,59 @@
                                     ordem_origem: idsOrigem,
                                 }),
                             })
-                                .then(response => parseJsonResponse(response))
-                                .then(data => {
-                                    if (!data || !data.ok) return;
-
-                                    const colunaSection = card.closest('section');
-                                    const headerTitleEl = colunaSection
-                                        ? colunaSection.querySelector('header h2')
-                                        : null;
-
-                                    const statusName = data.status_label
-                                        || (headerTitleEl ? headerTitleEl.textContent.trim() : '');
-
-                                    const statusSpan = card.querySelector('[data-role="card-status-label"]');
-                                    if (statusSpan && statusName) {
-                                        statusSpan.textContent = statusName;
-                                    }
-                                    if (statusName) {
-                                        card.dataset.status = statusName;
-                                    }
-                                    card.dataset.finalizado = (colunaSlug === 'finalizada') ? '1' : '0';
-
-                                    const respBadge = card.querySelector('[data-role="card-responsavel-badge"]');
-                                    if (respBadge && cardColor) {
-                                        respBadge.style.borderColor = cardColor;
-                                        respBadge.style.color = '#0f172a';
-                                        respBadge.style.backgroundColor = cardColor + '20';
+                                .then(async (response) => {
+                                    const data = await parseJsonResponse(response);
+                                    if (!response.ok || !data?.ok) {
+                                        throw new Error(data?.error || data?.message || 'Erro ao mover a tarefa.');
                                     }
 
-                                    if (data.log) {
-                                        const logContainer = card.querySelector('[data-role="card-last-log"]');
-                                        if (logContainer) {
-                                            logContainer.innerHTML = `
-                                        <div class="flex items-center justify-between gap-2">
-                                            <span class="inline-flex items-center gap-1">
-                                                <span>🔁</span>
-                                                <span>
-                                                    ${(data.log.de || 'Início')}
-                                                    &rarr;
-                                                    ${(data.log.para || '-')}
-                                                </span>
-                                            </span>
-                                            <span class="text-[10px] text-slate-400">
-                                                ${(data.log.user || 'Sistema')}
-                                                · ${(data.log.data || '')}
-                                            </span>
-                                        </div>
-                                    `;
+                                    try {
+                                        const statusName = data.status_label || colunaDestinoNome || '';
+                                        const statusSpan = card.querySelector('[data-role="card-status-label"]');
+                                        if (statusSpan && statusName) {
+                                            statusSpan.textContent = statusName;
                                         }
+                                        if (statusName) {
+                                            card.dataset.status = statusName;
+                                        }
+                                        card.dataset.finalizado = (colunaSlug === 'finalizada') ? '1' : '0';
+                                        notifyCardMovement(`A tarefa foi movida para ${statusName || 'a nova coluna'}.`);
+
+                                        const respBadge = card.querySelector('[data-role="card-responsavel-badge"]');
+                                        if (respBadge && cardColor) {
+                                            respBadge.style.borderColor = cardColor;
+                                            respBadge.style.color = '#0f172a';
+                                            respBadge.style.backgroundColor = cardColor + '20';
+                                        }
+
+                                        if (data.log) {
+                                            const logContainer = card.querySelector('[data-role="card-last-log"]');
+                                            if (logContainer) {
+                                                logContainer.innerHTML = `
+                                                    <div class="flex items-center justify-between gap-2">
+                                                        <span class="inline-flex items-center gap-1">
+                                                            <span>🔁</span>
+                                                            <span>
+                                                                ${(data.log.de || 'Início')}
+                                                                &rarr;
+                                                                ${(data.log.para || '-')}
+                                                            </span>
+                                                        </span>
+                                                        <span class="text-[10px] text-slate-400">
+                                                            ${(data.log.user || 'Sistema')}
+                                                            · ${(data.log.data || '')}
+                                                        </span>
+                                                    </div>
+                                                `;
+                                            }
+                                        }
+                                    } catch (uiError) {
+                                        console.warn('Falha ao atualizar o card após mover a tarefa.', uiError);
                                     }
                                 })
-                                .catch(() => {
-                                    // aqui dá pra colocar um toast se quiser
+                                .catch((error) => {
+                                    evt.from.insertBefore(card, evt.from.children[evt.oldIndex] || null);
+                                    notifyCardMovement(error?.message || 'Erro ao mover a tarefa.', 'error');
                                 });
                         }
                     });
@@ -3880,6 +4095,19 @@
             const modal = document.getElementById('tarefa-modal');
             const statusText = document.getElementById('modal-status-text');
 
+            async function parseQuickMoveResponse(response) {
+                const contentType = response.headers.get('content-type') || '';
+                if (!contentType.includes('application/json')) {
+                    return null;
+                }
+
+                try {
+                    return await response.json();
+                } catch (error) {
+                    return null;
+                }
+            }
+
 
             buttons.forEach(button => {
                 button.addEventListener('click', function () {
@@ -3906,26 +4134,33 @@
                             coluna_id: colunaId
                         })
                     })
-                        .then(response => parseJsonResponse(response))
-                        .then(data => {
-                            if (data?.ok) {
+                        .then(async (response) => {
+                            const data = await parseQuickMoveResponse(response);
+                            if (!response.ok || !data?.ok) {
+                                throw new Error(data?.error || data?.message || 'Não foi possível mover a tarefa.');
+                            }
+
                                 // Se tiver um badge de status, atualiza:
                                 const statusBadge = document.querySelector('#tarefa-status-label');
                                 if (statusBadge && data.status_label) {
                                     statusBadge.textContent = data.status_label;
                                 }
 
-                                // Opcional: recarregar página/fechar modal
-                                location.reload();
-
                                 console.log('Movido com sucesso:', data);
-                            } else {
-                                window.uiAlert(data?.error || data?.message || 'Não foi possível mover a tarefa.');
-                            }
+
+                                return window.uiAlert(
+                                    `Tarefa movida para ${data.status_label || 'a nova coluna'}.`,
+                                    {
+                                        icon: 'success',
+                                        title: 'Movimentação',
+                                    }
+                                ).then(() => {
+                                    location.reload();
+                                });
                         })
                         .catch(err => {
                             console.error(err);
-                            window.uiAlert('Erro ao mover a tarefa.');
+                            window.uiAlert(err?.message || 'Erro ao mover a tarefa.');
                         });
                 });
             });
@@ -3985,7 +4220,12 @@
                 'kanban-index-autocomplete-input',
                 'kanban-index-autocomplete-list',
                 @json($clienteAutocomplete ?? []),
-                { maxItems: 200 }
+                {
+                    maxItems: 200,
+                    onSelect: (_value, { input }) => {
+                        input.form?.requestSubmit();
+                    }
+                }
             );
         });
     </script>
