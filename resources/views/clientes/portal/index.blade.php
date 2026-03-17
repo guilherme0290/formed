@@ -2,16 +2,6 @@
 
 @php
     $activeTab = $activeTab ?? 'faturas';
-    $popupTipo = null;
-    $popupMensagem = null;
-
-    if (session('ok')) {
-        $popupTipo = 'success';
-        $popupMensagem = (string) session('ok');
-    } elseif (session('erro')) {
-        $popupTipo = 'error';
-        $popupMensagem = (string) session('erro');
-    }
 @endphp
 
 @section('title', 'Portal do Cliente')
@@ -45,41 +35,3 @@
         @include('clientes.portal.partials.faturas-content')
     @endif
 @endsection
-
-@if($popupTipo)
-    @push('scripts')
-        <script>
-            document.addEventListener('DOMContentLoaded', function () {
-                const icon = @json($popupTipo);
-                const title = @json($popupTipo === 'success' ? 'Sucesso' : 'Erro');
-                const text = @json($popupMensagem);
-
-                function openFeedback() {
-                    if (!window.Swal || typeof window.Swal.fire !== 'function') {
-                        return false;
-                    }
-
-                    window.Swal.fire({
-                        icon,
-                        title,
-                        text,
-                        confirmButtonText: 'OK'
-                    });
-                    return true;
-                }
-
-                if (openFeedback()) return;
-
-                let attempts = 0;
-                const timer = setInterval(function () {
-                    attempts += 1;
-                    if (openFeedback() || attempts >= 20) {
-                        clearInterval(timer);
-                    }
-                }, 120);
-            });
-        </script>
-    @endpush
-@endif
-
-
