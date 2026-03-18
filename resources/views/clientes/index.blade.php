@@ -33,24 +33,6 @@
             </div>
         @endif
 
-        {{-- MENSAGENS --}}
-        @if (session('ok'))
-            <div class="mb-2 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700">
-                {{ session('ok') }}
-            </div>
-        @endif
-
-        @if (session('erro'))
-            <div class="mb-2 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-                {{ session('erro') }}
-            </div>
-        @endif
-        @if (session('error'))
-            <div class="mb-2 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-700">
-                {{ session('error') }}
-            </div>
-        @endif
-
         <div class="flex items-start sm:items-center justify-between flex-wrap gap-3">
             <div>
                 <h1 class="text-2xl font-semibold text-gray-800">Clientes</h1>
