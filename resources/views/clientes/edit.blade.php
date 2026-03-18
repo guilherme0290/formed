@@ -27,6 +27,10 @@
         $canSave = $cliente->exists ? $canUpdate : $canCreate;
         $tipoPessoaAtual = old('tipo_pessoa', $cliente->tipo_pessoa ?? 'PJ');
         $documentoAtual = old('documento_principal', $tipoPessoaAtual === 'PF' ? ($cliente->cpf ?? '') : ($cliente->cnpj ?? ''));
+        $parametroAtual = $parametro ?? null;
+        $formaPagamentoAtual = old('forma_pagamento', $parametroAtual?->forma_pagamento ?? '');
+        $vencimentoServicosAtual = old('vencimento_servicos', $parametroAtual?->vencimento_servicos ?? '');
+        $emailEnvioFaturaAtual = old('email_envio_fatura', $parametroAtual?->email_envio_fatura ?? '');
     @endphp
 
     <div class="w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -65,16 +69,6 @@
                     </button>
                     <button type="button"
                             class="px-4 py-2 rounded-full border border-slate-200 bg-white text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
-                            data-tab="forma-pagamento">
-                        Pagamento
-                    </button>
-                    <button type="button"
-                            class="px-4 py-2 rounded-full border border-slate-200 bg-white text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
-                            data-tab="vendedor">
-                        Vendedor
-                    </button>
-                    <button type="button"
-                            class="px-4 py-2 rounded-full border border-slate-200 bg-white text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
                             data-tab="arquivos">
                         Arquivos
                     </button>
@@ -106,7 +100,9 @@
                         </div>
                         <form method="POST"
                               action="{{ $cliente->exists ? route($routePrefix.'.update', $cliente) : route($routePrefix.'.store') }}"
-                              class="p-6 space-y-6">
+                              id="cliente-dados-form"
+                              class="p-6 space-y-6"
+                              novalidate>
 
                 @csrf
                 @if($cliente->exists)
@@ -151,6 +147,7 @@
                            value="{{ $documentoAtual }}"
                            data-cliente-id="{{ $cliente->exists ? $cliente->id : '' }}"
                            data-tipo-pessoa="{{ $tipoPessoaAtual }}"
+                           required
                            class="w-full border-gray-300 rounded-lg px-3 py-2">
                     <input type="hidden" name="cpf" id="cliente-cpf-hidden" value="{{ old('cpf', $cliente->cpf) }}">
                     <input type="hidden" name="cnpj" id="cliente-cnpj-hidden" value="{{ old('cnpj', $cliente->cnpj) }}">
@@ -167,6 +164,7 @@
                         {{ $tipoPessoaAtual === 'PF' ? 'Nome Completo' : 'Raz&atilde;o Social' }}
                     </label>
                     <input name="razao_social" value="{{ old('razao_social', $cliente->razao_social) }}"
+                           required
                            class="w-full border-gray-300 rounded-lg px-3 py-2 uppercase">
                     @error('razao_social')
                     <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
@@ -283,6 +281,7 @@
                         <label class="text-sm">Cidade</label>
                         <select name="cidade_id" id="cidade_id"
                                 data-selected-id="{{ old('cidade_id', $cliente->cidade_id) }}"
+                                required
                                 class="w-full border-gray-300 rounded-lg px-3 py-2">
                             <option value="">Selecione...</option>
                             @foreach($cidadesDoEstado as $cid)
@@ -337,8 +336,78 @@
                 </div>
             </div>
 
+                        @if($cliente->exists)
+                            <div class="space-y-6 border-t border-slate-200 pt-6">
+                                <div class="border rounded-xl p-4 bg-gray-50">
+                                    <h2 class="font-medium mb-4 text-gray-800">Pagamento</h2>
+
+                                    <div class="grid md:grid-cols-3 gap-4">
+                                        <div>
+                                            <label class="text-sm">Forma de Pagamento <span class="text-red-600">*</span></label>
+                                            <select name="forma_pagamento" required class="w-full border-gray-300 rounded-lg px-3 py-2">
+                                                <option value="">Selecione...</option>
+                                                @foreach($formasPagamento as $fp)
+                                                    <option value="{{ $fp }}" @selected($formaPagamentoAtual === $fp)>{{ $fp }}</option>
+                                                @endforeach
+                                            </select>
+                                            @error('forma_pagamento')
+                                            <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                                            @enderror
+                                        </div>
+
+                                        <div>
+                                            <label class="text-sm">Dia de Vencimento <span class="text-red-600">*</span></label>
+                                            <input type="number"
+                                                   min="1"
+                                                   max="31"
+                                                   name="vencimento_servicos"
+                                                   required
+                                                   value="{{ $vencimentoServicosAtual }}"
+                                                   class="w-full border-gray-300 rounded-lg px-3 py-2">
+                                            @error('vencimento_servicos')
+                                            <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                                            @enderror
+                                        </div>
+
+                                        <div>
+                                            <label class="text-sm">Email para envio da fatura</label>
+                                            <input type="email"
+                                                   name="email_envio_fatura"
+                                                   value="{{ $emailEnvioFaturaAtual }}"
+                                                   placeholder="financeiro@cliente.com.br"
+                                                   class="w-full border-gray-300 rounded-lg px-3 py-2">
+                                            <p class="text-xs text-slate-500 mt-1">Opcional.</p>
+                                            @error('email_envio_fatura')
+                                            <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                                            @enderror
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="border rounded-xl p-4 bg-gray-50">
+                                    <h2 class="font-medium mb-4 text-gray-800">Vendedor</h2>
+
+                                    <div>
+                                        <label class="text-sm">Vendedor respons&aacute;vel <span class="text-red-600">*</span></label>
+                                        <select name="vendedor_id" required class="w-full border-gray-300 rounded-lg px-3 py-2 mt-1">
+                                            <option value="">Selecione...</option>
+                                            @foreach($vendedores as $vendedor)
+                                                <option value="{{ $vendedor->id }}"
+                                                    @selected((string) old('vendedor_id', $cliente->vendedor_id) === (string) $vendedor->id)>
+                                                    {{ $vendedor->name }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        @error('vendedor_id')
+                                        <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                                        @enderror
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
+
             {{-- BOTÕES --}}
-            <div class="flex flex-wrap justify-end gap-3"><button @if(!$canSave) disabled title="Usuário sem permissão" @endif class="w-full px-6 py-3 rounded-2xl text-base font-semibold shadow-md {{ $canSave ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}">
+            <div class="flex flex-wrap justify-end gap-3"><button type="submit" id="cliente-dados-submit" @if(!$canSave) disabled title="Usuário sem permissão" @endif class="w-full px-6 py-3 rounded-2xl text-base font-semibold shadow-md {{ $canSave ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}">
                     {{ $cliente->exists ? 'Salvar Alterações' : 'Cadastrar' }}
                 </button>
             </div>
@@ -349,48 +418,6 @@
 
             @if($cliente->exists)
                 @include('clientes.partials.parametros')
-            @endif
-
-            @if($cliente->exists)
-                <div data-tab-panel="vendedor" data-tab-panel-root="cliente" class="hidden">
-                    <div class="w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-                        <div class="bg-white rounded-2xl shadow border border-slate-200 overflow-hidden min-h-[38rem] flex flex-col">
-                            <div class="px-6 py-4 border-b bg-slate-900 text-white">
-                                <h1 class="text-lg font-semibold">Vendedor</h1>
-                            </div>
-                            <form method="POST"
-                                  action="{{ route($routePrefix.'.update', $cliente) }}"
-                                  class="p-6 flex flex-col flex-1 min-h-0">
-                                @csrf
-                                @method('PUT')
-                                <input type="hidden" name="update_vendedor" value="1">
-
-                                <div class="space-y-6 flex-1">
-                                    <label class="text-sm font-medium text-slate-700">Vendedor respons&aacute;vel</label>
-                                    <select name="vendedor_id"
-                                            class="w-full mt-2 border-slate-300 rounded-lg px-3 py-2">
-                                        <option value="">Selecione...</option>
-                                        @foreach($vendedores as $vendedor)
-                                            <option value="{{ $vendedor->id }}"
-                                                @selected((string) old('vendedor_id', $cliente->vendedor_id) === (string) $vendedor->id)>
-                                                {{ $vendedor->name }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                    @error('vendedor_id')
-                                    <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
-                                    @enderror
-                                </div>
-
-                                <section class="pt-4 border-t mt-auto">
-                                    <button @if(!$canUpdate) disabled title="Usuário sem permissão" @endif class="w-full rounded-2xl px-5 py-3 text-base font-semibold {{ $canUpdate ? 'bg-slate-900 text-white hover:bg-slate-800' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}">
-                                        Salvar vendedor
-                                    </button>
-                                </section>
-                            </form>
-                        </div>
-                    </div>
-                </div>
             @endif
 
             @if($cliente->exists)
@@ -421,8 +448,6 @@
                     'dados': '#2563eb',
                     'parametros': '#059669',
                     'unidades-permitidas': '#0f766e',
-                    'forma-pagamento': '#4f46e5',
-                    'vendedor': '#0f172a',
                     'arquivos': '#4338ca',
                     'acesso': '#7c3aed',
                     'tarefa': '#0e7490',
@@ -867,34 +892,6 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            const flashOk = @json(session('ok'));
-            const flashErr = @json(session('error') ?? session('erro'));
-
-            if (typeof window.uiAlert !== 'function') {
-                return;
-            }
-
-            if (flashOk) {
-                window.uiAlert(flashOk, {
-                    icon: 'success',
-                    title: 'Sucesso',
-                    confirmText: 'OK',
-                });
-                return;
-            }
-
-            if (flashErr) {
-                window.uiAlert(flashErr, {
-                    icon: 'error',
-                    title: 'Atenção',
-                    confirmText: 'OK',
-                });
-            }
-        });
-    </script>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
             const radios = Array.from(document.querySelectorAll('input[name="tipo_cliente"]'));
             const observacao = document.getElementById('observacao');
             const star = document.getElementById('obs-required-star');
@@ -921,31 +918,181 @@
         document.addEventListener('DOMContentLoaded', function () {
             const tipoInput = document.querySelector('input[name="tipo_cliente"]');
             const formDados = tipoInput ? tipoInput.closest('form') : null;
+            const submitButton = document.getElementById('cliente-dados-submit');
             const observacao = document.getElementById('observacao');
             const radios = Array.from(document.querySelectorAll('input[name="tipo_cliente"]'));
+            const tabsWrap = document.querySelector('[data-tabs="cliente"]');
+            let validationAlertOpen = false;
 
             if (!formDados || !observacao || !radios.length) {
                 return;
             }
 
-            formDados.addEventListener('submit', function (event) {
+            const ensureLocalSwal = () => {
+                if (window.Swal && typeof window.Swal.fire === 'function') {
+                    return Promise.resolve(window.Swal);
+                }
+
+                return new Promise((resolve) => {
+                    let settled = false;
+                    const finish = () => {
+                        if (settled) return;
+                        settled = true;
+                        resolve(window.Swal && typeof window.Swal.fire === 'function' ? window.Swal : null);
+                    };
+
+                    let script = document.getElementById('swal-cdn-script');
+                    if (!script) {
+                        script = document.createElement('script');
+                        script.id = 'swal-cdn-script';
+                        script.src = 'https://cdn.jsdelivr.net/npm/sweetalert2@11';
+                        script.async = true;
+                        document.head.appendChild(script);
+                    }
+
+                    script.addEventListener('load', finish, { once: true });
+                    script.addEventListener('error', finish, { once: true });
+                    window.setTimeout(finish, 2500);
+                });
+            };
+
+            const getFieldMessage = (field) => {
+                const name = String(field?.name || '');
+
+                if (name === 'cidade_id') return 'Selecione a cidade do cliente.';
+                if (name === 'documento_principal') return 'Informe o CPF ou CNPJ do cliente.';
+                if (name === 'razao_social') return 'Informe o nome do cliente.';
+                if (name === 'forma_pagamento') return 'Selecione a forma de pagamento.';
+                if (name === 'vencimento_servicos') return 'Informe o vencimento dos serviços.';
+                if (name === 'vendedor_id') return 'Selecione o vendedor responsável.';
+                if (name === 'observacao') return 'Preencha o campo Observação para Cliente Parceiro.';
+                if (name === 'tipo_pessoa') return 'Selecione se o cliente é PF ou PJ.';
+                if (name === 'tipo_cliente') return 'Selecione se o cliente é Parceiro ou Final.';
+
+                const id = field?.id ? String(field.id) : '';
+                if (id) {
+                    const byFor = document.querySelector(`label[for="${id}"]`);
+                    const label = byFor?.textContent?.trim();
+                    if (label) return `Preencha o campo ${label}.`;
+                }
+
+                const parentLabel = field?.closest('label')?.textContent?.trim();
+                if (parentLabel) return `Preencha o campo ${parentLabel}.`;
+
+                return 'Preencha todos os campos obrigatórios para continuar.';
+            };
+
+            const findMissingRequiredField = () => {
+                const requiredFields = Array.from(formDados.querySelectorAll('[required]'));
+
+                for (const field of requiredFields) {
+                    if (!field || field.disabled) continue;
+
+                    const type = String(field.type || '').toLowerCase();
+                    const name = String(field.name || '');
+
+                    if (type === 'radio' || type === 'checkbox') {
+                        if (!name) continue;
+                        const group = Array.from(formDados.querySelectorAll(`[name="${CSS.escape(name)}"]`));
+                        const hasChecked = group.some((input) => !input.disabled && input.checked);
+                        if (!hasChecked) return field;
+                        continue;
+                    }
+
+                    const value = String(field.value ?? '').trim();
+                    if (value === '') return field;
+                }
+
+                return null;
+            };
+
+            const showValidationError = async (field) => {
+                if (validationAlertOpen) {
+                    return;
+                }
+
+                const message = getFieldMessage(field);
+                const swal = await ensureLocalSwal();
+
+                if (swal) {
+                    validationAlertOpen = true;
+                    swal.fire({
+                        title: 'Campo obrigatório',
+                        icon: 'warning',
+                        text: message,
+                        confirmButtonText: 'OK',
+                        returnFocus: false,
+                        focusConfirm: false,
+                        allowOutsideClick: true,
+                        allowEscapeKey: true,
+                        didClose: () => {
+                            validationAlertOpen = false;
+                            if (document.activeElement instanceof HTMLElement) {
+                                document.activeElement.blur();
+                            }
+                        },
+                        didDestroy: () => {
+                            validationAlertOpen = false;
+                            if (document.activeElement instanceof HTMLElement) {
+                                document.activeElement.blur();
+                            }
+                        },
+                    }).then(() => {
+                        if (typeof field?.scrollIntoView === 'function') {
+                            field.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                    }).catch(() => {
+                        validationAlertOpen = false;
+                    });
+                    return;
+                }
+
+                validationAlertOpen = true;
+                alert(message);
+                validationAlertOpen = false;
+                if (typeof field?.focus === 'function') {
+                    field.focus();
+                }
+            };
+
+            const validateDadosForm = () => {
+                const missingRequired = findMissingRequiredField();
+                if (missingRequired) {
+                    showValidationError(missingRequired);
+                    return false;
+                }
+
                 const tipoSelecionado = radios.find((r) => r.checked)?.value;
                 const obsVazia = !observacao.value || observacao.value.trim() === '';
 
                 if (tipoSelecionado === 'parceiro' && obsVazia) {
-                    event.preventDefault();
-                    observacao.focus();
-
-                    if (typeof window.uiAlert === 'function') {
-                        window.uiAlert('Preencha o campo Observacao para Cliente Parceiro.', {
-                            title: 'Campo obrigatorio',
-                            icon: 'warning',
-                            confirmText: 'OK',
-                        });
-                    } else {
-                        alert('Preencha o campo Observacao para Cliente Parceiro.');
-                    }
+                    showValidationError(observacao);
+                    return false;
                 }
+
+                return true;
+            };
+
+            formDados.addEventListener('submit', function (event) {
+                if (!validateDadosForm()) {
+                    event.preventDefault();
+                }
+            });
+
+            tabsWrap?.querySelectorAll('[data-tab]').forEach((tabButton) => {
+                tabButton.addEventListener('click', function (event) {
+                    const targetTab = tabButton.dataset.tab;
+                    const targetUrl = tabButton.dataset.tabUrl;
+
+                    if (!targetTab || targetTab === 'dados' || targetUrl) {
+                        return;
+                    }
+
+                    if (!validateDadosForm()) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                }, true);
             });
         });
     </script>

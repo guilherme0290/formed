@@ -405,11 +405,7 @@ class ClienteParametroController extends Controller
         $vencimentoServicos = $data['vencimento_servicos'];
 
         return DB::transaction(function () use ($empresaId, $data, $valorTotal, $incluirEsocial, $valorEsocialCampo, $vencimentoServicos, $asoGrupos, $clienteAsoGrupos, $cliente, $unidadesPermitidasIds, $funcoesClienteIds, $shouldSyncFuncoesCliente) {
-            $parametro = ParametroCliente::query()
-                ->where('empresa_id', $empresaId)
-                ->where('cliente_id', $cliente->id)
-                ->latest('id')
-                ->first();
+            $parametro = $this->findParametroAtual($empresaId, $cliente);
 
             $payload = [
                 'empresa_id' => $empresaId,
@@ -728,6 +724,55 @@ class ClienteParametroController extends Controller
         });
     }
 
+    public function savePagamento(Request $request, Cliente $cliente)
+    {
+        $this->authorizeCliente($cliente);
+
+        $empresaId = auth()->user()->empresa_id;
+        $parametro = $this->findParametroAtual($empresaId, $cliente);
+
+        $data = $request->validate([
+            'forma_pagamento' => ['required', 'string', 'max:80'],
+            'email_envio_fatura' => ['nullable', 'email', 'max:255'],
+            'vencimento_servicos' => ['required', 'integer', 'min:1', 'max:31'],
+        ], [
+            'required' => 'O campo :attribute é obrigatório.',
+            'integer' => 'O campo :attribute deve ser um número inteiro.',
+            'max' => 'O campo :attribute deve ser no máximo :max.',
+            'email' => 'O campo :attribute deve ser um e-mail válido.',
+            'min' => 'O campo :attribute deve ser no mínimo :min.',
+        ], [
+            'forma_pagamento' => 'forma de pagamento',
+            'email_envio_fatura' => 'email para envio da fatura',
+            'vencimento_servicos' => 'vencimento dos serviços',
+        ]);
+
+        $payload = [
+            'empresa_id' => $empresaId,
+            'cliente_id' => $cliente->id,
+            'vendedor_id' => $parametro?->vendedor_id ?? ($cliente->vendedor_id ?: auth()->id()),
+            'forma_pagamento' => $data['forma_pagamento'],
+            'email_envio_fatura' => !empty($data['email_envio_fatura']) ? mb_strtolower(trim((string) $data['email_envio_fatura'])) : null,
+            'vencimento_servicos' => (int) $data['vencimento_servicos'],
+            'incluir_esocial' => $parametro?->incluir_esocial ?? false,
+            'esocial_qtd_funcionarios' => $parametro?->esocial_qtd_funcionarios,
+            'esocial_valor_mensal' => $parametro?->esocial_valor_mensal ?? 0,
+            'valor_total' => $parametro?->valor_total ?? 0,
+            'prazo_dias' => $parametro?->prazo_dias,
+            'observacoes' => $parametro?->observacoes,
+        ];
+
+        if ($parametro) {
+            $parametro->update($payload);
+        } else {
+            ParametroCliente::create($payload);
+        }
+
+        return redirect()
+            ->route($this->routeName('edit'), ['cliente' => $cliente->id, 'tab' => 'dados'])
+            ->with('ok', 'Pagamento atualizado com sucesso.');
+    }
+
     public function storeFuncaoAjax(Request $request, Cliente $cliente)
     {
         $this->authorizeCliente($cliente);
@@ -805,6 +850,15 @@ class ClienteParametroController extends Controller
         if ($cliente->empresa_id != $empresaId) {
             abort(403);
         }
+    }
+
+    private function findParametroAtual(int $empresaId, Cliente $cliente): ?ParametroCliente
+    {
+        return ParametroCliente::query()
+            ->where('empresa_id', $empresaId)
+            ->where('cliente_id', $cliente->id)
+            ->latest('id')
+            ->first();
     }
 
     private function routeName(string $suffix): string

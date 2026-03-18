@@ -20,6 +20,7 @@ use App\Services\FuncionarioArquivosZipService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -942,19 +943,32 @@ class ClienteController extends Controller
             $cliente->update(['vendedor_id' => $data['vendedor_id']]);
 
             return redirect()
-                ->route($this->routeName('edit'), $cliente)
+                ->route($this->routeName('edit'), ['cliente' => $cliente->id, 'tab' => 'dados'])
                 ->with('ok', 'Vendedor atualizado com sucesso.');
         }
 
         $data = $this->validateData($r);
+        $dadosComplementares = $this->shouldValidateDadosComplementares($r, $cliente)
+            ? $this->validateDadosComplementares($r, $cliente)
+            : null;
 
         $data['empresa_id'] = $cliente->empresa_id ?? ($r->user()->empresa_id ?? 1);
         $data['ativo']      = $r->boolean('ativo');
 
-
-
         try {
-            $cliente->update($data);
+            DB::transaction(function () use ($cliente, $data, $dadosComplementares, $r) {
+                $cliente->update($data);
+
+                if (!$dadosComplementares) {
+                    return;
+                }
+
+                $cliente->update([
+                    'vendedor_id' => $dadosComplementares['vendedor_id'],
+                ]);
+
+                $this->syncPagamentoCliente($cliente, $dadosComplementares, $r);
+            });
 
             return redirect()
                 ->route($this->routeName('index'))
@@ -1055,6 +1069,8 @@ class ClienteController extends Controller
                 'tipo_cliente.in'       => 'Tipo de cliente inválido.',
                 'observacao.required'   => 'Informe a observacao com os detalhes negociados para cliente parceiro.',
                 'observacao.max'        => 'A observação deve ter no máximo 4000 caracteres.',
+                'cidade_id.required'    => 'Selecione a cidade do cliente.',
+                'cidade_id.exists'      => 'Selecione uma cidade válida.',
             ]
         );
 
@@ -1070,6 +1086,86 @@ class ClienteController extends Controller
         }
 
         return $this->normalizeClienteUppercase($data);
+    }
+
+    protected function validateDadosComplementares(Request $r, Cliente $cliente): array
+    {
+        $empresaId = $cliente->empresa_id ?? ($r->user()->empresa_id ?? 1);
+
+        return $r->validate([
+            'vendedor_id' => [
+                'required',
+                'integer',
+                Rule::exists('users', 'id')->where(function ($q) use ($empresaId) {
+                    $q->where('empresa_id', $empresaId);
+                }),
+                function ($attribute, $value, $fail) {
+                    $user = User::with('papel')->find($value);
+                    if (!$user || !$user->hasPapel(['Master', 'Comercial'])) {
+                        $fail('Selecione um vendedor com perfil Master ou Comercial.');
+                    }
+                },
+            ],
+            'forma_pagamento' => ['required', 'string', 'max:80'],
+            'email_envio_fatura' => ['nullable', 'email', 'max:255'],
+            'vencimento_servicos' => ['required', 'integer', 'min:1', 'max:31'],
+        ], [
+            'forma_pagamento.required' => 'Selecione a forma de pagamento.',
+            'email_envio_fatura.email' => 'Informe um e-mail válido para envio da fatura.',
+            'vencimento_servicos.required' => 'Informe o vencimento dos serviços.',
+            'vencimento_servicos.integer' => 'O vencimento dos serviços deve ser um número inteiro.',
+            'vencimento_servicos.min' => 'O vencimento dos serviços deve ser no mínimo 1.',
+            'vencimento_servicos.max' => 'O vencimento dos serviços deve ser no máximo 31.',
+            'vendedor_id.required' => 'Selecione o vendedor responsável.',
+        ]);
+    }
+
+    protected function shouldValidateDadosComplementares(Request $r, Cliente $cliente): bool
+    {
+        if (!$cliente->exists) {
+            return false;
+        }
+
+        return $r->hasAny([
+            'vendedor_id',
+            'forma_pagamento',
+            'email_envio_fatura',
+            'vencimento_servicos',
+        ]);
+    }
+
+    protected function syncPagamentoCliente(Cliente $cliente, array $data, Request $r): void
+    {
+        $empresaId = $cliente->empresa_id ?? ($r->user()->empresa_id ?? 1);
+
+        $parametro = ParametroCliente::query()
+            ->where('empresa_id', $empresaId)
+            ->where('cliente_id', $cliente->id)
+            ->latest('id')
+            ->first();
+
+        $payload = [
+            'empresa_id' => $empresaId,
+            'cliente_id' => $cliente->id,
+            'vendedor_id' => $data['vendedor_id'],
+            'forma_pagamento' => $data['forma_pagamento'],
+            'email_envio_fatura' => !empty($data['email_envio_fatura']) ? mb_strtolower(trim((string) $data['email_envio_fatura'])) : null,
+            'vencimento_servicos' => (int) $data['vencimento_servicos'],
+            'incluir_esocial' => $parametro?->incluir_esocial ?? false,
+            'esocial_qtd_funcionarios' => $parametro?->esocial_qtd_funcionarios,
+            'esocial_valor_mensal' => $parametro?->esocial_valor_mensal ?? 0,
+            'valor_total' => $parametro?->valor_total ?? 0,
+            'prazo_dias' => $parametro?->prazo_dias,
+            'observacoes' => $parametro?->observacoes,
+        ];
+
+        if ($parametro) {
+            $parametro->update($payload);
+
+            return;
+        }
+
+        ParametroCliente::create($payload);
     }
 
     private function normalizeDocumento(?string $value): ?string
