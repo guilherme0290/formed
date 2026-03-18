@@ -476,6 +476,24 @@
     });
 </script>
 <script src="https://unpkg.com/currency.js@2.0.4/dist/currency.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const flashOk = @json(session('ok'));
+        const flashErr = @json(session('error') ?? session('erro'));
+
+        if (typeof window.uiAlert !== 'function' || window.__masterFlashShown) {
+            return;
+        }
+
+        window.__masterFlashShown = true;
+
+        if (flashOk) {
+            window.uiAlert(flashOk, { icon: 'success', title: 'Sucesso' });
+        } else if (flashErr) {
+            window.uiAlert(flashErr, { icon: 'error', title: 'Atenção' });
+        }
+    });
+</script>
 
 @stack('scripts')
 </body>

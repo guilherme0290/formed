@@ -21,6 +21,7 @@ use App\Services\AsoGheService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
 class ClienteParametroController extends Controller
@@ -80,7 +81,7 @@ class ClienteParametroController extends Controller
 
         $request->merge(['cliente_id' => $cliente->id]);
 
-        $data = $request->validate([
+        $rules = [
             'cliente_id' => ['required', 'integer', 'exists:clientes,id', Rule::in([$cliente->id])],
             'forma_pagamento' => ['required', 'string', 'max:80'],
             'email_envio_fatura' => ['nullable', 'email', 'max:255'],
@@ -142,7 +143,8 @@ class ClienteParametroController extends Controller
 
                 $fail('Meta inválida.');
             }],
-        ], [
+        ];
+        $messages = [
             'required' => 'O campo :attribute é obrigatório.',
             'integer' => 'O campo :attribute deve ser um número inteiro.',
             'numeric' => 'O campo :attribute deve ser um número válido.',
@@ -151,7 +153,8 @@ class ClienteParametroController extends Controller
             'array' => 'O campo :attribute deve ser uma lista válida.',
             'exists' => 'O valor informado para :attribute é inválido.',
             'in' => 'O valor informado para :attribute é inválido.',
-        ], [
+        ];
+        $attributes = [
             'cliente_id' => 'cliente',
             'forma_pagamento' => 'forma de pagamento',
             'email_envio_fatura' => 'email para envio da fatura',
@@ -162,7 +165,25 @@ class ClienteParametroController extends Controller
             'itens.*.valor_unitario' => 'valor unitário do item',
             'itens.*.quantidade' => 'quantidade do item',
             'itens.*.valor_total' => 'valor total do item',
-        ]);
+        ];
+
+        $validator = Validator::make($request->all(), $rules, $messages, $attributes);
+        $redirectTab = in_array($request->input('redirect_tab'), ['parametros', 'unidades-permitidas'], true)
+            ? $request->input('redirect_tab')
+            : 'parametros';
+        $successMessage = $redirectTab === 'unidades-permitidas'
+            ? 'Unidades Permitidas atualizadas com sucesso.'
+            : 'Parâmetros do cliente atualizados com sucesso.';
+
+        if ($validator->fails()) {
+            return redirect()
+                ->route($this->routeName('edit'), ['cliente' => $cliente->id, 'tab' => $redirectTab])
+                ->withErrors($validator)
+                ->withInput()
+                ->with('erro', $validator->errors()->first());
+        }
+
+        $data = $validator->validated();
 
         $servicoEsocialId = (int) (config('services.esocial_id') ?? 0);
         $servicoExameId = (int) (config('services.exame_id') ?? 0);
@@ -404,12 +425,8 @@ class ClienteParametroController extends Controller
         $valorTotal = $valorItens + $valorEsocial;
         $vencimentoServicos = $data['vencimento_servicos'];
 
-        return DB::transaction(function () use ($empresaId, $data, $valorTotal, $incluirEsocial, $valorEsocialCampo, $vencimentoServicos, $asoGrupos, $clienteAsoGrupos, $cliente, $unidadesPermitidasIds, $funcoesClienteIds, $shouldSyncFuncoesCliente) {
-            $parametro = ParametroCliente::query()
-                ->where('empresa_id', $empresaId)
-                ->where('cliente_id', $cliente->id)
-                ->latest('id')
-                ->first();
+        return DB::transaction(function () use ($empresaId, $data, $valorTotal, $incluirEsocial, $valorEsocialCampo, $vencimentoServicos, $asoGrupos, $clienteAsoGrupos, $cliente, $unidadesPermitidasIds, $funcoesClienteIds, $shouldSyncFuncoesCliente, $redirectTab, $successMessage) {
+            $parametro = $this->findParametroAtual($empresaId, $cliente);
 
             $payload = [
                 'empresa_id' => $empresaId,
@@ -724,8 +741,59 @@ class ClienteParametroController extends Controller
                 }
             }
 
-            return back()->with('ok', 'Parâmetros do cliente atualizados com sucesso.');
+            return redirect()
+                ->route($this->routeName('edit'), ['cliente' => $cliente->id, 'tab' => $redirectTab])
+                ->with('ok', $successMessage);
         });
+    }
+
+    public function savePagamento(Request $request, Cliente $cliente)
+    {
+        $this->authorizeCliente($cliente);
+
+        $empresaId = auth()->user()->empresa_id;
+        $parametro = $this->findParametroAtual($empresaId, $cliente);
+
+        $data = $request->validate([
+            'forma_pagamento' => ['required', 'string', 'max:80'],
+            'email_envio_fatura' => ['nullable', 'email', 'max:255'],
+            'vencimento_servicos' => ['required', 'integer', 'min:1', 'max:31'],
+        ], [
+            'required' => 'O campo :attribute é obrigatório.',
+            'integer' => 'O campo :attribute deve ser um número inteiro.',
+            'max' => 'O campo :attribute deve ser no máximo :max.',
+            'email' => 'O campo :attribute deve ser um e-mail válido.',
+            'min' => 'O campo :attribute deve ser no mínimo :min.',
+        ], [
+            'forma_pagamento' => 'forma de pagamento',
+            'email_envio_fatura' => 'email para envio da fatura',
+            'vencimento_servicos' => 'vencimento dos serviços',
+        ]);
+
+        $payload = [
+            'empresa_id' => $empresaId,
+            'cliente_id' => $cliente->id,
+            'vendedor_id' => $parametro?->vendedor_id ?? ($cliente->vendedor_id ?: auth()->id()),
+            'forma_pagamento' => $data['forma_pagamento'],
+            'email_envio_fatura' => !empty($data['email_envio_fatura']) ? mb_strtolower(trim((string) $data['email_envio_fatura'])) : null,
+            'vencimento_servicos' => (int) $data['vencimento_servicos'],
+            'incluir_esocial' => $parametro?->incluir_esocial ?? false,
+            'esocial_qtd_funcionarios' => $parametro?->esocial_qtd_funcionarios,
+            'esocial_valor_mensal' => $parametro?->esocial_valor_mensal ?? 0,
+            'valor_total' => $parametro?->valor_total ?? 0,
+            'prazo_dias' => $parametro?->prazo_dias,
+            'observacoes' => $parametro?->observacoes,
+        ];
+
+        if ($parametro) {
+            $parametro->update($payload);
+        } else {
+            ParametroCliente::create($payload);
+        }
+
+        return redirect()
+            ->route($this->routeName('edit'), ['cliente' => $cliente->id, 'tab' => 'dados'])
+            ->with('ok', 'Pagamento atualizado com sucesso.');
     }
 
     public function storeFuncaoAjax(Request $request, Cliente $cliente)
@@ -805,6 +873,15 @@ class ClienteParametroController extends Controller
         if ($cliente->empresa_id != $empresaId) {
             abort(403);
         }
+    }
+
+    private function findParametroAtual(int $empresaId, Cliente $cliente): ?ParametroCliente
+    {
+        return ParametroCliente::query()
+            ->where('empresa_id', $empresaId)
+            ->where('cliente_id', $cliente->id)
+            ->latest('id')
+            ->first();
     }
 
     private function routeName(string $suffix): string

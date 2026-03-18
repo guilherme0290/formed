@@ -120,49 +120,11 @@
                     </div>
 
                     <div class="p-6 space-y-8">
-                        @if($errors->any())
-                            <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                                <div class="font-semibold mb-1">Não foi possível salvar os parâmetros:</div>
-                                <ul class="list-disc pl-5">
-                                    @foreach($errors->all() as $error)
-                                        <li>{{ $error }}</li>
-                                    @endforeach
-                                </ul>
-                            </div>
-                        @endif
-                        @if($errors->any())
-                            @push('scripts')
-                                <script>
-                                    (function () {
-                                        const keys = @json(array_keys($errors->toArray()));
-                                        let targetTab = 'parametros';
-                                        if (keys.some(k => k === 'forma_pagamento' || k === 'vencimento_servicos' || k === 'email_envio_fatura')) {
-                                            targetTab = 'forma-pagamento';
-                                        } else if (keys.some(k => k === 'incluir_esocial' || k.startsWith('esocial_'))) {
-                                            targetTab = 'parametros';
-                                        }
-
-                                        const tabButton = document.querySelector(`[data-tabs="cliente"] [data-tab="${targetTab}"]`);
-                                        if (tabButton) {
-                                            tabButton.click();
-                                        }
-
-                                        const msg = @json($errors->first());
-                                        if (typeof window.uiAlert === 'function') {
-                                            window.uiAlert(msg, {
-                                                icon: 'error',
-                                                title: 'Verifique os campos',
-                                                confirmText: 'Entendi',
-                                            });
-                                        } else if (msg) {
-                                            alert(msg);
-                                        }
-                                    })();
-                                </script>
-                            @endpush
-                        @endif
 
                     <input type="hidden" name="cliente_id" value="{{ $cliente->id }}">
+                    <input type="hidden" name="forma_pagamento" value="{{ $parametro?->forma_pagamento ?? '' }}">
+                    <input type="hidden" name="email_envio_fatura" value="{{ $parametro?->email_envio_fatura ?? '' }}">
+                    <input type="hidden" name="vencimento_servicos" value="{{ $parametro?->vencimento_servicos ?? '' }}">
 
                     {{-- 1. Serviços --}}
                     <section class="space-y-3">
@@ -571,6 +533,8 @@
                     {{-- Rodapé --}}
                     <section class="pt-4 border-t">
                         <button type="submit"
+                                name="redirect_tab"
+                                value="parametros"
                                 class="w-full rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-base font-semibold py-3 shadow-md shadow-emerald-200">
                             Salvar Parâmetros
                         </button>
@@ -621,6 +585,8 @@
 
                             <section class="pt-4 border-t">
                                 <button type="submit"
+                                        name="redirect_tab"
+                                        value="unidades-permitidas"
                                         class="w-full rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-base font-semibold py-3 shadow-md shadow-emerald-200">
                                     Salvar Unidades Permitidas
                                 </button>
@@ -628,65 +594,6 @@
                         </div>
                     </div>
                 </div>
-
-
-            <div data-tab-panel="forma-pagamento" data-tab-panel-root="cliente" class="hidden">
-                <div class="bg-white rounded-2xl shadow border border-slate-200 overflow-hidden">
-                    <div class="px-6 py-4 border-b bg-indigo-600 text-white">
-                        <h1 class="text-lg font-semibold">Pagamento</h1>
-                    </div>
-                    <div class="p-6 space-y-8">
-                        <section class="space-y-3">
-                            <h2 class="text-sm font-semibold text-black">Forma de Pagamento *</h2>
-
-                            <select name="forma_pagamento" required class="w-full border border-slate-200 rounded-xl text-sm px-3 py-2">
-                                <option value="">Selecione...</option>
-                                @foreach($formasPagamento as $fp)
-                                    <option value="{{ $fp }}"
-                                        @selected(old('forma_pagamento', $isEdit ? $parametro->forma_pagamento : '') === $fp)>
-                                        {{ $fp }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            @error('forma_pagamento')
-                                <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
-                            @enderror
-                        </section>
-
-                        <section class="space-y-3">
-                            <h2 class="text-sm font-semibold text-black">Dia de Vencimento *</h2>
-
-                            <input type="number" min="1" max="31" name="vencimento_servicos" required
-                                   value="{{ old('vencimento_servicos', $isEdit ? ($parametro->vencimento_servicos ?? '') : '') }}"
-                                   class="w-full border border-slate-200 rounded-xl text-sm px-3 py-2">
-                            @error('vencimento_servicos')
-                                <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
-                            @enderror
-                        </section>
-
-                        <section class="space-y-3">
-                            <h2 class="text-sm font-semibold text-black">Email para envio da fatura</h2>
-
-                            <input type="email"
-                                   name="email_envio_fatura"
-                                   value="{{ old('email_envio_fatura', $isEdit ? ($parametro->email_envio_fatura ?? '') : '') }}"
-                                   placeholder="financeiro@cliente.com.br"
-                                   class="w-full border border-slate-200 rounded-xl text-sm px-3 py-2">
-                            <p class="text-xs text-slate-500">Opcional. Este e-mail ficará disponível como destino alternativo no envio da fatura.</p>
-                            @error('email_envio_fatura')
-                                <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
-                            @enderror
-                        </section>
-
-                        <section class="pt-4 border-t">
-                            <button type="submit"
-                                    class="w-full rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-base font-semibold py-3 shadow-md shadow-indigo-200">
-                                Salvar Parâmetros
-                            </button>
-                        </section>
-                    </div>
-                </div>
-            </div>
         </form>
     </div>
 
@@ -3338,7 +3245,7 @@
                 function openClienteTabByFieldName(fieldName) {
                     let targetTab = 'parametros';
                     if (fieldName === 'forma_pagamento' || fieldName === 'vencimento_servicos') {
-                        targetTab = 'forma-pagamento';
+                        targetTab = 'dados';
                     } else if (fieldName === 'incluir_esocial' || String(fieldName || '').startsWith('esocial_')) {
                         targetTab = 'parametros';
                     }

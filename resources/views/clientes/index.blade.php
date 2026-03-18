@@ -33,24 +33,6 @@
             </div>
         @endif
 
-        {{-- MENSAGENS --}}
-        @if (session('ok'))
-            <div class="mb-2 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700">
-                {{ session('ok') }}
-            </div>
-        @endif
-
-        @if (session('erro'))
-            <div class="mb-2 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-                {{ session('erro') }}
-            </div>
-        @endif
-        @if (session('error'))
-            <div class="mb-2 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-700">
-                {{ session('error') }}
-            </div>
-        @endif
-
         <div class="flex items-start sm:items-center justify-between flex-wrap gap-3">
             <div>
                 <h1 class="text-2xl font-semibold text-gray-800">Clientes</h1>
@@ -142,6 +124,10 @@
 
                             <div class="grid grid-cols-1 gap-2 text-xs">
                                 <div>
+                                    <div class="text-slate-500">Vendedor</div>
+                                    <div class="font-medium text-slate-800 break-words">{{ $cliente->vendedor->name ?? '-' }}</div>
+                                </div>
+                                <div>
                                     <div class="text-slate-500">{{ $cliente->documento_label }}</div>
                                     <div class="font-medium text-slate-800">{{ $cliente->documento_principal ?? '-' }}</div>
                                 </div>
@@ -209,9 +195,10 @@
                     <table class="w-full min-w-full table-fixed text-sm">
                         <thead class="sticky top-0 z-10 bg-slate-100/95 backdrop-blur text-xs uppercase tracking-wide text-slate-600">
                         <tr>
-                            <th class="px-4 py-3 text-left w-[30%]">Cliente</th>
+                            <th class="px-4 py-3 text-left w-[26%]">Cliente</th>
+                            <th class="px-4 py-3 text-left w-[16%]">Vendedor</th>
                             <th class="px-4 py-3 text-left w-[16%]">CPF/CNPJ</th>
-                            <th class="px-4 py-3 text-left w-[24%]">Contato</th>
+                            <th class="px-4 py-3 text-left w-[22%]">Contato</th>
                             <th class="px-4 py-3 text-center w-[8%] whitespace-nowrap">Acesso</th>
                             <th class="px-4 py-3 text-center w-[10%]">Status</th>
                             <th class="px-4 py-3 text-center w-[12%] whitespace-nowrap">Ações</th>
@@ -237,6 +224,10 @@
                                             <span>Final</span>
                                         @endif
                                     </div>
+                                </td>
+
+                                <td class="px-4 py-2.5">
+                                    <div class="leading-tight break-words">{{ $cliente->vendedor->name ?? '-' }}</div>
                                 </td>
 
                                 <td class="px-4 py-2.5">

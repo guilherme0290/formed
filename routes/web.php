@@ -719,6 +719,8 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
                 Route::delete('/{cliente}',   [ClienteController::class, 'destroy'])->name('destroy');
                 Route::post('/{cliente}/parametros', [\App\Http\Controllers\ClienteParametroController::class, 'save'])
                     ->name('parametros.save');
+                Route::post('/{cliente}/parametros/pagamento', [\App\Http\Controllers\ClienteParametroController::class, 'savePagamento'])
+                    ->name('parametros.pagamento.save');
                 Route::get('/{cliente}/parametros', [\App\Http\Controllers\ClienteParametroController::class, 'show'])
                     ->name('parametros.show');
                 Route::post('/{cliente}/parametros/funcoes', [\App\Http\Controllers\ClienteParametroController::class, 'storeFuncaoAjax'])
@@ -993,6 +995,8 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
         Route::delete('/{cliente}',   [ClienteController::class, 'destroy'])->name('destroy');
         Route::post('/{cliente}/parametros', [\App\Http\Controllers\ClienteParametroController::class, 'save'])
             ->name('parametros.save');
+        Route::post('/{cliente}/parametros/pagamento', [\App\Http\Controllers\ClienteParametroController::class, 'savePagamento'])
+            ->name('parametros.pagamento.save');
         Route::get('/{cliente}/parametros', [\App\Http\Controllers\ClienteParametroController::class, 'show'])
             ->name('parametros.show');
         Route::post('/{cliente}/parametros/funcoes', [\App\Http\Controllers\ClienteParametroController::class, 'storeFuncaoAjax'])
