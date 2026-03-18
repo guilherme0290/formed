@@ -77,7 +77,7 @@ class ClienteController extends Controller
         $empresaId = $r->user()->empresa_id ?? 1;
 
         $clientesBaseQuery = Cliente::query()
-            ->with('userCliente')
+            ->with(['userCliente', 'vendedor:id,name'])
             ->where('empresa_id', $empresaId)
             ->when($this->isComercialNaoMaster($r->user()), function ($q) use ($r) {
                 $q->where('vendedor_id', (int) $r->user()->id);

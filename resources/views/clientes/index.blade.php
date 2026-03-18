@@ -124,6 +124,10 @@
 
                             <div class="grid grid-cols-1 gap-2 text-xs">
                                 <div>
+                                    <div class="text-slate-500">Vendedor</div>
+                                    <div class="font-medium text-slate-800 break-words">{{ $cliente->vendedor->name ?? '-' }}</div>
+                                </div>
+                                <div>
                                     <div class="text-slate-500">{{ $cliente->documento_label }}</div>
                                     <div class="font-medium text-slate-800">{{ $cliente->documento_principal ?? '-' }}</div>
                                 </div>
@@ -191,9 +195,10 @@
                     <table class="w-full min-w-full table-fixed text-sm">
                         <thead class="sticky top-0 z-10 bg-slate-100/95 backdrop-blur text-xs uppercase tracking-wide text-slate-600">
                         <tr>
-                            <th class="px-4 py-3 text-left w-[30%]">Cliente</th>
+                            <th class="px-4 py-3 text-left w-[26%]">Cliente</th>
+                            <th class="px-4 py-3 text-left w-[16%]">Vendedor</th>
                             <th class="px-4 py-3 text-left w-[16%]">CPF/CNPJ</th>
-                            <th class="px-4 py-3 text-left w-[24%]">Contato</th>
+                            <th class="px-4 py-3 text-left w-[22%]">Contato</th>
                             <th class="px-4 py-3 text-center w-[8%] whitespace-nowrap">Acesso</th>
                             <th class="px-4 py-3 text-center w-[10%]">Status</th>
                             <th class="px-4 py-3 text-center w-[12%] whitespace-nowrap">Ações</th>
@@ -219,6 +224,10 @@
                                             <span>Final</span>
                                         @endif
                                     </div>
+                                </td>
+
+                                <td class="px-4 py-2.5">
+                                    <div class="leading-tight break-words">{{ $cliente->vendedor->name ?? '-' }}</div>
                                 </td>
 
                                 <td class="px-4 py-2.5">
