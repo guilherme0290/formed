@@ -325,7 +325,7 @@
                             </div>
                         </div>
 
-                        
+
                             {{-- CPF / RG / Data Nascimento --}}
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
@@ -666,7 +666,6 @@
                                                id="campo_data_aso"
                                                name="data_aso"
                                                value="{{ $dataAsoValue }}"
-                                               min="{{ $dataAsoMin }}"
                                                class="absolute right-0 top-0 h-full w-10 opacity-0 pointer-events-none js-date-hidden">
                                     </div>
                                 </div>
