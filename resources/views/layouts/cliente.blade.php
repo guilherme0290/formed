@@ -405,9 +405,78 @@
 document.addEventListener('DOMContentLoaded', function () {
     const flashOk = @json(session('ok'));
     const flashErr = @json(session('error') ?? session('erro'));
+    const validationErrors = @json($errors->toArray());
+    const uploadMaxFilesize = @json(ini_get('upload_max_filesize') ?: '2M');
+    const resolveFileErrorPopup = (errors) => {
+        const entries = Object.entries(errors || {});
+        for (const [field, messages] of entries) {
+            const list = Array.isArray(messages) ? messages : [messages];
+            for (const rawMessage of list) {
+                const message = String(rawMessage || '').trim();
+                if (!message) continue;
+
+                const hasFileField = /(anexo|arquivo|documento|certificado|pgr_arquivo)/i.test(field);
+                const hasFileText = /(failed to upload|falhou no upload|upload|arquivo|documento|pdf|docx?|mimes?|mimetypes?|certificado)/i.test(message);
+
+                if (!hasFileField && !hasFileText) {
+                    continue;
+                }
+
+                if (/failed to upload/i.test(message)) {
+                    return {
+                        title: 'Erro ao enviar arquivo',
+                        message: `O upload do arquivo falhou. Verifique se ele nao ultrapassa o limite atual do servidor (${uploadMaxFilesize}).`,
+                        icon: 'error',
+                    };
+                }
+
+                if (/(nao pode|must not|deve ter no maximo|maximo|kilobytes|megabytes|max:)/i.test(message)) {
+                    return {
+                        title: 'Arquivo acima do limite',
+                        message,
+                        icon: 'error',
+                    };
+                }
+
+                if (/(mimes?|mimetypes?|formato|deve ser um pdf|devem ser pdf|doc|docx|jpg|jpeg|png)/i.test(message)) {
+                    return {
+                        title: 'Formato de arquivo invalido',
+                        message,
+                        icon: 'error',
+                    };
+                }
+
+                if (/(required|obrigat|necessario manter|anexe o arquivo)/i.test(message)) {
+                    return {
+                        title: 'Arquivo obrigatorio',
+                        message,
+                        icon: 'warning',
+                    };
+                }
+
+                return {
+                    title: 'Erro com arquivo',
+                    message,
+                    icon: 'error',
+                };
+            }
+        }
+
+        return null;
+    };
+    const fileValidationPopup = resolveFileErrorPopup(validationErrors);
+
     if (typeof window.uiAlert === 'function' && !window.__clienteFlashShown) {
         window.__clienteFlashShown = true;
-        if (flashOk) {
+        if (fileValidationPopup) {
+            document.querySelectorAll('[data-validation-summary="1"]').forEach((el) => {
+                el.classList.add('hidden');
+            });
+            window.uiAlert(fileValidationPopup.message, {
+                icon: fileValidationPopup.icon,
+                title: fileValidationPopup.title,
+            });
+        } else if (flashOk) {
             window.uiAlert(flashOk, { icon: 'success', title: 'Sucesso' });
         } else if (flashErr) {
             window.uiAlert(flashErr);

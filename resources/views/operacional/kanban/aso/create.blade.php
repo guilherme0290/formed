@@ -162,7 +162,7 @@
             {{-- Conteúdo / Form --}}
             <div class="px-4 sm:px-5 md:px-6 py-5 md:py-6">
                 @if(!empty($errosVisiveis))
-                    <div class="mb-4 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-700">
+                    <div data-validation-summary="1" class="mb-4 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-700">
                         <p class="font-medium mb-1">Ocorreram alguns erros ao salvar:</p>
                         <ul class="list-disc list-inside space-y-0.5">
                             @foreach($errosVisiveis as $err)
