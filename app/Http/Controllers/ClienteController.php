@@ -397,9 +397,24 @@ class ClienteController extends Controller
         $this->authorizeComercialAction('create');
 
         $cliente = new Cliente();
+        $empresaId = auth()->user()->empresa_id ?? 1;
 
         // se sua tabela tiver "uf", pode ajustar; aqui uso "sigla"
         $estados = Estado::orderBy('uf')->get(['uf', 'nome']);
+        $formasPagamento = [
+            'Pix',
+            'Boleto',
+            'Cartão de crédito',
+            'Cartão de débito',
+            'Transferência',
+        ];
+        $vendedores = User::query()
+            ->where('empresa_id', $empresaId)
+            ->whereHas('papel', function ($q) {
+                $q->whereIn('nome', ['Master', 'Comercial']);
+            })
+            ->orderBy('name')
+            ->get(['id', 'name']);
 
         $routePrefix = $this->routePrefix();
 
@@ -410,6 +425,9 @@ class ClienteController extends Controller
             'ufSelecionada'   => null,
             'modo'            => 'create',
             'routePrefix'     => $routePrefix,
+            'formasPagamento' => $formasPagamento,
+            'vendedores'      => $vendedores,
+            'parametro'       => null,
         ]);
     }
 
@@ -421,16 +439,24 @@ class ClienteController extends Controller
         $this->authorizeComercialAction('create');
 
         $data = $this->validateData($r);
+        $dadosComplementares = $this->validateDadosComplementares($r, new Cliente([
+            'empresa_id' => $r->user()->empresa_id ?? 1,
+        ]));
 
         $empresaId = $r->user()->empresa_id ?? 1;
 
         $data['empresa_id'] = $empresaId;
-        $data['ativo']      = true;
-        $data['vendedor_id'] = $r->user()?->id;
+        $data['ativo']      = $r->boolean('ativo', true);
+        $data['vendedor_id'] = $dadosComplementares['vendedor_id'];
 
 
         try {
-            $cliente = Cliente::create($data);
+            $cliente = DB::transaction(function () use ($data, $dadosComplementares, $r) {
+                $cliente = Cliente::create($data);
+                $this->syncPagamentoCliente($cliente, $dadosComplementares, $r);
+
+                return $cliente;
+            });
             $afterAction = $r->input('after_action');
 
             if ($afterAction === 'proposta') {
@@ -971,7 +997,7 @@ class ClienteController extends Controller
             });
 
             return redirect()
-                ->route($this->routeName('index'))
+                ->route($this->routeName('edit'), ['cliente' => $cliente->id, 'tab' => 'dados'])
                 ->with('ok', 'Cliente atualizado com sucesso!');
         } catch (\Throwable $e) {
             report($e);

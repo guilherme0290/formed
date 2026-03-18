@@ -120,47 +120,6 @@
                     </div>
 
                     <div class="p-6 space-y-8">
-                        @if($errors->any())
-                            <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                                <div class="font-semibold mb-1">Não foi possível salvar os parâmetros:</div>
-                                <ul class="list-disc pl-5">
-                                    @foreach($errors->all() as $error)
-                                        <li>{{ $error }}</li>
-                                    @endforeach
-                                </ul>
-                            </div>
-                        @endif
-                        @if($errors->any())
-                            @push('scripts')
-                                <script>
-                                    (function () {
-                                        const keys = @json(array_keys($errors->toArray()));
-                                        let targetTab = 'parametros';
-                                        if (keys.some(k => k === 'forma_pagamento' || k === 'vencimento_servicos' || k === 'email_envio_fatura')) {
-                                            targetTab = 'dados';
-                                        } else if (keys.some(k => k === 'incluir_esocial' || k.startsWith('esocial_'))) {
-                                            targetTab = 'parametros';
-                                        }
-
-                                        const tabButton = document.querySelector(`[data-tabs="cliente"] [data-tab="${targetTab}"]`);
-                                        if (tabButton) {
-                                            tabButton.click();
-                                        }
-
-                                        const msg = @json($errors->first());
-                                        if (typeof window.uiAlert === 'function') {
-                                            window.uiAlert(msg, {
-                                                icon: 'error',
-                                                title: 'Verifique os campos',
-                                                confirmText: 'Entendi',
-                                            });
-                                        } else if (msg) {
-                                            alert(msg);
-                                        }
-                                    })();
-                                </script>
-                            @endpush
-                        @endif
 
                     <input type="hidden" name="cliente_id" value="{{ $cliente->id }}">
                     <input type="hidden" name="forma_pagamento" value="{{ $parametro?->forma_pagamento ?? '' }}">
@@ -574,6 +533,8 @@
                     {{-- Rodapé --}}
                     <section class="pt-4 border-t">
                         <button type="submit"
+                                name="redirect_tab"
+                                value="parametros"
                                 class="w-full rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-base font-semibold py-3 shadow-md shadow-emerald-200">
                             Salvar Parâmetros
                         </button>
@@ -624,6 +585,8 @@
 
                             <section class="pt-4 border-t">
                                 <button type="submit"
+                                        name="redirect_tab"
+                                        value="unidades-permitidas"
                                         class="w-full rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-base font-semibold py-3 shadow-md shadow-emerald-200">
                                     Salvar Unidades Permitidas
                                 </button>

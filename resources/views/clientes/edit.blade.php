@@ -336,75 +336,73 @@
                 </div>
             </div>
 
-                        @if($cliente->exists)
-                            <div class="space-y-6 border-t border-slate-200 pt-6">
-                                <div class="border rounded-xl p-4 bg-gray-50">
-                                    <h2 class="font-medium mb-4 text-gray-800">Pagamento</h2>
+                        <div class="space-y-6 border-t border-slate-200 pt-6">
+                            <div class="border rounded-xl p-4 bg-gray-50">
+                                <h2 class="font-medium mb-4 text-gray-800">Pagamento</h2>
 
-                                    <div class="grid md:grid-cols-3 gap-4">
-                                        <div>
-                                            <label class="text-sm">Forma de Pagamento <span class="text-red-600">*</span></label>
-                                            <select name="forma_pagamento" required class="w-full border-gray-300 rounded-lg px-3 py-2">
-                                                <option value="">Selecione...</option>
-                                                @foreach($formasPagamento as $fp)
-                                                    <option value="{{ $fp }}" @selected($formaPagamentoAtual === $fp)>{{ $fp }}</option>
-                                                @endforeach
-                                            </select>
-                                            @error('forma_pagamento')
-                                            <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
-                                            @enderror
-                                        </div>
-
-                                        <div>
-                                            <label class="text-sm">Dia de Vencimento <span class="text-red-600">*</span></label>
-                                            <input type="number"
-                                                   min="1"
-                                                   max="31"
-                                                   name="vencimento_servicos"
-                                                   required
-                                                   value="{{ $vencimentoServicosAtual }}"
-                                                   class="w-full border-gray-300 rounded-lg px-3 py-2">
-                                            @error('vencimento_servicos')
-                                            <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
-                                            @enderror
-                                        </div>
-
-                                        <div>
-                                            <label class="text-sm">Email para envio da fatura</label>
-                                            <input type="email"
-                                                   name="email_envio_fatura"
-                                                   value="{{ $emailEnvioFaturaAtual }}"
-                                                   placeholder="financeiro@cliente.com.br"
-                                                   class="w-full border-gray-300 rounded-lg px-3 py-2">
-                                            <p class="text-xs text-slate-500 mt-1">Opcional.</p>
-                                            @error('email_envio_fatura')
-                                            <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
-                                            @enderror
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="border rounded-xl p-4 bg-gray-50">
-                                    <h2 class="font-medium mb-4 text-gray-800">Vendedor</h2>
-
+                                <div class="grid md:grid-cols-3 gap-4">
                                     <div>
-                                        <label class="text-sm">Vendedor respons&aacute;vel <span class="text-red-600">*</span></label>
-                                        <select name="vendedor_id" required class="w-full border-gray-300 rounded-lg px-3 py-2 mt-1">
+                                        <label class="text-sm">Forma de Pagamento <span class="text-red-600">*</span></label>
+                                        <select name="forma_pagamento" required class="w-full border-gray-300 rounded-lg px-3 py-2">
                                             <option value="">Selecione...</option>
-                                            @foreach($vendedores as $vendedor)
-                                                <option value="{{ $vendedor->id }}"
-                                                    @selected((string) old('vendedor_id', $cliente->vendedor_id) === (string) $vendedor->id)>
-                                                    {{ $vendedor->name }}
-                                                </option>
+                                            @foreach($formasPagamento as $fp)
+                                                <option value="{{ $fp }}" @selected($formaPagamentoAtual === $fp)>{{ $fp }}</option>
                                             @endforeach
                                         </select>
-                                        @error('vendedor_id')
+                                        @error('forma_pagamento')
+                                        <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                                        @enderror
+                                    </div>
+
+                                    <div>
+                                        <label class="text-sm">Dia de Vencimento <span class="text-red-600">*</span></label>
+                                        <input type="number"
+                                               min="1"
+                                               max="31"
+                                               name="vencimento_servicos"
+                                               required
+                                               value="{{ $vencimentoServicosAtual }}"
+                                               class="w-full border-gray-300 rounded-lg px-3 py-2">
+                                        @error('vencimento_servicos')
+                                        <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                                        @enderror
+                                    </div>
+
+                                    <div>
+                                        <label class="text-sm">Email para envio da fatura</label>
+                                        <input type="email"
+                                               name="email_envio_fatura"
+                                               value="{{ $emailEnvioFaturaAtual }}"
+                                               placeholder="financeiro@cliente.com.br"
+                                               class="w-full border-gray-300 rounded-lg px-3 py-2">
+                                        <p class="text-xs text-slate-500 mt-1">Opcional.</p>
+                                        @error('email_envio_fatura')
                                         <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
                                         @enderror
                                     </div>
                                 </div>
                             </div>
-                        @endif
+
+                            <div class="border rounded-xl p-4 bg-gray-50">
+                                <h2 class="font-medium mb-4 text-gray-800">Vendedor</h2>
+
+                                <div>
+                                    <label class="text-sm">Vendedor respons&aacute;vel <span class="text-red-600">*</span></label>
+                                    <select name="vendedor_id" required class="w-full border-gray-300 rounded-lg px-3 py-2 mt-1">
+                                        <option value="">Selecione...</option>
+                                        @foreach($vendedores as $vendedor)
+                                            <option value="{{ $vendedor->id }}"
+                                                @selected((string) old('vendedor_id', $cliente->vendedor_id) === (string) $vendedor->id)>
+                                                {{ $vendedor->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    @error('vendedor_id')
+                                    <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
+                                    @enderror
+                                </div>
+                            </div>
+                        </div>
 
             {{-- BOTÕES --}}
             <div class="flex flex-wrap justify-end gap-3"><button type="submit" id="cliente-dados-submit" @if(!$canSave) disabled title="Usuário sem permissão" @endif class="w-full px-6 py-3 rounded-2xl text-base font-semibold shadow-md {{ $canSave ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}">

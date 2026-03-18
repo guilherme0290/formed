@@ -21,6 +21,7 @@ use App\Services\AsoGheService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
 class ClienteParametroController extends Controller
@@ -80,7 +81,7 @@ class ClienteParametroController extends Controller
 
         $request->merge(['cliente_id' => $cliente->id]);
 
-        $data = $request->validate([
+        $rules = [
             'cliente_id' => ['required', 'integer', 'exists:clientes,id', Rule::in([$cliente->id])],
             'forma_pagamento' => ['required', 'string', 'max:80'],
             'email_envio_fatura' => ['nullable', 'email', 'max:255'],
@@ -142,7 +143,8 @@ class ClienteParametroController extends Controller
 
                 $fail('Meta inválida.');
             }],
-        ], [
+        ];
+        $messages = [
             'required' => 'O campo :attribute é obrigatório.',
             'integer' => 'O campo :attribute deve ser um número inteiro.',
             'numeric' => 'O campo :attribute deve ser um número válido.',
@@ -151,7 +153,8 @@ class ClienteParametroController extends Controller
             'array' => 'O campo :attribute deve ser uma lista válida.',
             'exists' => 'O valor informado para :attribute é inválido.',
             'in' => 'O valor informado para :attribute é inválido.',
-        ], [
+        ];
+        $attributes = [
             'cliente_id' => 'cliente',
             'forma_pagamento' => 'forma de pagamento',
             'email_envio_fatura' => 'email para envio da fatura',
@@ -162,7 +165,25 @@ class ClienteParametroController extends Controller
             'itens.*.valor_unitario' => 'valor unitário do item',
             'itens.*.quantidade' => 'quantidade do item',
             'itens.*.valor_total' => 'valor total do item',
-        ]);
+        ];
+
+        $validator = Validator::make($request->all(), $rules, $messages, $attributes);
+        $redirectTab = in_array($request->input('redirect_tab'), ['parametros', 'unidades-permitidas'], true)
+            ? $request->input('redirect_tab')
+            : 'parametros';
+        $successMessage = $redirectTab === 'unidades-permitidas'
+            ? 'Unidades Permitidas atualizadas com sucesso.'
+            : 'Parâmetros do cliente atualizados com sucesso.';
+
+        if ($validator->fails()) {
+            return redirect()
+                ->route($this->routeName('edit'), ['cliente' => $cliente->id, 'tab' => $redirectTab])
+                ->withErrors($validator)
+                ->withInput()
+                ->with('erro', $validator->errors()->first());
+        }
+
+        $data = $validator->validated();
 
         $servicoEsocialId = (int) (config('services.esocial_id') ?? 0);
         $servicoExameId = (int) (config('services.exame_id') ?? 0);
@@ -404,7 +425,7 @@ class ClienteParametroController extends Controller
         $valorTotal = $valorItens + $valorEsocial;
         $vencimentoServicos = $data['vencimento_servicos'];
 
-        return DB::transaction(function () use ($empresaId, $data, $valorTotal, $incluirEsocial, $valorEsocialCampo, $vencimentoServicos, $asoGrupos, $clienteAsoGrupos, $cliente, $unidadesPermitidasIds, $funcoesClienteIds, $shouldSyncFuncoesCliente) {
+        return DB::transaction(function () use ($empresaId, $data, $valorTotal, $incluirEsocial, $valorEsocialCampo, $vencimentoServicos, $asoGrupos, $clienteAsoGrupos, $cliente, $unidadesPermitidasIds, $funcoesClienteIds, $shouldSyncFuncoesCliente, $redirectTab, $successMessage) {
             $parametro = $this->findParametroAtual($empresaId, $cliente);
 
             $payload = [
@@ -720,7 +741,9 @@ class ClienteParametroController extends Controller
                 }
             }
 
-            return back()->with('ok', 'Parâmetros do cliente atualizados com sucesso.');
+            return redirect()
+                ->route($this->routeName('edit'), ['cliente' => $cliente->id, 'tab' => $redirectTab])
+                ->with('ok', $successMessage);
         });
     }
 
