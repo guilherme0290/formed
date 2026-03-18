@@ -118,6 +118,39 @@
                         @endif
                     </a>
 
+                    {{-- Exame toxicológico --}}
+                    @php
+                        $toxicologicoTemPermissao = $isMaster
+                            || isset($permissionMap['operacional.toxicologico.create'])
+                            || isset($permissionMap['operacional.aso.create']);
+                        $toxicologicoPermitido = $temContratoAtivo
+                            && in_array($servicosIds['exame_toxicologico'] ?? null, $servicosContrato)
+                            && $toxicologicoTemPermissao;
+                    @endphp
+                    <a @if($toxicologicoPermitido) href="{{ route('operacional.toxicologico.create', ['cliente' => $cliente, 'origem' => $origem]) }}" @endif
+                       class="group rounded-2xl border border-teal-200 bg-gradient-to-br from-teal-50 to-cyan-100 p-4
+                        flex flex-col justify-between {{ $toxicologicoPermitido ? 'hover:border-teal-300 hover:shadow-md' : 'opacity-60 cursor-not-allowed' }} transition">
+                        <div class="space-y-2">
+                            <div class="w-9 h-9 rounded-xl bg-teal-500 flex items-center justify-center text-white text-xl mb-1">
+                                &#x1F9EA;
+                            </div>
+                            <h2 class="text-sm font-semibold text-teal-900">Exame toxicológico</h2>
+                            <p class="text-xs text-teal-800/80">
+                                Controle de exame toxicológico ocupacional do cliente.
+                            </p>
+                        </div>
+                        @if($toxicologicoPermitido)
+                            <div class="mt-3 text-xs text-teal-800 flex items-center gap-1 font-medium">
+                                <span>Selecionar</span>
+                                <span>&rsaquo;</span>
+                            </div>
+                        @else
+                            <p class="mt-3 text-[11px] text-amber-700 font-medium">
+                                {{ $temContratoAtivo ? $semPermissaoMsg : $bloqueadoMsg }}
+                            </p>
+                        @endif
+                    </a>
+
                     {{-- PGR --}}
                     @php $pgrPermitido = $temContratoAtivo && in_array($servicosIds['pgr'] ?? null, $servicosContrato) && ($isMaster || isset($permissionMap['operacional.pgr.create'])); @endphp
                     <a @if($pgrPermitido) href="{{ route('operacional.kanban.pgr.tipo', ['cliente' => $cliente, 'origem'  => $origem]) }}" @endif

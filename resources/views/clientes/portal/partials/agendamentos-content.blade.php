@@ -92,7 +92,8 @@
                                         || !empty($apr->funcoes_envolvidas)
                                         || !empty($apr->etapas_atividade)
                                     );
-                                    $temDetalhe = $temDetalheAso || $temDetalhePgr || $temDetalhePcmso || $temDetalheTrein || $temDetalheApr;
+                                    $temDetalheToxicologico = !empty($tarefa->toxicologico_tipo) || !empty($tarefa->toxicologico_solicitante) || !empty($tarefa->toxicologico_nome) || !empty($tarefa->toxicologico_data) || !empty($tarefa->toxicologico_unidade) || !empty($tarefa->toxicologico_email);
+                                    $temDetalhe = $temDetalheAso || $temDetalhePgr || $temDetalhePcmso || $temDetalheTrein || $temDetalheApr || $temDetalheToxicologico;
                                     $editUrl = null;
                                     $servicoNomeLower = mb_strtolower((string) $servicoNome);
                                     if (str_contains($servicoNomeLower, 'aso')) {
@@ -111,6 +112,8 @@
                                         $editUrl = route('operacional.pae.edit', ['tarefa' => $tarefa->id, 'origem' => 'cliente']);
                                     } elseif (str_contains($servicoNomeLower, 'treinamento')) {
                                         $editUrl = route('operacional.treinamentos-nr.edit', ['tarefa' => $tarefa->id, 'origem' => 'cliente']);
+                                    } elseif (str_contains($servicoNomeLower, 'toxicol')) {
+                                        $editUrl = route('operacional.toxicologico.edit', ['tarefa' => $tarefa->id, 'origem' => 'cliente']);
                                     }
                                     $badge = $isCancelado
                                         ? 'bg-slate-100 text-slate-700 border-slate-200'
@@ -218,6 +221,28 @@
                                                                     {!! implode('<br>', array_map('e', (array) $tarefa->treinamento_participantes)) !!}
                                                                 </div>
                                                             </div>
+                                                        @endif
+                                                    @endif
+                                                    @if($temDetalheToxicologico)
+                                                        <div class="pt-1"></div>
+                                                        <div class="font-semibold text-slate-700">Exame toxicológico</div>
+                                                        @if(!empty($tarefa->toxicologico_solicitante))
+                                                            <div><span class="font-semibold">Solicitante:</span> {{ $tarefa->toxicologico_solicitante }}</div>
+                                                        @endif
+                                                        @if(!empty($tarefa->toxicologico_nome))
+                                                            <div><span class="font-semibold">Nome:</span> {{ $tarefa->toxicologico_nome }}</div>
+                                                        @endif
+                                                        @if(!empty($tarefa->toxicologico_tipo))
+                                                            <div><span class="font-semibold">Tipo:</span> {{ $tarefa->toxicologico_tipo }}</div>
+                                                        @endif
+                                                        @if(!empty($tarefa->toxicologico_data))
+                                                            <div><span class="font-semibold">Data:</span> {{ \Carbon\Carbon::parse($tarefa->toxicologico_data)->format('d/m/Y') }}</div>
+                                                        @endif
+                                                        @if(!empty($tarefa->toxicologico_unidade))
+                                                            <div><span class="font-semibold">Unidade:</span> {{ $tarefa->toxicologico_unidade }}</div>
+                                                        @endif
+                                                        @if(!empty($tarefa->toxicologico_email))
+                                                            <div><span class="font-semibold">E-mail:</span> {{ $tarefa->toxicologico_email }}</div>
                                                         @endif
                                                     @endif
                                                 </div>
@@ -371,5 +396,3 @@
         });
     </script>
 @endpush
-
-

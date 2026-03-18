@@ -12,6 +12,7 @@ use App\Models\ContaReceber;
 use App\Models\ContaReceberBaixa;
 
 use App\Models\ContaReceberItem;
+use App\Models\ExameToxicologicoSolicitacao;
 use App\Models\PcmsoSolicitacoes;
 use App\Models\PgrSolicitacoes;
 use App\Models\Servico;
@@ -1250,6 +1251,12 @@ class ClienteDashboardController extends Controller
                 'treinamento_qtd',
                 'pcmso_tipo',
                 'pcmso_obra',
+                'toxicologico_tipo',
+                'toxicologico_solicitante',
+                'toxicologico_nome',
+                'toxicologico_data',
+                'toxicologico_unidade',
+                'toxicologico_email',
             ] as $campo) {
                 if (property_exists($detalhes, $campo)) {
                     $tarefa->setAttribute($campo, $detalhes->{$campo});
@@ -1293,6 +1300,12 @@ class ClienteDashboardController extends Controller
             ->get()
             ->keyBy('tarefa_id');
 
+        $dadosToxicologico = ExameToxicologicoSolicitacao::query()
+            ->whereIn('tarefa_id', $tarefaIds)
+            ->with('unidade:id,nome')
+            ->get()
+            ->keyBy('tarefa_id');
+
         $treinamentoDetalhes = TreinamentoNrDetalhes::query()
             ->whereIn('tarefa_id', $tarefaIds)
             ->with('unidade:id,nome')
@@ -1313,7 +1326,7 @@ class ClienteDashboardController extends Controller
             'retorno_trabalho' => 'Retorno ao Trabalho',
         ];
 
-        return $itens->map(function ($item) use ($dadosAso, $dadosPgr, $dadosPcmso, $treinamentoDetalhes, $treinamentoParticipantes, $mapTipo) {
+        return $itens->map(function ($item) use ($dadosAso, $dadosPgr, $dadosPcmso, $dadosToxicologico, $treinamentoDetalhes, $treinamentoParticipantes, $mapTipo) {
             $tarefaId = (int) ($item->tarefa_id ?? 0);
             if ($tarefaId > 0 && $dadosAso->has($tarefaId)) {
                 $aso = $dadosAso->get($tarefaId);
@@ -1385,6 +1398,32 @@ class ClienteDashboardController extends Controller
                         $item->servico_detalhe = 'PCMSO | ' . $tipoLabel;
                     }
                 }
+            }
+
+            if ($tarefaId > 0 && $dadosToxicologico->has($tarefaId)) {
+                $toxicologico = $dadosToxicologico->get($tarefaId);
+                $mapTiposToxicologico = [
+                    'clt' => 'CLT',
+                    'cnh' => 'CNH',
+                    'concurso_publico' => 'Concurso Público',
+                ];
+
+                $item->toxicologico_tipo = $mapTiposToxicologico[$toxicologico->tipo_exame] ?? $toxicologico->tipo_exame;
+                $tituloTarefa = mb_strtolower((string) ($item->titulo ?? ''));
+                $descricaoTarefa = mb_strtolower((string) ($item->descricao ?? ''));
+                $ehColaborador = !empty($toxicologico->funcionario_id)
+                    || str_contains($tituloTarefa, 'colaborador da empresa')
+                    || str_contains($descricaoTarefa, 'colaborador da empresa');
+
+                $item->toxicologico_solicitante = $ehColaborador ? 'Colaborador da empresa' : 'Independente';
+                $item->toxicologico_nome = $toxicologico->nome_completo;
+                $item->toxicologico_data = $toxicologico->data_realizacao;
+                $item->toxicologico_unidade = $toxicologico->unidade?->nome;
+                $item->toxicologico_email = $toxicologico->email_envio;
+                $item->servico_detalhe = 'Exame toxicológico'
+                    . (!empty($item->toxicologico_solicitante) ? ' - ' . $item->toxicologico_solicitante : '')
+                    . (!empty($item->toxicologico_nome) ? ' - ' . $item->toxicologico_nome : '')
+                    . (!empty($item->toxicologico_tipo) ? ' | ' . $item->toxicologico_tipo : '');
             }
 
             if ($tarefaId > 0 && $treinamentoDetalhes->has($tarefaId)) {

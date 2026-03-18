@@ -342,9 +342,43 @@
 
                                         $clienteCnpj  = optional($tarefa->cliente)->documento_principal ?? '';
                                         $clienteTel   = optional($tarefa->cliente)->telefone ?? '';
+                                        $clienteTipoPessoa = (string) (optional($tarefa->cliente)->tipo_pessoa ?? '');
+                                        $clienteVendedorNome = optional(optional($tarefa->cliente)->vendedor)->name ?? '—';
 
                                         $pgr  = $tarefa->pgrSolicitacao ?? null;
                                         $ltip = $tarefa->ltipSolicitacao;
+                                        $toxicologico = $tarefa->exameToxicologicoSolicitacao;
+                                        $toxicologicoSolicitante = '';
+                                        if ($toxicologico) {
+                                            $tituloTarefa = mb_strtolower((string) ($tarefa->titulo ?? ''));
+                                            $descricaoTarefa = mb_strtolower((string) ($tarefa->descricao ?? ''));
+                                            $ehColaborador = !empty($toxicologico->funcionario_id)
+                                                || str_contains($tituloTarefa, 'colaborador da empresa')
+                                                || str_contains($descricaoTarefa, 'colaborador da empresa');
+
+                                            $toxicologicoSolicitante = $ehColaborador
+                                                ? 'Colaborador da empresa'
+                                                : 'Independente';
+                                        }
+                                        $toxicologicoTipo = $toxicologico
+                                            ? ([
+                                                'clt' => 'CLT',
+                                                'cnh' => 'CNH',
+                                                'concurso_publico' => 'Concurso Público',
+                                            ][$toxicologico->tipo_exame] ?? $toxicologico->tipo_exame)
+                                            : '';
+                                        $toxicologicoNome = $toxicologico->nome_completo ?? '';
+                                        $toxicologicoCpf = $toxicologico->cpf ?? '';
+                                        $toxicologicoRg = $toxicologico->rg ?? '';
+                                        $toxicologicoNascimento = $toxicologico?->data_nascimento
+                                            ? \Carbon\Carbon::parse($toxicologico->data_nascimento)->format('d/m/Y')
+                                            : '';
+                                        $toxicologicoTelefone = $toxicologico->telefone ?? '';
+                                        $toxicologicoEmail = $toxicologico->email_envio ?? '';
+                                        $toxicologicoData = $toxicologico?->data_realizacao
+                                            ? \Carbon\Carbon::parse($toxicologico->data_realizacao)->format('d/m/Y')
+                                            : '';
+                                        $toxicologicoUnidade = optional($toxicologico?->unidade)->nome ?? '';
 
                                         // ====== NOVO: dados específicos do ASO via aso_solicitacoes ======
                                         $aso                  = $tarefa->asoSolicitacao;
@@ -446,6 +480,9 @@
                                         if ($servicoNome === 'Treinamentos NRs') {
                                             $editUrl = route('operacional.treinamentos-nr.edit', $tarefa);
                                         }
+                                        if (mb_strtolower((string) $servicoNome) === 'exame toxicológico' || mb_strtolower((string) $servicoNome) === 'exame toxicologico') {
+                                            $editUrl = route('operacional.toxicologico.edit', $tarefa);
+                                        }
 
                                         $slugColunaAtual = Str::slug((string) ($coluna->slug ?? $coluna->nome ?? ''));
                                         $isColunaPendente = in_array($slugColunaAtual, ['pendente', 'pendentes'], true);
@@ -542,6 +579,8 @@
                                     data-cliente="{{ $clienteNome }}"
                                     data-cnpj="{{ $clienteCnpj }}"
                                     data-telefone="{{ $clienteTel }}"
+                                    data-cliente-tipo-pessoa="{{ $clienteTipoPessoa }}"
+                                    data-cliente-vendedor="{{ $clienteVendedorNome }}"
                                     data-servico="{{ $servicoNome }}"
                                     data-responsavel="{{ $respNome }}"
                                     data-datahora="{{ $dataHora }}"
@@ -592,6 +631,16 @@
                                     data-edit-url="{{ $editUrl }}"
                                     data-excluido-por="{{ $tarefa->excluidoPor?->name ?? '' }}"
                                     data-motivo-exclusao="{{ e($tarefa->motivo_exclusao ?? '') }}"
+                                    data-toxicologico-solicitante="{{ $toxicologicoSolicitante }}"
+                                    data-toxicologico-tipo="{{ $toxicologicoTipo }}"
+                                    data-toxicologico-nome="{{ $toxicologicoNome }}"
+                                    data-toxicologico-cpf="{{ $toxicologicoCpf }}"
+                                    data-toxicologico-rg="{{ $toxicologicoRg }}"
+                                    data-toxicologico-nascimento="{{ $toxicologicoNascimento }}"
+                                    data-toxicologico-telefone="{{ $toxicologicoTelefone }}"
+                                    data-toxicologico-email="{{ $toxicologicoEmail }}"
+                                    data-toxicologico-data="{{ $toxicologicoData }}"
+                                    data-toxicologico-unidade="{{ $toxicologicoUnidade }}"
 
 
                                     {{-- PGR --}}
@@ -1000,7 +1049,7 @@
                 {{-- Coluna esquerda --}}
                 <div class="space-y-4">
                     {{-- 1. Detalhes da solicitação --}}
-                    <section class="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                    <section id="modal-bloco-solicitacao" class="bg-slate-50 border border-slate-200 rounded-xl p-4">
                         <h3 class="text-xs font-semibold text-slate-500 mb-3">
                             1. DETALHES DA SOLICITAÇÃO
                         </h3>
@@ -1121,6 +1170,56 @@
                                 </div>
 
                         </dl>
+                    </section>
+
+                    <section id="modal-bloco-toxicologico" class="bg-white border border-slate-200 rounded-xl p-4 hidden">
+                        <h3 class="text-xs font-semibold text-slate-500 mb-3">1.1 DADOS DO EXAME TOXICOLÓGICO</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                            <div>
+                                <dt class="text-[11px] text-slate-500">Solicitante</dt>
+                                <dd class="font-medium" id="modal-toxicologico-solicitante">—</dd>
+                            </div>
+                            <div>
+                                <dt class="text-[11px] text-slate-500">Tipo</dt>
+                                <dd class="font-medium" id="modal-toxicologico-tipo">—</dd>
+                            </div>
+                            <div>
+                                <dt class="text-[11px] text-slate-500">Nome</dt>
+                                <dd class="font-medium" id="modal-toxicologico-nome">—</dd>
+                            </div>
+                            <div>
+                                <dt class="text-[11px] text-slate-500">CPF</dt>
+                                <dd class="font-medium" id="modal-toxicologico-cpf">—</dd>
+                            </div>
+                            <div>
+                                <dt class="text-[11px] text-slate-500">RG</dt>
+                                <dd class="font-medium" id="modal-toxicologico-rg">—</dd>
+                            </div>
+                            <div>
+                                <dt class="text-[11px] text-slate-500">Data de nascimento</dt>
+                                <dd class="font-medium" id="modal-toxicologico-nascimento">—</dd>
+                            </div>
+                            <div>
+                                <dt class="text-[11px] text-slate-500">Telefone</dt>
+                                <dd class="font-medium" id="modal-toxicologico-telefone">—</dd>
+                            </div>
+                            <div>
+                                <dt class="text-[11px] text-slate-500">E-mail</dt>
+                                <dd class="font-medium" id="modal-toxicologico-email">—</dd>
+                            </div>
+                            <div>
+                                <dt class="text-[11px] text-slate-500">Vendedor responsável</dt>
+                                <dd class="font-medium" id="modal-toxicologico-vendedor">—</dd>
+                            </div>
+                            <div>
+                                <dt class="text-[11px] text-slate-500">Data de realização</dt>
+                                <dd class="font-medium" id="modal-toxicologico-data">—</dd>
+                            </div>
+                            <div>
+                                <dt class="text-[11px] text-slate-500">Unidade</dt>
+                                <dd class="font-medium" id="modal-toxicologico-unidade">—</dd>
+                            </div>
+                        </div>
                     </section>
 
                     {{-- 2. Status atual --}}
@@ -1892,6 +1991,19 @@
             const spanAsoPacote = document.getElementById('modal-aso-pacote');
             const spanAsoEmail = document.getElementById('modal-aso-email');
             const blocoAso = document.getElementById('modal-bloco-aso');
+            const blocoSolicitacao = document.getElementById('modal-bloco-solicitacao');
+            const blocoToxicologico = document.getElementById('modal-bloco-toxicologico');
+            const spanToxicologicoSolicitante = document.getElementById('modal-toxicologico-solicitante');
+            const spanToxicologicoTipo = document.getElementById('modal-toxicologico-tipo');
+            const spanToxicologicoNome = document.getElementById('modal-toxicologico-nome');
+            const spanToxicologicoCpf = document.getElementById('modal-toxicologico-cpf');
+            const spanToxicologicoRg = document.getElementById('modal-toxicologico-rg');
+            const spanToxicologicoNascimento = document.getElementById('modal-toxicologico-nascimento');
+            const spanToxicologicoTelefone = document.getElementById('modal-toxicologico-telefone');
+            const spanToxicologicoEmail = document.getElementById('modal-toxicologico-email');
+            const spanToxicologicoVendedor = document.getElementById('modal-toxicologico-vendedor');
+            const spanToxicologicoData = document.getElementById('modal-toxicologico-data');
+            const spanToxicologicoUnidade = document.getElementById('modal-toxicologico-unidade');
 
             const spanTelefone = document.getElementById('modal-telefone');
             const spanResp = document.getElementById('modal-responsavel');
@@ -2043,6 +2155,7 @@
 
                 let servico = card?.dataset?.servico || 'documento';
                 const funcionario = String(card?.dataset?.funcionario || '').split('|')[0].trim();
+                const toxicologicoNome = String(card?.dataset?.toxicologicoNome || '').trim();
 
                 if (card?.dataset?.isTreinamentoTask === '1') {
                     let participante = '';
@@ -2060,6 +2173,8 @@
                     if (colaborador) {
                         servico = `Treinamentos NRs do colaborador ${colaborador}`;
                     }
+                } else if (String(servico).toLowerCase().includes('toxicol') && toxicologicoNome) {
+                    servico = `${servico} de ${toxicologicoNome}`;
                 } else if (funcionario) {
                     servico = `${servico} do colaborador ${funcionario}`;
                 }
@@ -2090,6 +2205,9 @@
                 }
                 if (servico.includes('pgr')) {
                     return 'Anexe o documento final do PGR entregue ao cliente.';
+                }
+                if (servico.includes('toxicol')) {
+                    return 'Anexe o laudo final devolvido pelo laboratório para disponibilizar nos portais.';
                 }
                 if (servico.includes('treinamento')) {
                     return 'Anexe o documento final desta solicitação de treinamento entregue ao cliente.';
@@ -2191,6 +2309,10 @@
                 spanCnpj.textContent = card.dataset.cnpj || '—';
                 spanTelefone.textContent = card.dataset.telefone || '—';
                 spanResp.textContent = card.dataset.responsavel ?? '';
+                if (blocoSolicitacao) {
+                    const clienteTipoPessoa = String(card.dataset.clienteTipoPessoa || '').toUpperCase();
+                    blocoSolicitacao.classList.toggle('hidden', clienteTipoPessoa === 'PF');
+                }
                 const servicoOriginal = card.dataset.servico ?? '';
                 const isPgrComPcmso = servicoOriginal === 'PGR' && card.dataset.pgrComPcmso === '1';
                 const servicoModal = isPgrComPcmso ? 'PGR + PCMSO' : servicoOriginal;
@@ -2537,6 +2659,7 @@
                 const tipoServico = (card.dataset.servico || '').toLowerCase();
                 const isAso = card.dataset.isAso === '1';
                 const isPgr = tipoServico.includes('pgr');
+                const isToxicologico = tipoServico.includes('toxicol');
 
                 // ASO
                 // ASO
@@ -2614,6 +2737,36 @@
                         if (spanAsoTreinamento) spanAsoTreinamento.textContent = '—';
                         if (spanAsoTreinamentos) spanAsoTreinamentos.textContent = '—';
                         if (spanAsoEmail) spanAsoEmail.textContent = '—';
+                    }
+                }
+
+                if (blocoToxicologico) {
+                    if (isToxicologico) {
+                        blocoToxicologico.classList.remove('hidden');
+                        if (spanToxicologicoSolicitante) spanToxicologicoSolicitante.textContent = card.dataset.toxicologicoSolicitante || '—';
+                        if (spanToxicologicoTipo) spanToxicologicoTipo.textContent = card.dataset.toxicologicoTipo || '—';
+                        if (spanToxicologicoNome) spanToxicologicoNome.textContent = card.dataset.toxicologicoNome || '—';
+                        if (spanToxicologicoCpf) spanToxicologicoCpf.textContent = card.dataset.toxicologicoCpf || '—';
+                        if (spanToxicologicoRg) spanToxicologicoRg.textContent = card.dataset.toxicologicoRg || '—';
+                        if (spanToxicologicoNascimento) spanToxicologicoNascimento.textContent = card.dataset.toxicologicoNascimento || '—';
+                        if (spanToxicologicoTelefone) spanToxicologicoTelefone.textContent = formatTelefone(card.dataset.toxicologicoTelefone || '');
+                        if (spanToxicologicoEmail) spanToxicologicoEmail.textContent = card.dataset.toxicologicoEmail || '—';
+                        if (spanToxicologicoVendedor) spanToxicologicoVendedor.textContent = card.dataset.clienteVendedor || '—';
+                        if (spanToxicologicoData) spanToxicologicoData.textContent = card.dataset.toxicologicoData || '—';
+                        if (spanToxicologicoUnidade) spanToxicologicoUnidade.textContent = card.dataset.toxicologicoUnidade || '—';
+                    } else {
+                        blocoToxicologico.classList.add('hidden');
+                        if (spanToxicologicoSolicitante) spanToxicologicoSolicitante.textContent = '—';
+                        if (spanToxicologicoTipo) spanToxicologicoTipo.textContent = '—';
+                        if (spanToxicologicoNome) spanToxicologicoNome.textContent = '—';
+                        if (spanToxicologicoCpf) spanToxicologicoCpf.textContent = '—';
+                        if (spanToxicologicoRg) spanToxicologicoRg.textContent = '—';
+                        if (spanToxicologicoNascimento) spanToxicologicoNascimento.textContent = '—';
+                        if (spanToxicologicoTelefone) spanToxicologicoTelefone.textContent = '—';
+                        if (spanToxicologicoEmail) spanToxicologicoEmail.textContent = '—';
+                        if (spanToxicologicoVendedor) spanToxicologicoVendedor.textContent = '—';
+                        if (spanToxicologicoData) spanToxicologicoData.textContent = '—';
+                        if (spanToxicologicoUnidade) spanToxicologicoUnidade.textContent = '—';
                     }
                 }
 
@@ -3224,14 +3377,16 @@
                     closeFinalizarModal();
                 }
 
-                if (data.message) {
-                    window.uiAlert(data.message, {
+                hideModalWithoutReload();
+                closeOverlayAlerts();
+
+                const mensagemSucesso = data.message || 'Tarefa finalizada com sucesso.';
+                await window.uiAlert(mensagemSucesso, {
                         icon: 'success',
                         title: 'Sucesso',
                     });
-                }
 
-                setTimeout(() => window.location.reload(), 250);
+                window.location.reload();
             }
 
             [finalizarCloseBtn, finalizarCloseXBtn].forEach((btn) => {
@@ -3788,6 +3943,11 @@
             if (finalizarBtn) {
                 finalizarBtn.addEventListener('click', async function () {
                     if (!detalhesCurrentCard) return;
+
+                    if (!tarefaTemDocumentosSuficientes(detalhesCurrentCard)) {
+                        window.uiAlert('Anexe primeiro o documento final da tarefa antes de finalizar.');
+                        return;
+                    }
 
                     const url = detalhesCurrentCard.dataset.finalizarDocumentoExistenteUrl;
                     if (!url) {

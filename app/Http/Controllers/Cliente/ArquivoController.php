@@ -94,7 +94,9 @@ class ArquivoController extends Controller
                             $w->whereRaw('LOWER(TRIM(nome)) = ?', ['pcmso'])
                                 ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['pgr'])
                                 ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['ltcat'])
-                                ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['apr']);
+                                ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['apr'])
+                                ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['exame toxicológico'])
+                                ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['exame toxicologico']);
                         });
                     })
                     ->pluck('id')
@@ -115,7 +117,9 @@ class ArquivoController extends Controller
                         $w->whereRaw('LOWER(TRIM(nome)) = ?', ['pcmso'])
                             ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['pgr'])
                             ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['ltcat'])
-                            ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['apr']);
+                            ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['apr'])
+                            ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['exame toxicológico'])
+                            ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['exame toxicologico']);
                     });
                 })
                 ->pluck('id')
@@ -162,7 +166,9 @@ class ArquivoController extends Controller
                     $w->whereRaw('LOWER(TRIM(nome)) = ?', ['pcmso'])
                         ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['pgr'])
                         ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['ltcat'])
-                        ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['apr']);
+                        ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['apr'])
+                        ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['exame toxicológico'])
+                        ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['exame toxicologico']);
                 });
             })
             ->where(function ($q) {
@@ -207,7 +213,9 @@ class ArquivoController extends Controller
                     $w->whereRaw('LOWER(TRIM(nome)) = ?', ['pcmso'])
                         ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['pgr'])
                         ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['ltcat'])
-                        ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['apr']);
+                        ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['apr'])
+                        ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['exame toxicológico'])
+                        ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['exame toxicologico']);
                 });
             })
             ->whereNotNull('funcionario_id')
@@ -230,7 +238,9 @@ class ArquivoController extends Controller
                 $w->whereRaw('LOWER(TRIM(nome)) = ?', ['pcmso'])
                     ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['pgr'])
                     ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['ltcat'])
-                    ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['apr']);
+                    ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['apr'])
+                    ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['exame toxicológico'])
+                    ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['exame toxicologico']);
             })
             ->orderBy('nome')
             ->get(['id', 'nome']);

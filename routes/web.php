@@ -358,6 +358,21 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
             ->name('pae.update');
 
         // ======================================================
+        //  EXAME TOXICOLÓGICO
+        // ======================================================
+        Route::get('clientes/{cliente}/exame-toxicologico', [\App\Http\Controllers\Operacional\ExameToxicologicoController::class, 'create'])
+            ->name('toxicologico.create');
+
+        Route::post('clientes/{cliente}/exame-toxicologico', [\App\Http\Controllers\Operacional\ExameToxicologicoController::class, 'store'])
+            ->name('toxicologico.store');
+
+        Route::get('exame-toxicologico/{tarefa}/edit', [\App\Http\Controllers\Operacional\ExameToxicologicoController::class, 'edit'])
+            ->name('toxicologico.edit');
+
+        Route::put('exame-toxicologico/{exameToxicologico}', [\App\Http\Controllers\Operacional\ExameToxicologicoController::class, 'update'])
+            ->name('toxicologico.update');
+
+        // ======================================================
         //  TREINAMENTOS NRs
         // ======================================================
 
