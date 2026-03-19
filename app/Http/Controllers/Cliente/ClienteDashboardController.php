@@ -53,16 +53,12 @@ class ClienteDashboardController extends Controller
         }
         $temTabela = (bool) $tabela;
         $faturaTotal = $this->faturaTotal($cliente);
-        $tarefasEmAndamento = $this->tarefasEmAndamento($cliente, false);
-        $totalEmAndamento = $this->totalEmAndamento($contratoAtivo, $tarefasEmAndamento);
-        $faturaTotal += $totalEmAndamento;
 
         $totalPago = (float) ContaReceberItem::query()
             ->where('empresa_id', $cliente->empresa_id)
             ->where('cliente_id', $cliente->id)
             ->where('status', 'BAIXADO')
             ->sum('valor');
-        $totalGeral = $faturaTotal + $totalPago;
         $vendedorTelefone = $this->telefoneVendedor($cliente, $contratoAtivo);
         $tarefasEmAndamento = $this->tarefasEmAndamento($cliente, false);
         $totalEmAndamento = $this->totalEmAndamento($contratoAtivo, $tarefasEmAndamento);
@@ -150,10 +146,7 @@ class ClienteDashboardController extends Controller
             )
             ->value('total');
 
-        $tarefasEmAndamento = $this->tarefasEmAndamento($cliente, false);
-        $totalEmAndamento = $this->totalEmAndamento($contratoAtivo, $tarefasEmAndamento);
-
-        $totalFaturaAberto = $this->faturaTotal($cliente) + $totalEmAndamento;
+        $totalFaturaAberto = $this->faturaTotal($cliente);
         $totalPago = (float) ContaReceberItem::query()
             ->where('empresa_id', $cliente->empresa_id)
             ->where('cliente_id', $cliente->id)
@@ -297,41 +290,7 @@ class ClienteDashboardController extends Controller
             ->fromSub($union, 'reg')
             ->orderByDesc('data_realizacao')
             ->get();
-        $itensEmAberto = $this->itensEmAndamento($contratoAtivo, $cliente);
         $itens = $this->anexarDetalhesServicos($itens);
-        $itensEmAberto = $this->anexarDetalhesServicos($itensEmAberto);
-        $itensEmAberto = $itensEmAberto
-            ->filter(function ($item) use ($status, $dataInicio, $dataFim, $filtroFaturaEspecifica) {
-                $statusFiltro = strtoupper((string) $status);
-                if ($statusFiltro === 'BAIXADO' || $statusFiltro === 'VENCIDO') {
-                    return false;
-                }
-                if ($statusFiltro !== '' && $statusFiltro !== 'ABERTO') {
-                    return false;
-                }
-                if ($filtroFaturaEspecifica) {
-                    return false;
-                }
-
-                if (!$dataInicio && !$dataFim) {
-                    return true;
-                }
-
-                if (empty($item->data_realizacao)) {
-                    return false;
-                }
-
-                $dataItem = \Carbon\Carbon::parse($item->data_realizacao)->toDateString();
-                if ($dataInicio && $dataItem < $dataInicio) {
-                    return false;
-                }
-                if ($dataFim && $dataItem > $dataFim) {
-                    return false;
-                }
-
-                return true;
-            })
-            ->values();
 
         return view('clientes.portal.index', [
             'activeTab' => 'faturas',
@@ -343,7 +302,6 @@ class ClienteDashboardController extends Controller
             'totalPago' => $totalPago,
             'totalVencido' => $totalVencido,
             'itens'        => $itens,
-            'itensEmAberto' => $itensEmAberto,
             'faturasFiltroOptions' => $faturasFiltroOptions,
             'filtros' => [
                 'data_inicio' => $dataInicio,

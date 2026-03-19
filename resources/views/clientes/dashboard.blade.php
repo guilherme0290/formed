@@ -74,7 +74,7 @@
                 </a>
             </div>
 
-            {{-- Card: Fatura Atual (verde) --}}
+            {{-- Card: Serviços em aberto (verde) --}}
             <div class="rounded-3xl bg-[#059669] text-white shadow-lg shadow-emerald-900/25 p-4 md:p-6 flex flex-col justify-between">
                 <div>
                     <div class="flex items-start gap-3 mb-4">
@@ -83,13 +83,13 @@
                         </div>
                         <div>
                             <p class="text-xs uppercase tracking-[0.18em] text-emerald-50/90">
-                                Fatura Atual
+                                Serviços em aberto
                             </p>
                             <p class="mt-1 text-lg md:text-2xl font-semibold">
                                 R$ {{ number_format($faturaTotal ?? 0, 2, ',', '.') }}
                             </p>
                             <p class="text-[11px] text-emerald-50/90 mt-1">
-                                Contas em aberto + tarefas pendentes
+                                Serviços em aberto
                             </p>
                         </div>
                     </div>

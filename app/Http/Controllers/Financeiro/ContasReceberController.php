@@ -86,8 +86,8 @@ class ContasReceberController extends Controller
                 $q->where('cliente_id', $clienteId);
             });
         } elseif (!empty($clientesBuscaIds)) {
-            $vendaItensQuery->whereHas('venda.cliente', function ($q) use ($clienteBusca, $clienteBuscaDocumento) {
-                $q->whereIn('clientes.id', $clientesBuscaIds);
+            $vendaItensQuery->whereHas('venda', function ($q) use ($clientesBuscaIds) {
+                $q->whereIn('cliente_id', $clientesBuscaIds);
             });
         } elseif ($clienteBusca !== '') {
             $vendaItensQuery->whereRaw('1 = 0');
