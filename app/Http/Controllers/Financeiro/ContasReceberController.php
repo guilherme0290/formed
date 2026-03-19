@@ -58,12 +58,17 @@ class ContasReceberController extends Controller
         $dataFim = $request->input('data_fim');
         $clienteId = $request->input('cliente_id');
         $clienteBusca = trim((string) $request->input('cliente', ''));
+        $clientesBuscaIds = [];
 
         if (!$clienteId && $clienteBusca !== '') {
             $clienteId = Cliente::query()
                 ->where('empresa_id', $empresaId)
                 ->where('razao_social', $clienteBusca)
                 ->value('id');
+
+            if (!$clienteId) {
+                $clientesBuscaIds = $this->buscarClientesPorTermo($empresaId, $clienteBusca);
+            }
         }
 
         $vendaItensQuery = VendaItem::query()
@@ -80,6 +85,12 @@ class ContasReceberController extends Controller
             $vendaItensQuery->whereHas('venda', function ($q) use ($clienteId) {
                 $q->where('cliente_id', $clienteId);
             });
+        } elseif (!empty($clientesBuscaIds)) {
+            $vendaItensQuery->whereHas('venda.cliente', function ($q) use ($clienteBusca, $clienteBuscaDocumento) {
+                $q->whereIn('clientes.id', $clientesBuscaIds);
+            });
+        } elseif ($clienteBusca !== '') {
+            $vendaItensQuery->whereRaw('1 = 0');
         }
 
         if ($statusFinalizacao === 'finalizadas') {
@@ -129,15 +140,24 @@ class ContasReceberController extends Controller
 
         $faturasClienteId = $request->input('faturas_cliente_id');
         $faturasClienteBusca = trim((string) $request->input('faturas_cliente', ''));
+        $faturasClientesBuscaIds = [];
         if (!$faturasClienteId && $faturasClienteBusca !== '') {
             $faturasClienteId = Cliente::query()
                 ->where('empresa_id', $empresaId)
                 ->where('razao_social', $faturasClienteBusca)
                 ->value('id');
+
+            if (!$faturasClienteId) {
+                $faturasClientesBuscaIds = $this->buscarClientesPorTermo($empresaId, $faturasClienteBusca);
+            }
         }
 
         if ($faturasClienteId) {
             $contasQuery->where('cliente_id', $faturasClienteId);
+        } elseif (!empty($faturasClientesBuscaIds)) {
+            $contasQuery->whereIn('cliente_id', $faturasClientesBuscaIds);
+        } elseif ($faturasClienteBusca !== '') {
+            $contasQuery->whereRaw('1 = 0');
         }
 
         $faturasNumero = trim((string) $request->input('faturas_numero', ''));
@@ -351,6 +371,38 @@ class ContasReceberController extends Controller
             'Cartão de débito',
             'Transferência',
         ];
+    }
+
+    private function buscarClientesPorTermo(int $empresaId, string $termo): array
+    {
+        $termo = trim($termo);
+        if ($termo === '') {
+            return [];
+        }
+
+        $termoDocumento = preg_replace('/\D+/', '', $termo);
+
+        return Cliente::query()
+            ->where('empresa_id', $empresaId)
+            ->where(function ($query) use ($termo, $termoDocumento) {
+                $query->where('razao_social', 'like', '%' . $termo . '%')
+                    ->orWhere('nome_fantasia', 'like', '%' . $termo . '%');
+
+                if ($termoDocumento !== '') {
+                    $query->orWhereRaw(
+                        "REPLACE(REPLACE(REPLACE(cnpj, '.', ''), '/', ''), '-', '') LIKE ?",
+                        ['%' . $termoDocumento . '%']
+                    )->orWhereRaw(
+                        "REPLACE(REPLACE(cpf, '.', ''), '-', '') LIKE ?",
+                        ['%' . $termoDocumento . '%']
+                    );
+                }
+            })
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->values()
+            ->all();
     }
 
     public function itens(Request $request): View|RedirectResponse
