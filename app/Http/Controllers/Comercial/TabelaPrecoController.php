@@ -209,7 +209,7 @@ class TabelaPrecoController extends Controller
         $esocialId = config('services.esocial_id');
         $treinamentoId = config('services.treinamento_id');
         $exameId = config('services.exame_id');
-        $asoId = config('services.aso_id');
+        $asoId = app(\App\Services\AsoGheService::class)->resolveServicoAsoCatalogoId($empresaId);
 
         $servicos = Servico::where('empresa_id', $empresaId)
             ->where('ativo', true)

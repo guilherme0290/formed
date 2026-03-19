@@ -397,6 +397,13 @@ class PainelController extends Controller
         $finalizando = $novaColuna->slug === 'finalizada';
 
         if ($finalizando) {
+            if ($mensagemPendenciaFinalizacao = $this->resolverPendenciaFinalizacao($tarefa)) {
+                return response()->json([
+                    'ok' => false,
+                    'error' => $mensagemPendenciaFinalizacao,
+                ], 422);
+            }
+
             try {
                 $dataRef = now()->startOfDay();
                 $contratoAtivo = ClienteContrato::query()
@@ -506,6 +513,45 @@ class PainelController extends Controller
                 'data' => optional($log->created_at)->format('d/m H:i'),
             ],
         ]);
+    }
+
+    private function resolverPendenciaFinalizacao(Tarefa $tarefa): ?string
+    {
+        $tarefa->loadMissing(['servico', 'pgr', 'anexos']);
+
+        $servicoNome = mb_strtolower((string) optional($tarefa->servico)->nome);
+        $isTreinamentoTask = $servicoNome === 'treinamentos nrs';
+
+        if (!$isTreinamentoTask && blank($tarefa->path_documento_cliente)) {
+            return 'Anexe primeiro o documento final da tarefa antes de finalizar.';
+        }
+
+        $pgr = $tarefa->pgr;
+        if (!$pgr) {
+            return null;
+        }
+
+        if ((bool) $pgr->com_pcms0) {
+            $temDocumentoComplementar = $tarefa->anexos->contains(function ($anexo) {
+                return mb_strtolower((string) ($anexo->servico ?? '')) === 'documento_complementar_pgr_pcmso';
+            });
+
+            if (!$temDocumentoComplementar) {
+                return 'Anexe também o documento complementar do PCMSO antes de finalizar.';
+            }
+        }
+
+        if ((bool) $pgr->com_art) {
+            $temDocumentoArt = $tarefa->anexos->contains(function ($anexo) {
+                return mb_strtolower((string) ($anexo->servico ?? '')) === 'documento_art_pgr_pcmso';
+            });
+
+            if (!$temDocumentoArt) {
+                return 'Anexe também a ART antes de finalizar.';
+            }
+        }
+
+        return null;
     }
 
     private function atualizarOrdem(array $ids, int $colunaId): void
@@ -635,6 +681,7 @@ class PainelController extends Controller
             'ltip' => ['ltip', 'ltip'],
             'apr' => ['apr', 'apr'],
             'pae' => ['pae', 'pae'],
+            'exame_toxicologico' => ['exame toxicológico', 'exame toxicologico'],
             'treinamentos' => ['treinamento', 'treinamentos nrs'],
         ];
 

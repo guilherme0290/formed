@@ -46,6 +46,10 @@ class ServicoSeeder extends Seeder
                 'descricao' => 'Plano de Atendimento a Emergências.',
             ],
             [
+                'nome'      => 'Exame toxicológico',
+                'descricao' => 'Exame toxicológico ocupacional.',
+            ],
+            [
                 'nome'      => 'Treinamentos NRs',
                 'descricao' => 'Normas regulamentadoras e capacitações.',
             ],

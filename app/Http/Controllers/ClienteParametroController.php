@@ -187,7 +187,7 @@ class ClienteParametroController extends Controller
 
         $servicoEsocialId = (int) (config('services.esocial_id') ?? 0);
         $servicoExameId = (int) (config('services.exame_id') ?? 0);
-        $servicoAsoId = (int) (config('services.aso_id') ?? 0);
+        $servicoAsoId = (int) (app(AsoGheService::class)->resolveServicoAsoCatalogoId($empresaId) ?? 0);
 
         foreach ($data['itens'] as $idx => $it) {
             if (!array_key_exists('meta', $it) || $it['meta'] === null || $it['meta'] === '') {
@@ -369,7 +369,7 @@ class ClienteParametroController extends Controller
         }
 
         if ($gheTotal > 0 && empty($asoIndexes)) {
-            $asoServicoId = (int) (config('services.aso_id') ?? 0);
+            $asoServicoId = (int) (app(AsoGheService::class)->resolveServicoAsoCatalogoId($empresaId) ?? 0);
             $data['itens'][] = [
                 'servico_id' => $asoServicoId ?: null,
                 'tipo' => 'SERVICO',

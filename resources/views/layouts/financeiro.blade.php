@@ -105,7 +105,7 @@
 </div>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const flashOk = @json(session('ok'));
+        const flashOk = @json(session('ok') ?? session('success'));
         const flashErr = @json(session('error') ?? session('erro'));
         if (typeof window.uiAlert === 'function' && !window.__financeiroFlashShown) {
             window.__financeiroFlashShown = true;

@@ -181,6 +181,11 @@ class Tarefa extends Model
         return $this->hasOne(AsoSolicitacoes::class, 'tarefa_id');
     }
 
+    public function exameToxicologicoSolicitacao()
+    {
+        return $this->hasOne(ExameToxicologicoSolicitacao::class, 'tarefa_id');
+    }
+
 
 
 

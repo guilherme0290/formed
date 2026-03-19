@@ -5,12 +5,16 @@ namespace App\Http\Controllers\Financeiro;
 use App\Helpers\S3Helper;
 use App\Http\Controllers\Controller;
 use App\Models\Cliente;
+use App\Models\ClienteContrato;
 use App\Models\ContaReceber;
 use App\Models\ContaReceberItem;
 use App\Models\ParametroCliente;
 use App\Models\Servico;
+use App\Models\Tarefa;
 use App\Models\VendaItem;
+use App\Services\ContratoClienteService;
 use App\Services\ContaReceberService;
+use App\Services\PrecificacaoService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
@@ -20,6 +24,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Validation\ValidationException;
 
 class ContasReceberController extends Controller
 {
@@ -58,12 +63,17 @@ class ContasReceberController extends Controller
         $dataFim = $request->input('data_fim');
         $clienteId = $request->input('cliente_id');
         $clienteBusca = trim((string) $request->input('cliente', ''));
+        $clientesBuscaIds = [];
 
         if (!$clienteId && $clienteBusca !== '') {
             $clienteId = Cliente::query()
                 ->where('empresa_id', $empresaId)
                 ->where('razao_social', $clienteBusca)
                 ->value('id');
+
+            if (!$clienteId) {
+                $clientesBuscaIds = $this->buscarClientesPorTermo($empresaId, $clienteBusca);
+            }
         }
 
         $vendaItensQuery = VendaItem::query()
@@ -80,6 +90,12 @@ class ContasReceberController extends Controller
             $vendaItensQuery->whereHas('venda', function ($q) use ($clienteId) {
                 $q->where('cliente_id', $clienteId);
             });
+        } elseif (!empty($clientesBuscaIds)) {
+            $vendaItensQuery->whereHas('venda', function ($q) use ($clientesBuscaIds) {
+                $q->whereIn('cliente_id', $clientesBuscaIds);
+            });
+        } elseif ($clienteBusca !== '') {
+            $vendaItensQuery->whereRaw('1 = 0');
         }
 
         if ($statusFinalizacao === 'finalizadas') {
@@ -122,6 +138,19 @@ class ContasReceberController extends Controller
             ->orderByDesc('id')
             ->get();
 
+        $tarefasNaoFinalizadasAgrupadas = collect();
+        if ($statusFinalizacao !== 'finalizadas') {
+            $tarefasNaoFinalizadasAgrupadas = $this->buscarTarefasNaoFinalizadasAgrupadas(
+                empresaId: $empresaId,
+                clienteId: $clienteId ? (int) $clienteId : null,
+                clientesBuscaIds: $clientesBuscaIds,
+                clienteBusca: $clienteBusca,
+                tipoData: $tipoData,
+                dataInicio: $dataInicio,
+                dataFim: $dataFim,
+            );
+        }
+
         $contasQuery = ContaReceber::query()
             ->with('cliente')
             ->where('empresa_id', $empresaId)
@@ -129,15 +158,24 @@ class ContasReceberController extends Controller
 
         $faturasClienteId = $request->input('faturas_cliente_id');
         $faturasClienteBusca = trim((string) $request->input('faturas_cliente', ''));
+        $faturasClientesBuscaIds = [];
         if (!$faturasClienteId && $faturasClienteBusca !== '') {
             $faturasClienteId = Cliente::query()
                 ->where('empresa_id', $empresaId)
                 ->where('razao_social', $faturasClienteBusca)
                 ->value('id');
+
+            if (!$faturasClienteId) {
+                $faturasClientesBuscaIds = $this->buscarClientesPorTermo($empresaId, $faturasClienteBusca);
+            }
         }
 
         if ($faturasClienteId) {
             $contasQuery->where('cliente_id', $faturasClienteId);
+        } elseif (!empty($faturasClientesBuscaIds)) {
+            $contasQuery->whereIn('cliente_id', $faturasClientesBuscaIds);
+        } elseif ($faturasClienteBusca !== '') {
+            $contasQuery->whereRaw('1 = 0');
         }
 
         $faturasNumero = trim((string) $request->input('faturas_numero', ''));
@@ -313,6 +351,7 @@ class ContasReceberController extends Controller
         return view('financeiro.contas-receber.index', [
             'clientes' => $clientes,
             'vendaItens' => $vendaItens,
+            'tarefasNaoFinalizadasAgrupadas' => $tarefasNaoFinalizadasAgrupadas,
             'contas' => $contas,
             'cliente_autocomplete' => $clienteAutocomplete,
             'abaAtiva' => in_array($abaAtiva, ['vendas', 'faturas', 'detalhe'], true) ? $abaAtiva : 'vendas',
@@ -351,6 +390,195 @@ class ContasReceberController extends Controller
             'Cartão de débito',
             'Transferência',
         ];
+    }
+
+    private function buscarClientesPorTermo(int $empresaId, string $termo): array
+    {
+        $termo = trim($termo);
+        if ($termo === '') {
+            return [];
+        }
+
+        $termoDocumento = preg_replace('/\D+/', '', $termo);
+
+        return Cliente::query()
+            ->where('empresa_id', $empresaId)
+            ->where(function ($query) use ($termo, $termoDocumento) {
+                $query->where('razao_social', 'like', '%' . $termo . '%')
+                    ->orWhere('nome_fantasia', 'like', '%' . $termo . '%');
+
+                if ($termoDocumento !== '') {
+                    $query->orWhereRaw(
+                        "REPLACE(REPLACE(REPLACE(cnpj, '.', ''), '/', ''), '-', '') LIKE ?",
+                        ['%' . $termoDocumento . '%']
+                    )->orWhereRaw(
+                        "REPLACE(REPLACE(cpf, '.', ''), '-', '') LIKE ?",
+                        ['%' . $termoDocumento . '%']
+                    );
+                }
+            })
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->values()
+            ->all();
+    }
+
+    private function buscarTarefasNaoFinalizadasAgrupadas(
+        int $empresaId,
+        ?int $clienteId,
+        array $clientesBuscaIds,
+        string $clienteBusca,
+        string $tipoData,
+        ?string $dataInicio,
+        ?string $dataFim
+    ): \Illuminate\Support\Collection {
+        $query = Tarefa::query()
+            ->with([
+                'cliente:id,razao_social,nome_fantasia',
+                'servico:id,nome',
+                'coluna:id,nome,slug,finaliza',
+                'funcionario:id,nome',
+                'asoSolicitacao.funcionario:id,nome,funcao_id',
+                'pcmsoSolicitacao:id,tarefa_id,tipo',
+                'pgrSolicitacao:id,tarefa_id,tipo,com_art,com_pcms0,obra_nome',
+                'treinamentoNrDetalhes:id,tarefa_id,treinamentos',
+            ])
+            ->where('empresa_id', $empresaId)
+            ->whereNull('finalizado_em')
+            ->whereHas('coluna', function ($q) {
+                $q->where('finaliza', false)
+                    ->whereRaw("COALESCE(LOWER(slug), '') NOT LIKE 'cancel%'");
+            })
+            ->whereNotExists(function ($q) {
+                $q->select(DB::raw(1))
+                    ->from('vendas as v')
+                    ->whereColumn('v.tarefa_id', 'tarefas.id');
+            })
+            ->orderByDesc('updated_at');
+
+        if ($clienteId) {
+            $query->where('cliente_id', $clienteId);
+        } elseif (!empty($clientesBuscaIds)) {
+            $query->whereIn('cliente_id', $clientesBuscaIds);
+        } elseif ($clienteBusca !== '') {
+            $query->whereRaw('1 = 0');
+        }
+
+        if ($dataInicio) {
+            $query->whereDate('created_at', '>=', $dataInicio);
+        }
+        if ($dataFim) {
+            $query->whereDate('created_at', '<=', $dataFim);
+        }
+
+        return $query->get()->map(function (Tarefa $tarefa) use ($tipoData) {
+            $itensEstimados = collect($this->estimarItensTarefaNaoFinalizada($tarefa));
+            $dataReferencia = $tipoData === 'finalizacao'
+                ? null
+                : ($tarefa->created_at ?? $tarefa->updated_at);
+
+            return [
+                'tipo_registro' => 'tarefa',
+                'tarefa' => $tarefa,
+                'itens' => $itensEstimados,
+                'is_finalizada' => false,
+                'status_label' => 'Tarefa não finalizada',
+                'status_badge' => 'bg-amber-50 text-amber-700 border-amber-100',
+                'cliente_nome' => $tarefa->cliente?->razao_social ?? $tarefa->cliente?->nome_fantasia ?? 'Cliente',
+                'data_referencia' => $dataReferencia,
+                'total' => (float) $itensEstimados->sum('subtotal_snapshot'),
+                'qtd_itens' => max(1, $itensEstimados->count()),
+            ];
+        })->values();
+    }
+
+    private function estimarItensTarefaNaoFinalizada(Tarefa $tarefa): array
+    {
+        $servicoNome = trim((string) ($tarefa->servico?->nome ?? ''));
+        $servicoNomeNormalizado = mb_strtolower($servicoNome);
+        $precificacao = app(PrecificacaoService::class);
+
+        try {
+            $itensVenda = match ($servicoNomeNormalizado) {
+                'aso' => $precificacao->precificarAso($tarefa)['itensVenda'] ?? [],
+                'pcmso' => $precificacao->precificarPcmso($tarefa)['itensVenda'] ?? [],
+                'treinamentos nrs' => $precificacao->precificarTreinamentosNr($tarefa)['itensVenda'] ?? [],
+                'pgr' => $precificacao->precificarPgr($tarefa)['itensVenda'] ?? [],
+                default => $this->estimarItensGenericosTarefa($tarefa),
+            };
+        } catch (ValidationException) {
+            $itensVenda = $this->estimarItensGenericosTarefa($tarefa);
+        }
+
+        if (empty($itensVenda)) {
+            return [[
+                'descricao_snapshot' => $servicoNome !== '' ? $servicoNome : ($tarefa->titulo ?: 'Serviço'),
+                'subtotal_snapshot' => 0.0,
+                'data_referencia' => $tarefa->created_at,
+            ]];
+        }
+
+        return collect($itensVenda)->map(function (array $item) use ($tarefa, $servicoNome) {
+            $quantidade = max(1, (int) ($item['quantidade'] ?? 1));
+            $subtotal = array_key_exists('subtotal_snapshot', $item)
+                ? (float) ($item['subtotal_snapshot'] ?? 0)
+                : null;
+            $valorUnitario = (float) ($item['preco_unitario_snapshot'] ?? 0);
+            $valorTotal = $subtotal ?? ($valorUnitario * $quantidade);
+
+            return [
+                'descricao_snapshot' => (string) ($item['descricao_snapshot'] ?? ($servicoNome !== '' ? $servicoNome : 'Serviço')),
+                'subtotal_snapshot' => $valorTotal,
+                'data_referencia' => $tarefa->created_at,
+            ];
+        })->all();
+    }
+
+    private function estimarItensGenericosTarefa(Tarefa $tarefa): array
+    {
+        /** @var ContratoClienteService $contratoService */
+        $contratoService = app(ContratoClienteService::class);
+
+        $contrato = $contratoService->getContratoAtivo(
+            (int) $tarefa->cliente_id,
+            (int) $tarefa->empresa_id,
+            $tarefa->created_at ? Carbon::parse($tarefa->created_at) : null
+        );
+
+        $valor = 0.0;
+        if ($contrato) {
+            $valor = $this->resolverValorGenericoTarefa($tarefa, $contrato);
+        }
+
+        if (!$contrato || $valor <= 0) {
+            $contrato = $contratoService->getContratoAtivo(
+                (int) $tarefa->cliente_id,
+                (int) $tarefa->empresa_id,
+                null
+            );
+            $valor = $contrato ? $this->resolverValorGenericoTarefa($tarefa, $contrato) : 0.0;
+        }
+
+        if (!$contrato) {
+            return [];
+        }
+
+        return [[
+            'descricao_snapshot' => trim((string) ($tarefa->servico?->nome ?? $tarefa->titulo ?? 'Serviço')),
+            'subtotal_snapshot' => $valor,
+            'data_referencia' => $tarefa->created_at,
+        ]];
+    }
+
+    private function resolverValorGenericoTarefa(Tarefa $tarefa, ClienteContrato $contrato): float
+    {
+        $item = $contrato->itens()
+            ->where('servico_id', $tarefa->servico_id)
+            ->where('ativo', true)
+            ->first();
+
+        return (float) ($item?->preco_unitario_snapshot ?? 0);
     }
 
     public function itens(Request $request): View|RedirectResponse

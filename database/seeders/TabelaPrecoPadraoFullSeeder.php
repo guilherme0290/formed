@@ -32,7 +32,7 @@ class TabelaPrecoPadraoFullSeeder extends Seeder
                 ['nome' => 'Tabela Padrão', 'ativa' => true]
             );
 
-            // 3) Itens “normais” (ASO/PGR/PCMSO/LTCAT/LTIP/APR/PAE)
+            // 3) Itens “normais” (ASO/PGR/PCMSO/LTCAT/LTIP/APR/PAE/Exame toxicológico)
             $this->seedItensServicosBase($padrao->id, $servicos);
 
             // 4) Treinamentos NRs: cria itens na tabela_preco_items
@@ -54,6 +54,7 @@ class TabelaPrecoPadraoFullSeeder extends Seeder
             'APR'             => 'Análise Preliminar de Riscos.',
             'ART'             => 'Anotação de Responsabilidade Técnica.',
             'PAE'             => 'Plano de Atendimento a Emergências.',
+            'Exame toxicológico' => 'Exame toxicológico ocupacional.',
             'Treinamentos NRs'=> 'Normas regulamentadoras e capacitações.',
             'Esocial'         => 'Esocial',
         ];
@@ -91,6 +92,7 @@ class TabelaPrecoPadraoFullSeeder extends Seeder
             ['apr',   'APR',      'APR (Análise preliminar)',       180.00,  true],
             ['art',   'ART',      'ART (Responsabilidade técnica)', 150.00,  true],
             ['pae',   'PAE',      'PAE (Plano de emergência)',      280.00,  true],
+            ['exame_toxicologico', 'TOX', 'Exame toxicológico',       0.00,    true],
 
             // casos de teste
             ['pgr',   null,       'PGR (sem código p/ teste)',      420.00,  true],

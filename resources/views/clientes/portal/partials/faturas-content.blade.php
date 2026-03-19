@@ -2,7 +2,7 @@
     $itensPaginados = $itens instanceof \Illuminate\Pagination\AbstractPaginator
         ? $itens->getCollection()
         : collect($itens ?? []);
-    $listaFaturas = collect($itensEmAberto ?? [])->concat($itensPaginados);
+    $listaFaturas = collect($itensPaginados);
     $hoje = \Carbon\Carbon::now()->startOfDay();
     $faturasResumo = $listaFaturas
         ->filter(fn ($item) => (int) ($item->conta_receber_id ?? 0) > 0)
@@ -11,7 +11,18 @@
             $grupo = collect($grupo);
             $primeiro = $grupo->first();
             $numero = (int) (($primeiro->fatura_numero ?? 0) ?: $contaId);
-            $total = (float) $grupo->sum(function ($item) {
+            $statusItens = $grupo
+                ->pluck('status')
+                ->map(fn ($s) => strtoupper((string) $s))
+                ->filter()
+                ->values();
+
+            $todosBaixados = $statusItens->isNotEmpty() && $statusItens->every(fn ($s) => $s === 'BAIXADO');
+            $total = (float) $grupo->sum(function ($item) use ($todosBaixados) {
+                if ($todosBaixados) {
+                    return (float) ($item->valor ?? 0);
+                }
+
                 return isset($item->valor_real) ? (float) $item->valor_real : (float) ($item->valor ?? 0);
             });
 
@@ -22,13 +33,6 @@
                 ->sort()
                 ->first();
 
-            $statusItens = $grupo
-                ->pluck('status')
-                ->map(fn ($s) => strtoupper((string) $s))
-                ->filter()
-                ->values();
-
-            $todosBaixados = $statusItens->isNotEmpty() && $statusItens->every(fn ($s) => $s === 'BAIXADO');
             $vencida = !$todosBaixados && $vencimentoPrincipal && $vencimentoPrincipal->lt($hoje);
 
             $statusLabel = $todosBaixados ? 'Paga' : ($vencida ? 'Vencida' : 'Em aberto');
@@ -65,17 +69,16 @@
     $faturaFiltroSelecionado = (string) ($filtros['fatura_id'] ?? '');
     $faturasFiltroOptions = collect($faturasFiltroOptions ?? []);
     $totalRegistros = $listaFaturas->count();
-    $totalAndamento = collect($itensEmAberto ?? [])->count();
 @endphp
 
 <section class="w-full px-3 md:px-5 py-4 md:py-5">
     <div class="mb-5">
         <div>
             <h1 class="text-lg md:text-xl font-semibold text-slate-900">
-                Faturas e Serviços
+                Faturas
             </h1>
             <p class="text-xs md:text-sm text-slate-500">
-                Histórico de contas a receber e serviços realizados.
+                Histórico financeiro do cliente.
             </p>
         </div>
     </div>
@@ -83,7 +86,7 @@
     <div class="mb-6 grid gap-3 md:grid-cols-3">
         <div class="md:col-span-1 flex flex-col gap-3">
             <div class="rounded-xl border border-blue-200 bg-blue-50/80 px-4 py-3">
-                <p class="text-[11px] uppercase tracking-wide text-blue-700">Faturas em Aberto</p>
+                <p class="text-[11px] uppercase tracking-wide text-blue-700">Serviços em Aberto</p>
                 <p class="mt-1 text-2xl font-semibold text-blue-800">R$ {{ number_format($totalFaturaAberto ?? 0, 2, ',', '.') }}</p>
             </div>
 
@@ -94,7 +97,13 @@
         </div>
 
         <div class="rounded-xl border border-indigo-200 bg-indigo-50/80 px-4 py-3 flex flex-col max-h-[240px] overflow-hidden md:col-span-2">
-            <p class="text-[11px] uppercase tracking-wide text-indigo-700">Boletos e Faturas para Download</p>
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <p class="text-[11px] uppercase tracking-wide text-indigo-700">Boletos e Faturas para Download</p>
+                    <p class="mt-1 text-xl font-semibold text-indigo-900">R$ {{ number_format($totalPago ?? 0, 2, ',', '.') }}</p>
+                    <p class="text-[11px] text-indigo-700/80">Total já pago</p>
+                </div>
+            </div>
             @if($faturasResumo->isNotEmpty())
                 <div class="mt-2 grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-end">
                     <div>
@@ -126,7 +135,7 @@
 
     <div class="rounded-2xl border border-blue-200 bg-blue-50/40 shadow-inner overflow-hidden p-1 md:p-2">
         <div class="px-4 py-3 border-b border-blue-200 bg-blue-100/60 rounded-xl">
-            <p class="text-xs font-semibold uppercase tracking-wide text-blue-700">Faturas</p>
+            <p class="text-xs font-semibold uppercase tracking-wide text-blue-700">Serviços em Aberto</p>
         </div>
 
         <div class="p-3 md:p-4">
@@ -238,7 +247,9 @@
                                                 $vencimento = !empty($item->vencimento) ? \Carbon\Carbon::parse($item->vencimento) : null;
                                                 $isAndamento = $status === '' || $status === 'EM ANDAMENTO';
                                                 $vencido = !$isAndamento && ($vencimento?->lt(now()->startOfDay()) ?? false);
-                                                $valorReal = isset($item->valor_real) ? (float) $item->valor_real : (float) ($item->valor ?? 0);
+                                                $valorExibicao = $status === 'BAIXADO'
+                                                    ? (float) ($item->valor ?? 0)
+                                                    : (isset($item->valor_real) ? (float) $item->valor_real : (float) ($item->valor ?? 0));
                                                 $faturaId = (int) ($item->conta_receber_id ?? 0);
                                                 $faturaNumero = (int) ($item->fatura_numero ?? 0);
 
@@ -269,7 +280,7 @@
                                                 </div>
                                                 <div class="col-span-2 text-right">
                                                     <p class="font-semibold text-slate-900">
-                                                        R$ {{ number_format($valorReal, 2, ',', '.') }}
+                                                        R$ {{ number_format($valorExibicao, 2, ',', '.') }}
                                                     </p>
                                                     @if($faturaId > 0)
                                                         <p class="mt-1 text-[11px] font-semibold text-indigo-700">
