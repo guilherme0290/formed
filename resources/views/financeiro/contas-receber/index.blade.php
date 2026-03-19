@@ -38,11 +38,41 @@
             })
             ->values();
         $tarefasNaoFinalizadasAgrupadas = collect($tarefasNaoFinalizadasAgrupadas ?? []);
-        $totalVendasSemFatura = $vendasAgrupadas->count();
-        $valorTotalVendasSemFatura = (float) $vendasAgrupadas->sum('total');
-        $valorTotalServicosNaoFinalizados = (float) $vendasAgrupadas
-            ->where('is_finalizada', false)
-            ->sum('total') + (float) $tarefasNaoFinalizadasAgrupadas->sum('total');
+        $registrosFinalizados = $vendasAgrupadas
+            ->where('is_finalizada', true)
+            ->values()
+            ->map(fn ($grupo) => ['tipo' => 'venda', 'grupo' => $grupo]);
+        $registrosNaoFinalizados = $tarefasNaoFinalizadasAgrupadas
+            ->map(fn ($grupo) => ['tipo' => 'tarefa', 'grupo' => $grupo])
+            ->values();
+        $totalItensSemFatura = (int) $registrosFinalizados->sum(fn ($registro) => (int) ($registro['grupo']['qtd_itens'] ?? 0))
+            + (int) $registrosNaoFinalizados->sum(fn ($registro) => (int) ($registro['grupo']['qtd_itens'] ?? 0));
+        $valorTotalVendasSemFatura = (float) $registrosFinalizados->sum(fn ($registro) => (float) ($registro['grupo']['total'] ?? 0));
+        $valorTotalServicosNaoFinalizados = (float) $registrosNaoFinalizados->sum(fn ($registro) => (float) ($registro['grupo']['total'] ?? 0));
+        $statusFinalizacaoFiltro = $filtros['status_finalizacao'] ?? 'todas';
+        $mostrarVendasSemFatura = $statusFinalizacaoFiltro !== 'nao_finalizadas';
+        $mostrarServicosNaoFinalizados = in_array($statusFinalizacaoFiltro, ['todas', 'nao_finalizadas'], true);
+        $tituloContainerVendas = match ($statusFinalizacaoFiltro) {
+            'nao_finalizadas' => 'Serviços não finalizados',
+            'finalizadas' => 'Vendas finalizadas (sem fatura)',
+            default => 'Vendas e serviços sem faturamento',
+        };
+        $descricaoContainerVendas = match ($statusFinalizacaoFiltro) {
+            'nao_finalizadas' => 'Tarefas abertas, não canceladas e ainda sem venda gerada.',
+            'finalizadas' => 'Apenas vendas finalizadas, prontas para gerar fatura.',
+            default => 'Vendas finalizadas podem ser faturadas. Serviços não finalizados ficam para acompanhamento.',
+        };
+        $registrosPainelVendas = match ($statusFinalizacaoFiltro) {
+            'finalizadas' => $registrosFinalizados,
+            'nao_finalizadas' => $registrosNaoFinalizados,
+            default => $registrosFinalizados->concat($registrosNaoFinalizados)->values(),
+        };
+        $registrosPainelVendas = $registrosPainelVendas
+            ->sortByDesc(function ($registro) {
+                return optional($registro['grupo']['data_referencia'] ?? null)?->timestamp ?? 0;
+            })
+            ->values();
+        $contadorContainerVendas = $registrosPainelVendas->count();
 
         $abaAtiva = $abaAtiva ?? 'vendas';
 
@@ -90,18 +120,6 @@
         </div>
 
         @include('financeiro.partials.tabs')
-
-        @if(session('error'))
-            <div class="rounded-xl bg-rose-50 text-rose-700 border border-rose-100 px-4 py-3 text-sm">
-                {{ session('error') }}
-            </div>
-        @endif
-        @if(session('success'))
-            <div id="cr-success-alert"
-                 class="rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-100 px-4 py-3 text-sm transition duration-300">
-                {{ session('success') }}
-            </div>
-        @endif
 
         <section class="bg-white rounded-3xl border border-slate-100 shadow-sm p-2">
             <div class="flex items-center gap-2 overflow-x-auto">
@@ -192,11 +210,11 @@
         <section data-cr-tab="vendas" class="space-y-4 {{ $abaAtiva === 'vendas' ? '' : 'hidden' }}">
             <section class="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                 <article class="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-4 shadow-sm">
-                    <p class="text-xs uppercase tracking-wide font-semibold text-emerald-700">Vendas sem fatura</p>
+                    <p class="text-xs uppercase tracking-wide font-semibold text-emerald-700">Itens sem fatura</p>
                     <p class="mt-1 text-2xl font-semibold text-emerald-900">
-                        {{ number_format($totalVendasSemFatura, 0, ',', '.') }}
+                        {{ number_format($totalItensSemFatura, 0, ',', '.') }}
                     </p>
-                    <p class="mt-1 text-xs text-emerald-700/80">Quantidade total no filtro atual</p>
+                    <p class="mt-1 text-xs text-emerald-700/80">Quantidade de itens gerados a partir das tarefas</p>
                 </article>
 
                 <article class="rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-4 shadow-sm">
@@ -204,7 +222,7 @@
                     <p class="mt-1 text-2xl font-semibold text-indigo-900">
                         R$ {{ number_format($valorTotalVendasSemFatura, 2, ',', '.') }}
                     </p>
-                    <p class="mt-1 text-xs text-indigo-700/80">Somatório das vendas sem fatura no filtro atual</p>
+                    <p class="mt-1 text-xs text-indigo-700/80">Total das vendas prontas para gerar fatura</p>
                 </article>
 
                 <article class="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-4 shadow-sm">
@@ -212,114 +230,124 @@
                     <p class="mt-1 text-2xl font-semibold text-amber-900">
                         R$ {{ number_format($valorTotalServicosNaoFinalizados, 2, ',', '.') }}
                     </p>
-                    <p class="mt-1 text-xs text-amber-700/80">Somatório de vendas não finalizadas e tarefas abertas no filtro atual</p>
+                    <p class="mt-1 text-xs text-amber-700/80">Total estimado dos serviços que ainda não foram concluídos</p>
                 </article>
             </section>
 
             <section class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
                 <header class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
                     <div>
-                        <h2 class="text-sm font-semibold text-slate-800">Vendas (sem fatura)</h2>
-                        <p class="text-xs text-slate-500">Apenas vendas finalizadas podem ser selecionadas para gerar a fatura. Vendas não finalizadas ficam somente para visualização.</p>
+                        <h2 class="text-sm font-semibold text-slate-800">{{ $tituloContainerVendas }}</h2>
+                        <p class="text-xs text-slate-500">{{ $descricaoContainerVendas }}</p>
                     </div>
-                    <span class="text-xs text-slate-500">{{ $vendasAgrupadas->count() }} vendas</span>
+                    <span class="text-xs text-slate-500">{{ $contadorContainerVendas }} registros</span>
                 </header>
 
-                <form method="POST" action="{{ route('financeiro.contas-receber.store') }}" class="m-4 flex flex-col h-[68vh] rounded-2xl border border-indigo-200 bg-indigo-50/40 shadow-inner" id="formCriarFatura">
+                <form method="POST" action="{{ route('financeiro.contas-receber.store') }}" class="m-4 flex flex-col h-[68vh]" id="formCriarFatura">
                     @csrf
                     <input type="hidden" name="cliente_id" id="crClienteIdFatura" value="">
                     <input type="hidden" name="vencimento" value="">
-                    <div class="px-4 py-3 border-b border-indigo-200 bg-indigo-100/60 rounded-t-2xl">
-                        <p class="text-xs font-semibold uppercase tracking-wide text-indigo-700">Seleção de vendas para faturamento</p>
-                    </div>
 
-                    <div class="flex-1 min-h-0 p-4 md:p-5">
-                        <div class="h-full min-h-0 rounded-xl border border-indigo-200/80 bg-white/95 p-3 md:p-4 shadow-sm">
-                            <div class="h-full min-h-0 overflow-auto rounded-lg border border-slate-200">
-                                <table class="min-w-full divide-y divide-slate-200 text-sm">
-                                    <thead class="bg-slate-50 text-slate-600 sticky top-0 z-10">
-                                        <tr>
-                                            <th class="px-3 py-3 text-left font-semibold w-16">
+                    <div class="flex-1 min-h-0">
+                        <div class="h-full min-h-0 overflow-auto rounded-lg border border-slate-200 bg-white">
+                            <table class="min-w-full divide-y divide-slate-200 text-sm">
+                                <thead class="bg-slate-50 text-slate-600 sticky top-0 z-10">
+                                    <tr>
+                                        <th class="px-3 py-3 text-left font-semibold w-16">
+                                            @if($mostrarVendasSemFatura)
                                                 <label class="inline-flex items-center gap-2 text-xs font-semibold text-slate-700">
                                                     <input type="checkbox"
                                                            id="crSelecionarTodosHeader"
                                                            class="rounded border-slate-300"
-                                                          @if(!$canCreate) disabled @endif>
+                                                           @if(!$canCreate) disabled @endif>
                                                 </label>
-                                            </th>
-                                            <th class="px-4 py-3 text-left font-semibold">Venda</th>
-                                            <th class="px-4 py-3 text-left font-semibold">Cliente</th>
-                                            <th class="px-4 py-3 text-left font-semibold">Data</th>
-                                            <th class="px-4 py-3 text-left font-semibold">Status</th>
-                                            <th class="px-4 py-3 text-right font-semibold">Itens</th>
-                                            <th class="px-4 py-3 text-right font-semibold">Total</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-slate-100">
-                                        @forelse($vendasAgrupadas as $idx => $grupo)
-                                            @php
-                                                $venda = $grupo['venda'];
-                                                $expandId = 'cr-venda-expand-' . ($venda->id ?? $idx);
-                                                $vendaFinalizada = (bool) ($grupo['is_finalizada'] ?? false);
-                                                $canSelectVenda = $canCreate && $vendaFinalizada;
-                                            @endphp
-                                            <tr class="odd:bg-white even:bg-slate-50/60 hover:bg-indigo-50/40 cursor-pointer transition"
-                                                data-expand-toggle="{{ $expandId }}"
-                                                aria-expanded="false"
+                                            @endif
+                                        </th>
+                                        <th class="px-4 py-3 text-left font-semibold">Registro</th>
+                                        <th class="px-4 py-3 text-left font-semibold">Cliente</th>
+                                        <th class="px-4 py-3 text-left font-semibold">Data</th>
+                                        <th class="px-4 py-3 text-left font-semibold">Status</th>
+                                        <th class="px-4 py-3 text-right font-semibold">Itens</th>
+                                        <th class="px-4 py-3 text-right font-semibold">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    @forelse($registrosPainelVendas as $idx => $registro)
+                                        @php
+                                            $grupo = $registro['grupo'];
+                                            $isVenda = $registro['tipo'] === 'venda';
+                                            $expandId = ($isVenda ? 'cr-venda-expand-' : 'cr-tarefa-expand-') . $idx;
+                                            $venda = $isVenda ? ($grupo['venda'] ?? null) : null;
+                                            $tarefa = !$isVenda ? ($grupo['tarefa'] ?? null) : null;
+                                            $vendaFinalizada = (bool) ($grupo['is_finalizada'] ?? false);
+                                            $canSelectVenda = $isVenda && $canCreate && $vendaFinalizada;
+                                        @endphp
+                                        <tr class="odd:bg-white even:bg-slate-50/60 {{ $isVenda ? 'hover:bg-indigo-50/40' : 'hover:bg-amber-50/40' }} cursor-pointer transition"
+                                            data-expand-toggle="{{ $expandId }}"
+                                            aria-expanded="false"
+                                            @if($isVenda)
                                                 data-venda-total="{{ number_format($grupo['total'], 2, '.', '') }}"
                                                 data-venda-itens="{{ $grupo['qtd_itens'] }}"
-                                                title="Clique para ver os itens da venda">
-                                                <td class="px-3 py-3 align-middle">
+                                            @endif
+                                            title="Clique para ver os itens">
+                                            <td class="px-3 py-3 align-middle">
+                                                @if($isVenda)
                                                     <input type="checkbox"
                                                            class="rounded border-slate-300 js-venda-master {{ $canSelectVenda ? '' : 'opacity-60 cursor-not-allowed' }}"
                                                            data-venda-target="{{ $expandId }}"
                                                            @if(!$canSelectVenda) disabled title="{{ !$canCreate ? 'Usuário sem permissão' : 'Venda não finalizada não pode ser faturada.' }}" @endif>
-                                                </td>
-                                                <td class="px-3 py-3 align-middle">
-                                                    <div class="inline-flex flex-wrap items-center gap-2">
-                                                        <span class="inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-slate-900 px-2 text-[11px] font-bold text-white">
-                                                            #{{ $venda->id ?? '—' }}
-                                                        </span>
-                                                        <button type="button"
-                                                                class="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[11px] font-semibold text-indigo-700 hover:bg-indigo-100"
-                                                                data-expand-action="{{ $expandId }}"
-                                                                data-expand-icon="{{ $expandId }}"
-                                                                aria-expanded="false"
-                                                                title="Mostrar itens da venda">
-                                                            Itens ▸
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                                <td class="px-4 py-3 text-slate-800 align-middle">{{ $grupo['cliente_nome'] }}</td>
-                                                <td class="px-4 py-3 text-slate-700 align-middle">{{ $grupo['data_referencia']?->format('d/m/Y H:i') ?? '—' }}</td>
-                                                <td class="px-4 py-3 align-middle">
-                                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-semibold border {{ $grupo['status_badge'] }}">
-                                                        {{ $grupo['status_label'] }}
+                                                @endif
+                                            </td>
+                                            <td class="px-3 py-3 align-middle">
+                                                <div class="inline-flex flex-wrap items-center gap-2">
+                                                    <span class="inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-slate-900 px-2 text-[11px] font-bold text-white">
+                                                        {{ $isVenda ? '#' . ($venda->id ?? '—') : 'T#' . ($tarefa->id ?? '—') }}
                                                     </span>
-                                                </td>
-                                                <td class="px-4 py-3 text-right text-slate-700 align-middle">{{ $grupo['qtd_itens'] }}</td>
-                                                <td class="px-4 py-3 text-right font-semibold text-slate-900 align-middle">R$ {{ number_format($grupo['total'], 2, ',', '.') }}</td>
-                                            </tr>
-                                            <tr id="{{ $expandId }}" class="hidden bg-indigo-50/30">
-                                                <td colspan="7" class="px-4 pb-4 pt-0">
-                                                    <div class="mt-2 rounded-xl border border-indigo-100 bg-white p-3">
-                                                        <div class="flex items-center justify-between gap-2 mb-3">
-                                                            <p class="text-xs font-semibold uppercase tracking-wide text-indigo-700">Itens da venda #{{ $venda->id ?? '—' }}</p>
-                                                            <span class="text-xs text-slate-500">{{ $grupo['qtd_itens'] }} itens {{ $vendaFinalizada ? 'elegíveis' : 'somente visualização' }}</span>
-                                                        </div>
+                                                    <button type="button"
+                                                            class="inline-flex items-center gap-1 rounded-full border {{ $isVenda ? 'border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100' : 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100' }} px-2.5 py-1 text-[11px] font-semibold"
+                                                            data-expand-action="{{ $expandId }}"
+                                                            data-expand-icon="{{ $expandId }}"
+                                                            aria-expanded="false"
+                                                            title="Mostrar itens">
+                                                        Itens ▸
+                                                    </button>
+                                                </div>
+                                            </td>
+                                            <td class="px-4 py-3 text-slate-800 align-middle">{{ $grupo['cliente_nome'] }}</td>
+                                            <td class="px-4 py-3 text-slate-700 align-middle">{{ $grupo['data_referencia']?->format('d/m/Y H:i') ?? '—' }}</td>
+                                            <td class="px-4 py-3 align-middle">
+                                                <span class="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-semibold border {{ $grupo['status_badge'] }}">
+                                                    {{ $grupo['status_label'] }}
+                                                </span>
+                                            </td>
+                                            <td class="px-4 py-3 text-right text-slate-700 align-middle">{{ $grupo['qtd_itens'] }}</td>
+                                            <td class="px-4 py-3 text-right font-semibold text-slate-900 align-middle">R$ {{ number_format($grupo['total'], 2, ',', '.') }}</td>
+                                        </tr>
+                                        <tr id="{{ $expandId }}" class="hidden {{ $isVenda ? 'bg-indigo-50/30' : 'bg-amber-50/30' }}">
+                                            <td colspan="7" class="px-4 pb-4 pt-0">
+                                                <div class="mt-2 rounded-xl border {{ $isVenda ? 'border-indigo-100' : 'border-amber-100' }} bg-white p-3">
+                                                    <div class="flex items-center justify-between gap-2 mb-3">
+                                                        <p class="text-xs font-semibold uppercase tracking-wide {{ $isVenda ? 'text-indigo-700' : 'text-amber-700' }}">
+                                                            {{ $isVenda ? 'Itens da venda #' . ($venda->id ?? '—') : 'Itens estimados da tarefa #' . ($tarefa->id ?? '—') }}
+                                                        </p>
+                                                        <span class="text-xs text-slate-500">
+                                                            {{ $grupo['qtd_itens'] }} itens {{ $isVenda ? ($vendaFinalizada ? 'elegíveis' : 'somente visualização') : 'estimados' }}
+                                                        </span>
+                                                    </div>
 
-                                                        <div class="overflow-x-auto rounded-lg border border-slate-200">
-                                                            <table class="min-w-full divide-y divide-slate-200 text-xs">
-                                                                <thead class="bg-slate-50 text-slate-600">
-                                                                    <tr>
-                                                                        <th class="px-3 py-2 text-left font-semibold w-10"></th>
-                                                                        <th class="px-3 py-2 text-left font-semibold">Serviço</th>
-                                                                        <th class="px-3 py-2 text-left font-semibold">Descrição</th>
-                                                                        <th class="px-3 py-2 text-left font-semibold">Data</th>
-                                                                        <th class="px-3 py-2 text-right font-semibold">Subtotal</th>
-                                                                    </tr>
-                                                                </thead>
-                                                                <tbody class="divide-y divide-slate-100 bg-white">
+                                                    <div class="overflow-x-auto rounded-lg border border-slate-200">
+                                                        <table class="min-w-full divide-y divide-slate-200 text-xs">
+                                                            <thead class="bg-slate-50 text-slate-600">
+                                                                <tr>
+                                                                    <th class="px-3 py-2 text-left font-semibold w-10"></th>
+                                                                    <th class="px-3 py-2 text-left font-semibold">Serviço</th>
+                                                                    <th class="px-3 py-2 text-left font-semibold">Descrição</th>
+                                                                    <th class="px-3 py-2 text-left font-semibold">Data</th>
+                                                                    <th class="px-3 py-2 text-right font-semibold">Subtotal</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody class="divide-y divide-slate-100 bg-white">
+                                                                @if($isVenda)
                                                                     @foreach($grupo['itens'] as $itemVenda)
                                                                         @php
                                                                             $servicoNome = $itemVenda->servico?->nome ?? $itemVenda->descricao_snapshot ?? 'Serviço';
@@ -349,25 +377,36 @@
                                                                             <td class="px-3 py-2 text-right font-semibold text-slate-900">R$ {{ number_format((float) ($itemVenda->subtotal_snapshot ?? 0), 2, ',', '.') }}</td>
                                                                         </tr>
                                                                     @endforeach
-                                                                </tbody>
-                                                            </table>
-                                                        </div>
+                                                                @else
+                                                                    @foreach($grupo['itens'] as $itemEstimado)
+                                                                        <tr>
+                                                                            <td class="px-3 py-2"></td>
+                                                                            <td class="px-3 py-2 text-slate-700">{{ $tarefa->servico?->nome ?? 'Serviço' }}</td>
+                                                                            <td class="px-3 py-2 text-slate-700">{{ $itemEstimado['descricao_snapshot'] ?? '—' }}</td>
+                                                                            <td class="px-3 py-2 text-slate-700">{{ !empty($itemEstimado['data_referencia']) ? \Carbon\Carbon::parse($itemEstimado['data_referencia'])->format('d/m/Y H:i') : '—' }}</td>
+                                                                            <td class="px-3 py-2 text-right font-semibold text-slate-900">R$ {{ number_format((float) ($itemEstimado['subtotal_snapshot'] ?? 0), 2, ',', '.') }}</td>
+                                                                        </tr>
+                                                                    @endforeach
+                                                                @endif
+                                                            </tbody>
+                                                        </table>
                                                     </div>
-                                                </td>
-                                            </tr>
-                                        @empty
-                                            <tr>
-                                                <td colspan="7" class="px-4 py-8 text-center text-sm text-slate-500">
-                                                    Nenhuma venda encontrada com os filtros atuais.
-                                                </td>
-                                            </tr>
-                                        @endforelse
-                                    </tbody>
-                                </table>
-                            </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="7" class="px-4 py-8 text-center text-sm text-slate-500">
+                                                Nenhum registro encontrado com os filtros atuais.
+                                            </td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
                         </div>
                     </div>
 
+                    @if($mostrarVendasSemFatura)
                     <footer class="border-t border-slate-100 bg-white px-5 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                         <div class="rounded-2xl border border-indigo-200 bg-gradient-to-r from-indigo-50 to-white px-4 py-3 shadow-sm">
                             <p class="text-[11px] uppercase tracking-wide text-indigo-700 font-semibold">Resumo da seleção</p>
@@ -394,116 +433,9 @@
                             </button>
                         </div>
                     </footer>
+                    </footer>
+                    @endif
                 </form>
-            </section>
-
-            <section class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-                <header class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-                    <div>
-                        <h2 class="text-sm font-semibold text-slate-800">Tarefas não finalizadas (sem venda)</h2>
-                        <p class="text-xs text-slate-500">Tarefas abertas, não canceladas e ainda sem venda gerada</p>
-                    </div>
-                    <span class="text-xs text-slate-500">{{ $tarefasNaoFinalizadasAgrupadas->count() }} tarefas</span>
-                </header>
-
-                <div class="m-4 rounded-2xl border border-amber-200 bg-amber-50/40 shadow-inner">
-                    <div class="px-4 py-3 border-b border-amber-200 bg-amber-100/60 rounded-t-2xl">
-                        <p class="text-xs font-semibold uppercase tracking-wide text-amber-700">Serviços não finalizados</p>
-                    </div>
-
-                    <div class="p-4 md:p-5">
-                        <div class="overflow-auto rounded-lg border border-slate-200 bg-white">
-                            <table class="min-w-full divide-y divide-slate-200 text-sm">
-                                <thead class="bg-slate-50 text-slate-600 sticky top-0 z-10">
-                                    <tr>
-                                        <th class="px-4 py-3 text-left font-semibold">Tarefa</th>
-                                        <th class="px-4 py-3 text-left font-semibold">Cliente</th>
-                                        <th class="px-4 py-3 text-left font-semibold">Data</th>
-                                        <th class="px-4 py-3 text-left font-semibold">Status</th>
-                                        <th class="px-4 py-3 text-right font-semibold">Itens</th>
-                                        <th class="px-4 py-3 text-right font-semibold">Valor estimado</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-slate-100">
-                                    @forelse($tarefasNaoFinalizadasAgrupadas as $idx => $grupo)
-                                        @php
-                                            $tarefa = $grupo['tarefa'];
-                                            $expandId = 'cr-tarefa-expand-' . ($tarefa->id ?? $idx);
-                                        @endphp
-                                        <tr class="odd:bg-white even:bg-slate-50/60 hover:bg-amber-50/40 cursor-pointer transition"
-                                            data-expand-toggle="{{ $expandId }}"
-                                            aria-expanded="false"
-                                            title="Clique para ver os itens estimados da tarefa">
-                                            <td class="px-4 py-3 align-middle">
-                                                <div class="inline-flex flex-wrap items-center gap-2">
-                                                    <span class="inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-slate-900 px-2 text-[11px] font-bold text-white">
-                                                        T#{{ $tarefa->id ?? '—' }}
-                                                    </span>
-                                                    <button type="button"
-                                                            class="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700 hover:bg-amber-100"
-                                                            data-expand-action="{{ $expandId }}"
-                                                            data-expand-icon="{{ $expandId }}"
-                                                            aria-expanded="false"
-                                                            title="Mostrar itens estimados da tarefa">
-                                                        Itens ▸
-                                                    </button>
-                                                </div>
-                                            </td>
-                                            <td class="px-4 py-3 text-slate-800 align-middle">{{ $grupo['cliente_nome'] }}</td>
-                                            <td class="px-4 py-3 text-slate-700 align-middle">{{ $grupo['data_referencia']?->format('d/m/Y H:i') ?? '—' }}</td>
-                                            <td class="px-4 py-3 align-middle">
-                                                <span class="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-semibold border {{ $grupo['status_badge'] }}">
-                                                    {{ $grupo['status_label'] }}
-                                                </span>
-                                            </td>
-                                            <td class="px-4 py-3 text-right text-slate-700 align-middle">{{ $grupo['qtd_itens'] }}</td>
-                                            <td class="px-4 py-3 text-right font-semibold text-slate-900 align-middle">R$ {{ number_format($grupo['total'], 2, ',', '.') }}</td>
-                                        </tr>
-                                        <tr id="{{ $expandId }}" class="hidden bg-amber-50/30">
-                                            <td colspan="6" class="px-4 pb-4 pt-0">
-                                                <div class="mt-2 rounded-xl border border-amber-100 bg-white p-3">
-                                                    <div class="flex items-center justify-between gap-2 mb-3">
-                                                        <p class="text-xs font-semibold uppercase tracking-wide text-amber-700">Itens estimados da tarefa #{{ $tarefa->id ?? '—' }}</p>
-                                                        <span class="text-xs text-slate-500">{{ $grupo['qtd_itens'] }} itens estimados</span>
-                                                    </div>
-
-                                                    <div class="overflow-x-auto rounded-lg border border-slate-200">
-                                                        <table class="min-w-full divide-y divide-slate-200 text-xs">
-                                                            <thead class="bg-slate-50 text-slate-600">
-                                                                <tr>
-                                                                    <th class="px-3 py-2 text-left font-semibold">Serviço</th>
-                                                                    <th class="px-3 py-2 text-left font-semibold">Descrição</th>
-                                                                    <th class="px-3 py-2 text-left font-semibold">Data</th>
-                                                                    <th class="px-3 py-2 text-right font-semibold">Subtotal</th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody class="divide-y divide-slate-100 bg-white">
-                                                                @foreach($grupo['itens'] as $itemEstimado)
-                                                                    <tr>
-                                                                        <td class="px-3 py-2 text-slate-700">{{ $tarefa->servico?->nome ?? 'Serviço' }}</td>
-                                                                        <td class="px-3 py-2 text-slate-700">{{ $itemEstimado['descricao_snapshot'] ?? '—' }}</td>
-                                                                        <td class="px-3 py-2 text-slate-700">{{ !empty($itemEstimado['data_referencia']) ? \Carbon\Carbon::parse($itemEstimado['data_referencia'])->format('d/m/Y H:i') : '—' }}</td>
-                                                                        <td class="px-3 py-2 text-right font-semibold text-slate-900">R$ {{ number_format((float) ($itemEstimado['subtotal_snapshot'] ?? 0), 2, ',', '.') }}</td>
-                                                                    </tr>
-                                                                @endforeach
-                                                            </tbody>
-                                                        </table>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    @empty
-                                        <tr>
-                                            <td colspan="6" class="px-4 py-8 text-center text-sm text-slate-500">
-                                                Nenhuma tarefa não finalizada encontrada com os filtros atuais.
-                                            </td>
-                                        </tr>
-                                    @endforelse
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
             </section>
         </section>
 
@@ -1582,6 +1514,15 @@
                     icon = 'warning',
                     fallbackText = text,
                 } = options || {};
+
+                if (typeof window.uiConfirm === 'function') {
+                    return window.uiConfirm(text, {
+                        title,
+                        icon,
+                        confirmText,
+                        cancelText,
+                    });
+                }
 
                 if (!window.Swal || typeof window.Swal.fire !== 'function') {
                     return window.confirm(fallbackText);
