@@ -70,6 +70,8 @@ class FuncaoController extends Controller
 
     public function storeAjax(Request $request)
     {
+        abort_if(auth()->user()?->isCliente(), 403);
+
         $data = $request->validate([
             'nome' => ['required', 'string', 'max:255'],
         ]);

@@ -33,13 +33,15 @@
     };
 
     $btnSaveClasses = $baseSave.' '.$variantSave;
+    $modalId = 'funcao-create-modal-'.\Illuminate\Support\Str::uuid();
 @endphp
 
 
 <div class="inline-flex flex-col gap-2"
      data-funcao-create-wrapper
      data-funcao-route="{{ $route }}"
-     data-funcao-csrf="{{ csrf_token() }}">
+     data-funcao-csrf="{{ csrf_token() }}"
+     data-funcao-modal-id="{{ $modalId }}">
 
     @if ($allowCreate)
         {{-- Botão principal --}}
@@ -54,6 +56,7 @@
 
         {{-- Modal (JS puro) --}}
         <div class="fixed inset-0 z-[90] hidden items-center justify-center bg-black/50 p-4 overflow-y-auto"
+             id="{{ $modalId }}"
              data-overlay-root="true"
              data-funcao-modal>
             <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
@@ -105,140 +108,153 @@
 @once
     @push('scripts')
         <script>
-            document.addEventListener('DOMContentLoaded', function () {
-                if (!window.showFuncaoFeedbackPopup) {
-                    window.showFuncaoFeedbackPopup = function (message, type = 'success') {
-                        const popup = document.createElement('div');
-                        const success = type === 'success';
-                        popup.className = [
-                            'fixed z-[9999] left-1/2 top-6 -translate-x-1/2',
-                            'rounded-xl border px-4 py-3 text-sm font-semibold shadow-xl',
-                            'transition-all duration-300 opacity-0 -translate-y-2',
-                            success
-                                ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                                : 'bg-red-50 border-red-200 text-red-700'
-                        ].join(' ');
-                        popup.textContent = message;
+            (function () {
+                function initFuncaoCreateButtons() {
+                    if (!window.showFuncaoFeedbackPopup) {
+                        window.showFuncaoFeedbackPopup = function (message, type = 'success') {
+                            const popup = document.createElement('div');
+                            const success = type === 'success';
+                            popup.className = [
+                                'fixed z-[9999] left-1/2 top-6 -translate-x-1/2',
+                                'rounded-xl border px-4 py-3 text-sm font-semibold shadow-xl',
+                                'transition-all duration-300 opacity-0 -translate-y-2',
+                                success
+                                    ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                                    : 'bg-red-50 border-red-200 text-red-700'
+                            ].join(' ');
+                            popup.textContent = message;
 
-                        document.body.appendChild(popup);
-                        requestAnimationFrame(function () {
-                            popup.classList.remove('opacity-0', '-translate-y-2');
-                        });
+                            document.body.appendChild(popup);
+                            requestAnimationFrame(function () {
+                                popup.classList.remove('opacity-0', '-translate-y-2');
+                            });
 
-                        setTimeout(function () {
-                            popup.classList.add('opacity-0', '-translate-y-2');
                             setTimeout(function () {
-                                popup.remove();
-                            }, 250);
-                        }, 2800);
-                    };
-                }
-
-                document.querySelectorAll('[data-funcao-create-wrapper]').forEach(function (wrapper) {
-                    const route      = wrapper.getAttribute('data-funcao-route');
-                    const csrfToken  = wrapper.getAttribute('data-funcao-csrf');
-
-                    const btnOpen    = wrapper.querySelector('[data-funcao-open]');
-                    const modal      = wrapper.querySelector('[data-funcao-modal]');
-                    const inputNome  = wrapper.querySelector('[data-funcao-input]');
-                    const btnCancel  = wrapper.querySelector('[data-funcao-cancel]');
-                    const btnSave    = wrapper.querySelector('[data-funcao-save]');
-                    const erroModal  = wrapper.querySelector('[data-funcao-error-modal]');
-
-                    if (!btnOpen || !modal || !inputNome || !btnCancel || !btnSave) {
-                        return;
+                                popup.classList.add('opacity-0', '-translate-y-2');
+                                setTimeout(function () {
+                                    popup.remove();
+                                }, 250);
+                            }, 2800);
+                        };
                     }
 
-                    function abrirModal() {
-                        modal.classList.remove('hidden');
-                        modal.classList.add('flex');
-
-                        if (erroModal) {
-                            erroModal.textContent = '';
-                            erroModal.classList.add('hidden');
-                        }
-                        inputNome.value = '';
-                        inputNome.focus();
-                    }
-
-                    function fecharModal() {
-                        modal.classList.add('hidden');
-                        modal.classList.remove('flex');
-                    }
-
-                    btnOpen.addEventListener('click', abrirModal);
-                    btnCancel.addEventListener('click', fecharModal);
-
-                    // fecha clicando no fundo
-                    modal.addEventListener('click', function (e) {
-                        if (e.target === modal) {
-                            fecharModal();
-                        }
-                    });
-
-                    btnSave.addEventListener('click', function () {
-                        const nome = (inputNome.value || '').trim();
-                        if (!nome) {
-                            window.showFuncaoFeedbackPopup('Informe o nome da função.', 'error');
-                            inputNome.focus();
+                    document.querySelectorAll('[data-funcao-create-wrapper]').forEach(function (wrapper) {
+                        if (wrapper.dataset.funcaoCreateInit === '1') {
                             return;
                         }
 
-                        btnSave.disabled = true;
-                        if (erroModal) {
-                            erroModal.textContent = '';
-                            erroModal.classList.add('hidden');
+                        const route      = wrapper.getAttribute('data-funcao-route');
+                        const csrfToken  = wrapper.getAttribute('data-funcao-csrf');
+
+                        const btnOpen    = wrapper.querySelector('[data-funcao-open]');
+                        const modalId    = wrapper.getAttribute('data-funcao-modal-id');
+                        const modal      = modalId ? document.getElementById(modalId) : null;
+                        const inputNome  = modal ? modal.querySelector('[data-funcao-input]') : null;
+                        const btnCancel  = modal ? modal.querySelector('[data-funcao-cancel]') : null;
+                        const btnSave    = modal ? modal.querySelector('[data-funcao-save]') : null;
+                        const erroModal  = modal ? modal.querySelector('[data-funcao-error-modal]') : null;
+
+                        if (!btnOpen || !modal || !inputNome || !btnCancel || !btnSave) {
+                            return;
                         }
-                        fetch(route, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Accept': 'application/json',
-                                'X-CSRF-TOKEN': csrfToken,
-                            },
-                            body: JSON.stringify({ nome: nome })
-                        })
-                            .then(r => r.json())
-                            .then(json => {
-                                if (!json.ok) {
-                                    const msg = json.message || 'Não foi possível salvar a função.';
-                                    window.showFuncaoFeedbackPopup(msg, 'error');
-                                    return;
-                                }
 
-                                // Atualiza TODAS as selects de função da tela
-                                const selects = document.querySelectorAll('select[name^="funcoes"][name$="[funcao_id]"]');
+                        wrapper.dataset.funcaoCreateInit = '1';
 
-                                selects.forEach(function (select) {
-                                    const jaExiste = Array.from(select.options).some(function (opt) {
-                                        return String(opt.value) === String(json.id);
-                                    });
+                        function abrirModal() {
+                            modal.classList.remove('hidden');
+                            modal.classList.add('flex');
 
-                                    if (!jaExiste) {
-                                        const opt = document.createElement('option');
-                                        opt.value = json.id;
-                                        opt.textContent = json.nome;
-                                        select.appendChild(opt);
-                                    }
-                                });
-                                window.showFuncaoFeedbackPopup(
-                                    json.existing
-                                        ? 'Função já cadastrada e selecionada com sucesso.'
-                                        : 'Função cadastrada com sucesso.',
-                                    'success'
-                                );
+                            if (erroModal) {
+                                erroModal.textContent = '';
+                                erroModal.classList.add('hidden');
+                            }
+                            inputNome.value = '';
+                            inputNome.focus();
+                        }
 
+                        function fecharModal() {
+                            modal.classList.add('hidden');
+                            modal.classList.remove('flex');
+                        }
+
+                        btnOpen.addEventListener('click', abrirModal);
+                        btnCancel.addEventListener('click', fecharModal);
+
+                        modal.addEventListener('click', function (e) {
+                            if (e.target === modal) {
                                 fecharModal();
+                            }
+                        });
+
+                        btnSave.addEventListener('click', function () {
+                            const nome = (inputNome.value || '').trim();
+                            if (!nome) {
+                                window.showFuncaoFeedbackPopup('Informe o nome da função.', 'error');
+                                inputNome.focus();
+                                return;
+                            }
+
+                            btnSave.disabled = true;
+                            if (erroModal) {
+                                erroModal.textContent = '';
+                                erroModal.classList.add('hidden');
+                            }
+                            fetch(route, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Accept': 'application/json',
+                                    'X-CSRF-TOKEN': csrfToken,
+                                },
+                                body: JSON.stringify({ nome: nome })
                             })
-                            .catch(() => {
-                                window.showFuncaoFeedbackPopup('Erro na comunicação com o servidor.', 'error');
-                            })
-                            .finally(() => {
-                                btnSave.disabled = false;
-                            });
+                                .then(r => r.json())
+                                .then(json => {
+                                    if (!json.ok) {
+                                        const msg = json.message || 'Não foi possível salvar a função.';
+                                        window.showFuncaoFeedbackPopup(msg, 'error');
+                                        return;
+                                    }
+
+                                    const selects = document.querySelectorAll('select[name^="funcoes"][name$="[funcao_id]"]');
+
+                                    selects.forEach(function (select) {
+                                        const jaExiste = Array.from(select.options).some(function (opt) {
+                                            return String(opt.value) === String(json.id);
+                                        });
+
+                                        if (!jaExiste) {
+                                            const opt = document.createElement('option');
+                                            opt.value = json.id;
+                                            opt.textContent = json.nome;
+                                            select.appendChild(opt);
+                                        }
+                                    });
+                                    window.showFuncaoFeedbackPopup(
+                                        json.existing
+                                            ? 'Função já cadastrada e selecionada com sucesso.'
+                                            : 'Função cadastrada com sucesso.',
+                                        'success'
+                                    );
+
+                                    fecharModal();
+                                })
+                                .catch(function () {
+                                    window.showFuncaoFeedbackPopup('Erro na comunicação com o servidor.', 'error');
+                                })
+                                .finally(function () {
+                                    btnSave.disabled = false;
+                                });
+                        });
                     });
-                });
-            });
+                }
+
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', initFuncaoCreateButtons);
+                } else {
+                    initFuncaoCreateButtons();
+                }
+            })();
         </script>
     @endpush
 @endonce

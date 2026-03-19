@@ -23,6 +23,10 @@
             /** @var string $modo */ // 'create' ou 'edit'
             $modo = $modo ?? 'create';
             $funcoesForm = old('funcoes');
+            $funcoesPermiteCadastro = $funcoesPermiteCadastro ?? true;
+            $funcoesHelpText = $funcoesHelpText ?? 'Funções disponíveis para este PGR.';
+            $funcoesCadastroResponsavel = $funcoesCadastroResponsavel ?? null;
+            $routeFuncoesPgrStore = $routeFuncoesPgrStore ?? route('operacional.parametros.funcoes.store', $cliente);
             if (!is_array($funcoesForm)) {
                 $funcoesForm = (isset($pgr) && is_array($pgr->funcoes ?? null))
                     ? $pgr->funcoes
@@ -241,8 +245,19 @@
                                     5. Funções e Cargos
                                 </h2>
 
-                                <x-funcoes.create-button label="Cadastrar nova função" variant="emerald" :allowCreate="true" />
+                                <x-funcoes.create-button
+                                    :label="$funcoesPermiteCadastro ? 'Cadastrar função para PGR' : 'Cadastro restrito à Formed'"
+                                    variant="emerald"
+                                    :route="$routeFuncoesPgrStore"
+                                    :allowCreate="$funcoesPermiteCadastro"
+                                />
                             </div>
+
+                            @if($funcoesCadastroResponsavel)
+                                <div class="mb-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                                    {{ $funcoesCadastroResponsavel }}
+                                </div>
+                            @endif
 
                             <div class="mb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
                                 <button type="button" id="btn-add-all-funcoes"
@@ -282,11 +297,11 @@
                                                 name="funcoes[{{ $idx }}][funcao_id]"
                                                 field-id="funcoes_{{ $idx }}_funcao_id"
                                                 label="Cargo"
-                                                help-text="Funções listadas por GHE, pré-configuradas pelo vendedor/comercial."
+                                                :help-text="$funcoesHelpText"
                                                 :funcoes="$funcoes"
                                                 :selected="old('funcoes.'.$idx.'.funcao_id', $f['funcao_id'] ?? null)"
                                                 :show-create="false"
-                                                :allowCreate="true"
+                                                :allowCreate="$funcoesPermiteCadastro"
                                             />
                                         </div>
 
@@ -651,6 +666,134 @@
                     inputHomens.addEventListener('input', atualizarTotal);
                     inputMulheres.addEventListener('input', atualizarTotal);
                     atualizarTotal();
+                }
+
+                // ========= FALLBACK MODAL NOVA FUNCAO (PGR) =========
+                const createWrapper = document.querySelector('[data-funcao-create-wrapper]');
+
+                if (createWrapper && createWrapper.dataset.pgrFallbackInit !== '1') {
+                    createWrapper.dataset.pgrFallbackInit = '1';
+
+                    const route = createWrapper.getAttribute('data-funcao-route');
+                    const csrfToken = createWrapper.getAttribute('data-funcao-csrf');
+                    const modalId = createWrapper.getAttribute('data-funcao-modal-id');
+                    const btnOpen = createWrapper.querySelector('[data-funcao-open]');
+                    const modal = modalId ? document.getElementById(modalId) : null;
+                    const inputNome = modal ? modal.querySelector('[data-funcao-input]') : null;
+                    const btnCancel = modal ? modal.querySelector('[data-funcao-cancel]') : null;
+                    const btnSave = modal ? modal.querySelector('[data-funcao-save]') : null;
+                    const erroModal = modal ? modal.querySelector('[data-funcao-error-modal]') : null;
+
+                    if (btnOpen && modal && inputNome && btnCancel && btnSave && route && csrfToken) {
+                        const closeModal = function () {
+                            modal.classList.add('hidden');
+                            modal.classList.remove('flex');
+                        };
+
+                        const openModal = function () {
+                            modal.classList.remove('hidden');
+                            modal.classList.add('flex');
+                            if (erroModal) {
+                                erroModal.textContent = '';
+                                erroModal.classList.add('hidden');
+                            }
+                            inputNome.value = '';
+                            inputNome.focus();
+                        };
+
+                        btnOpen.onclick = function (e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            openModal();
+                        };
+
+                        btnCancel.onclick = function (e) {
+                            e.preventDefault();
+                            closeModal();
+                        };
+
+                        modal.addEventListener('click', function (e) {
+                            if (e.target === modal) {
+                                closeModal();
+                            }
+                        });
+
+                        btnSave.onclick = function (e) {
+                            e.preventDefault();
+
+                            const nome = String(inputNome.value || '').trim();
+                            if (!nome) {
+                                window.showFuncaoFeedbackPopup?.('Informe o nome da função.', 'error');
+                                inputNome.focus();
+                                return;
+                            }
+
+                            btnSave.disabled = true;
+                            if (erroModal) {
+                                erroModal.textContent = '';
+                                erroModal.classList.add('hidden');
+                            }
+
+                            fetch(route, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Accept': 'application/json',
+                                    'X-CSRF-TOKEN': csrfToken,
+                                },
+                                body: JSON.stringify({ nome: nome })
+                            })
+                                .then(function (response) {
+                                    return response.json();
+                                })
+                                .then(function (json) {
+                                    if (!json.ok) {
+                                        const msg = json.message || 'Não foi possível salvar a função.';
+                                        window.showFuncaoFeedbackPopup?.(msg, 'error');
+                                        return;
+                                    }
+
+                                    const selects = document.querySelectorAll('select[name^="funcoes"][name$="[funcao_id]"]');
+
+                                    selects.forEach(function (select) {
+                                        let opt = Array.from(select.options).find(function (option) {
+                                            return String(option.value) === String(json.id);
+                                        });
+
+                                        if (!opt) {
+                                            opt = document.createElement('option');
+                                            opt.value = json.id;
+                                            opt.textContent = json.nome;
+                                            select.appendChild(opt);
+                                        }
+                                    });
+
+                                    const firstEmptySelect = Array.from(selects).find(function (select) {
+                                        return !String(select.value || '').trim();
+                                    });
+
+                                    if (firstEmptySelect) {
+                                        firstEmptySelect.value = String(json.id);
+                                        firstEmptySelect.dispatchEvent(new Event('change', { bubbles: true }));
+                                    }
+
+                                    window.showFuncaoFeedbackPopup?.(
+                                        json.existing
+                                            ? 'Função já cadastrada e selecionada com sucesso.'
+                                            : 'Função cadastrada com sucesso.',
+                                        'success'
+                                    );
+
+                                    closeModal();
+                                })
+                                .catch(function () {
+                                    window.showFuncaoFeedbackPopup?.('Erro na comunicação com o servidor.', 'error');
+                                })
+                                .finally(function () {
+                                    btnSave.disabled = false;
+                                });
+                        };
+                    }
                 }
 
                 // ========= FUNCOES DINAMICAS =========

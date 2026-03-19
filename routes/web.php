@@ -132,6 +132,8 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
 
         Route::post('/funcoes/store-ajax', [FuncaoController::class, 'storeAjax'])
             ->name('funcoes.store-ajax');
+        Route::post('/clientes/{cliente}/parametros/funcoes', [\App\Http\Controllers\ClienteParametroController::class, 'storeFuncaoAjax'])
+            ->name('parametros.funcoes.store');
 
         Route::prefix('tarefas')->name('tarefas.')->group(function () {
             // Drag & Drop Kanban

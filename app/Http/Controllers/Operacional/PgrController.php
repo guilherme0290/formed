@@ -18,6 +18,7 @@ use App\Services\ContratoClienteService;
 use App\Services\TempoTarefaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class PgrController extends Controller
 {
@@ -52,9 +53,11 @@ class PgrController extends Controller
         $tipo   = $request->query('tipo', 'matriz');
         $origem = $request->query('origem'); // 'cliente' ou null
 
-        $funcoes = app(AsoGheService::class)
-            ->funcoesDisponiveisParaCliente($empresaId, $cliente->id);
+        $funcoesConfig = app(AsoGheService::class)
+            ->funcoesDisponiveisParaPgr($empresaId, $cliente->id);
+        $funcoes = $funcoesConfig['funcoes'];
         $funcoes = $this->mergeFuncoesDisponiveis($funcoes, $request, null, $empresaId);
+        $routeFuncoesPgrStore = route('operacional.parametros.funcoes.store', $cliente);
 
         if (!in_array($tipo, ['matriz', 'especifico'], true)) {
             abort(404);
@@ -66,6 +69,7 @@ class PgrController extends Controller
         $artDisponivel = $artInfo['disponivel'];
         $clienteTemTreinamentosNr = $this->clienteTemTreinamentosNr($cliente);
         $funcaoQtdMap = $this->funcionarioCountByFuncao($cliente, $empresaId);
+        $podeCadastrarFuncaoPgr = !$usuario->isCliente();
 
         return view('operacional.kanban.pgr.form', [
             'cliente'   => $cliente,
@@ -80,6 +84,12 @@ class PgrController extends Controller
             'artDisponivel' => $artDisponivel,
             'clienteTemTreinamentosNr' => $clienteTemTreinamentosNr,
             'funcaoQtdMap' => $funcaoQtdMap,
+            'funcoesOrigem' => $funcoesConfig['origem'],
+            'funcoesPermiteCadastro' => $podeCadastrarFuncaoPgr,
+            'funcoesMensagem' => $funcoesConfig['mensagem'],
+            'funcoesHelpText' => $funcoesConfig['help_text'],
+            'funcoesCadastroResponsavel' => null,
+            'routeFuncoesPgrStore' => $routeFuncoesPgrStore,
         ]);
     }
 
@@ -103,9 +113,11 @@ class PgrController extends Controller
         $tipo      = $pgr->tipo; // matriz|especifico
         $tipoLabel = $tipo === 'matriz' ? 'Matriz' : 'Específico';
 
-        $funcoes = app(AsoGheService::class)
-            ->funcoesDisponiveisParaCliente($empresaId, $cliente->id);
+        $funcoesConfig = app(AsoGheService::class)
+            ->funcoesDisponiveisParaPgr($empresaId, $cliente->id);
+        $funcoes = $funcoesConfig['funcoes'];
         $funcoes = $this->mergeFuncoesDisponiveis($funcoes, $request, $pgr->funcoes ?? null, $empresaId);
+        $routeFuncoesPgrStore = route('operacional.parametros.funcoes.store', $cliente);
 
         // se quiser manter o valor já salvo, senão usa fixo
         $artInfo = $this->artInfoParaCliente($cliente);
@@ -113,6 +125,7 @@ class PgrController extends Controller
         $artDisponivel = $artInfo['disponivel'];
         $clienteTemTreinamentosNr = $this->clienteTemTreinamentosNr($cliente);
         $funcaoQtdMap = $this->funcionarioCountByFuncao($cliente, $empresaId);
+        $podeCadastrarFuncaoPgr = !$usuario->isCliente();
 
         return view('operacional.kanban.pgr.form', [
             'cliente'   => $cliente,
@@ -128,6 +141,12 @@ class PgrController extends Controller
             'artDisponivel' => $artDisponivel,
             'clienteTemTreinamentosNr' => $clienteTemTreinamentosNr,
             'funcaoQtdMap' => $funcaoQtdMap,
+            'funcoesOrigem' => $funcoesConfig['origem'],
+            'funcoesPermiteCadastro' => $podeCadastrarFuncaoPgr,
+            'funcoesMensagem' => $funcoesConfig['mensagem'],
+            'funcoesHelpText' => $funcoesConfig['help_text'],
+            'funcoesCadastroResponsavel' => null,
+            'routeFuncoesPgrStore' => $routeFuncoesPgrStore,
         ]);
     }
 
@@ -199,6 +218,14 @@ class PgrController extends Controller
                 ->withInput()
                 ->withErrors(['com_art' => 'ART não está disponível no contrato do cliente.']);
         }
+
+        $this->assertFuncoesPermitidasParaPgr(
+            $empresaId,
+            $cliente->id,
+            $data['funcoes'],
+            collect($pgr->funcoes ?? [])->pluck('funcao_id')->all(),
+            !$usuario->isCliente()
+        );
 
         $data['funcoes'] = $this->normalizarFuncoesNr($data['funcoes']);
 
@@ -360,6 +387,14 @@ class PgrController extends Controller
                 ->withInput()
                 ->withErrors(['com_art' => 'ART não está disponível no contrato do cliente.']);
         }
+
+        $this->assertFuncoesPermitidasParaPgr(
+            $empresaId,
+            $cliente->id,
+            $data['funcoes'],
+            [],
+            !$usuario->isCliente()
+        );
 
         $data['funcoes'] = $this->normalizarFuncoesNr($data['funcoes']);
 
@@ -646,6 +681,56 @@ class PgrController extends Controller
             ->concat($extras)
             ->unique('id')
             ->values();
+    }
+
+    private function assertFuncoesPermitidasParaPgr(
+        int $empresaId,
+        int $clienteId,
+        array $funcoesInformadas,
+        array $extraIdsPermitidos = [],
+        bool $permitirFuncoesDaEmpresa = false
+    ): void {
+        $config = app(AsoGheService::class)->funcoesDisponiveisParaPgr($empresaId, $clienteId);
+
+        $idsPermitidos = collect($config['funcoes'])
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->concat(collect($extraIdsPermitidos)->map(fn ($id) => (int) $id))
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values();
+
+        if ($permitirFuncoesDaEmpresa) {
+            $idsPermitidos = $idsPermitidos
+                ->concat(
+                    Funcao::query()
+                        ->daEmpresa($empresaId)
+                        ->pluck('id')
+                        ->map(fn ($id) => (int) $id)
+                )
+                ->filter(fn ($id) => $id > 0)
+                ->unique()
+                ->values();
+        }
+
+        $idsInformados = collect($funcoesInformadas)
+            ->pluck('funcao_id')
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values();
+
+        $idsInvalidos = $idsInformados->diff($idsPermitidos);
+
+        if ($idsInvalidos->isEmpty()) {
+            return;
+        }
+
+        $origemLabel = $config['origem'] === 'ghe' ? 'GHE do cliente' : 'cadastro exclusivo do PGR';
+
+        throw ValidationException::withMessages([
+            'funcoes' => "As funcoes selecionadas nao pertencem a lista permitida para este PGR ({$origemLabel}).",
+        ]);
     }
 
     private function funcionarioCountByFuncao(Cliente $cliente, int $empresaId): array
