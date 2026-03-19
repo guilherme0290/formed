@@ -8,11 +8,34 @@ use App\Models\ClienteContratoItem;
 use App\Models\ClienteFuncao;
 use App\Models\ClienteGhe;
 use App\Models\Funcao;
+use App\Models\Servico;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Carbon;
 
 class AsoGheService
 {
+    public function resolveServicoAsoCatalogoId(int $empresaId): ?int
+    {
+        $configuredId = (int) (config('services.aso_id') ?? 0);
+        if ($configuredId > 0) {
+            $configuredServico = Servico::query()
+                ->where('empresa_id', $empresaId)
+                ->whereKey($configuredId)
+                ->first(['id', 'nome']);
+
+            if ($configuredServico && mb_strtolower(trim((string) $configuredServico->nome)) === 'aso') {
+                return (int) $configuredServico->id;
+            }
+        }
+
+        $servicoId = Servico::query()
+            ->where('empresa_id', $empresaId)
+            ->whereRaw('LOWER(nome) = ?', ['aso'])
+            ->value('id');
+
+        return $servicoId ? (int) $servicoId : null;
+    }
+
     public function resolveServicoAsoId(int $clienteId, int $empresaId): ?int
     {
         $contrato = ClienteContrato::query()

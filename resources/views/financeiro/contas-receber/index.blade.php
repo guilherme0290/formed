@@ -37,8 +37,12 @@
                 ];
             })
             ->values();
+        $tarefasNaoFinalizadasAgrupadas = collect($tarefasNaoFinalizadasAgrupadas ?? []);
         $totalVendasSemFatura = $vendasAgrupadas->count();
         $valorTotalVendasSemFatura = (float) $vendasAgrupadas->sum('total');
+        $valorTotalServicosNaoFinalizados = (float) $vendasAgrupadas
+            ->where('is_finalizada', false)
+            ->sum('total') + (float) $tarefasNaoFinalizadasAgrupadas->sum('total');
 
         $abaAtiva = $abaAtiva ?? 'vendas';
 
@@ -201,6 +205,14 @@
                         R$ {{ number_format($valorTotalVendasSemFatura, 2, ',', '.') }}
                     </p>
                     <p class="mt-1 text-xs text-indigo-700/80">Somatório das vendas sem fatura no filtro atual</p>
+                </article>
+
+                <article class="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-4 shadow-sm">
+                    <p class="text-xs uppercase tracking-wide font-semibold text-amber-700">Valores a receber de serviços não finalizados</p>
+                    <p class="mt-1 text-2xl font-semibold text-amber-900">
+                        R$ {{ number_format($valorTotalServicosNaoFinalizados, 2, ',', '.') }}
+                    </p>
+                    <p class="mt-1 text-xs text-amber-700/80">Somatório de vendas não finalizadas e tarefas abertas no filtro atual</p>
                 </article>
             </section>
 
@@ -383,6 +395,115 @@
                         </div>
                     </footer>
                 </form>
+            </section>
+
+            <section class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+                <header class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                    <div>
+                        <h2 class="text-sm font-semibold text-slate-800">Tarefas não finalizadas (sem venda)</h2>
+                        <p class="text-xs text-slate-500">Tarefas abertas, não canceladas e ainda sem venda gerada</p>
+                    </div>
+                    <span class="text-xs text-slate-500">{{ $tarefasNaoFinalizadasAgrupadas->count() }} tarefas</span>
+                </header>
+
+                <div class="m-4 rounded-2xl border border-amber-200 bg-amber-50/40 shadow-inner">
+                    <div class="px-4 py-3 border-b border-amber-200 bg-amber-100/60 rounded-t-2xl">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-amber-700">Serviços não finalizados</p>
+                    </div>
+
+                    <div class="p-4 md:p-5">
+                        <div class="overflow-auto rounded-lg border border-slate-200 bg-white">
+                            <table class="min-w-full divide-y divide-slate-200 text-sm">
+                                <thead class="bg-slate-50 text-slate-600 sticky top-0 z-10">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left font-semibold">Tarefa</th>
+                                        <th class="px-4 py-3 text-left font-semibold">Cliente</th>
+                                        <th class="px-4 py-3 text-left font-semibold">Data</th>
+                                        <th class="px-4 py-3 text-left font-semibold">Status</th>
+                                        <th class="px-4 py-3 text-right font-semibold">Itens</th>
+                                        <th class="px-4 py-3 text-right font-semibold">Valor estimado</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    @forelse($tarefasNaoFinalizadasAgrupadas as $idx => $grupo)
+                                        @php
+                                            $tarefa = $grupo['tarefa'];
+                                            $expandId = 'cr-tarefa-expand-' . ($tarefa->id ?? $idx);
+                                        @endphp
+                                        <tr class="odd:bg-white even:bg-slate-50/60 hover:bg-amber-50/40 cursor-pointer transition"
+                                            data-expand-toggle="{{ $expandId }}"
+                                            aria-expanded="false"
+                                            title="Clique para ver os itens estimados da tarefa">
+                                            <td class="px-4 py-3 align-middle">
+                                                <div class="inline-flex flex-wrap items-center gap-2">
+                                                    <span class="inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-slate-900 px-2 text-[11px] font-bold text-white">
+                                                        T#{{ $tarefa->id ?? '—' }}
+                                                    </span>
+                                                    <button type="button"
+                                                            class="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700 hover:bg-amber-100"
+                                                            data-expand-action="{{ $expandId }}"
+                                                            data-expand-icon="{{ $expandId }}"
+                                                            aria-expanded="false"
+                                                            title="Mostrar itens estimados da tarefa">
+                                                        Itens ▸
+                                                    </button>
+                                                </div>
+                                            </td>
+                                            <td class="px-4 py-3 text-slate-800 align-middle">{{ $grupo['cliente_nome'] }}</td>
+                                            <td class="px-4 py-3 text-slate-700 align-middle">{{ $grupo['data_referencia']?->format('d/m/Y H:i') ?? '—' }}</td>
+                                            <td class="px-4 py-3 align-middle">
+                                                <span class="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-semibold border {{ $grupo['status_badge'] }}">
+                                                    {{ $grupo['status_label'] }}
+                                                </span>
+                                            </td>
+                                            <td class="px-4 py-3 text-right text-slate-700 align-middle">{{ $grupo['qtd_itens'] }}</td>
+                                            <td class="px-4 py-3 text-right font-semibold text-slate-900 align-middle">R$ {{ number_format($grupo['total'], 2, ',', '.') }}</td>
+                                        </tr>
+                                        <tr id="{{ $expandId }}" class="hidden bg-amber-50/30">
+                                            <td colspan="6" class="px-4 pb-4 pt-0">
+                                                <div class="mt-2 rounded-xl border border-amber-100 bg-white p-3">
+                                                    <div class="flex items-center justify-between gap-2 mb-3">
+                                                        <p class="text-xs font-semibold uppercase tracking-wide text-amber-700">Itens estimados da tarefa #{{ $tarefa->id ?? '—' }}</p>
+                                                        <span class="text-xs text-slate-500">{{ $grupo['qtd_itens'] }} itens estimados</span>
+                                                    </div>
+
+                                                    <div class="overflow-x-auto rounded-lg border border-slate-200">
+                                                        <table class="min-w-full divide-y divide-slate-200 text-xs">
+                                                            <thead class="bg-slate-50 text-slate-600">
+                                                                <tr>
+                                                                    <th class="px-3 py-2 text-left font-semibold">Serviço</th>
+                                                                    <th class="px-3 py-2 text-left font-semibold">Descrição</th>
+                                                                    <th class="px-3 py-2 text-left font-semibold">Data</th>
+                                                                    <th class="px-3 py-2 text-right font-semibold">Subtotal</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody class="divide-y divide-slate-100 bg-white">
+                                                                @foreach($grupo['itens'] as $itemEstimado)
+                                                                    <tr>
+                                                                        <td class="px-3 py-2 text-slate-700">{{ $tarefa->servico?->nome ?? 'Serviço' }}</td>
+                                                                        <td class="px-3 py-2 text-slate-700">{{ $itemEstimado['descricao_snapshot'] ?? '—' }}</td>
+                                                                        <td class="px-3 py-2 text-slate-700">{{ !empty($itemEstimado['data_referencia']) ? \Carbon\Carbon::parse($itemEstimado['data_referencia'])->format('d/m/Y H:i') : '—' }}</td>
+                                                                        <td class="px-3 py-2 text-right font-semibold text-slate-900">R$ {{ number_format((float) ($itemEstimado['subtotal_snapshot'] ?? 0), 2, ',', '.') }}</td>
+                                                                    </tr>
+                                                                @endforeach
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="6" class="px-4 py-8 text-center text-sm text-slate-500">
+                                                Nenhuma tarefa não finalizada encontrada com os filtros atuais.
+                                            </td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </section>
         </section>
 

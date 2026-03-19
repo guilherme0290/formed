@@ -134,10 +134,10 @@ class PropostaService
                 $servicoId = $it->servico_id;
                 if ($isAsoItem($it)) {
                     if (!$servicoId) {
-                        $servicoId = (int) (config('services.aso_id') ?? 0);
+                        $servicoId = (int) ($asoGheService->resolveServicoAsoCatalogoId($proposta->empresa_id) ?? 0);
                         if ($servicoId <= 0) {
                             throw ValidationException::withMessages([
-                                'itens' => 'Serviço ASO não configurado. Defina FORMED_SERVICO_ASO_ID.',
+                                'itens' => 'Serviço ASO não encontrado no catálogo da empresa.',
                             ]);
                         }
                     }
@@ -220,4 +220,3 @@ class PropostaService
         return $asoSnapshot;
     }
 }
-
