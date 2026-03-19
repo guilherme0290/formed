@@ -521,11 +521,15 @@ class ContasReceberController extends Controller
 
         return collect($itensVenda)->map(function (array $item) use ($tarefa, $servicoNome) {
             $quantidade = max(1, (int) ($item['quantidade'] ?? 1));
+            $subtotal = array_key_exists('subtotal_snapshot', $item)
+                ? (float) ($item['subtotal_snapshot'] ?? 0)
+                : null;
             $valorUnitario = (float) ($item['preco_unitario_snapshot'] ?? 0);
+            $valorTotal = $subtotal ?? ($valorUnitario * $quantidade);
 
             return [
                 'descricao_snapshot' => (string) ($item['descricao_snapshot'] ?? ($servicoNome !== '' ? $servicoNome : 'Serviço')),
-                'subtotal_snapshot' => $valorUnitario * $quantidade,
+                'subtotal_snapshot' => $valorTotal,
                 'data_referencia' => $tarefa->created_at,
             ];
         })->all();
@@ -542,11 +546,23 @@ class ContasReceberController extends Controller
             $tarefa->created_at ? Carbon::parse($tarefa->created_at) : null
         );
 
+        $valor = 0.0;
+        if ($contrato) {
+            $valor = $this->resolverValorGenericoTarefa($tarefa, $contrato);
+        }
+
+        if (!$contrato || $valor <= 0) {
+            $contrato = $contratoService->getContratoAtivo(
+                (int) $tarefa->cliente_id,
+                (int) $tarefa->empresa_id,
+                null
+            );
+            $valor = $contrato ? $this->resolverValorGenericoTarefa($tarefa, $contrato) : 0.0;
+        }
+
         if (!$contrato) {
             return [];
         }
-
-        $valor = $this->resolverValorGenericoTarefa($tarefa, $contrato);
 
         return [[
             'descricao_snapshot' => trim((string) ($tarefa->servico?->nome ?? $tarefa->titulo ?? 'Serviço')),
