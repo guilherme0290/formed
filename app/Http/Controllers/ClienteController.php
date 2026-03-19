@@ -468,6 +468,7 @@ class ClienteController extends Controller
             if ($afterAction === 'apresentacao') {
                 $r->session()->put('apresentacao_proposta.cliente', [
                     'proposta_id' => null,
+                    'cliente_id' => $cliente->id,
                     'cnpj' => $cliente->documento_principal,
                     'razao_social' => $cliente->razao_social,
                     'contato' => $cliente->nome_fantasia ?: $cliente->razao_social,

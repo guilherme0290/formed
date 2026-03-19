@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Comercial;
 
 use App\Http\Controllers\Controller;
+use App\Models\ApresentacaoComercial;
 use App\Models\ModeloComercial;
 use App\Models\ModeloComercialExame;
 use App\Models\ModeloComercialItem;
@@ -24,6 +25,7 @@ use Illuminate\Support\Str;
 class ApresentacaoController extends Controller
 {
     private const SESSION_KEY = 'apresentacao_proposta';
+    private const SESSION_PRESENTATION_ID = 'apresentacao_proposta.presentation_id';
 
     private const SEGMENTOS = [
         'construcao-civil' => 'Construção Civil',
@@ -105,13 +107,28 @@ class ApresentacaoController extends Controller
                 ->withInput();
         }
 
-        $request->session()->put(self::SESSION_KEY . '.cliente', [
-            'proposta_id' => $data['proposta_id'] ?? null,
+        $draftAtual = (array) $request->session()->get(self::SESSION_KEY . '.cliente', []);
+        $proposta = null;
+        if (!empty($data['proposta_id'])) {
+            $proposta = Proposta::query()
+                ->where('id', $data['proposta_id'])
+                ->where('empresa_id', $empresaId)
+                ->when(!$isMaster, fn ($q) => $q->where('vendedor_id', $user->id))
+                ->with('cliente')
+                ->first();
+        }
+
+        $clientePayload = [
+            'proposta_id' => $data['proposta_id'] ?? ($draftAtual['proposta_id'] ?? null),
+            'cliente_id' => $draftAtual['cliente_id'] ?? ($proposta?->cliente_id),
             'cnpj' => $data['cnpj'],
             'razao_social' => $data['razao_social'],
             'contato' => $data['contato'],
             'telefone' => $data['telefone'],
-        ]);
+        ];
+
+        $request->session()->put(self::SESSION_KEY . '.cliente', $clientePayload);
+        $this->persistCurrentPresentation($request);
 
         return redirect()->route('comercial.apresentacao.segmento');
     }
@@ -129,6 +146,33 @@ class ApresentacaoController extends Controller
         ]);
     }
 
+    public function clienteDraftUpdate(Request $request)
+    {
+        $cliente = $request->session()->get(self::SESSION_KEY . '.cliente');
+        abort_if(!$cliente, 404);
+
+        $data = $request->validate([
+            'cnpj' => ['nullable', 'string', 'max:30'],
+            'razao_social' => ['nullable', 'string', 'max:255'],
+            'contato' => ['nullable', 'string', 'max:120'],
+            'telefone' => ['nullable', 'string', 'max:30'],
+        ]);
+
+        $draftAtual = (array) $cliente;
+        $draftAtual['cnpj'] = $data['cnpj'] ?? ($draftAtual['cnpj'] ?? '');
+        $draftAtual['razao_social'] = $data['razao_social'] ?? ($draftAtual['razao_social'] ?? '');
+        $draftAtual['contato'] = $data['contato'] ?? ($draftAtual['contato'] ?? '');
+        $draftAtual['telefone'] = $data['telefone'] ?? ($draftAtual['telefone'] ?? '');
+
+        $request->session()->put(self::SESSION_KEY . '.cliente', $draftAtual);
+        $this->persistCurrentPresentation($request);
+
+        return response()->json([
+            'ok' => true,
+            'cliente' => $draftAtual,
+        ]);
+    }
+
     public function show(Request $request, string $segmento)
     {
         $cliente = $request->session()->get(self::SESSION_KEY . '.cliente');
@@ -139,6 +183,7 @@ class ApresentacaoController extends Controller
         abort_unless(array_key_exists($segmento, self::SEGMENTOS), 404);
 
         $request->session()->put(self::SESSION_KEY . '.segmento', $segmento);
+        $this->persistCurrentPresentation($request, $segmento);
 
         return view('comercial.apresentacao.show', $this->presentationViewData($request, $segmento));
     }
@@ -151,6 +196,7 @@ class ApresentacaoController extends Controller
         }
 
         abort_unless(array_key_exists($segmento, self::SEGMENTOS), 404);
+        $this->persistCurrentPresentation($request, $segmento);
 
         return view('comercial.apresentacao.pdf', $this->presentationViewData($request, $segmento));
     }
@@ -542,6 +588,8 @@ class ApresentacaoController extends Controller
             });
         });
 
+        $this->persistCurrentPresentation($request, $segmentoDestino);
+
         return redirect()
             ->route(
                 !empty($data['submit_action']) && $data['submit_action'] === 'generate'
@@ -573,8 +621,12 @@ class ApresentacaoController extends Controller
 
     private function presentationViewData(Request $request, string $segmento): array
     {
+        $presentation = $this->currentPresentation($request);
+        $payload = is_array($presentation?->payload) ? $presentation->payload : [];
         $modelo = $this->findModelo($request, $segmento);
-        $layout = $this->layoutParaSegmento($request, $segmento);
+        $layout = $presentation && ($presentation->segmento === $segmento) && is_array($payload['layout'] ?? null)
+            ? $this->mergeLayout($this->layoutPadrao($segmento), (array) $payload['layout'])
+            : $this->layoutParaSegmento($request, $segmento);
         $assets = $layout['assets'] ?? [];
 
         $clienteLogoData = $this->storageFileToDataUrl($assets['cliente_logo_path'] ?? null);
@@ -594,12 +646,14 @@ class ApresentacaoController extends Controller
 
         return [
             'modelo' => $modelo,
-            'cliente' => $request->session()->get(self::SESSION_KEY . '.cliente', []),
+            'cliente' => is_array($payload['cliente'] ?? null)
+                ? $payload['cliente']
+                : $request->session()->get(self::SESSION_KEY . '.cliente', []),
             'segmento' => $segmento,
-            'segmentoNome' => self::SEGMENTOS[$segmento],
+            'segmentoNome' => $payload['segmento_nome'] ?? self::SEGMENTOS[$segmento],
             'clienteLogoData' => $clienteLogoData,
-            'conteudo' => $this->conteudoParaSegmento($request, $segmento),
-            'tituloSegmento' => $this->tituloParaSegmento($request, $segmento),
+            'conteudo' => $payload['conteudo'] ?? $this->conteudoParaSegmento($request, $segmento),
+            'tituloSegmento' => $payload['titulo_segmento'] ?? $this->tituloParaSegmento($request, $segmento),
             'precos' => $this->precosParaSegmento($request, $segmento),
             'exames' => $this->examesParaSegmento($request, $segmento),
             'treinamentos' => $this->treinamentosParaSegmento($request, $segmento),
@@ -945,7 +999,8 @@ class ApresentacaoController extends Controller
 
     private function segmentoPersistencia(Request $request): string
     {
-        $segmento = (string) $request->session()->get(self::SESSION_KEY . '.segmento', '');
+        $segmento = (string) ($this->currentPresentation($request)?->segmento
+            ?: $request->session()->get(self::SESSION_KEY . '.segmento', ''));
         abort_unless(array_key_exists($segmento, self::SEGMENTOS), 422);
 
         return $segmento;
@@ -953,6 +1008,12 @@ class ApresentacaoController extends Controller
 
     private function presentationAssetDirectory(Request $request, string $segmento): string
     {
+        $presentation = $this->currentPresentation($request);
+
+        if ($presentation) {
+            return 'apresentacao/' . $request->user()->empresa_id . '/presentations/' . $presentation->id . '/' . $segmento;
+        }
+
         return 'apresentacao/' . $request->user()->empresa_id . '/' . $segmento;
     }
 
@@ -1042,6 +1103,29 @@ class ApresentacaoController extends Controller
 
     private function persistLayoutAssetPath(Request $request, string $segmento, string $key, string $path): void
     {
+        $presentation = $this->persistCurrentPresentation($request, $segmento);
+
+        if ($presentation) {
+            $payload = is_array($presentation->payload) ? $presentation->payload : [];
+            $layout = is_array($payload['layout'] ?? null)
+                ? $this->mergeLayout($this->layoutPadrao($segmento), (array) $payload['layout'])
+                : $this->layoutParaSegmento($request, $segmento);
+            $assets = is_array($layout['assets'] ?? null) ? $layout['assets'] : [];
+            $assets[$key] = $path;
+            $layout['assets'] = $assets;
+            $payload['layout'] = $layout;
+            $payload['cliente'] = $request->session()->get(self::SESSION_KEY . '.cliente', []);
+            $payload['segmento'] = $segmento;
+            $payload['segmento_nome'] = self::SEGMENTOS[$segmento] ?? $segmento;
+            $payload['titulo_segmento'] = $this->tituloParaSegmento($request, $segmento);
+            $payload['conteudo'] = $this->conteudoParaSegmento($request, $segmento);
+
+            $presentation->payload = $payload;
+            $presentation->save();
+
+            return;
+        }
+
         $modelo = ModeloComercial::firstOrCreate(
             ['empresa_id' => $request->user()->empresa_id, 'segmento' => $segmento],
             ['ativo' => true]
@@ -1059,6 +1143,28 @@ class ApresentacaoController extends Controller
 
     private function deleteLayoutAssetPath(Request $request, string $segmento, string $key): void
     {
+        $presentation = $this->currentPresentation($request);
+        if ($presentation && $presentation->segmento === $segmento) {
+            $payload = is_array($presentation->payload) ? $presentation->payload : [];
+            $layout = is_array($payload['layout'] ?? null)
+                ? $this->mergeLayout($this->layoutPadrao($segmento), (array) $payload['layout'])
+                : $this->layoutParaSegmento($request, $segmento);
+            $assets = is_array($layout['assets'] ?? null) ? $layout['assets'] : [];
+            $path = $assets[$key] ?? null;
+
+            if (is_string($path) && $path !== '') {
+                Storage::disk('public')->delete($path);
+            }
+
+            unset($assets[$key]);
+            $layout['assets'] = $assets;
+            $payload['layout'] = $layout;
+            $presentation->payload = $payload;
+            $presentation->save();
+
+            return;
+        }
+
         $modelo = $this->findModelo($request, $segmento);
         if (!$modelo) {
             return;
@@ -1088,6 +1194,60 @@ class ApresentacaoController extends Controller
         $mime = Storage::disk('public')->mimeType($path) ?: 'image/png';
 
         return 'data:' . $mime . ';base64,' . base64_encode($contents);
+    }
+
+    private function currentPresentation(Request $request): ?ApresentacaoComercial
+    {
+        $presentationId = (int) $request->session()->get(self::SESSION_PRESENTATION_ID, 0);
+        if ($presentationId <= 0) {
+            return null;
+        }
+
+        return ApresentacaoComercial::query()
+            ->where('id', $presentationId)
+            ->where('empresa_id', $request->user()->empresa_id)
+            ->first();
+    }
+
+    private function persistCurrentPresentation(Request $request, ?string $segmento = null): ?ApresentacaoComercial
+    {
+        $cliente = (array) $request->session()->get(self::SESSION_KEY . '.cliente', []);
+        if (empty($cliente)) {
+            return null;
+        }
+
+        $presentation = $this->currentPresentation($request) ?? new ApresentacaoComercial();
+        $presentation->empresa_id = $request->user()->empresa_id;
+        $presentation->user_id = $request->user()->id;
+        $presentation->proposta_id = $cliente['proposta_id'] ?? $presentation->proposta_id;
+        $presentation->cliente_id = $cliente['cliente_id'] ?? $presentation->cliente_id;
+        $presentation->segmento = $segmento ?: $presentation->segmento;
+
+        $payload = is_array($presentation->payload) ? $presentation->payload : [];
+        $payload['cliente'] = $cliente;
+
+        if ($presentation->segmento && array_key_exists($presentation->segmento, self::SEGMENTOS)) {
+            $layout = $this->layoutParaSegmento($request, $presentation->segmento);
+            $existingAssets = is_array($payload['layout']['assets'] ?? null) ? $payload['layout']['assets'] : [];
+            if (!empty($existingAssets)) {
+                $layoutAssets = is_array($layout['assets'] ?? null) ? $layout['assets'] : [];
+                $layout['assets'] = array_merge($layoutAssets, $existingAssets);
+            }
+
+            $payload['segmento'] = $presentation->segmento;
+            $payload['segmento_nome'] = self::SEGMENTOS[$presentation->segmento] ?? $presentation->segmento;
+            $payload['titulo_segmento'] = $this->tituloParaSegmento($request, $presentation->segmento);
+            $payload['conteudo'] = $this->conteudoParaSegmento($request, $presentation->segmento);
+            $payload['layout'] = $layout;
+            $request->session()->put(self::SESSION_KEY . '.segmento', $presentation->segmento);
+        }
+
+        $presentation->payload = $payload;
+        $presentation->save();
+
+        $request->session()->put(self::SESSION_PRESENTATION_ID, $presentation->id);
+
+        return $presentation;
     }
 
     private function sanitizeLayoutSection(string $section, array $input, array $default): array

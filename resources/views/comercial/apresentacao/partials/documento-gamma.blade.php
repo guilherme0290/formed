@@ -80,6 +80,10 @@
     $contatoSchedule = $contatoFinal['schedule'] ?? "Segunda a Sexta: 7h - 14h\nSábados: 9h - 11h";
     $contatoSite = $contatoFinal['site'] ?? 'www.formedseg.com.br';
     $contatoCta = $contatoFinal['cta_label'] ?? 'Fale conosco via WhatsApp';
+    $clienteRazaoSocial = $cliente['razao_social'] ?? '—';
+    $clienteCnpj = $cliente['cnpj'] ?? '—';
+    $clienteContato = $cliente['contato'] ?? '—';
+    $clienteTelefone = $cliente['telefone'] ?? '—';
 
     $pages = collect();
 
@@ -247,6 +251,10 @@
         justify-content: center;
         gap: 26px;
         padding: 8px 10px 8px 6px;
+    }
+
+    .gamma-cover-client-meta {
+        margin-top: 40px;
     }
 
     .gamma-logos {
@@ -461,9 +469,9 @@
         position: relative;
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        column-gap: 86px;
-        row-gap: 18px;
-        padding-inline: 18px;
+        column-gap: 58px;
+        row-gap: 14px;
+        padding-inline: 12px;
     }
 
     .gamma-process-grid::before {
@@ -479,22 +487,22 @@
 
     .gamma-process-card {
         position: relative;
-        min-height: 150px;
-        padding: 18px;
-        border-radius: 24px;
+        min-height: 126px;
+        padding: 16px;
+        border-radius: 20px;
         background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
         border: 1px solid rgba(96, 165, 250, 0.8);
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 8px;
     }
 
     .gamma-process-card::after {
         content: "";
         position: absolute;
-        right: -43px;
+        right: -29px;
         top: 50%;
-        width: 42px;
+        width: 28px;
         height: 2px;
         background: #93c5fd;
     }
@@ -503,7 +511,7 @@
         content: "";
         position: absolute;
         top: calc(50% - 6px);
-        right: -49px;
+        right: -35px;
         width: 12px;
         height: 12px;
         border-radius: 999px;
@@ -513,12 +521,12 @@
 
     .gamma-process-card:nth-child(even)::after {
         right: auto;
-        left: -43px;
+        left: -29px;
     }
 
     .gamma-process-card:nth-child(even)::before {
         right: auto;
-        left: -49px;
+        left: -35px;
     }
 
     .gamma-process-card:nth-child(odd) {
@@ -606,6 +614,9 @@
         padding: 16px;
         gap: 10px;
         border-radius: 16px;
+        justify-content: center;
+        text-align: center;
+        align-items: center;
     }
 
     .gamma-investment-main--compact .gamma-card-title {
@@ -621,6 +632,10 @@
     .gamma-investment-main--compact .gamma-card-copy {
         font-size: 0.8rem;
         line-height: 1.25;
+    }
+
+    .gamma-investment-main--compact .gamma-list {
+        align-items: center;
     }
 
     .gamma-contact-grid {
@@ -1087,6 +1102,26 @@
             gap: 10px;
         }
 
+        .gamma-cover-layout {
+            display: grid !important;
+            grid-template-columns: minmax(0, 1.2fr) minmax(76mm, 0.8fr) !important;
+            align-items: stretch !important;
+        }
+
+        .gamma-cover-copy {
+            min-width: 0 !important;
+        }
+
+        .gamma-cover-art {
+            min-height: 100% !important;
+            height: 100% !important;
+            border-radius: 20px !important;
+        }
+
+        .gamma-logos {
+            flex-wrap: nowrap !important;
+        }
+
         .gamma-challenge-grid,
         .gamma-process-grid,
         .gamma-investment-grid,
@@ -1121,14 +1156,46 @@
             flex: 1 !important;
         }
 
-        .gamma-solutions-grid .gamma-block-card,
-        .gamma-solutions-grid--dense .gamma-block-card {
-            display: flex !important;
-            flex-direction: column !important;
-            width: 100% !important;
+    .gamma-solutions-grid .gamma-block-card,
+    .gamma-solutions-grid--dense .gamma-block-card {
+        display: flex !important;
+        flex-direction: column !important;
+        width: 100% !important;
             height: 100% !important;
-            min-height: 0 !important;
-        }
+        min-height: 0 !important;
+    }
+
+    .gamma-solutions-grid .gamma-block-card,
+    .gamma-solutions-grid--duo .gamma-block-card,
+    .gamma-solutions-grid--dense .gamma-block-card,
+    .gamma-solutions-duo-panel .gamma-block-card {
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+    }
+
+    .gamma-solutions-grid .gamma-card-title,
+    .gamma-solutions-grid--duo .gamma-card-title,
+    .gamma-solutions-grid--dense .gamma-card-title,
+    .gamma-solutions-duo-panel .gamma-card-title,
+    .gamma-solutions-grid .gamma-card-copy,
+    .gamma-solutions-grid--duo .gamma-card-copy,
+    .gamma-solutions-grid--dense .gamma-card-copy,
+    .gamma-solutions-duo-panel .gamma-card-copy {
+        width: 100%;
+        text-align: center;
+    }
+
+    .gamma-block-card--challenge .gamma-block-card__body,
+    .gamma-block-card--challenge .gamma-card-title,
+    .gamma-block-card--challenge .gamma-card-copy {
+        text-align: center;
+    }
+
+    .gamma-block-card--challenge .gamma-block-card__body {
+        align-items: center;
+        justify-content: center;
+    }
 
         .gamma-process-grid {
             display: grid !important;
@@ -1169,6 +1236,17 @@
             min-height: 0;
         }
 
+        .gamma-process-grid {
+            column-gap: 40px !important;
+            row-gap: 6px !important;
+            padding-inline: 6px !important;
+        }
+
+        .gamma-process-card {
+            padding: 8px !important;
+            gap: 6px !important;
+        }
+
         .gamma-investment-main,
         .gamma-investment-main--compact {
             gap: 8px !important;
@@ -1194,10 +1272,12 @@
                                     @if ($hasFormedLogo)
                                         <img id="formedLogoHeader" src="{{ $formedLogoSrc }}" alt="Logo FORMED" class="gamma-logo" onerror="this.classList.add('hidden')">
                                     @endif
-                                    @if ($hasClienteLogo)
-                                        <span class="gamma-divider" aria-hidden="true"></span>
-                                        <img id="clienteLogoPreview" src="{{ $clienteLogoSrc }}" alt="Logo do cliente" class="gamma-logo" onerror="this.classList.add('hidden')">
-                                    @endif
+                                    <span id="clienteLogoDivider" class="gamma-divider {{ $hasClienteLogo ? '' : 'hidden' }}" aria-hidden="true"></span>
+                                    <img id="clienteLogoPreview"
+                                         src="{{ $clienteLogoSrc }}"
+                                         alt="Logo do cliente"
+                                         class="gamma-logo {{ $hasClienteLogo ? '' : 'hidden' }}"
+                                         onerror="this.classList.add('hidden')">
                                 </div>
 
                                 <div class="gamma-badge">{{ $heroBadge }}</div>
@@ -1206,6 +1286,25 @@
                                 @if (filled($heroDescription))
                                     <div class="gamma-copy">{{ $heroDescription }}</div>
                                 @endif
+
+                                <div class="gamma-contact-grid gamma-cover-client-meta" style="grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;">
+                                    <div class="gamma-meta-card">
+                                        <div class="gamma-meta-label">Cliente</div>
+                                        <div class="gamma-meta-value" id="view_razao_social" data-preview-field="razao_social">{{ $clienteRazaoSocial }}</div>
+                                    </div>
+                                    <div class="gamma-meta-card">
+                                        <div class="gamma-meta-label">CPF/CNPJ</div>
+                                        <div class="gamma-meta-value" id="view_cnpj" data-preview-field="cnpj">{{ $clienteCnpj }}</div>
+                                    </div>
+                                    <div class="gamma-meta-card">
+                                        <div class="gamma-meta-label">Contato</div>
+                                        <div class="gamma-meta-value" id="view_contato" data-preview-field="contato">{{ $clienteContato }}</div>
+                                    </div>
+                                    <div class="gamma-meta-card">
+                                        <div class="gamma-meta-label">Telefone</div>
+                                        <div class="gamma-meta-value" id="view_telefone" data-preview-field="telefone">{{ $clienteTelefone }}</div>
+                                    </div>
+                                </div>
                             </div>
 
                             <div class="gamma-cover-art" aria-hidden="true"></div>
