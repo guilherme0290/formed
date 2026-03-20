@@ -29,12 +29,12 @@
             'active' => request()->routeIs('financeiro.contas-pagar*'),
             'enabled' => true,
         ],
-        [
-            'label' => 'Detalhamento',
-            'route' => route('financeiro.faturamento-detalhado'),
-            'active' => request()->routeIs('financeiro.faturamento-detalhado*'),
-            'enabled' => $can('financeiro.faturamento.view'),
-        ],
+        // [
+        //     'label' => 'Detalhamento',
+        //     'route' => route('financeiro.faturamento-detalhado'),
+        //     'active' => request()->routeIs('financeiro.faturamento-detalhado*'),
+        //     'enabled' => $can('financeiro.faturamento.view'),
+        // ],
     ];
 
     $tabClasses = static function (bool $enabled, bool $active): string {
