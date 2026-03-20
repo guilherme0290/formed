@@ -192,7 +192,7 @@ class AcessosController extends Controller
         if (!empty($reasons)) {
             return back()->with(
                 'erro',
-                'Não é possível excluir este usuário. Considere desativar o usuário.'
+                'Não é possível excluir este usuário: '.implode('; ', $reasons).'. Considere desativar o usuário.'
             );
         }
 
