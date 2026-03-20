@@ -88,6 +88,8 @@
         $funcoesCrudPrefix = str_starts_with($routePrefix, 'comercial.') ? 'comercial.funcoes' : 'master.funcoes';
         $routeFuncoesUpdate = route($funcoesCrudPrefix . '.update', ['funcao' => '__ID__']);
         $routeFuncoesDestroy = route($funcoesCrudPrefix . '.destroy', ['funcao' => '__ID__']);
+        $clienteTemGheComFuncoes = (bool) ($clienteTemGheComFuncoes ?? false);
+        $parametroTabInicial = old('parametro_tab', $clienteTemGheComFuncoes ? 'aso-tipos' : 'funcoes');
     @endphp
 <div class="w-full mx-auto px-4 sm:px-6 lg:px-8 py-6" data-tabs-scope="parametro">
         <form id="parametroForm" method="POST" novalidate
@@ -122,6 +124,7 @@
                     <div class="p-6 space-y-8">
 
                     <input type="hidden" name="cliente_id" value="{{ $cliente->id }}">
+                    <input type="hidden" name="parametro_tab" id="parametro_tab" value="{{ $parametroTabInicial }}">
                     <input type="hidden" name="forma_pagamento" value="{{ $parametro?->forma_pagamento ?? '' }}">
                     <input type="hidden" name="email_envio_fatura" value="{{ $parametro?->email_envio_fatura ?? '' }}">
                     <input type="hidden" name="vencimento_servicos" value="{{ $parametro?->vencimento_servicos ?? '' }}">
@@ -148,11 +151,11 @@
                                     Treinamentos
                                     <span id="badgeTabTreinamentos" class="hidden absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-emerald-400"></span>
                                 </button>
-{{--                                <button type="button"--}}
-{{--                                        class="relative px-4 py-2 rounded-full text-sm font-semibold text-slate-600 hover:bg-slate-100"--}}
-{{--                                        data-tab="funcoes">--}}
-{{--                                    Funções--}}
-{{--                                </button>--}}
+                                <button type="button"
+                                        class="relative px-4 py-2 rounded-full text-sm font-semibold text-slate-600 hover:bg-slate-100"
+                                        data-tab="funcoes">
+                                    Funções do PGR
+                                </button>
                             </div>
 
                             <div data-tab-panel="servicos" class="space-y-3">
@@ -380,13 +383,24 @@
                             </div>
 
                             <div data-tab-panel="funcoes" class="hidden space-y-3">
+                                <div class="rounded-2xl border {{ $clienteTemGheComFuncoes ? 'border-sky-200 bg-sky-50' : 'border-amber-200 bg-amber-50' }} p-4">
+                                    <div class="text-sm font-semibold {{ $clienteTemGheComFuncoes ? 'text-sky-900' : 'text-amber-900' }}">
+                                        {{ $clienteTemGheComFuncoes ? 'Cliente com GHE configurado' : 'Cliente sem GHE configurado' }}
+                                    </div>
+                                    <div class="mt-1 text-xs {{ $clienteTemGheComFuncoes ? 'text-sky-800' : 'text-amber-800' }}">
+                                        {{ $clienteTemGheComFuncoes
+                                            ? 'Para este cliente, o PGR usará primeiro as funções do GHE.'
+                                            : 'Para este cliente, o PGR usará somente as funções marcadas aqui.' }}
+                                    </div>
+                                </div>
+
                                 <div class="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
                                     <div class="grid gap-4 lg:grid-cols-[360px_minmax(0,1fr)]">
                                         <div class="rounded-2xl border border-blue-200 bg-white p-4 space-y-3">
                                             <div>
-                                                <div class="text-xs font-semibold uppercase tracking-wide text-blue-700">1. Gerenciar função</div>
-                                                <div class="mt-1 text-sm font-semibold text-slate-800">Cadastrar nova função</div>
-                                                <div class="text-xs text-slate-500">Use este campo apenas para cadastrar uma nova função.</div>
+                                                <div class="text-xs font-semibold uppercase tracking-wide text-blue-700">1. Cadastrar ou localizar</div>
+                                                <div class="mt-1 text-sm font-semibold text-slate-800">Função para uso no PGR</div>
+                                                <div class="text-xs text-slate-500">Se a função já existir, o sistema avisará e selecionará a função para este cliente.</div>
                                             </div>
                                             <div class="space-y-2">
                                                 <input type="text"
@@ -402,7 +416,7 @@
                                                     <button type="button"
                                                             id="btnNovaFuncaoParametro"
                                                             class="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-800 hover:bg-blue-100">
-                                                        + Cadastrar
+                                                        + Adicionar função
                                                     </button>
                                                 </div>
                                             </div>
@@ -411,9 +425,9 @@
                                         <div class="rounded-2xl border border-emerald-200 bg-white p-4 space-y-3">
                                             <div class="flex flex-wrap items-start justify-between gap-3">
                                                 <div>
-                                                    <div class="text-xs font-semibold uppercase tracking-wide text-emerald-700">2. Vincular ao cliente</div>
-                                                    <div class="mt-1 text-sm font-semibold text-slate-800">Selecione as funções disponíveis</div>
-                                                    <div class="text-xs text-slate-500">As funções marcadas poderão ser usadas para este cliente.</div>
+                                                    <div class="text-xs font-semibold uppercase tracking-wide text-emerald-700">2. Funções liberadas no PGR</div>
+                                                    <div class="mt-1 text-sm font-semibold text-slate-800">Selecione as funções disponíveis para este cliente</div>
+                                                    <div class="text-xs text-slate-500">Somente as funções marcadas aqui serão usadas como fallback do PGR quando o cliente não tiver GHE com funções.</div>
                                                 </div>
                                                 <span id="funcoesClienteResumo" class="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
                                                     0 selecionadas
@@ -424,16 +438,11 @@
                                                 <input type="text"
                                                        id="funcoesClienteBusca"
                                                        class="min-w-[220px] flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm"
-                                                       placeholder="Buscar função">
+                                               placeholder="Buscar função">
                                                 <button type="button"
                                                         id="btnSelecionarTodasFuncoes"
                                                         class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
                                                     Selecionar todas
-                                                </button>
-                                                <button type="button"
-                                                        id="btnLimparFuncoes"
-                                                        class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-                                                    Limpar
                                                 </button>
                                             </div>
                                         </div>
@@ -493,7 +502,7 @@
                                 <div class="flex justify-end">
                                     <button type="submit"
                                             class="rounded-xl bg-emerald-600 hover:bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm">
-                                        Salvar Funções
+                                        Salvar Funções do PGR
                                     </button>
                                 </div>
                             </div>
@@ -1616,9 +1625,13 @@
                     const buttons = Array.from(el.tabsWrap.querySelectorAll('[data-tab]'));
                     const scope = el.tabsWrap.closest('[data-tabs-scope="parametro-servicos"]') || el.tabsWrap.parentElement || document;
                     const panels = Array.from(scope.querySelectorAll('[data-tab-panel]'));
+                    const parametroTabInput = document.getElementById('parametro_tab');
                     if (!buttons.length || !panels.length) return;
 
                     const setActive = (name) => {
+                        if (parametroTabInput) {
+                            parametroTabInput.value = name;
+                        }
                         buttons.forEach(btn => {
                             const active = btn.dataset.tab === name;
                             btn.classList.toggle('bg-blue-600', active);
@@ -1635,7 +1648,11 @@
                         btn.addEventListener('click', () => setActive(btn.dataset.tab));
                     });
 
-                    setActive(buttons[0].dataset.tab);
+                    const initialTab = buttons.some(btn => btn.dataset.tab === @json($parametroTabInicial))
+                        ? @json($parametroTabInicial)
+                        : buttons[0].dataset.tab;
+
+                    setActive(initialTab);
                 }
 
                 function initFuncoesClienteTab() {
@@ -1830,7 +1847,7 @@
                             resetFuncoesEditor();
                             showItemToast(editingId
                                 ? `Função atualizada: ${payloadFuncao.nome}`
-                                : (json?.existing ? 'Função existente selecionada.' : `Função cadastrada: ${payloadFuncao.nome}`));
+                                : (json?.message || (json?.existing ? 'Esta função já existe. Selecione ela para o cliente.' : `Função cadastrada: ${payloadFuncao.nome}`)));
                         } catch (e) {
                             console.error(e);
                             showItemAlert(`Falha ao ${editingId ? 'atualizar' : 'cadastrar'} função.`, 'error');
@@ -1894,13 +1911,6 @@
                         getFuncaoCards().forEach((card) => {
                             const checkbox = card.querySelector(`input[name="${inputName}"]`);
                             if (checkbox) checkbox.checked = true;
-                        });
-                        refreshFuncoesClienteGrid();
-                    });
-                    el.btnLimparFuncoes?.addEventListener('click', () => {
-                        getFuncaoCards().forEach((card) => {
-                            const checkbox = card.querySelector(`input[name="${inputName}"]`);
-                            if (checkbox) checkbox.checked = false;
                         });
                         refreshFuncoesClienteGrid();
                     });

@@ -89,10 +89,6 @@ class EnsureRoutePermission
 
     private function isClienteOperationalServiceRoute(string $routeName): bool
     {
-        if ($routeName === 'operacional.funcoes.store-ajax') {
-            return true;
-        }
-
         $allowedPrefixes = [
             'operacional.kanban.aso.',
             'operacional.kanban.pgr.',

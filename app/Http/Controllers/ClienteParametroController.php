@@ -820,9 +820,18 @@ class ClienteParametroController extends Controller
             ->first();
 
         if ($existing) {
+            ClienteFuncao::firstOrCreate([
+                'empresa_id' => $empresaId,
+                'cliente_id' => $cliente->id,
+                'funcao_id' => (int) $existing->id,
+            ]);
+
             return response()->json([
                 'ok' => true,
                 'existing' => true,
+                'message' => 'Esta função já existe. Ela foi selecionada para o cliente.',
+                'id' => (int) $existing->id,
+                'nome' => (string) $existing->nome,
                 'funcao' => [
                     'id' => (int) $existing->id,
                     'nome' => (string) $existing->nome,
@@ -836,9 +845,18 @@ class ClienteParametroController extends Controller
             'ativo' => true,
         ]);
 
+        ClienteFuncao::firstOrCreate([
+            'empresa_id' => $empresaId,
+            'cliente_id' => $cliente->id,
+            'funcao_id' => (int) $funcao->id,
+        ]);
+
         return response()->json([
             'ok' => true,
             'existing' => false,
+            'message' => 'Função cadastrada e vinculada para uso no PGR.',
+            'id' => (int) $funcao->id,
+            'nome' => (string) $funcao->nome,
             'funcao' => [
                 'id' => (int) $funcao->id,
                 'nome' => (string) $funcao->nome,

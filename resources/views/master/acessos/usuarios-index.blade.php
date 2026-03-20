@@ -339,38 +339,36 @@
             const flashOk = @json(session('ok'));
 
             if (flashErro) {
-                Swal.fire({
+                window.uiAlert?.(flashErro, {
                     icon: 'error',
                     title: 'Não foi possível excluir',
-                    text: flashErro,
-                    confirmButtonText: 'Ok',
+                    confirmText: 'Ok',
                 });
             } else if (flashOk) {
-                Swal.fire({
+                window.uiAlert?.(flashOk, {
                     icon: 'success',
                     title: 'Concluído',
-                    text: flashOk,
-                    confirmButtonText: 'Ok',
+                    confirmText: 'Ok',
                 });
             }
 
             document.querySelectorAll('.js-delete-user').forEach(function (form) {
-                form.addEventListener('submit', function (event) {
+                form.addEventListener('submit', async function (event) {
                     event.preventDefault();
 
-                    Swal.fire({
-                        title: 'Excluir usuário?',
-                        text: 'Se houver vínculos, recomendamos inativar em vez de excluir.',
-                        icon: 'warning',
-                        showCancelButton: true,
-                        confirmButtonText: 'Excluir',
-                        cancelButtonText: 'Cancelar',
-                        confirmButtonColor: '#dc2626',
-                    }).then(function (result) {
-                        if (result.isConfirmed) {
-                            form.submit();
+                    const confirmed = await window.uiConfirm?.(
+                        'Se houver vínculos, recomendamos inativar em vez de excluir.',
+                        {
+                            title: 'Excluir usuário?',
+                            icon: 'warning',
+                            confirmText: 'Excluir',
+                            cancelText: 'Cancelar',
                         }
-                    });
+                    );
+
+                    if (confirmed) {
+                        HTMLFormElement.prototype.submit.call(form);
+                    }
                 });
             });
         });

@@ -468,6 +468,7 @@ class ClienteController extends Controller
             if ($afterAction === 'apresentacao') {
                 $r->session()->put('apresentacao_proposta.cliente', [
                     'proposta_id' => null,
+                    'cliente_id' => $cliente->id,
                     'cnpj' => $cliente->documento_principal,
                     'razao_social' => $cliente->razao_social,
                     'contato' => $cliente->nome_fantasia ?: $cliente->razao_social,
@@ -674,6 +675,7 @@ class ClienteController extends Controller
             ->pluck('total', 'cliente_ghe_funcoes.funcao_id')
             ->mapWithKeys(fn ($total, $funcaoId) => [(int) $funcaoId => (int) $total])
             ->all();
+        $clienteTemGheComFuncoes = !empty($ghesPorFuncao);
 
         $treinamentos = collect();
         $treinamentoId = (int) (config('services.treinamento_id') ?? 0);
@@ -823,6 +825,7 @@ class ClienteController extends Controller
             'clienteFuncoesIds' => $clienteFuncoesIds,
             'funcionariosPorFuncao' => $funcionariosPorFuncao,
             'ghesPorFuncao' => $ghesPorFuncao,
+            'clienteTemGheComFuncoes' => $clienteTemGheComFuncoes,
             'treinamentos'    => $treinamentos,
             'formasPagamento' => $formasPagamento,
             'parametro'       => $parametro,

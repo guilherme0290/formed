@@ -49,20 +49,12 @@
             [
                 'label' => 'Comercial',
                 'icon' => 'fa-solid fa-briefcase',
-                'route' => '#',
+                'route' => route('comercial.dashboard'),
                 'active' => request()->routeIs('comercial.*')
                     || request()->routeIs('master.agenda-vendedores.*')
-                    || request()->routeIs('master.tabela-precos.*')
                     || request()->routeIs('master.comissoes*')
-                    || request()->routeIs('comercial.funcoes.*')
                     || request()->routeIs('comercial.pipeline.*'),
                 'children' => [
-                    [
-                        'label' => 'Tabela de Preços',
-                        'icon' => 'fa-solid fa-tags',
-                        'route' => route('master.tabela-precos.itens.index'),
-                        'active' => request()->routeIs('master.tabela-precos.*'),
-                    ],
                     [
                         'label' => 'Comissões',
                         'icon' => 'fa-solid fa-coins',
@@ -78,12 +70,6 @@
                         'icon' => 'fa-solid fa-chart-column',
                         'route' => route('master.comissoes.vendedores'),
                         'active' => request()->routeIs('master.comissoes.vendedores'),
-                    ],
-                    [
-                        'label' => 'Funções',
-                        'icon' => 'fa-solid fa-puzzle-piece',
-                        'route' => route('comercial.funcoes.index'),
-                        'active' => request()->routeIs('comercial.funcoes.*'),
                     ],
                     [
                         'label' => 'Gerar Apresentação',
@@ -112,10 +98,32 @@
                 'active' => request()->routeIs('financeiro.*'),
             ],
             [
-                'label' => 'Acessos',
-                'icon' => 'fa-solid fa-key',
-                'route' => route('master.acessos'),
-                'active' => request()->routeIs('master.acessos*'),
+                'label' => 'Gestão',
+                'icon' => 'fa-solid fa-layer-group',
+                'route' => 'javascript:void(0)',
+                'active' => request()->routeIs('master.acessos*')
+                    || request()->routeIs('master.tabela-precos.*')
+                    || request()->routeIs('comercial.funcoes.*'),
+                'children' => [
+                    [
+                        'label' => 'Acessos',
+                        'icon' => 'fa-solid fa-key',
+                        'route' => route('master.acessos'),
+                        'active' => request()->routeIs('master.acessos*'),
+                    ],
+                    [
+                        'label' => 'Tabela de Preços',
+                        'icon' => 'fa-solid fa-tags',
+                        'route' => route('master.tabela-precos.itens.index'),
+                        'active' => request()->routeIs('master.tabela-precos.*'),
+                    ],
+                    [
+                        'label' => 'Funções',
+                        'icon' => 'fa-solid fa-puzzle-piece',
+                        'route' => route('comercial.funcoes.index'),
+                        'active' => request()->routeIs('comercial.funcoes.*'),
+                    ],
+                ],
             ],
             [
                 'label' => 'Clientes',
@@ -161,21 +169,19 @@
             @if(!empty($children))
                 <details class="group" @if($isActive) open @endif>
                     <summary class="group flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition cursor-pointer list-none {{ $menuState($isActive) }}">
-                        <a href="{{ route('comercial.dashboard') }}"
-                           class="flex min-w-0 items-center gap-3 flex-1"
-                           onclick="event.stopPropagation()">
+                        <span class="flex min-w-0 items-center gap-3 flex-1">
                             <span class="{{ $iconState($isActive) }}">
                                 <i class="{{ $item['icon'] }} w-4 text-center"></i>
                             </span>
-                            <span data-sidebar-label class="truncate">{{ $item['label'] }}</span>
-                        </a>
+                            <span data-sidebar-label class="truncate text-inherit">{{ $item['label'] }}</span>
+                        </span>
                         <span data-sidebar-chevron class="ml-auto text-slate-400 group-open:rotate-180 transition-transform" aria-hidden="true">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
                                  viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                             </svg>
                         </span>
-                        <span class="sr-only">Expandir/Recolher menu Comercial</span>
+                        <span class="sr-only">Expandir/Recolher menu {{ $item['label'] }}</span>
                     </summary>
 
                     <div data-sidebar-children class="mt-1 space-y-1 pl-3 min-w-0">
@@ -217,6 +223,3 @@
         </form>
     </div>
 </aside>
-
-
-

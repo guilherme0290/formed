@@ -539,6 +539,60 @@ class AsoGheService
             ->get();
     }
 
+    public function funcoesDisponiveisParaPgr(int $empresaId, int $clienteId): array
+    {
+        $funcoesGheIds = ClienteGhe::query()
+            ->where('empresa_id', $empresaId)
+            ->where('cliente_id', $clienteId)
+            ->where('ativo', true)
+            ->with('funcoes')
+            ->get()
+            ->pluck('funcoes')
+            ->flatten()
+            ->pluck('funcao_id')
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($funcoesGheIds->isNotEmpty()) {
+            return [
+                'funcoes' => Funcao::query()
+                    ->where('empresa_id', $empresaId)
+                    ->whereIn('id', $funcoesGheIds)
+                    ->where('ativo', true)
+                    ->orderBy('nome')
+                    ->get(),
+                'origem' => 'ghe',
+                'permite_cadastro' => false,
+                'mensagem' => 'As funcoes deste PGR estao sendo carregadas do GHE configurado para o cliente.',
+                'help_text' => 'Funcoes vindas do GHE do cliente. Para alterar a lista, ajuste o GHE no comercial.',
+            ];
+        }
+
+        $funcoesPgrIds = ClienteFuncao::query()
+            ->where('empresa_id', $empresaId)
+            ->where('cliente_id', $clienteId)
+            ->pluck('funcao_id')
+            ->filter()
+            ->unique()
+            ->values();
+
+        return [
+            'funcoes' => $funcoesPgrIds->isEmpty()
+                ? collect()
+                : Funcao::query()
+                    ->where('empresa_id', $empresaId)
+                    ->whereIn('id', $funcoesPgrIds)
+                    ->where('ativo', true)
+                    ->orderBy('nome')
+                    ->get(),
+            'origem' => 'pgr',
+            'permite_cadastro' => true,
+            'mensagem' => 'Este cliente nao possui GHE configurado. O PGR usara a lista exclusiva de funcoes do proprio PGR.',
+            'help_text' => 'Funcoes exclusivas do PGR. Se o cliente passar a ter GHE configurado, a lista do GHE tera prioridade.',
+        ];
+    }
+
     private function resolveProtocolosPorTipo(ClienteGhe $ghe): array
     {
         if ($ghe->relationLoaded('asoGrupos') && $ghe->asoGrupos->count()) {

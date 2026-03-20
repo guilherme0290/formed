@@ -168,8 +168,6 @@ class AcessosController extends Controller
                 if (ContaReceberItem::where('cliente_id', $clienteId)->where('status', '!=', 'CANCELADO')->exists()) {
                     $reasons[] = 'cliente possui contas a receber vinculadas';
                 }
-            } else {
-                $reasons[] = 'usuário cliente sem vínculo de cliente';
             }
         } else {
             if (Tarefa::where('responsavel_id', $user->id)->exists()) {
@@ -192,7 +190,7 @@ class AcessosController extends Controller
         if (!empty($reasons)) {
             return back()->with(
                 'erro',
-                'Não é possível excluir este usuário. Considere desativar o usuário.'
+                'Não é possível excluir este usuário: '.implode('; ', $reasons).'. Considere desativar o usuário.'
             );
         }
 

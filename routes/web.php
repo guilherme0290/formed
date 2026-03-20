@@ -132,6 +132,8 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
 
         Route::post('/funcoes/store-ajax', [FuncaoController::class, 'storeAjax'])
             ->name('funcoes.store-ajax');
+        Route::post('/clientes/{cliente}/parametros/funcoes', [\App\Http\Controllers\ClienteParametroController::class, 'storeFuncaoAjax'])
+            ->name('parametros.funcoes.store');
 
         Route::prefix('tarefas')->name('tarefas.')->group(function () {
             // Drag & Drop Kanban
@@ -630,6 +632,8 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
                 ->name('apresentacao.cliente');
             Route::post('/apresentacao', [\App\Http\Controllers\Comercial\ApresentacaoController::class, 'clienteStore'])
                 ->name('apresentacao.cliente.store');
+            Route::post('/apresentacao/cliente/draft', [\App\Http\Controllers\Comercial\ApresentacaoController::class, 'clienteDraftUpdate'])
+                ->name('apresentacao.cliente.draft');
             Route::get('/apresentacao/segmento', [\App\Http\Controllers\Comercial\ApresentacaoController::class, 'segmento'])
                 ->name('apresentacao.segmento');
             Route::post('/apresentacao/logo', [\App\Http\Controllers\Comercial\ApresentacaoController::class, 'clienteLogoStore'])

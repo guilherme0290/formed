@@ -130,147 +130,158 @@
 @once
     @push('scripts')
         <script>
-            document.addEventListener('DOMContentLoaded', function () {
-                if (!window.showFuncaoFeedbackPopup) {
-                    window.showFuncaoFeedbackPopup = function (message, type = 'success') {
-                        const popup = document.createElement('div');
-                        const success = type === 'success';
-                        popup.className = [
-                            'fixed z-[9999] left-1/2 top-6 -translate-x-1/2',
-                            'rounded-xl border px-4 py-3 text-sm font-semibold shadow-xl',
-                            'transition-all duration-300 opacity-0 -translate-y-2',
-                            success
-                                ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                                : 'bg-red-50 border-red-200 text-red-700'
-                        ].join(' ');
-                        popup.textContent = message;
+            (function () {
+                function initFuncaoSelects() {
+                    if (!window.showFuncaoFeedbackPopup) {
+                        window.showFuncaoFeedbackPopup = function (message, type = 'success') {
+                            const popup = document.createElement('div');
+                            const success = type === 'success';
+                            popup.className = [
+                                'fixed z-[9999] left-1/2 top-6 -translate-x-1/2',
+                                'rounded-xl border px-4 py-3 text-sm font-semibold shadow-xl',
+                                'transition-all duration-300 opacity-0 -translate-y-2',
+                                success
+                                    ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                                    : 'bg-red-50 border-red-200 text-red-700'
+                            ].join(' ');
+                            popup.textContent = message;
 
-                        document.body.appendChild(popup);
-                        requestAnimationFrame(function () {
-                            popup.classList.remove('opacity-0', '-translate-y-2');
-                        });
+                            document.body.appendChild(popup);
+                            requestAnimationFrame(function () {
+                                popup.classList.remove('opacity-0', '-translate-y-2');
+                            });
 
-                        setTimeout(function () {
-                            popup.classList.add('opacity-0', '-translate-y-2');
                             setTimeout(function () {
-                                popup.remove();
-                            }, 250);
-                        }, 2800);
-                    };
-                }
-
-                document.querySelectorAll('[data-funcao-select-wrapper]').forEach(function (wrapper) {
-                    const route     = wrapper.getAttribute('data-funcao-route');
-                    const csrfToken = wrapper.getAttribute('data-funcao-csrf');
-
-                    const select    = wrapper.querySelector('[data-funcao-select]');
-                    const btnOpen   = wrapper.querySelector('[data-funcao-open-modal]');
-                    const modal     = wrapper.querySelector('[data-funcao-modal]');
-                    const inputNome = wrapper.querySelector('[data-funcao-input]');
-                    const btnCancel = wrapper.querySelector('[data-funcao-cancel]');
-                    const btnSave   = wrapper.querySelector('[data-funcao-save]');
-                    const erroModal = wrapper.querySelector('[data-funcao-error-modal]');
-
-                    if (!route || !csrfToken || !select || !btnOpen || !modal || !inputNome || !btnCancel || !btnSave) {
-                        return;
+                                popup.classList.add('opacity-0', '-translate-y-2');
+                                setTimeout(function () {
+                                    popup.remove();
+                                }, 250);
+                            }, 2800);
+                        };
                     }
 
-                    function abrirModal() {
-                        modal.classList.remove('hidden');
-                        modal.classList.add('flex');
-
-                        if (erroModal) {
-                            erroModal.textContent = '';
-                            erroModal.classList.add('hidden');
-                        }
-                        inputNome.value = '';
-                        inputNome.focus();
-                    }
-
-                    function fecharModal() {
-                        modal.classList.add('hidden');
-                        modal.classList.remove('flex');
-                    }
-
-                    btnOpen.addEventListener('click', function () {
-                        if (btnOpen.disabled) return;
-                        abrirModal();
-                    });
-
-                    btnCancel.addEventListener('click', fecharModal);
-
-                    // fecha clicando no fundo escuro
-                    modal.addEventListener('click', function (e) {
-                        if (e.target === modal) {
-                            fecharModal();
-                        }
-                    });
-
-                    btnSave.addEventListener('click', function () {
-                        const nome = (inputNome.value || '').trim();
-
-                        if (!nome) {
-                            window.showFuncaoFeedbackPopup('Informe o nome da função.', 'error');
-                            inputNome.focus();
+                    document.querySelectorAll('[data-funcao-select-wrapper]').forEach(function (wrapper) {
+                        if (wrapper.dataset.funcaoSelectInit === '1') {
                             return;
                         }
 
-                        btnSave.disabled = true;
-                        if (erroModal) {
-                            erroModal.textContent = '';
-                            erroModal.classList.add('hidden');
+                        const route     = wrapper.getAttribute('data-funcao-route');
+                        const csrfToken = wrapper.getAttribute('data-funcao-csrf');
+
+                        const select    = wrapper.querySelector('[data-funcao-select]');
+                        const btnOpen   = wrapper.querySelector('[data-funcao-open-modal]');
+                        const modal     = wrapper.querySelector('[data-funcao-modal]');
+                        const inputNome = wrapper.querySelector('[data-funcao-input]');
+                        const btnCancel = wrapper.querySelector('[data-funcao-cancel]');
+                        const btnSave   = wrapper.querySelector('[data-funcao-save]');
+                        const erroModal = wrapper.querySelector('[data-funcao-error-modal]');
+
+                        if (!route || !csrfToken || !select || !btnOpen || !modal || !inputNome || !btnCancel || !btnSave) {
+                            return;
                         }
 
-                        fetch(route, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Accept': 'application/json',
-                                'X-CSRF-TOKEN': csrfToken,
-                            },
-                            body: JSON.stringify({ nome: nome })
-                        })
-                            .then(r => r.json())
-                            .then(json => {
-                                if (!json.ok) {
-                                    const msg = json.message || 'Não foi possível salvar a função.';
-                                    window.showFuncaoFeedbackPopup(msg, 'error');
-                                    return;
-                                }
+                        wrapper.dataset.funcaoSelectInit = '1';
 
-                                // Cria <option> no select deste componente e já seleciona
-                                let opt = Array.from(select.options).find(function (o) {
-                                    return String(o.value) === String(json.id);
-                                });
+                        function abrirModal() {
+                            modal.classList.remove('hidden');
+                            modal.classList.add('flex');
 
-                                if (!opt) {
-                                    opt = document.createElement('option');
-                                    opt.value = json.id;
-                                    opt.textContent = json.nome;
-                                    select.appendChild(opt);
-                                }
+                            if (erroModal) {
+                                erroModal.textContent = '';
+                                erroModal.classList.add('hidden');
+                            }
+                            inputNome.value = '';
+                            inputNome.focus();
+                        }
 
-                                select.value = json.id;
-                                // dispara evento change pra quem estiver ouvindo
-                                select.dispatchEvent(new Event('change'));
-                                window.showFuncaoFeedbackPopup(
-                                    json.existing
-                                        ? 'Função já cadastrada e selecionada com sucesso.'
-                                        : 'Função cadastrada com sucesso.',
-                                    'success'
-                                );
+                        function fecharModal() {
+                            modal.classList.add('hidden');
+                            modal.classList.remove('flex');
+                        }
 
+                        btnOpen.addEventListener('click', function () {
+                            if (btnOpen.disabled) return;
+                            abrirModal();
+                        });
+
+                        btnCancel.addEventListener('click', fecharModal);
+
+                        modal.addEventListener('click', function (e) {
+                            if (e.target === modal) {
                                 fecharModal();
+                            }
+                        });
+
+                        btnSave.addEventListener('click', function () {
+                            const nome = (inputNome.value || '').trim();
+
+                            if (!nome) {
+                                window.showFuncaoFeedbackPopup('Informe o nome da função.', 'error');
+                                inputNome.focus();
+                                return;
+                            }
+
+                            btnSave.disabled = true;
+                            if (erroModal) {
+                                erroModal.textContent = '';
+                                erroModal.classList.add('hidden');
+                            }
+
+                            fetch(route, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Accept': 'application/json',
+                                    'X-CSRF-TOKEN': csrfToken,
+                                },
+                                body: JSON.stringify({ nome: nome })
                             })
-                            .catch(function () {
-                                window.showFuncaoFeedbackPopup('Erro na comunicação com o servidor.', 'error');
-                            })
-                            .finally(function () {
-                                btnSave.disabled = false;
-                            });
+                                .then(r => r.json())
+                                .then(json => {
+                                    if (!json.ok) {
+                                        const msg = json.message || 'Não foi possível salvar a função.';
+                                        window.showFuncaoFeedbackPopup(msg, 'error');
+                                        return;
+                                    }
+
+                                    let opt = Array.from(select.options).find(function (o) {
+                                        return String(o.value) === String(json.id);
+                                    });
+
+                                    if (!opt) {
+                                        opt = document.createElement('option');
+                                        opt.value = json.id;
+                                        opt.textContent = json.nome;
+                                        select.appendChild(opt);
+                                    }
+
+                                    select.value = json.id;
+                                    select.dispatchEvent(new Event('change'));
+                                    window.showFuncaoFeedbackPopup(
+                                        json.existing
+                                            ? 'Função já cadastrada e selecionada com sucesso.'
+                                            : 'Função cadastrada com sucesso.',
+                                        'success'
+                                    );
+
+                                    fecharModal();
+                                })
+                                .catch(function () {
+                                    window.showFuncaoFeedbackPopup('Erro na comunicação com o servidor.', 'error');
+                                })
+                                .finally(function () {
+                                    btnSave.disabled = false;
+                                });
+                        });
                     });
-                });
-            });
+                }
+
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', initFuncaoSelects);
+                } else {
+                    initFuncaoSelects();
+                }
+            })();
         </script>
     @endpush
 @endonce

@@ -169,6 +169,7 @@
                 const cnpjMsg = document.getElementById('cnpjMsg');
                 const logoInput = document.getElementById('clienteLogoInput');
                 const logoPreview = document.getElementById('clienteLogoPreview');
+                const logoDivider = document.getElementById('clienteLogoDivider');
                 const logoUploadUrl = @json(route('comercial.apresentacao.logo'));
                 const logoRemoveUrl = @json(route('comercial.apresentacao.logo.destroy'));
                 const logoRemoveButton = document.getElementById('clienteLogoRemove');
@@ -182,12 +183,14 @@
                 const coverImageRemoveButton = document.getElementById('coverImageRemove');
                 const coverUploadUrl = @json(route('comercial.apresentacao.cover'));
                 const coverRemoveUrl = @json(route('comercial.apresentacao.cover.destroy'));
+                const clienteDraftUrl = @json(route('comercial.apresentacao.cliente.draft'));
                 const previewTargets = {
                     razao_social: Array.from(document.querySelectorAll('[data-preview-field="razao_social"], #view_razao_social')),
                     cnpj: Array.from(document.querySelectorAll('[data-preview-field="cnpj"], #view_cnpj')),
                     contato: Array.from(document.querySelectorAll('[data-preview-field="contato"], #view_contato')),
                     telefone: Array.from(document.querySelectorAll('[data-preview-field="telefone"], #view_telefone')),
                 };
+                let clienteDraftTimer = null;
 
                 function setMsg(type, text) {
                     if (!cnpjMsg) return;
@@ -231,6 +234,30 @@
                     if (telefone) previewTargets.telefone.forEach((el) => el.textContent = telefone.value || '—');
                 }
 
+                function persistClienteDraft() {
+                    window.clearTimeout(clienteDraftTimer);
+                    clienteDraftTimer = window.setTimeout(async () => {
+                        try {
+                            await fetch(clienteDraftUrl, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Accept': 'application/json',
+                                    'X-CSRF-TOKEN': csrfToken,
+                                },
+                                body: JSON.stringify({
+                                    cnpj: cnpj?.value || '',
+                                    razao_social: razao?.value || '',
+                                    contato: contato?.value || '',
+                                    telefone: telefone?.value || '',
+                                }),
+                            });
+                        } catch (error) {
+                            console.error(error);
+                        }
+                    }, 300);
+                }
+
                 if (cnpj) {
                     cnpj.value = maskDocumento(cnpj.value);
                     cnpj.addEventListener('input', () => {
@@ -248,7 +275,10 @@
                 }
 
                 [cnpj, razao, contato, telefone].forEach((el) => {
-                    el?.addEventListener('input', syncPreview);
+                    el?.addEventListener('input', () => {
+                        syncPreview();
+                        persistClienteDraft();
+                    });
                 });
 
                 btnBuscar?.addEventListener('click', async () => {
@@ -283,6 +313,7 @@
                             telefone.value = maskTelefone(json.telefone || json.telefone1 || json.telefone2);
                         }
                         syncPreview();
+                        persistClienteDraft();
                         setMsg('ok', 'Dados preenchidos com sucesso.');
                     } catch (error) {
                         console.error(error);
@@ -301,6 +332,7 @@
                     reader.onload = () => {
                         logoPreview.src = String(reader.result || '');
                         logoPreview.classList.remove('hidden');
+                        logoDivider?.classList.remove('hidden');
                     };
                     reader.readAsDataURL(file);
 
@@ -326,6 +358,7 @@
                         logoPreview.src = '';
                         logoPreview.classList.add('hidden');
                     }
+                    logoDivider?.classList.add('hidden');
                     if (logoInput) logoInput.value = '';
 
                     try {
@@ -431,6 +464,8 @@
                         console.error(error);
                     }
                 });
+
+                syncPreview();
             })();
         </script>
     @endpush

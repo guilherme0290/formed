@@ -204,6 +204,10 @@ class ContasReceberController extends Controller
             $statusConta = strtolower($statusConta);
             if ($statusConta === 'cancelada') {
                 $contasQuery->where('status', 'CANCELADO');
+            } elseif ($statusConta === 'com_baixa') {
+                $contasQuery
+                    ->where('status', '!=', 'CANCELADO')
+                    ->whereRaw('COALESCE(total_baixado, 0) > 0');
             } elseif ($statusConta === 'baixada') {
                 $contasQuery
                     ->where('status', '!=', 'CANCELADO')
@@ -495,6 +499,10 @@ class ContasReceberController extends Controller
 
     private function estimarItensTarefaNaoFinalizada(Tarefa $tarefa): array
     {
+        if (!$tarefa->cliente_id || !$tarefa->empresa_id) {
+            return [];
+        }
+
         $servicoNome = trim((string) ($tarefa->servico?->nome ?? ''));
         $servicoNomeNormalizado = mb_strtolower($servicoNome);
         $precificacao = app(PrecificacaoService::class);
@@ -537,6 +545,10 @@ class ContasReceberController extends Controller
 
     private function estimarItensGenericosTarefa(Tarefa $tarefa): array
     {
+        if (!$tarefa->cliente_id || !$tarefa->empresa_id || !$tarefa->servico_id) {
+            return [];
+        }
+
         /** @var ContratoClienteService $contratoService */
         $contratoService = app(ContratoClienteService::class);
 
