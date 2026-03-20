@@ -391,6 +391,10 @@ class DashboardController extends Controller
 
     private function estimarItensTarefaNaoFinalizada(Tarefa $tarefa): array
     {
+        if (!$tarefa->cliente_id || !$tarefa->empresa_id) {
+            return [];
+        }
+
         $servicoNome = trim((string) ($tarefa->servico?->nome ?? ''));
         $servicoNomeNormalizado = mb_strtolower($servicoNome);
         $precificacao = app(PrecificacaoService::class);
@@ -433,6 +437,10 @@ class DashboardController extends Controller
 
     private function estimarItensGenericosTarefa(Tarefa $tarefa): array
     {
+        if (!$tarefa->cliente_id || !$tarefa->empresa_id || !$tarefa->servico_id) {
+            return [];
+        }
+
         /** @var ContratoClienteService $contratoService */
         $contratoService = app(ContratoClienteService::class);
 
