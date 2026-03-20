@@ -96,9 +96,9 @@
 {{--                </div>--}}
 {{--                <div class="text-sky-100 text-xs mt-1">Total de itens</div>--}}
 {{--            </div>--}}
-            <a href="{{ route('financeiro.faturamento-detalhado', [
-                'status' => 'pendente',
-                'filtrar' => 1,
+            <a href="{{ route('financeiro.contas-receber', [
+                'aba' => 'vendas',
+                'status_finalizacao' => 'nao_finalizadas',
                 'data_inicio' => now()->subMonth()->format('Y-m-d'),
                 'data_fim' => now()->format('Y-m-d'),
             ]) }}"
@@ -107,24 +107,24 @@
                 <div class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 text-white mx-auto">&#128184;</div>
                 <div class="mt-2 text-xs uppercase tracking-wide text-amber-100">Faturamento Pendente</div>
                 <div class="text-3xl font-bold text-white mt-1">
-                    R$ {{ number_format($financeiro['total_aberto'] ?? 0, 2, ',', '.') }}
+                    R$ {{ number_format($financeiro['total_servicos_nao_finalizados'] ?? 0, 2, ',', '.') }}
                 </div>
-                <div class="text-amber-100 text-xs mt-1">Clique para detalhar</div>
+                <div class="text-amber-100 text-xs mt-1">Serviços não finalizados</div>
             </a>
-            <a href="{{ route('financeiro.faturamento-detalhado', [
-                'status' => 'recebido',
-                'filtrar' => 1,
-                'data_inicio' => now()->subMonth()->format('Y-m-d'),
-                'data_fim' => now()->format('Y-m-d'),
+            <a href="{{ route('financeiro.contas-receber', [
+                'aba' => 'faturas',
+                'faturas_status' => 'com_baixa',
+                'faturas_data_inicio' => now()->subMonth()->format('Y-m-d'),
+                'faturas_data_fim' => now()->format('Y-m-d'),
             ]) }}"
                class="rounded-2xl shadow-lg border border-emerald-400/40 p-5 text-center text-white bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-500 hover:opacity-95 transition"
                data-dashboard-card="financeiro-recebido">
                 <div class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 text-white mx-auto">&#128176;</div>
-                <div class="mt-2 text-xs uppercase tracking-wide text-emerald-100">Faturamento Recebido</div>
+                <div class="mt-2 text-xs uppercase tracking-wide text-emerald-100">Faturas com Baixas Registradas</div>
                 <div class="text-3xl font-bold text-white mt-1">
-                    R$ {{ number_format($financeiro['total_recebido'] ?? 0, 2, ',', '.') }}
+                    R$ {{ number_format($financeiro['faturas_com_baixa_registrada'] ?? 0, 2, ',', '.') }}
                 </div>
-                <div class="text-emerald-100 text-xs mt-1">Clique para detalhar</div>
+                <div class="text-emerald-100 text-xs mt-1">Faturas com ao menos uma baixa</div>
             </a>
             <a href="{{ route('master.agendamentos') }}"
                class="rounded-2xl shadow-lg border border-emerald-400/40 p-5 text-center text-white bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-500 hover:opacity-95 transition"

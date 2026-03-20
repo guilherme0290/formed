@@ -204,6 +204,10 @@ class ContasReceberController extends Controller
             $statusConta = strtolower($statusConta);
             if ($statusConta === 'cancelada') {
                 $contasQuery->where('status', 'CANCELADO');
+            } elseif ($statusConta === 'com_baixa') {
+                $contasQuery
+                    ->where('status', '!=', 'CANCELADO')
+                    ->whereRaw('COALESCE(total_baixado, 0) > 0');
             } elseif ($statusConta === 'baixada') {
                 $contasQuery
                     ->where('status', '!=', 'CANCELADO')

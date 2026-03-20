@@ -4,18 +4,22 @@ namespace App\Http\Controllers\Master;
 
 use App\Http\Controllers\Controller;
 use App\Models\AgendaTarefa;
+use App\Models\ClienteContrato;
+use App\Models\ContaReceber;
 use App\Models\Proposta;
-use App\Models\ContaReceberBaixa;
 use App\Models\ContaReceberItem;
 use App\Models\Tarefa;
 use App\Models\UnidadeClinica;
 use App\Models\User;
 use App\Models\Venda;
 use App\Models\VendaItem;
+use App\Services\ContratoClienteService;
+use App\Services\PrecificacaoService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Validation\ValidationException;
 
 class DashboardController extends Controller
 {
@@ -331,27 +335,146 @@ class DashboardController extends Controller
 
     private function metricasFinanceiras(?int $empresaId): array
     {
-        $totalEmAberto = (float) ContaReceberItem::query()
-            ->where('contas_receber_itens.empresa_id', $empresaId)
-            ->where('contas_receber_itens.status', '!=', 'CANCELADO')
-            ->selectRaw('COALESCE(SUM(GREATEST(contas_receber_itens.valor - COALESCE(baixas.total_baixado, 0), 0)), 0) as total')
-            ->leftJoinSub(
-                ContaReceberBaixa::query()
-                    ->selectRaw('conta_receber_item_id, SUM(valor) as total_baixado')
-                    ->groupBy('conta_receber_item_id'),
-                'baixas',
-                fn ($join) => $join->on('contas_receber_itens.id', '=', 'baixas.conta_receber_item_id')
-            )
-            ->value('total');
+        $totalServicosNaoFinalizados = $this->totalServicosNaoFinalizados($empresaId);
 
-        $totalRecebido = (float) ContaReceberBaixa::query()
-            ->when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId))
-            ->sum('valor');
+        $contasQuery = ContaReceber::query()
+            ->when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId));
+
+        $totalEmAberto = (float) (clone $contasQuery)->sum(
+            DB::raw('CASE WHEN status = \'CANCELADO\' THEN 0 WHEN COALESCE(total,0) - COALESCE(total_baixado,0) > 0 THEN COALESCE(total,0) - COALESCE(total_baixado,0) ELSE 0 END')
+        );
+
+        $faturasComBaixaRegistrada = (float) (clone $contasQuery)
+            ->whereRaw('COALESCE(total_baixado, 0) > 0')
+            ->sum('total');
 
         return [
+            'total_servicos_nao_finalizados' => $totalServicosNaoFinalizados,
             'total_aberto' => $totalEmAberto,
-            'total_recebido' => $totalRecebido,
+            'faturas_com_baixa_registrada' => $faturasComBaixaRegistrada,
         ];
+    }
+
+    private function totalServicosNaoFinalizados(?int $empresaId): float
+    {
+        if (!$empresaId) {
+            return 0.0;
+        }
+
+        return (float) Tarefa::query()
+            ->with([
+                'cliente:id,razao_social,nome_fantasia',
+                'servico:id,nome',
+                'coluna:id,nome,slug,finaliza',
+                'funcionario:id,nome',
+                'asoSolicitacao.funcionario:id,nome,funcao_id',
+                'pcmsoSolicitacao:id,tarefa_id,tipo',
+                'pgrSolicitacao:id,tarefa_id,tipo,com_art,com_pcms0,obra_nome',
+                'treinamentoNrDetalhes:id,tarefa_id,treinamentos',
+            ])
+            ->where('empresa_id', $empresaId)
+            ->whereNull('finalizado_em')
+            ->whereHas('coluna', function ($q) {
+                $q->where('finaliza', false)
+                    ->whereRaw("COALESCE(LOWER(slug), '') NOT LIKE 'cancel%'");
+            })
+            ->whereNotExists(function ($q) {
+                $q->select(DB::raw(1))
+                    ->from('vendas as v')
+                    ->whereColumn('v.tarefa_id', 'tarefas.id');
+            })
+            ->get()
+            ->sum(function (Tarefa $tarefa) {
+                return collect($this->estimarItensTarefaNaoFinalizada($tarefa))->sum('subtotal_snapshot');
+            });
+    }
+
+    private function estimarItensTarefaNaoFinalizada(Tarefa $tarefa): array
+    {
+        $servicoNome = trim((string) ($tarefa->servico?->nome ?? ''));
+        $servicoNomeNormalizado = mb_strtolower($servicoNome);
+        $precificacao = app(PrecificacaoService::class);
+
+        try {
+            $itensVenda = match ($servicoNomeNormalizado) {
+                'aso' => $precificacao->precificarAso($tarefa)['itensVenda'] ?? [],
+                'pcmso' => $precificacao->precificarPcmso($tarefa)['itensVenda'] ?? [],
+                'treinamentos nrs' => $precificacao->precificarTreinamentosNr($tarefa)['itensVenda'] ?? [],
+                'pgr' => $precificacao->precificarPgr($tarefa)['itensVenda'] ?? [],
+                default => $this->estimarItensGenericosTarefa($tarefa),
+            };
+        } catch (ValidationException) {
+            $itensVenda = $this->estimarItensGenericosTarefa($tarefa);
+        }
+
+        if (empty($itensVenda)) {
+            return [[
+                'descricao_snapshot' => $servicoNome !== '' ? $servicoNome : ($tarefa->titulo ?: 'Serviço'),
+                'subtotal_snapshot' => 0.0,
+                'data_referencia' => $tarefa->created_at,
+            ]];
+        }
+
+        return collect($itensVenda)->map(function (array $item) use ($tarefa, $servicoNome) {
+            $quantidade = max(1, (int) ($item['quantidade'] ?? 1));
+            $subtotal = array_key_exists('subtotal_snapshot', $item)
+                ? (float) ($item['subtotal_snapshot'] ?? 0)
+                : null;
+            $valorUnitario = (float) ($item['preco_unitario_snapshot'] ?? 0);
+            $valorTotal = $subtotal ?? ($valorUnitario * $quantidade);
+
+            return [
+                'descricao_snapshot' => (string) ($item['descricao_snapshot'] ?? ($servicoNome !== '' ? $servicoNome : 'Serviço')),
+                'subtotal_snapshot' => $valorTotal,
+                'data_referencia' => $tarefa->created_at,
+            ];
+        })->all();
+    }
+
+    private function estimarItensGenericosTarefa(Tarefa $tarefa): array
+    {
+        /** @var ContratoClienteService $contratoService */
+        $contratoService = app(ContratoClienteService::class);
+
+        $contrato = $contratoService->getContratoAtivo(
+            (int) $tarefa->cliente_id,
+            (int) $tarefa->empresa_id,
+            $tarefa->created_at ? Carbon::parse($tarefa->created_at) : null
+        );
+
+        $valor = 0.0;
+        if ($contrato) {
+            $valor = $this->resolverValorGenericoTarefa($tarefa, $contrato);
+        }
+
+        if (!$contrato || $valor <= 0) {
+            $contrato = $contratoService->getContratoAtivo(
+                (int) $tarefa->cliente_id,
+                (int) $tarefa->empresa_id,
+                null
+            );
+            $valor = $contrato ? $this->resolverValorGenericoTarefa($tarefa, $contrato) : 0.0;
+        }
+
+        if (!$contrato) {
+            return [];
+        }
+
+        return [[
+            'descricao_snapshot' => trim((string) ($tarefa->servico?->nome ?? $tarefa->titulo ?? 'Serviço')),
+            'subtotal_snapshot' => $valor,
+            'data_referencia' => $tarefa->created_at,
+        ]];
+    }
+
+    private function resolverValorGenericoTarefa(Tarefa $tarefa, ClienteContrato $contrato): float
+    {
+        $item = $contrato->itens()
+            ->where('servico_id', $tarefa->servico_id)
+            ->where('ativo', true)
+            ->first();
+
+        return (float) ($item?->preco_unitario_snapshot ?? 0);
     }
 
     private function resumoAgendamentosHoje(?int $empresaId): array

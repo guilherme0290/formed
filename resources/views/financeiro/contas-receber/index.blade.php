@@ -488,6 +488,7 @@
                                         class="w-full rounded-xl border border-slate-200 bg-white text-slate-900 text-sm px-3 py-2 h-[42px]">
                                     <option value="">Todos</option>
                                     <option value="aberta" @selected(($filtrosFaturas['status'] ?? '') === 'aberta')>Aberta</option>
+                                    <option value="com_baixa" @selected(($filtrosFaturas['status'] ?? '') === 'com_baixa')>Com baixa</option>
                                     <option value="parcial" @selected(($filtrosFaturas['status'] ?? '') === 'parcial')>Parcial</option>
                                     <option value="baixada" @selected(($filtrosFaturas['status'] ?? '') === 'baixada')>Baixada</option>
                                     <option value="cancelada" @selected(($filtrosFaturas['status'] ?? '') === 'cancelada')>Cancelada</option>
