@@ -681,10 +681,14 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
                 Route::prefix('clausulas')->name('clausulas.')->group(function () {
                     Route::get('/', [\App\Http\Controllers\Comercial\ContratoClausulaController::class, 'index'])
                         ->name('index');
+                    Route::post('/reordenar', [\App\Http\Controllers\Comercial\ContratoClausulaController::class, 'reorder'])
+                        ->name('reorder');
                     Route::get('/criar', [\App\Http\Controllers\Comercial\ContratoClausulaController::class, 'create'])
                         ->name('create');
                     Route::post('/', [\App\Http\Controllers\Comercial\ContratoClausulaController::class, 'store'])
                         ->name('store');
+                    Route::get('/{clausula}', [\App\Http\Controllers\Comercial\ContratoClausulaController::class, 'show'])
+                        ->name('show');
                     Route::get('/{clausula}/editar', [\App\Http\Controllers\Comercial\ContratoClausulaController::class, 'edit'])
                         ->name('edit');
                     Route::put('/{clausula}', [\App\Http\Controllers\Comercial\ContratoClausulaController::class, 'update'])

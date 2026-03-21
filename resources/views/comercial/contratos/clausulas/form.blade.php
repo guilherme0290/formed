@@ -5,7 +5,7 @@
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-4">
         <div>
             <h1 class="text-xl font-semibold text-slate-900">{{ $clausula->exists ? 'Editar cláusula' : 'Nova cláusula' }}</h1>
-            <p class="text-xs text-slate-500">Placeholders disponíveis: <code>@{{CONTRATANTE_RAZAO}}</code>, <code>@{{CONTRATADA_RAZAO}}</code>, <code>@{{DATA_HOJE}}</code>.</p>
+            <p class="text-xs text-slate-500">Placeholders disponíveis: <code>@{{CONTRATANTE_RAZAO}}</code>, <code>@{{CONTRATADA_RAZAO}}</code>, <code>@{{DATA_HOJE}}</code>, <code>@{{NUMERO_CLAUSULA}}</code>.</p>
             <p class="text-xs text-slate-500 mt-1">O título da cláusula será exibido automaticamente no contrato. Não use título no conteúdo.</p>
         </div>
 

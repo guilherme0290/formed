@@ -15,6 +15,10 @@
             <div class="flex items-center gap-2">
                 <a href="{{ route('comercial.contratos.clausulas.index') }}"
                    class="px-4 py-2 rounded-lg border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50">Catálogo de cláusulas</a>
+                @if($contrato->cliente)
+                    <a href="{{ route('comercial.clientes.edit', $contrato->cliente) }}"
+                       class="px-4 py-2 rounded-lg border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50">Cadastro do cliente</a>
+                @endif
                 <a href="{{ route('comercial.contratos.show', $contrato) }}"
                    class="px-4 py-2 rounded-lg border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50">Voltar</a>
             </div>

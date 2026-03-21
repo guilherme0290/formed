@@ -99,10 +99,9 @@ class ContratoDocumentoController extends Controller
 
         $servicos = $this->resolverServicosContrato($itens);
 
-        $clausulas = ContratoClausula::query()
+        $clausulasBase = ContratoClausula::query()
             ->where('empresa_id', $contrato->empresa_id)
             ->where('ativo', true)
-            ->orderBy('ordem')
             ->get()
             ->filter(function (ContratoClausula $clausula) use ($servicos) {
                 $tipo = strtoupper((string) $clausula->servico_tipo);
@@ -110,12 +109,17 @@ class ContratoDocumentoController extends Controller
             })
             ->values();
 
-        $clausulasSnapshot = $clausulas->map(fn (ContratoClausula $c) => [
-            'slug' => $c->slug,
-            'titulo' => $c->titulo,
-            'servico_tipo' => $c->servico_tipo,
-            'ordem' => $c->ordem,
-            'versao' => $c->versao,
+        $clausulas = $this->buildClauseSequence($clausulasBase);
+
+        $clausulasSnapshot = collect($clausulas)->map(fn (array $c) => [
+            'id' => $c['id'] ?? null,
+            'parent_id' => $c['parent_id'] ?? null,
+            'numero' => $c['numero'] ?? null,
+            'slug' => $c['slug'] ?? null,
+            'titulo' => $c['titulo'] ?? null,
+            'servico_tipo' => $c['servico_tipo'] ?? null,
+            'ordem' => $c['ordem_local'] ?? null,
+            'versao' => $c['versao'] ?? null,
         ])->all();
 
         $unidades = [];
@@ -124,12 +128,12 @@ class ContratoDocumentoController extends Controller
                 ->where('unidades_clinicas.empresa_id', $contrato->empresa_id)
                 ->where('unidades_clinicas.ativo', true)
                 ->orderBy('unidades_clinicas.nome')
-                ->get(['unidades_clinicas.nome', 'unidades_clinicas.endereco'])
+                ->get(['unidades_clinicas.nome', 'unidades_clinicas.endereco', 'unidades_clinicas.telefone'])
                 ->all();
         }
 
         $payload = $this->buildPayload($contrato, $itens, $unidades);
-        $html = $this->buildHtmlTemplate($payload, $clausulas->all());
+        $html = $this->buildHtmlTemplate($payload, $clausulas);
 
         $documento = ClienteContratoDocumento::query()
             ->firstOrNew(['cliente_contrato_id' => $contrato->id], [
@@ -203,6 +207,7 @@ class ContratoDocumentoController extends Controller
                 return [
                     'nome' => $u->nome ?? 'Unidade',
                     'endereco' => $u->endereco ?? '',
+                    'telefone' => $u->telefone ?? '',
                 ];
             }, $unidades),
             'totais' => [
@@ -229,7 +234,6 @@ class ContratoDocumentoController extends Controller
         $treinamentosParametro = $payload['treinamentos_parametro'] ?? [];
 
         $dataHoje = $meta['data_hoje'] ?? now()->format('d/m/Y');
-        $totalItensFmt = $this->formatMoney((float) ($totais['total_itens'] ?? 0));
         $contratadaRazao = e((string) ($contratada['razao'] ?? '—'));
         $contratadaCnpj = e((string) ($contratada['cnpj'] ?? '—'));
         $contratadaEndereco = e((string) ($contratada['endereco'] ?? '—'));
@@ -263,21 +267,30 @@ class ContratoDocumentoController extends Controller
         }
 
         $rowsGeneral = $this->buildRowsItens($generalItems, true);
-        $rowsTraining = $this->buildRowsItens($trainingItems, false);
-        $sectionAsoPorGhe = $this->renderAsoPorGheSection($asoItems);
+        $rowsTraining = $this->buildRowsTreinamentosResumo($trainingItems);
+        $sectionAsoConsolidado = $this->renderAsoConsolidadoSection($asoItems);
 
-        $rowsUnidades = '';
+        $cardsUnidades = '';
         foreach ($unidades as $unidade) {
-            $rowsUnidades .= '<li><strong>' . e($unidade['nome']) . '</strong><br>' . e($unidade['endereco']) . '</li>';
+            $cardsUnidades .= '<article class="unit-card">'
+                . '<div class="unit-head">' . e((string) ($unidade['nome'] ?? 'Unidade')) . '</div>'
+                . '<div class="unit-line"><span class="unit-label">Endereço:</span> ' . e((string) ($unidade['endereco'] ?? 'Não informado')) . '</div>'
+                . '<div class="unit-line"><span class="unit-label">Telefone:</span> ' . e((string) ($unidade['telefone'] ?? 'Não informado')) . '</div>'
+                . '</article>';
         }
-        if ($rowsUnidades === '') {
-            $rowsUnidades = '<li>Nenhuma unidade permitida configurada para este cliente.</li>';
+        if ($cardsUnidades === '') {
+            $cardsUnidades = '<article class="unit-card"><div class="unit-head">Sem unidades cadastradas</div><div class="unit-line">Nenhuma unidade permitida configurada para este cliente.</div></article>';
         }
 
         $clausulasHtml = '';
         foreach ($clausulas as $clausula) {
-            $tituloClausula = e((string) ($clausula->titulo ?? 'CLÁUSULA'));
-            $conteudo = $this->aplicarPlaceholders($clausula->html_template, $contratada, $contratante, $meta);
+            $numeroClausula = trim((string) ($clausula['numero'] ?? ''));
+            $tituloBase = (string) ($clausula['titulo'] ?? 'CLÁUSULA');
+            $tituloClausula = e($this->resolveClauseTitle($tituloBase, $numeroClausula));
+
+            $conteudoBruto = (string) ($clausula['html_template'] ?? '');
+            $conteudoBruto = str_replace('{{NUMERO_CLAUSULA}}', $numeroClausula, $conteudoBruto);
+            $conteudo = $this->aplicarPlaceholders($conteudoBruto, $contratada, $contratante, $meta);
             $conteudo = $this->normalizeClauseHtml($conteudo);
             $clausulasHtml .= '<section class="clause"><h3>' . $tituloClausula . '</h3>' . $conteudo . '</section>';
         }
@@ -289,8 +302,8 @@ class ContratoDocumentoController extends Controller
         $sectionEsocial = $this->renderEsocialTable($esocialPayload, !empty($esocialItems));
         $rowsTreinamentosDetalhados = $this->buildRowsTreinamentosDetalhados($treinamentosParametro);
         $sectionTreinamentos = $rowsTreinamentosDetalhados !== ''
-            ? $this->renderSectionTable('Tabela de Treinamentos', $rowsTreinamentosDetalhados, ['Categoria', 'Treinamento/Pacote', 'Qtd', 'Valor unitário', 'Total'])
-            : $this->renderSectionTable('Tabela de Treinamentos', $rowsTraining, ['Treinamento/Pacote', 'Qtd', 'Valor unitário', 'Total']);
+            ? $this->renderSectionTable('Tabela de Treinamentos', $rowsTreinamentosDetalhados, ['Categoria', 'Treinamento/Pacote', 'Total'])
+            : $this->renderSectionTable('Tabela de Treinamentos', $rowsTraining, ['Treinamento/Pacote', 'Total']);
 
         return <<<HTML
 <!doctype html>
@@ -325,6 +338,11 @@ th{background:var(--soft);text-align:left;font-weight:700;}
 .ghe-head{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px;}
 .ghe-title{font-size:12px;font-weight:700;}
 .ghe-total{font-size:11px;color:var(--muted);}
+.units-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.unit-card{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fff;break-inside:avoid;}
+.unit-head{font-size:12px;font-weight:700;margin-bottom:6px;}
+.unit-line{font-size:11px;color:#334155;line-height:1.45;margin:2px 0;}
+.unit-label{font-weight:700;color:#111827;}
 </style>
 </head>
 <body>
@@ -365,28 +383,22 @@ th{background:var(--soft);text-align:left;font-weight:700;}
         <thead>
             <tr>
                 <th>Serviço</th>
-                <th class="right">Qtd</th>
-                <th class="right">Valor unitário</th>
                 <th class="right">Total</th>
             </tr>
         </thead>
         <tbody>
             {$rowsGeneral}
-            <tr>
-                <td colspan="3" class="right"><b>Total</b></td>
-                <td class="right"><b>R$ {$totalItensFmt}</b></td>
-            </tr>
         </tbody>
     </table>
 
-    {$sectionAsoPorGhe}
+    {$sectionAsoConsolidado}
     {$sectionEsocial}
     {$sectionTreinamentos}
 
     <div class="divider"></div>
 
     <h2>Clínicas credenciadas (unidades permitidas)</h2>
-    <ul class="small">{$rowsUnidades}</ul>
+    <div class="units-grid">{$cardsUnidades}</div>
 
     {$clausulasHtml}
 
@@ -418,7 +430,7 @@ HTML;
             . '<table><thead>' . $thead . '</thead><tbody>' . $rows . '</tbody></table>';
     }
 
-    private function renderAsoPorGheSection(array $asoItems): string
+    private function renderAsoConsolidadoSection(array $asoItems): string
     {
         if (empty($asoItems)) {
             return '';
@@ -439,81 +451,44 @@ HTML;
         }
 
         if (empty($gheMap)) {
-            $rowsFallback = '';
-            foreach ($asoItems as $item) {
-                $tipo = (string) ($item['aso_tipo'] ?? '');
-                $tipo = $tipo !== '' ? strtoupper(str_replace('_', ' ', $tipo)) : 'ASO';
-                $rowsFallback .= '<tr>'
-                    . '<td>' . e($tipo) . '</td>'
-                    . '<td>' . e((string) ($item['nome'] ?? 'ASO')) . '</td>'
-                    . '<td class="right">R$ ' . $this->formatMoney((float) ($item['valor_total'] ?? 0)) . '</td>'
-                    . '</tr>';
-            }
-
-            return $this->renderSectionTable('Tabela de ASO por Tipo', $rowsFallback, ['Tipo ASO', 'Descrição', 'Valor']);
+            return '';
         }
 
         $tipoOrder = ['admissional', 'periodico', 'demissional', 'mudanca_funcao', 'retorno_trabalho'];
-        $html = '<div class="divider"></div><h2>Tabela de ASO por GHE</h2>';
+        $rows = '';
+        $seen = [];
 
         foreach ($gheMap as $ghe) {
-            $gheNome = (string) ($ghe['nome'] ?? 'GHE');
-            $totalGhe = 0.0;
-            $tiposHtml = '';
-
             foreach ($tipoOrder as $tipo) {
                 $exames = data_get($ghe, 'exames_por_tipo.' . $tipo, []);
-                $subtotal = data_get($ghe, 'total_por_tipo.' . $tipo);
-
                 if (!is_array($exames)) {
-                    $exames = [];
-                }
-
-                if (!is_numeric($subtotal)) {
-                    $subtotal = array_reduce($exames, fn ($carry, $ex) => $carry + (float) ($ex['preco'] ?? 0), 0.0);
-                } else {
-                    $subtotal = (float) $subtotal;
-                }
-
-                if ($subtotal <= 0 && empty($exames)) {
                     continue;
                 }
 
-                $totalGhe += $subtotal;
-                $tipoLabel = strtoupper(str_replace('_', ' ', $tipo));
-
-                $rows = '';
                 foreach ($exames as $exame) {
+                    $id = (int) ($exame['id'] ?? 0);
+                    $titulo = trim((string) ($exame['titulo'] ?? 'Exame'));
+                    $key = $id > 0 ? 'id:' . $id : 'titulo:' . mb_strtolower($titulo);
+
+                    // Regra solicitada: manter apenas a primeira ocorrência.
+                    if (isset($seen[$key])) {
+                        continue;
+                    }
+
+                    $seen[$key] = true;
                     $rows .= '<tr>'
-                        . '<td>' . e((string) ($exame['titulo'] ?? 'Exame')) . '</td>'
+                        . '<td>' . e($titulo !== '' ? $titulo : 'Exame') . '</td>'
                         . '<td class="right">R$ ' . $this->formatMoney((float) ($exame['preco'] ?? 0)) . '</td>'
                         . '</tr>';
                 }
-                if ($rows === '') {
-                    $rows = '<tr><td colspan="2" class="small">Sem exames detalhados para este tipo.</td></tr>';
-                }
-
-                $tiposHtml .= '<h3 style="margin-top:12px;">' . e($tipoLabel) . '</h3>'
-                    . '<table><thead><tr><th>Exame</th><th class="right">Valor</th></tr></thead><tbody>'
-                    . $rows
-                    . '<tr><td class="right"><b>Subtotal ' . e($tipoLabel) . '</b></td><td class="right"><b>R$ ' . $this->formatMoney($subtotal) . '</b></td></tr>'
-                    . '</tbody></table>';
             }
-
-            if ($tiposHtml === '') {
-                continue;
-            }
-
-            $html .= '<section class="ghe-block">'
-                . '<div class="ghe-head">'
-                . '<div class="ghe-title">GHE: ' . e($gheNome) . '</div>'
-                . '<div class="ghe-total">Total GHE: R$ ' . $this->formatMoney($totalGhe) . '</div>'
-                . '</div>'
-                . $tiposHtml
-                . '</section>';
         }
 
-        return $html;
+        if ($rows === '') {
+            return '';
+        }
+
+        return $this->renderSectionTable('Tabela de Exames ASO', $rows, ['Descrição do exame', 'Valor']);
     }
 
     private function renderEsocialTable(array $esocialPayload, bool $hasEsocialItem): string
@@ -554,7 +529,7 @@ HTML;
     {
         if (empty($items)) {
             return $renderEmptyRow
-                ? '<tr><td colspan="4" class="small">Nenhum item nesta seção.</td></tr>'
+                ? '<tr><td colspan="2" class="small">Nenhum item nesta seção.</td></tr>'
                 : '';
         }
 
@@ -562,8 +537,6 @@ HTML;
         foreach ($items as $item) {
             $rows .= '<tr>'
                 . '<td>' . e((string) ($item['nome'] ?? 'Serviço')) . '</td>'
-                . '<td class="right">' . e((string) ($item['quantidade'] ?? 1)) . '</td>'
-                . '<td class="right">R$ ' . $this->formatMoney((float) ($item['valor_unitario'] ?? 0)) . '</td>'
                 . '<td class="right">R$ ' . $this->formatMoney((float) ($item['valor_total'] ?? 0)) . '</td>'
                 . '</tr>';
         }
@@ -582,8 +555,23 @@ HTML;
             $rows .= '<tr>'
                 . '<td>' . e((string) ($item['categoria'] ?? '')) . '</td>'
                 . '<td>' . e((string) ($item['nome'] ?? 'Treinamento')) . '</td>'
-                . '<td class="right">' . e((string) ($item['quantidade'] ?? 1)) . '</td>'
-                . '<td class="right">R$ ' . $this->formatMoney((float) ($item['valor_unitario'] ?? 0)) . '</td>'
+                . '<td class="right">R$ ' . $this->formatMoney((float) ($item['valor_total'] ?? 0)) . '</td>'
+                . '</tr>';
+        }
+
+        return $rows;
+    }
+
+    private function buildRowsTreinamentosResumo(array $items): string
+    {
+        if (empty($items)) {
+            return '';
+        }
+
+        $rows = '';
+        foreach ($items as $item) {
+            $rows .= '<tr>'
+                . '<td>' . e((string) ($item['nome'] ?? 'Treinamento')) . '</td>'
                 . '<td class="right">R$ ' . $this->formatMoney((float) ($item['valor_total'] ?? 0)) . '</td>'
                 . '</tr>';
         }
@@ -676,6 +664,69 @@ HTML;
         sort($servicos);
 
         return $servicos;
+    }
+
+    private function resolveClauseTitle(string $tituloBase, string $numeroClausula): string
+    {
+        $numero = trim($numeroClausula);
+        if ($numero === '') {
+            return trim($tituloBase) !== '' ? trim($tituloBase) : 'CLÁUSULA';
+        }
+
+        if (str_contains($tituloBase, '{{NUMERO_CLAUSULA}}')) {
+            return trim(str_replace('{{NUMERO_CLAUSULA}}', $numero, $tituloBase));
+        }
+
+        $limpo = preg_replace('/^\s*CL[ÁA]USULA\s+\d+(\.\d+)?\s*-\s*/iu', '', $tituloBase) ?? $tituloBase;
+        $limpo = trim($limpo);
+        if ($limpo === '') {
+            return 'CLÁUSULA ' . $numero;
+        }
+
+        return 'CLÁUSULA ' . $numero . ' - ' . $limpo;
+    }
+
+    private function buildClauseSequence($clausulas): array
+    {
+        $roots = $clausulas
+            ->whereNull('parent_id')
+            ->sortBy(fn (ContratoClausula $c) => sprintf('%010d-%010d', (int) ($c->ordem_local ?? $c->ordem ?? 0), (int) $c->id))
+            ->values();
+
+        $childrenByParent = $clausulas
+            ->whereNotNull('parent_id')
+            ->groupBy('parent_id')
+            ->map(fn ($group) => $group
+                ->sortBy(fn (ContratoClausula $c) => sprintf('%010d-%010d', (int) ($c->ordem_local ?? $c->ordem ?? 0), (int) $c->id))
+                ->values());
+
+        $result = [];
+        foreach ($roots as $rootIndex => $root) {
+            $numeroRoot = (string) ($rootIndex + 1);
+            $result[] = $this->mapClauseToArray($root, $numeroRoot);
+
+            $children = $childrenByParent->get($root->id, collect());
+            foreach ($children as $childIndex => $child) {
+                $result[] = $this->mapClauseToArray($child, $numeroRoot . '.' . ($childIndex + 1));
+            }
+        }
+
+        return $result;
+    }
+
+    private function mapClauseToArray(ContratoClausula $clausula, string $numero): array
+    {
+        return [
+            'id' => $clausula->id,
+            'parent_id' => $clausula->parent_id,
+            'numero' => $numero,
+            'slug' => $clausula->slug,
+            'titulo' => $clausula->titulo,
+            'servico_tipo' => $clausula->servico_tipo,
+            'ordem_local' => $clausula->ordem_local ?? $clausula->ordem ?? 0,
+            'versao' => $clausula->versao,
+            'html_template' => $clausula->html_template,
+        ];
     }
 
     private function authorizeContrato(ClienteContrato $contrato): void
