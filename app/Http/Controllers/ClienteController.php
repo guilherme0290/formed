@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Cidade;
 use App\Models\Cliente;
+use App\Models\ClienteContrato;
 use App\Models\ClienteGheFuncao;
 use App\Models\Estado;
 use App\Models\Funcao;
@@ -501,8 +502,21 @@ class ClienteController extends Controller
         $this->authorizeCliente($cliente);
 
         $routePrefix = $this->routePrefix();
+        $contratoAtivo = null;
 
-        return view('clientes.show', compact('cliente', 'routePrefix'));
+        if ($this->isComercialRoute()) {
+            $contratoAtivo = ClienteContrato::query()
+                ->where('empresa_id', auth()->user()->empresa_id)
+                ->where('cliente_id', $cliente->id)
+                ->where('status', 'ATIVO')
+                ->withCount(['itens as itens_ativos_count' => function ($q) {
+                    $q->where('ativo', true);
+                }])
+                ->latest('id')
+                ->first();
+        }
+
+        return view('clientes.show', compact('cliente', 'routePrefix', 'contratoAtivo'));
     }
 
     public function acessoForm(Cliente $cliente)
@@ -644,6 +658,15 @@ class ClienteController extends Controller
         }
 
         $routePrefix = $this->routePrefix();
+        $contratoAtivo = ClienteContrato::query()
+            ->where('empresa_id', $empresaId)
+            ->where('cliente_id', $cliente->id)
+            ->where('status', 'ATIVO')
+            ->withCount(['itens as itens_ativos_count' => function ($q) {
+                $q->where('ativo', true);
+            }])
+            ->latest('id')
+            ->first();
 
         $servicos = $this->servicosDisponiveisParaCliente($empresaId);
         $servicoArtDisponivel = $this->servicoArtDisponivelParaCliente($empresaId);
@@ -838,6 +861,7 @@ class ClienteController extends Controller
             'funcionariosComArquivos' => $funcionariosComArquivos,
             'userExistente'    => $userExistente,
             'senhaSugerida'    => $senhaSugerida,
+            'contratoAtivo'    => $contratoAtivo,
         ]);
     }
 

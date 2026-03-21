@@ -8,6 +8,10 @@
                class="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 hover:text-slate-900">
                 ← Voltar
             </a>
+            <a href="{{ route('comercial.contratos.documento.edit', $contrato) }}"
+               class="inline-flex items-center rounded-lg border border-emerald-200 bg-white px-3 py-1.5 text-sm font-semibold text-emerald-700 shadow-sm hover:bg-emerald-50 hover:text-emerald-900">
+                📝 Contrato dinâmico
+            </a>
             <a href="{{ route('comercial.contratos.vigencia', $contrato) }}"
                class="inline-flex items-center rounded-lg border border-indigo-200 bg-white px-3 py-1.5 text-sm font-semibold text-indigo-700 shadow-sm hover:bg-indigo-50 hover:text-indigo-900">
                 ➕ Nova vigência

@@ -17,6 +17,7 @@
     @php
         $routePrefix = $routePrefix ?? 'clientes';
         $permPrefix = str_starts_with($routePrefix, 'comercial.') ? 'comercial.clientes' : 'master.clientes';
+        $isComercial = str_starts_with($routePrefix, 'comercial.');
         $permissionMap = $user?->papel?->permissoes?->pluck('chave')->flip()->all() ?? [];
         $isMaster = $user?->hasPapel('Master');
         $canUpdate = $isMaster || isset($permissionMap[$permPrefix.'.update']);
@@ -77,6 +78,58 @@
                 </a>
             </div>
         </div>
+
+        @if($isComercial)
+            <div class="bg-white rounded-xl shadow border p-6 space-y-4 mt-4">
+                <div>
+                    <h2 class="text-lg font-semibold text-slate-900">Contrato</h2>
+                    <p class="text-sm text-slate-500">Acesse a geração do contrato usando os serviços parametrizados para este cliente.</p>
+                </div>
+
+                @if(!empty($contratoAtivo))
+                    <div class="grid sm:grid-cols-3 gap-3 text-sm">
+                        <div class="rounded-lg border border-slate-200 p-3">
+                            <div class="text-xs text-slate-500">Contrato ativo</div>
+                            <div class="font-semibold text-slate-900">#{{ $contratoAtivo->id }}</div>
+                        </div>
+                        <div class="rounded-lg border border-slate-200 p-3">
+                            <div class="text-xs text-slate-500">Itens ativos</div>
+                            <div class="font-semibold text-slate-900">{{ $contratoAtivo->itens_ativos_count ?? 0 }}</div>
+                        </div>
+                        <div class="rounded-lg border border-slate-200 p-3">
+                            <div class="text-xs text-slate-500">Valor mensal</div>
+                            <div class="font-semibold text-slate-900">R$ {{ number_format((float) $contratoAtivo->valor_mensal, 2, ',', '.') }}</div>
+                        </div>
+                    </div>
+
+                    <div class="grid sm:grid-cols-3 gap-2">
+                        <a href="{{ route('comercial.contratos.documento.edit', $contratoAtivo) }}"
+                           class="px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-semibold text-center hover:bg-emerald-700">
+                            Abrir contrato dinâmico
+                        </a>
+                        <form method="POST" action="{{ route('comercial.contratos.documento.gerar', $contratoAtivo) }}">
+                            @csrf
+                            <button type="submit"
+                                    class="w-full px-4 py-2 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 text-sm font-semibold hover:bg-emerald-100">
+                                Regerar template
+                            </button>
+                        </form>
+                        <a href="{{ route('comercial.contratos.show', $contratoAtivo) }}"
+                           class="px-4 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold text-center hover:bg-slate-50">
+                            Ver contrato comercial
+                        </a>
+                    </div>
+                @else
+                    <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                        Este cliente ainda não possui contrato ativo. Parametrize os serviços para gerar o contrato.
+                    </div>
+                    <a href="{{ route('comercial.clientes.parametros.show', $cliente) }}"
+                       class="inline-flex px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700">
+                        Parametrizar serviços
+                    </a>
+                @endif
+            </div>
+        @endif
 
     </div>
 @endsection

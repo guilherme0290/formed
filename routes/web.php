@@ -719,12 +719,38 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
             Route::prefix('contratos')->name('contratos.')->group(function () {
                 Route::get('/', [\App\Http\Controllers\Comercial\ContratoController::class, 'index'])
                     ->name('index');
+
+                Route::prefix('clausulas')->name('clausulas.')->group(function () {
+                    Route::get('/', [\App\Http\Controllers\Comercial\ContratoClausulaController::class, 'index'])
+                        ->name('index');
+                    Route::post('/reordenar', [\App\Http\Controllers\Comercial\ContratoClausulaController::class, 'reorder'])
+                        ->name('reorder');
+                    Route::get('/criar', [\App\Http\Controllers\Comercial\ContratoClausulaController::class, 'create'])
+                        ->name('create');
+                    Route::post('/', [\App\Http\Controllers\Comercial\ContratoClausulaController::class, 'store'])
+                        ->name('store');
+                    Route::get('/{clausula}', [\App\Http\Controllers\Comercial\ContratoClausulaController::class, 'show'])
+                        ->name('show');
+                    Route::get('/{clausula}/editar', [\App\Http\Controllers\Comercial\ContratoClausulaController::class, 'edit'])
+                        ->name('edit');
+                    Route::put('/{clausula}', [\App\Http\Controllers\Comercial\ContratoClausulaController::class, 'update'])
+                        ->name('update');
+                    Route::delete('/{clausula}', [\App\Http\Controllers\Comercial\ContratoClausulaController::class, 'destroy'])
+                        ->name('destroy');
+                });
+
                 Route::get('/{contrato}', [\App\Http\Controllers\Comercial\ContratoController::class, 'show'])
                     ->name('show');
                 Route::get('/{contrato}/vigencia', [\App\Http\Controllers\Comercial\ContratoController::class, 'novaVigencia'])
                     ->name('vigencia');
                 Route::post('/{contrato}/vigencia', [\App\Http\Controllers\Comercial\ContratoController::class, 'storeVigencia'])
                     ->name('vigencia.store');
+                Route::get('/{contrato}/documento', [\App\Http\Controllers\Comercial\ContratoDocumentoController::class, 'edit'])
+                    ->name('documento.edit');
+                Route::post('/{contrato}/documento/gerar', [\App\Http\Controllers\Comercial\ContratoDocumentoController::class, 'generate'])
+                    ->name('documento.gerar');
+                Route::put('/{contrato}/documento', [\App\Http\Controllers\Comercial\ContratoDocumentoController::class, 'update'])
+                    ->name('documento.update');
             });
 
             // Clientes (acesso comercial)

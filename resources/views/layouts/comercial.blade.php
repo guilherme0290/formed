@@ -190,6 +190,14 @@
                 </span>
                 <span data-sidebar-label>Contratos</span>
             </a>
+            <a href="{{ $canContratos ? route('comercial.contratos.clausulas.index') : 'javascript:void(0)' }}"
+               @if(!$canContratos) title="Usuário sem permissão" aria-disabled="true" @endif
+               class="group flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition {{ $menuState($canContratos, request()->routeIs('comercial.contratos.clausulas.*')) }}">
+                <span class="{{ $iconState($canContratos, request()->routeIs('comercial.contratos.clausulas.*')) }}">
+                    <i class="fa-regular fa-file-lines w-4 text-center"></i>
+                </span>
+                <span data-sidebar-label>Cláusulas</span>
+            </a>
 
             @php $canClientes = $can('comercial.clientes.view'); @endphp
             @php $activeClientes = request()->routeIs('comercial.clientes.*'); @endphp

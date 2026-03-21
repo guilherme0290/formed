@@ -192,10 +192,7 @@ class ClienteParametroController extends Controller
         foreach ($data['itens'] as $idx => $it) {
             if (!array_key_exists('meta', $it) || $it['meta'] === null || $it['meta'] === '') {
                 $data['itens'][$idx]['meta'] = null;
-                continue;
-            }
-
-            if (is_string($it['meta'])) {
+            } elseif (is_string($it['meta'])) {
                 $decoded = json_decode($it['meta'], true);
                 $data['itens'][$idx]['meta'] = is_array($decoded) ? $decoded : null;
             }
@@ -211,6 +208,7 @@ class ClienteParametroController extends Controller
             if (($data['itens'][$idx]['tipo'] ?? '') === 'ASO_TIPO' && $servicoAsoId > 0 && empty($data['itens'][$idx]['servico_id'])) {
                 $data['itens'][$idx]['servico_id'] = $servicoAsoId;
             }
+
         }
 
         $asoTipos = ['admissional', 'periodico', 'demissional', 'mudanca_funcao', 'retorno_trabalho'];
