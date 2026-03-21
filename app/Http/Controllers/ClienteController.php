@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Cidade;
 use App\Models\Cliente;
 use App\Models\ClienteContrato;
+use App\Models\ClienteContratoItem;
+use App\Models\ClienteContratoLog;
 use App\Models\ClienteGheFuncao;
 use App\Models\Estado;
 use App\Models\Funcao;
@@ -965,6 +967,87 @@ class ClienteController extends Controller
         }
 
         return response()->download($zipPath, 'arquivos-selecionados.zip')->deleteFileAfterSend(true);
+    }
+
+    public function abrirContratoDinamico(Cliente $cliente)
+    {
+        $this->authorizeCliente($cliente);
+
+        $empresaId = auth()->user()->empresa_id ?? $cliente->empresa_id;
+
+        $contrato = ClienteContrato::query()
+            ->where('empresa_id', $empresaId)
+            ->where('cliente_id', $cliente->id)
+            ->where('status', 'ATIVO')
+            ->latest('id')
+            ->first();
+
+        if (!$contrato) {
+            $parametro = ParametroCliente::query()
+                ->where('empresa_id', $empresaId)
+                ->where('cliente_id', $cliente->id)
+                ->latest('id')
+                ->first();
+
+            if (!$parametro) {
+                return redirect()
+                    ->route($this->routeName('edit'), ['cliente' => $cliente->id, 'tab' => 'parametros'])
+                    ->with('erro', 'Defina ao menos 1 serviço nos parâmetros do cliente para criar o contrato.');
+            }
+
+            $parametro->load('itens');
+            $itensValidos = $parametro->itens
+                ->filter(fn ($item) => (int) ($item->servico_id ?? 0) > 0)
+                ->values();
+
+            if ($itensValidos->isEmpty()) {
+                return redirect()
+                    ->route($this->routeName('edit'), ['cliente' => $cliente->id, 'tab' => 'parametros'])
+                    ->with('erro', 'Nenhum serviço válido encontrado para gerar o contrato dinâmico.');
+            }
+
+            $contrato = DB::transaction(function () use ($cliente, $parametro, $itensValidos, $empresaId) {
+                $novoContrato = ClienteContrato::create([
+                    'empresa_id' => $empresaId,
+                    'cliente_id' => $cliente->id,
+                    'vendedor_id' => $cliente->vendedor_id ?: auth()->id(),
+                    'proposta_id_origem' => null,
+                    'parametro_cliente_id_origem' => $parametro->id,
+                    'status' => 'ATIVO',
+                    'vigencia_inicio' => Carbon::now()->startOfDay(),
+                    'vigencia_fim' => null,
+                    'vencimento_servicos' => $parametro->vencimento_servicos,
+                    'created_by' => auth()->id(),
+                ]);
+
+                foreach ($itensValidos as $item) {
+                    ClienteContratoItem::create([
+                        'cliente_contrato_id' => $novoContrato->id,
+                        'servico_id' => (int) $item->servico_id,
+                        'descricao_snapshot' => $item->descricao ?: $item->nome,
+                        'preco_unitario_snapshot' => (float) ($item->valor_total ?? $item->valor_unitario ?? 0),
+                        'unidade_cobranca' => 'unidade',
+                        'regras_snapshot' => is_array($item->meta) ? $item->meta : null,
+                        'ativo' => true,
+                    ]);
+                }
+
+                ClienteContratoLog::create([
+                    'cliente_contrato_id' => $novoContrato->id,
+                    'user_id' => auth()->id(),
+                    'acao' => 'CRIACAO',
+                    'descricao' => sprintf(
+                        'USUARIO: %s CRIOU o contrato da empresa %s a partir dos parâmetros do cliente.',
+                        auth()->user()?->name ?? 'Sistema',
+                        $cliente->razao_social ?? 'Cliente'
+                    ),
+                ]);
+
+                return $novoContrato;
+            });
+        }
+
+        return redirect()->route('comercial.contratos.documento.edit', $contrato);
     }
 
     /**

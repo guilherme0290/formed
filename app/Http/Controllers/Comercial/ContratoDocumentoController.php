@@ -304,6 +304,15 @@ class ContratoDocumentoController extends Controller
         $sectionTreinamentos = $rowsTreinamentosDetalhados !== ''
             ? $this->renderSectionTable('Tabela de Treinamentos', $rowsTreinamentosDetalhados, ['Categoria', 'Treinamento/Pacote', 'Total'])
             : $this->renderSectionTable('Tabela de Treinamentos', $rowsTraining, ['Treinamento/Pacote', 'Total']);
+        $logoHtml = '';
+        $logoPath = public_path('favicon.png');
+        if (is_file($logoPath) && is_readable($logoPath)) {
+            $logoBin = @file_get_contents($logoPath);
+            if ($logoBin !== false) {
+                $logoSrc = 'data:image/png;base64,' . base64_encode($logoBin);
+                $logoHtml = '<img src="' . $logoSrc . '" alt="Formed" class="brand-logo" />';
+            }
+        }
 
         return <<<HTML
 <!doctype html>
@@ -312,27 +321,91 @@ class ContratoDocumentoController extends Controller
 <meta charset="utf-8" />
 <title>Contrato de Prestação de Serviços</title>
 <style>
-:root{--ink:#111827;--muted:#6b7280;--line:#e5e7eb;--soft:#f8fafc;}
+:root{
+    --ink:#1f2937;
+    --muted:#64748b;
+    --line:#dbe4f0;
+    --soft:#f4f7fb;
+    --brand:#1f2a7c;
+    --brand-strong:#1e3a8a;
+    --brand-soft:#eef4ff;
+    --brand-text-soft:#dbeafe;
+}
 *{box-sizing:border-box;}
+html,body,*{
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+@page{margin:7mm 7mm 12mm;}
 body{margin:0;font-family:Arial,Helvetica,sans-serif;color:var(--ink);background:#fff;}
-.page{width:210mm;min-height:297mm;margin:0 auto;padding:18mm 16mm;}
-.topbar{display:flex;justify-content:space-between;gap:16px;border-bottom:2px solid var(--ink);padding-bottom:10px;margin-bottom:14px;}
-.brand{font-weight:700;font-size:14px;}
-.meta{text-align:right;font-size:11px;color:var(--muted);line-height:1.35;}
-h1{margin:10px 0 14px;text-align:center;font-size:16px;}
-h2{margin:16px 0 8px;font-size:13px;text-transform:uppercase;}
+.page{width:210mm;min-height:297mm;margin:0 auto;padding:8mm 7mm 12mm;}
+.topbar{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:16px;
+    padding:10px 12px;
+    margin-bottom:14px;
+    background:var(--brand) !important;
+    color:#fff;
+    border:1px solid var(--brand-strong);
+}
+.brand-wrap{display:flex;align-items:center;gap:8px;}
+.brand-logo{
+    width:30px;
+    height:30px;
+    object-fit:contain;
+}
+.brand{font-weight:700;font-size:14px;color:#fff;}
+.meta{text-align:right;font-size:11px;color:var(--brand-text-soft);line-height:1.35;}
+h1{
+    margin:10px 0 14px;
+    text-align:center;
+    font-size:16px;
+    color:var(--brand-strong);
+}
+h2{
+    margin:16px 0 8px;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    color:#475569;
+    background:var(--soft) !important;
+    border:1px solid var(--line);
+    padding:6px 9px;
+}
 p{margin:8px 0;font-size:12px;line-height:1.45;text-align:justify;}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;}
 .box{border:1px solid var(--line);border-radius:10px;padding:10px;background:#fff;}
+.box h2{margin:0 0 10px;border-radius:8px;}
 .kv{display:grid;grid-template-columns:140px 1fr;gap:6px 10px;font-size:12px;}
 .divider{height:1px;background:var(--line);margin:14px 0;}
 table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px;}
 th,td{border:1px solid var(--line);padding:8px;vertical-align:top;}
-th{background:var(--soft);text-align:left;font-weight:700;}
+th{
+    background:var(--brand) !important;
+    color:#ffffff;
+    text-align:left;
+    font-weight:700;
+    font-size:10px;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+}
 .right{text-align:right;}
 .clause{margin-top:18px;}
-.sig-area{margin-top:24px;display:grid;grid-template-columns:1fr 1fr;gap:18px;}
-.sig{border-top:1px solid var(--ink);padding-top:8px;text-align:center;font-size:12px;}
+.clause h3{
+    margin:0 0 8px;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    color:#475569;
+    background:var(--brand-soft) !important;
+    border:1px solid #c9d9ff;
+    padding:6px 9px;
+}
+.sig-area{margin-top:56px;padding-top:20px;display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+.sig{text-align:center;font-size:12px;}
+.sig-line{height:64px;border-bottom:1px solid #94a3b8;margin-bottom:8px;}
 .small{font-size:11px;color:var(--muted);}
 .ghe-block{border:1px solid var(--line);border-radius:10px;padding:10px;margin-top:10px;break-inside:avoid;}
 .ghe-head{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px;}
@@ -340,15 +413,25 @@ th{background:var(--soft);text-align:left;font-weight:700;}
 .ghe-total{font-size:11px;color:var(--muted);}
 .units-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 .unit-card{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fff;break-inside:avoid;}
-.unit-head{font-size:12px;font-weight:700;margin-bottom:6px;}
+.unit-head{font-size:12px;font-weight:700;margin-bottom:6px;color:var(--brand-strong);}
 .unit-line{font-size:11px;color:#334155;line-height:1.45;margin:2px 0;}
 .unit-label{font-weight:700;color:#111827;}
+@media print{
+    body{background:#fff !important;}
+    .topbar,th,h2,.clause h3{
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}
 </style>
 </head>
 <body>
 <div class="page">
     <div class="topbar">
-        <div class="brand">CONTRATO DE PRESTAÇÃO DE SERVIÇOS</div>
+        <div class="brand-wrap">
+            {$logoHtml}
+            <div class="brand">CONTRATO DE PRESTAÇÃO DE SERVIÇOS</div>
+        </div>
         <div class="meta">
             <div><b>Gerado em:</b> {$dataHoje}</div>
             <div><b>Contrato:</b> #{$meta['contrato_id']}</div>
@@ -403,8 +486,14 @@ th{background:var(--soft);text-align:left;font-weight:700;}
     {$clausulasHtml}
 
     <div class="sig-area">
-        <div class="sig"><b>CONTRATADA</b><br>{$contratadaRazao}</div>
-        <div class="sig"><b>CONTRATANTE</b><br>{$contratanteRazao}</div>
+        <div class="sig">
+            <div class="sig-line"></div>
+            <b>CONTRATADA</b><br>{$contratadaRazao}
+        </div>
+        <div class="sig">
+            <div class="sig-line"></div>
+            <b>CONTRATANTE</b><br>{$contratanteRazao}
+        </div>
     </div>
 </div>
 </body>

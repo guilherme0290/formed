@@ -77,16 +77,6 @@
                             data-tab="acesso">
                         Acesso
                     </button>
-                    <button type="button"
-                            class="px-4 py-2 rounded-full border border-slate-200 bg-white text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
-                            data-tab="tarefa"
-                            data-tab-url="{{ route('operacional.kanban.servicos', [
-                                'cliente' => $cliente->id,
-                                'origem' => 'cliente-edit',
-                                'return_url' => route($routePrefix.'.edit', ['cliente' => $cliente->id, 'tab' => 'dados']),
-                            ]) }}">
-                        Criar Tarefa
-                    </button>
                 </div>
             </div>
         @endif
@@ -110,13 +100,35 @@
                 @endif
 
             {{-- ATIVO --}}
-            <div class="flex items-center gap-3">
+            <div class="flex flex-wrap items-center justify-between gap-3">
                 <x-toggle-ativo
                     name="ativo"
                     :checked="(bool) old('ativo', $cliente->exists ? $cliente->ativo : 1)"
                     on-label="Ativo"
                     off-label="Inativo"
                 />
+                @if($cliente->exists)
+                    @php
+                        $temServicoConfigurado = (($contratoAtivo?->itens_ativos_count ?? 0) > 0)
+                            || (($parametro?->itens?->count() ?? 0) > 0);
+                    @endphp
+                    <div class="flex flex-wrap gap-3">
+                        <a href="{{ route('operacional.kanban.servicos', [
+                            'cliente' => $cliente->id,
+                            'origem' => 'cliente-edit',
+                            'return_url' => route($routePrefix.'.edit', ['cliente' => $cliente->id, 'tab' => 'dados']),
+                        ]) }}"
+                           class="inline-flex min-w-[170px] items-center justify-center rounded-lg border border-sky-200 bg-sky-50 px-6 py-2 text-sm font-semibold text-sky-700 shadow-sm transition-all hover:-translate-y-0.5 hover:border-sky-300 hover:bg-sky-100 hover:shadow">
+                            Nova Tarefa
+                        </a>
+                        @if($temServicoConfigurado)
+                            <a href="{{ route($routePrefix.'.contrato-dinamico', ['cliente' => $cliente->id]) }}"
+                               class="inline-flex min-w-[170px] items-center justify-center rounded-lg border border-emerald-300 bg-gradient-to-r from-emerald-500 to-teal-500 px-6 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:-translate-y-0.5 hover:from-emerald-600 hover:to-teal-600 hover:shadow-md">
+                                Criar Contrato
+                            </a>
+                        @endif
+                    </div>
+                @endif
             </div>
 
             {{-- LINHA 1 --}}
@@ -448,7 +460,6 @@
                     'unidades-permitidas': '#0f766e',
                     'arquivos': '#4338ca',
                     'acesso': '#7c3aed',
-                    'tarefa': '#0e7490',
                 };
 
                 tabs.forEach(btn => {

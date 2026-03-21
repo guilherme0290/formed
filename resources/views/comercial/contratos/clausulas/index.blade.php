@@ -68,7 +68,7 @@
                             <button type="button"
                                     class="preview-trigger inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50"
                                     data-preview-id="{{ $clausula->id }}"
-                                    title="Pré-visualizar cláusula"
+
                                     aria-label="Pré-visualizar cláusula">
                                 <i class="fa-regular fa-eye text-sm"></i>
                             </button>
@@ -98,7 +98,7 @@
                                         <button type="button"
                                                 class="preview-trigger inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-300 text-slate-700 hover:bg-white"
                                                 data-preview-id="{{ $sub->id }}"
-                                                title="Pré-visualizar subcláusula"
+
                                                 aria-label="Pré-visualizar subcláusula">
                                             <i class="fa-regular fa-eye text-sm"></i>
                                         </button>

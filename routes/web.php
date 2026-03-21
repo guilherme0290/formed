@@ -758,6 +758,7 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
                 Route::get('/',               [ClienteController::class, 'index'])->name('index');
                 Route::get('/create',         [ClienteController::class, 'create'])->name('create');
                 Route::post('/',              [ClienteController::class, 'store'])->name('store');
+                Route::get('/{cliente}/contrato-dinamico', [ClienteController::class, 'abrirContratoDinamico'])->name('contrato-dinamico');
                 Route::get('/{cliente}',      [ClienteController::class, 'show'])->name('show');
                 Route::get('/{cliente}/edit', [ClienteController::class, 'edit'])->name('edit');
                 Route::put('/{cliente}',      [ClienteController::class, 'update'])->name('update');
@@ -1034,6 +1035,7 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
         Route::get('/',               [ClienteController::class, 'index'])->name('index');
         Route::get('/create',         [ClienteController::class, 'create'])->name('create');
         Route::post('/',              [ClienteController::class, 'store'])->name('store');
+        Route::get('/{cliente}/contrato-dinamico', [ClienteController::class, 'abrirContratoDinamico'])->name('contrato-dinamico');
         Route::get('/{cliente}',      [ClienteController::class, 'show'])->name('show');
         Route::get('/{cliente}/edit', [ClienteController::class, 'edit'])->name('edit');
         Route::put('/{cliente}',      [ClienteController::class, 'update'])->name('update');

@@ -36,32 +36,38 @@
                     class="px-4 py-2 rounded-lg border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50">
                 Imprimir / PDF
             </button>
+            <button type="button" id="btnPreview"
+                    class="px-4 py-2 rounded-lg border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+                Atualizar prévia
+            </button>
         </div>
 
         <form method="POST" action="{{ route('comercial.contratos.documento.update', $contrato) }}" id="formContrato"
-              class="grid lg:grid-cols-2 gap-4 items-start">
+              class="space-y-4">
             @csrf
             @method('PUT')
 
             <section class="bg-white border border-slate-200 rounded-xl p-4">
                 <div class="flex items-center justify-between mb-2">
-                    <h2 class="text-sm font-semibold text-slate-800">HTML do documento</h2>
+                    <h2 class="text-sm font-semibold text-slate-800">Pré-visualização do contrato</h2>
                     <span class="text-xs text-slate-500">Status: {{ $documento->status }}</span>
                 </div>
+                <iframe id="previewFrame" class="w-full h-[78vh] rounded-lg border border-slate-200 bg-white"></iframe>
+            </section>
 
-                <textarea id="htmlInput" name="html" rows="34"
-                          class="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs font-mono">{{ old('html', $documento->html) }}</textarea>
+            <details class="bg-white border border-slate-200 rounded-xl p-4">
+                <summary class="cursor-pointer select-none text-sm font-semibold text-slate-700">
+                    Edição avançada do HTML
+                </summary>
+                <p class="mt-2 text-xs text-slate-500">Use apenas para ajustes finos de layout e texto do contrato.</p>
+
+                <textarea id="htmlInput" name="html" rows="14"
+                          class="mt-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-xs font-mono">{{ old('html', $documento->html) }}</textarea>
 
                 <div class="mt-3 flex items-center gap-2">
                     <button type="submit" class="px-4 py-2 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700">Salvar alterações</button>
-                    <button type="button" id="btnPreview" class="px-4 py-2 rounded-lg border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50">Atualizar prévia</button>
                 </div>
-            </section>
-
-            <section class="bg-white border border-slate-200 rounded-xl p-4 sticky top-4">
-                <h2 class="text-sm font-semibold text-slate-800 mb-2">Pré-visualização</h2>
-                <iframe id="previewFrame" class="w-full h-[80vh] rounded-lg border border-slate-200 bg-white"></iframe>
-            </section>
+            </details>
         </form>
     </div>
 @endsection
