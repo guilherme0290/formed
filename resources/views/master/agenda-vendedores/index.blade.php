@@ -2,6 +2,49 @@
 @section('title', 'Agenda de Vendedores')
 
 @section('content')
+    <style>
+        .agenda-empty-float {
+            animation: agendaFloat 3.2s ease-in-out infinite;
+        }
+
+        .agenda-empty-tilt {
+            animation: agendaTilt 4.8s ease-in-out infinite;
+            transform-origin: 50% 60%;
+        }
+
+        .agenda-empty-shadow {
+            animation: agendaShadow 3.2s ease-in-out infinite;
+        }
+
+        .agenda-empty-dot-1 {
+            animation: agendaDot 2.3s ease-in-out infinite;
+        }
+
+        .agenda-empty-dot-2 {
+            animation: agendaDot 2.3s ease-in-out infinite 0.6s;
+        }
+
+        @keyframes agendaFloat {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-9px); }
+        }
+
+        @keyframes agendaTilt {
+            0%, 100% { transform: rotate(-2deg); }
+            50% { transform: rotate(2deg); }
+        }
+
+        @keyframes agendaShadow {
+            0%, 100% { transform: scale(1); opacity: .25; }
+            50% { transform: scale(.86); opacity: .15; }
+        }
+
+        @keyframes agendaDot {
+            0%, 100% { transform: translateY(0px); opacity: .45; }
+            50% { transform: translateY(-8px); opacity: .95; }
+        }
+    </style>
+
     <div class="w-full px-4 md:px-6 lg:px-10 py-3 space-y-4">
 
         <div class="flex items-center justify-between flex-wrap gap-3">
@@ -41,7 +84,7 @@
                 <p class="text-2xl font-bold text-amber-800 mt-1">{{ $agendaKpis['pendentes_dia'] ?? 0 }}</p>
             </article>
             <article class="rounded-xl border border-emerald-100 bg-emerald-50/70 px-4 py-3">
-                <p class="text-[11px] uppercase tracking-wide text-emerald-700 font-semibold">Concluidas do dia</p>
+                <p class="text-[11px] uppercase tracking-wide text-emerald-700 font-semibold">Concluídas do dia</p>
                 <p class="text-2xl font-bold text-emerald-800 mt-1">{{ $agendaKpis['concluidas_dia'] ?? 0 }}</p>
             </article>
         </section>
@@ -51,7 +94,7 @@
                 <div class="flex items-center gap-2">
                     <a href="{{ route('master.agenda-vendedores.index', ['agenda_data' => $agendaMesAnterior->toDateString(), 'agenda_dia' => $agendaMesAnterior->copy()->startOfMonth()->toDateString(), 'vendedor' => $vendedorSelecionado]) }}"
                        class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-semibold">
-                        Mes anterior
+                        Mês anterior
                     </a>
                 </div>
 
@@ -79,13 +122,13 @@
                 <div class="flex items-center gap-2">
                     <a href="{{ route('master.agenda-vendedores.index', ['agenda_data' => $agendaMesProximo->toDateString(), 'agenda_dia' => $agendaMesProximo->copy()->startOfMonth()->toDateString(), 'vendedor' => $vendedorSelecionado]) }}"
                        class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-semibold">
-                        Proximo mes
+                        Próximo mês
                     </a>
                 </div>
             </div>
 
             <div class="px-3 py-2 bg-indigo-50/60 border-b border-indigo-100 text-center">
-                <p class="text-[11px] uppercase tracking-[0.2em] text-indigo-700">Mes selecionado</p>
+                <p class="text-[11px] uppercase tracking-[0.2em] text-indigo-700">Mês selecionado</p>
                 <p class="text-lg font-semibold text-indigo-900 leading-none mt-1">{{ $agendaDataSelecionada->locale('pt_BR')->translatedFormat('F \d\e Y') }}</p>
             </div>
 
@@ -135,7 +178,22 @@
                             <p class="text-lg font-semibold text-slate-800" id="agendaSideLabel">{{ \Carbon\Carbon::parse($agendaDiaSelecionado)->format('d/m/Y') }}</p>
                         </div>
                         <div class="p-3 space-y-3 h-[390px] overflow-y-auto" id="agendaSideConteudo">
-                            <div class="text-sm text-slate-500">Carregando compromissos...</div>
+                            <div class="h-full min-h-[240px] flex flex-col items-center justify-start pt-6 text-center gap-3">
+                                <div class="relative w-[220px] h-[220px] flex items-center justify-center">
+                                    <span class="absolute h-20 w-24 rounded-[999px] bg-indigo-900/20 blur-sm agenda-empty-shadow"></span>
+                                    <span class="absolute left-16 top-16 h-3 w-3 rounded-full bg-indigo-300 agenda-empty-dot-1"></span>
+                                    <span class="absolute right-16 top-20 h-2.5 w-2.5 rounded-full bg-sky-300 agenda-empty-dot-2"></span>
+                                    <span class="agenda-empty-float">
+                                        <span class="agenda-empty-tilt relative inline-flex h-24 w-24 items-center justify-center rounded-2xl border border-indigo-200 bg-white shadow-lg">
+                                            <i class="fa-regular fa-file-lines text-5xl text-indigo-500"></i>
+                                        </span>
+                                    </span>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-semibold text-slate-700">Nenhum compromisso para esta data.</p>
+                                    <p class="text-xs text-slate-500 mt-1">Use o botão "Nova tarefa" para registrar seu próximo lembrete.</p>
+                                </div>
+                            </div>
                         </div>
                     </aside>
                 </div>
@@ -164,7 +222,7 @@
                                     @endif
                                 </div>
                                 <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap {{ $isConcluida ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700' }}">
-                                    {!! $isConcluida ? 'Concluida' : 'Pendente' !!}
+                                    {!! $isConcluida ? 'Concluída' : 'Pendente' !!}
                                 </span>
                             </div>
                             <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
@@ -173,7 +231,7 @@
                                     <div><span class="font-medium text-slate-600">Cliente:</span> {{ $tarefa->cliente }}</div>
                                 @endif
                                 @if($vendedorSelecionado === 'todos')
-                                    <div><span class="font-medium text-slate-600">Vendedor:</span> {{ $tarefa->usuario?->name ?? 'Nao informado' }}</div>
+                                    <div><span class="font-medium text-slate-600">Vendedor:</span> {{ $tarefa->usuario?->name ?? 'Não informado' }}</div>
                                 @endif
                             </div>
                             <div class="flex flex-wrap items-center justify-end gap-1.5 text-xs">
@@ -243,19 +301,19 @@
                     </select>
                 </div>
                 <div class="space-y-1">
-                    <label class="text-xs font-semibold text-slate-600">Titulo *</label>
+                    <label class="text-xs font-semibold text-slate-600">Título *</label>
                     <input name="titulo" required class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" placeholder="Ex: Retorno com cliente XPTO">
                 </div>
                 <div class="space-y-1">
-                    <label class="text-xs font-semibold text-slate-600">Descricao</label>
-                    <textarea name="descricao" rows="2" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" placeholder="Detalhes ou observacoes"></textarea>
+                    <label class="text-xs font-semibold text-slate-600">Descrição</label>
+                    <textarea name="descricao" rows="2" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" placeholder="Detalhes ou observações"></textarea>
                 </div>
                 <div class="grid md:grid-cols-2 gap-3">
                     <div class="space-y-1">
                         <label class="text-xs font-semibold text-slate-600">Tipo *</label>
                         <select name="tipo" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
                             <option>Retorno Cliente</option>
-                            <option>Reuniao</option>
+                            <option>Reunião</option>
                             <option>Follow-up</option>
                             <option selected>Tarefa</option>
                             <option>Outro</option>
@@ -364,7 +422,7 @@
                 form.action = updateActionTemplate.replace('__ID__', data.id || '');
                 if (methodInput) methodInput.value = 'PUT';
                 if (title) title.textContent = 'Editar tarefa';
-                if (submitBtn) submitBtn.textContent = 'Salvar alteracoes';
+                if (submitBtn) submitBtn.textContent = 'Salvar alterações';
 
                 const vendedorInput = form.querySelector('[name="user_id"]');
                 if (vendedorInput) vendedorInput.value = data.vendedor || '';
@@ -396,10 +454,21 @@
             const content = document.getElementById('agendaSideConteudo');
             const diaInput = document.getElementById('agendaDiaInput');
             const emptyStateHtml = `
-                <div class="h-full min-h-[240px] flex flex-col items-center justify-center text-center gap-2">
-                    <i class="fa-regular fa-calendar-xmark text-5xl text-slate-300"></i>
-                    <p class="text-sm font-semibold text-slate-700">Sem compromisso para este dia</p>
-                    <p class="text-xs text-slate-500">Selecione outro dia ou crie uma nova tarefa.</p>
+                <div class="h-full min-h-[240px] flex flex-col items-center justify-start pt-6 text-center gap-3">
+                    <div class="relative w-[220px] h-[220px] flex items-center justify-center">
+                        <span class="absolute h-20 w-24 rounded-[999px] bg-indigo-900/20 blur-sm agenda-empty-shadow"></span>
+                        <span class="absolute left-16 top-16 h-3 w-3 rounded-full bg-indigo-300 agenda-empty-dot-1"></span>
+                        <span class="absolute right-16 top-20 h-2.5 w-2.5 rounded-full bg-sky-300 agenda-empty-dot-2"></span>
+                        <span class="agenda-empty-float">
+                            <span class="agenda-empty-tilt relative inline-flex h-24 w-24 items-center justify-center rounded-2xl border border-indigo-200 bg-white shadow-lg">
+                                <i class="fa-regular fa-file-lines text-5xl text-indigo-500"></i>
+                            </span>
+                        </span>
+                    </div>
+                    <div>
+                        <p class="text-sm font-semibold text-slate-700">Nenhum compromisso para esta data.</p>
+                        <p class="text-xs text-slate-500 mt-1">Use o botão "Nova tarefa" para registrar seu próximo lembrete.</p>
+                    </div>
                 </div>
             `;
 
