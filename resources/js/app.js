@@ -104,7 +104,9 @@ window.uiAlert = async (message, options = {}) => {
         return swal.fire({
             icon: options.icon || 'info',
             title: options.title || 'Atenção',
-            text: message,
+            ...(options.html
+                ? { html: options.html }
+                : { text: message }),
             confirmButtonText: options.confirmText || 'OK',
             target: enableOverlayTarget() || document.body,
             backdrop: true,
