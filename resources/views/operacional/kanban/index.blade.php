@@ -3443,24 +3443,7 @@
                         body: formData,
                     })
                         .then(async (r) => {
-                            const raw = await r.text();
-                            let data = null;
-
-                            if (raw) {
-                                try {
-                                    data = JSON.parse(raw);
-                                } catch (error) {
-                                    const jsonStart = raw.indexOf('{');
-                                    const jsonEnd = raw.lastIndexOf('}');
-                                    if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
-                                        try {
-                                            data = JSON.parse(raw.slice(jsonStart, jsonEnd + 1));
-                                        } catch (innerError) {
-                                            data = null;
-                                        }
-                                    }
-                                }
-                            }
+                            const data = await parseJsonResponse(r, 'Erro ao finalizar tarefa.');
 
                             if (!r.ok) {
                                 const error =
@@ -3526,17 +3509,45 @@
             const POLL_INTERVAL = 30000;
             const TICK_INTERVAL = 1000;
 
-            async function parseJsonResponse(response) {
-                const contentType = response.headers.get('content-type') || '';
-                if (!contentType.includes('application/json')) {
+            function sanitizeResponseErrorMessage(raw, fallbackMessage) {
+                const text = String(raw || '')
+                    .replace(/<br\s*\/?>/gi, '\n')
+                    .replace(/<[^>]*>/g, ' ')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+
+                if (!text || /unexpected token/i.test(text) || /not valid json/i.test(text)) {
+                    return fallbackMessage;
+                }
+
+                return text;
+            }
+
+            async function parseJsonResponse(response, fallbackMessage = 'Erro ao processar a resposta do servidor.') {
+                const raw = await response.text();
+
+                if (!raw) {
                     return null;
                 }
 
                 try {
-                    return await response.json();
+                    return JSON.parse(raw);
                 } catch (error) {
-                    return null;
+                    const jsonStart = raw.indexOf('{');
+                    const jsonEnd = raw.lastIndexOf('}');
+
+                    if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+                        try {
+                            return JSON.parse(raw.slice(jsonStart, jsonEnd + 1));
+                        } catch (innerError) {
+                        }
+                    }
                 }
+
+                return {
+                    ok: false,
+                    error: sanitizeResponseErrorMessage(raw, fallbackMessage),
+                };
             }
 
             function getKanbanCards() {
@@ -3571,9 +3582,7 @@
                     body: formData,
                 })
                     .then(async (r) => {
-                        const contentType = r.headers.get('content-type') || '';
-                        const isJson = contentType.includes('application/json');
-                        const data = isJson ? await r.json() : null;
+                        const data = await parseJsonResponse(r, 'Erro ao enviar documento.');
 
                         if (!r.ok) {
                             const error =
@@ -3633,9 +3642,7 @@
                     body: formData,
                 })
                     .then(async (r) => {
-                        const contentType = r.headers.get('content-type') || '';
-                        const isJson = contentType.includes('application/json');
-                        const data = isJson ? await r.json() : null;
+                        const data = await parseJsonResponse(r, 'Erro ao enviar documento complementar.');
 
                         if (!r.ok) {
                             const error =
@@ -3689,9 +3696,7 @@
                     body: formData,
                 })
                     .then(async (r) => {
-                        const contentType = r.headers.get('content-type') || '';
-                        const isJson = contentType.includes('application/json');
-                        const data = isJson ? await r.json() : null;
+                        const data = await parseJsonResponse(r, 'Erro ao enviar documento ART.');
 
                         if (!r.ok) {
                             const error =
@@ -3745,8 +3750,7 @@
                     body: formData,
                 })
                     .then(async (r) => {
-                        const contentType = r.headers.get('content-type') || '';
-                        const data = contentType.includes('application/json') ? await r.json() : null;
+                        const data = await parseJsonResponse(r, 'Erro ao enviar certificados.');
                         if (!r.ok) {
                             const error =
                                 data?.error
@@ -4256,16 +4260,7 @@
             const statusText = document.getElementById('modal-status-text');
 
             async function parseQuickMoveResponse(response) {
-                const contentType = response.headers.get('content-type') || '';
-                if (!contentType.includes('application/json')) {
-                    return null;
-                }
-
-                try {
-                    return await response.json();
-                } catch (error) {
-                    return null;
-                }
+                return await parseJsonResponse(response, 'Erro ao movimentar a tarefa.');
             }
 
 
