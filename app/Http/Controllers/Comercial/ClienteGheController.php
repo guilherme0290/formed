@@ -11,6 +11,7 @@ use App\Models\Funcao;
 use App\Models\ProtocoloExame;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class ClienteGheController extends Controller
 {
@@ -129,7 +130,7 @@ class ClienteGheController extends Controller
         $this->authorizeCliente($empresaId, (int) $data['cliente_id']);
         $protocolos = $this->resolveProtocolosInput($data['protocolos'] ?? [], $data['protocolo_id'] ?? null);
         foreach ($protocolos as $protocoloId) {
-            $this->authorizeProtocolo($empresaId, $protocoloId);
+            $this->authorizeProtocolo($empresaId, (int) $data['cliente_id'], $protocoloId);
         }
         $this->authorizeFuncoes($empresaId, $data['funcoes'] ?? []);
 
@@ -199,7 +200,7 @@ class ClienteGheController extends Controller
         if ($shouldUpdateProtocolos) {
             $protocolos = $this->resolveProtocolosInput($data['protocolos'] ?? [], $data['protocolo_id'] ?? null);
             foreach ($protocolos as $protocoloId) {
-                $this->authorizeProtocolo($ghe->empresa_id, $protocoloId);
+                $this->authorizeProtocolo($ghe->empresa_id, $ghe->cliente_id, $protocoloId);
             }
         }
         $this->authorizeFuncoes($ghe->empresa_id, $data['funcoes'] ?? []);
@@ -376,13 +377,20 @@ class ClienteGheController extends Controller
         abort_if(!$ok, 403);
     }
 
-    private function authorizeProtocolo(int $empresaId, ?int $protocoloId): void
+    private function authorizeProtocolo(int $empresaId, int $clienteId, ?int $protocoloId): void
     {
         if (!$protocoloId) {
             return;
         }
         $ok = ProtocoloExame::where('empresa_id', $empresaId)
             ->where('id', $protocoloId)
+            ->when(
+                Schema::hasColumn('protocolos_exames', 'cliente_id'),
+                fn ($query) => $query->where(function ($scope) use ($clienteId) {
+                    $scope->whereNull('cliente_id')
+                        ->orWhere('cliente_id', $clienteId);
+                })
+            )
             ->exists();
         abort_if(!$ok, 403);
     }

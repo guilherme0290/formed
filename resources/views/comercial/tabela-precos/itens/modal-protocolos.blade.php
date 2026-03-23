@@ -55,6 +55,28 @@
             <form id="formProtocolo" class="p-6 space-y-4">
                 <div id="protocoloFormAlert" class="hidden"></div>
                 <input type="hidden" id="protocolo_id" value="">
+                <div id="protocoloScopeBox" class="hidden rounded-xl border border-amber-200 bg-amber-50 p-3">
+                    <div class="text-xs font-semibold text-amber-800">Disponibilidade do grupo</div>
+                    <div class="mt-2 space-y-2 text-sm text-slate-700">
+                        <label class="flex items-start gap-2">
+                            <input type="radio" name="protocolo_scope" value="generico" checked>
+                            <span>Genérico da Formed</span>
+                        </label>
+                        <label class="flex items-start gap-2">
+                            <input type="radio" name="protocolo_scope" value="cliente">
+                            <span>Exclusivo de um cliente</span>
+                        </label>
+                    </div>
+                    <div id="protocoloClienteBox" class="mt-3 hidden">
+                        <label class="text-xs font-semibold text-slate-600">Cliente do grupo exclusivo</label>
+                        <select id="protocolo_cliente_id"
+                                class="w-full mt-1 rounded-xl border-slate-200 text-sm px-3 py-2 bg-white">
+                            <option value="">Selecione um cliente...</option>
+                        </select>
+                        <div class="mt-1 text-[11px] text-slate-500">Digite no select para buscar pelo nome ou número.</div>
+                    </div>
+                    <div id="protocoloScopeHint" class="mt-2 text-xs text-slate-600"></div>
+                </div>
                 <x-toggle-ativo
                     id="protocolo_ativo"
                     name="ativo"
@@ -136,9 +158,20 @@
                     store:  @json(route($routePrefix.'.protocolos-exames.store')),
                     update: (id) => @json(route($routePrefix.'.protocolos-exames.update', ['protocolo' => '__ID__'])).replace('__ID__', id),
                     destroy:(id) => @json(route($routePrefix.'.protocolos-exames.destroy', ['protocolo' => '__ID__'])).replace('__ID__', id),
+                    clientes: @json(route($routePrefix.'.protocolos-exames.clientesJson')),
                     exames: @json(route($routePrefix.'.exames.indexJson')),
                 },
-                state: { protocolos: [], exames: [] },
+                state: {
+                    protocolos: [],
+                    clientes: [],
+                    exames: [],
+                    context: {
+                        clienteId: null,
+                        returnTo: null,
+                    },
+                    clienteSearchTerm: '',
+                    clienteSearchTimer: null,
+                },
                 dom: {
                     modal: document.getElementById('modalProtocolos'),
                     list: document.getElementById('protocolosList'),
@@ -148,6 +181,10 @@
                     title: document.getElementById('protocoloFormTitle'),
                     formAlert: document.getElementById('protocoloFormAlert'),
                     id: document.getElementById('protocolo_id'),
+                    scopeBox: document.getElementById('protocoloScopeBox'),
+                    clienteBox: document.getElementById('protocoloClienteBox'),
+                    clienteId: document.getElementById('protocolo_cliente_id'),
+                    scopeHint: document.getElementById('protocoloScopeHint'),
                     titulo: document.getElementById('protocolo_titulo'),
                     descricao: document.getElementById('protocolo_descricao'),
                     ativo: document.getElementById('protocolo_ativo'),
@@ -157,6 +194,135 @@
                     btnNovoExame: document.getElementById('btnProtocoloNovoExame'),
                 }
             };
+
+            function getScopeRadios() {
+                return Array.from(document.querySelectorAll('input[name="protocolo_scope"]'));
+            }
+
+            function getCurrentClienteId() {
+                const id = Number(PROTOCOLOS.state.context.clienteId || 0);
+                return id > 0 ? id : null;
+            }
+
+            function buildListUrl() {
+                const url = new URL(PROTOCOLOS.urls.list, window.location.origin);
+                const clienteId = getCurrentClienteId();
+
+                if (clienteId) {
+                    url.searchParams.set('cliente_id', String(clienteId));
+                }
+
+                return url.toString();
+            }
+
+            function selectedScope() {
+                return getScopeRadios().find((radio) => radio.checked)?.value || 'generico';
+            }
+
+            function setSelectedScope(scope) {
+                getScopeRadios().forEach((radio) => {
+                    radio.checked = radio.value === scope;
+                });
+            }
+
+            function refreshScopeUi() {
+                const scopeBox = PROTOCOLOS.dom.scopeBox;
+                const clienteBox = PROTOCOLOS.dom.clienteBox;
+                const scopeHint = PROTOCOLOS.dom.scopeHint;
+                const clienteRadio = getScopeRadios().find((radio) => radio.value === 'cliente');
+
+                if (!scopeBox || !scopeHint || !clienteBox) return;
+
+                if (!PROTOCOLOS.state.clientes.length) {
+                    scopeBox.classList.add('hidden');
+                    return;
+                }
+
+                scopeBox.classList.remove('hidden');
+                if (clienteRadio) {
+                    clienteRadio.disabled = false;
+                }
+                clienteBox.classList.toggle('hidden', selectedScope() !== 'cliente');
+                scopeHint.textContent = selectedScope() === 'cliente'
+                    ? 'Este grupo ficará disponível apenas para o cliente escolhido.'
+                    : 'Grupos genéricos aparecem para todos os clientes.';
+            }
+
+            function renderClientesFormSelect(selectedId = null) {
+                const select = PROTOCOLOS.dom.clienteId;
+                if (!select) return;
+
+                const current = String(selectedId || select.value || getCurrentClienteId() || '');
+                const term = String(PROTOCOLOS.state.clienteSearchTerm || '').trim().toLowerCase();
+                select.innerHTML = '<option value="">Selecione um cliente...</option>';
+
+                PROTOCOLOS.state.clientes
+                    .filter((cliente) => {
+                        if (!term) return true;
+                        return String(cliente.nome || '').toLowerCase().includes(term);
+                    })
+                    .forEach((cliente) => {
+                    const opt = document.createElement('option');
+                    opt.value = String(cliente.id);
+                    opt.textContent = cliente.nome;
+                    select.appendChild(opt);
+                    });
+
+                select.value = current;
+            }
+
+            function resetClienteSearchFilter(selectedId = null) {
+                PROTOCOLOS.state.clienteSearchTerm = '';
+                if (PROTOCOLOS.state.clienteSearchTimer) {
+                    clearTimeout(PROTOCOLOS.state.clienteSearchTimer);
+                    PROTOCOLOS.state.clienteSearchTimer = null;
+                }
+                renderClientesFormSelect(selectedId);
+            }
+
+            function handleClienteSelectTypeSearch(event) {
+                const key = event.key;
+
+                if (['Tab', 'Enter', 'ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(key)) {
+                    return;
+                }
+
+                if (key === 'Escape') {
+                    resetClienteSearchFilter(PROTOCOLOS.dom.clienteId?.value || '');
+                    return;
+                }
+
+                if (key === 'Backspace') {
+                    event.preventDefault();
+                    PROTOCOLOS.state.clienteSearchTerm = String(PROTOCOLOS.state.clienteSearchTerm || '').slice(0, -1);
+                } else if (key.length === 1 && /[\p{L}\p{N}\s]/u.test(key)) {
+                    event.preventDefault();
+                    PROTOCOLOS.state.clienteSearchTerm = `${PROTOCOLOS.state.clienteSearchTerm || ''}${key}`;
+                } else {
+                    return;
+                }
+
+                renderClientesFormSelect(PROTOCOLOS.dom.clienteId?.value || '');
+
+                if (PROTOCOLOS.state.clienteSearchTimer) {
+                    clearTimeout(PROTOCOLOS.state.clienteSearchTimer);
+                }
+
+                PROTOCOLOS.state.clienteSearchTimer = setTimeout(() => {
+                    resetClienteSearchFilter(PROTOCOLOS.dom.clienteId?.value || '');
+                }, 900);
+            }
+
+            async function loadClientes() {
+                if (!PROTOCOLOS.state.clientes.length) {
+                    const res = await fetch(PROTOCOLOS.urls.clientes, { headers:{'Accept':'application/json'} });
+                    const json = await res.json();
+                    PROTOCOLOS.state.clientes = json.data || [];
+                }
+
+                resetClienteSearchFilter();
+                refreshScopeUi();
+            }
 
             function ensureModalOverSidebar(modalEl, zIndexValue) {
                 if (!modalEl) return;
@@ -221,7 +387,13 @@
             async function loadProtocolos(){
                 try{
                     alertHide();
-                    const res = await fetch(PROTOCOLOS.urls.list, { headers:{'Accept':'application/json'} });
+                    const url = buildListUrl();
+                    if (!url) {
+                        PROTOCOLOS.state.protocolos = [];
+                        renderProtocolos();
+                        return;
+                    }
+                    const res = await fetch(url, { headers:{'Accept':'application/json'} });
                     const json = await res.json();
                     PROTOCOLOS.state.protocolos = json.data || [];
                     renderProtocolos();
@@ -249,9 +421,15 @@
                     row.innerHTML = `
                         <div class="col-span-5">
                             <div class="font-semibold text-slate-800">${escapeHtml(p.titulo)}</div>
-                            <div class="text-xs text-slate-500">${p.descricao ? escapeHtml(p.descricao) : '—'}</div>
+                            <div class="mt-1 flex items-center gap-3 text-xs text-slate-500">
+                                <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${p.cliente_id ? 'bg-amber-100 text-amber-800' : 'bg-sky-100 text-sky-800'}">
+                                    ${p.cliente_id ? 'Exclusivo' : 'Genérico'}
+                                </span>
+                                <span>${examesTxt}</span>
+                            </div>
+                            ${p.descricao ? `<div class="text-xs text-slate-500 mt-1">${escapeHtml(p.descricao)}</div>` : ''}
                         </div>
-                        <div class="col-span-3 text-xs text-slate-600">${examesTxt}</div>
+                        <div class="col-span-3 text-xs text-slate-600"></div>
                         <div class="col-span-2 text-right font-semibold text-slate-800">${total}</div>
                         <div class="col-span-2 flex gap-2 justify-end">
                             <button type="button" class="text-sm ${PERMS.update ? 'text-blue-600 hover:underline' : 'text-slate-400 cursor-not-allowed'}" data-action="edit" ${PERMS.update ? '' : 'disabled title=\"Usuário sem permissão\"'}>Editar</button>
@@ -303,6 +481,9 @@
                 if (id && !PERMS.update) return deny('Usuário sem permissão para editar.');
                 if (!id && !PERMS.create) return deny('Usuário sem permissão para criar.');
                 const payload = {
+                    cliente_id: selectedScope() === 'cliente'
+                        ? (Number(PROTOCOLOS.dom.clienteId?.value || 0) || null)
+                        : null,
                     titulo: PROTOCOLOS.dom.titulo.value.trim(),
                     descricao: PROTOCOLOS.dom.descricao.value.trim() || null,
                     ativo: PROTOCOLOS.dom.ativo.checked,
@@ -311,6 +492,9 @@
                 };
 
                 if (!payload.titulo) return alertBox('err','Informe o título do grupo.');
+                if (selectedScope() === 'cliente' && !payload.cliente_id) {
+                    return alertBox('err','Selecione o cliente do grupo exclusivo.');
+                }
 
                 const url = id ? PROTOCOLOS.urls.update(id) : PROTOCOLOS.urls.store;
                 const method = id ? 'PUT' : 'POST';
@@ -338,8 +522,23 @@
                     }
 
                     await loadProtocolos();
+                    const detail = {
+                        returnTo: PROTOCOLOS.state.context.returnTo || null,
+                        message: 'Grupo de exames salvo com sucesso.',
+                        protocolo: json?.data ? {
+                            id: Number(json.data.id || 0) || null,
+                            titulo: json.data.titulo || '',
+                            cliente_id: json.data.cliente_id ? Number(json.data.cliente_id) : null,
+                        } : null,
+                    };
+
                     closeProtocoloForm();
-                    window.dispatchEvent(new CustomEvent('protocolos:updated'));
+
+                    if (PROTOCOLOS.state.context.returnTo === 'ghe-form') {
+                        closeProtocolosModal();
+                    }
+
+                    window.dispatchEvent(new CustomEvent('protocolos:updated', { detail }));
                 } catch(e){
                     console.error(e);
                     alertBox('err','Falha ao salvar grupo. Verifique sua conexão e tente novamente.');
@@ -364,13 +563,22 @@
                 }
             }
 
-            window.openProtocolosModal = async function(){
+            window.openProtocolosModal = async function(options = {}){
+                PROTOCOLOS.state.context.clienteId = Number(options?.clienteId || 0) || null;
+                PROTOCOLOS.state.context.returnTo = options?.returnTo || null;
+                refreshScopeUi();
                 ensureModalOverSidebar(PROTOCOLOS.dom.modal, 240);
                 alertHide();
                 PROTOCOLOS.dom.modal?.classList.remove('hidden');
+                await loadClientes();
                 await loadProtocolos();
+
+                if (options?.openForm) {
+                    window.openProtocoloForm(null);
+                }
             };
             window.closeProtocolosModal = () => {
+                PROTOCOLOS.state.context.returnTo = null;
                 alertHide();
                 PROTOCOLOS.dom.modal?.classList.add('hidden');
             };
@@ -379,11 +587,19 @@
                 if (protocolo && !PERMS.update) return deny('Usuário sem permissão para editar.');
                 if (!protocolo && !PERMS.create) return deny('Usuário sem permissão para criar.');
                 await loadExames();
+                await loadClientes();
                 ensureModalOverSidebar(PROTOCOLOS.dom.modalForm, 250);
                 alertHide();
                 PROTOCOLOS.dom.modalForm?.classList.remove('hidden');
                 PROTOCOLOS.dom.title.textContent = protocolo ? 'Editar Grupo' : 'Novo Grupo';
                 PROTOCOLOS.dom.id.value = protocolo?.id || '';
+                const defaultClienteId = protocolo?.cliente_id || getCurrentClienteId() || null;
+                const defaultScope = protocolo
+                    ? (protocolo?.cliente_id ? 'cliente' : 'generico')
+                    : (defaultClienteId ? 'cliente' : 'generico');
+                setSelectedScope(defaultScope);
+                resetClienteSearchFilter(defaultClienteId);
+                refreshScopeUi();
                 PROTOCOLOS.dom.titulo.value = protocolo?.titulo || '';
                 PROTOCOLOS.dom.descricao.value = protocolo?.descricao || '';
                 PROTOCOLOS.dom.ativo.checked = protocolo ? !!protocolo.ativo : true;
@@ -396,6 +612,13 @@
             };
 
             PROTOCOLOS.dom.form?.addEventListener('submit', saveProtocolo);
+            getScopeRadios().forEach((radio) => {
+                radio.addEventListener('change', refreshScopeUi);
+            });
+            PROTOCOLOS.dom.clienteId?.addEventListener('keydown', handleClienteSelectTypeSearch);
+            PROTOCOLOS.dom.clienteId?.addEventListener('blur', () => {
+                resetClienteSearchFilter(PROTOCOLOS.dom.clienteId?.value || '');
+            });
             PROTOCOLOS.dom.btnReloadExames?.addEventListener('click', async () => {
                 const selected = selectedExameIdsFromChecklist();
                 await loadExames(true);

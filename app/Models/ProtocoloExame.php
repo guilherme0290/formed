@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
@@ -12,6 +13,7 @@ class ProtocoloExame extends Model
 
     protected $fillable = [
         'empresa_id',
+        'cliente_id',
         'titulo',
         'descricao',
         'ativo',
@@ -24,6 +26,11 @@ class ProtocoloExame extends Model
     public function itens(): HasMany
     {
         return $this->hasMany(ProtocoloExameItem::class, 'protocolo_id');
+    }
+
+    public function cliente(): BelongsTo
+    {
+        return $this->belongsTo(Cliente::class, 'cliente_id');
     }
 
     public function exames(): BelongsToMany
