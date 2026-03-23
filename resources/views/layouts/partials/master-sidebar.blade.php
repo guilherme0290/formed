@@ -72,6 +72,12 @@
                         'active' => request()->routeIs('master.comissoes.vendedores'),
                     ],
                     [
+                        'label' => 'Agenda de Vendedores',
+                        'icon' => 'fa-regular fa-calendar-days',
+                        'route' => route('master.agenda-vendedores.index'),
+                        'active' => request()->routeIs('master.agenda-vendedores.*'),
+                    ],
+                    [
                         'label' => 'Gerar Apresentação',
                         'icon' => 'fa-solid fa-display',
                         'route' => route('comercial.apresentacao.cliente'),
