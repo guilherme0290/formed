@@ -345,6 +345,13 @@
                 return id > 0 ? id : null;
             }
 
+            function getProtocolosUrl() {
+                const clienteId = IS_CLIENTE_SCOPE ? getClienteId() : null;
+                if (!clienteId) return GHE.urls.protocolos;
+
+                return `${GHE.urls.protocolos}?cliente_id=${encodeURIComponent(clienteId)}`;
+            }
+
             function normalizeRow(row){
                 if (!IS_CLIENTE_SCOPE) {
                     return row;
@@ -381,7 +388,7 @@
 
             async function loadProtocolos(){
                 try{
-                    const res = await fetch(GHE.urls.protocolos, { headers:{'Accept':'application/json'} });
+                    const res = await fetch(getProtocolosUrl(), { headers:{'Accept':'application/json'} });
                     const json = await res.json();
                     GHE.state.protocolos = json.data || [];
                     renderProtocolosSelect();
@@ -424,6 +431,32 @@
                     mudanca_funcao: Number(GHE.dom.protocoloMud?.value || 0) || null,
                     retorno_trabalho: Number(GHE.dom.protocoloRet?.value || 0) || null,
                 };
+            }
+
+            function applyNewProtocoloToForm(protocolo) {
+                const protocoloId = Number(protocolo?.id || 0);
+                if (!protocoloId) return;
+
+                if (!IS_CLIENTE_SCOPE && GHE.dom.protocolo) {
+                    GHE.dom.protocolo.value = String(protocoloId);
+                    updateProtocoloResumo();
+                    return;
+                }
+
+                const typedSelects = [
+                    GHE.dom.protocoloAdm,
+                    GHE.dom.protocoloPer,
+                    GHE.dom.protocoloDem,
+                    GHE.dom.protocoloMud,
+                    GHE.dom.protocoloRet,
+                ].filter(Boolean);
+
+                const firstEmpty = typedSelects.find((selectEl) => !Number(selectEl.value || 0));
+                const target = firstEmpty || typedSelects[0] || null;
+                if (!target) return;
+
+                target.value = String(protocoloId);
+                updateProtocoloResumo();
             }
 
             function updateProtocoloResumo(){
@@ -768,11 +801,25 @@
                     return;
                 }
                 if (typeof window.openProtocolosModal === 'function') {
-                    window.openProtocolosModal();
+                    window.openProtocolosModal({
+                        clienteId: getClienteId(),
+                        returnTo: 'ghe-form',
+                        openForm: true,
+                    });
                 }
             });
-            window.addEventListener('protocolos:updated', () => {
-                loadProtocolos();
+            window.addEventListener('protocolos:updated', async (event) => {
+                await loadProtocolos();
+                if (event?.detail?.returnTo === 'ghe-form') {
+                    if (event?.detail?.protocolo?.id) {
+                        applyNewProtocoloToForm(event.detail.protocolo);
+                    }
+                    if (typeof window.uiAlert === 'function') {
+                        window.uiAlert(event.detail.message || 'Grupo de exames salvo com sucesso.');
+                    } else {
+                        alertBox('ok', event?.detail?.message || 'Grupo de exames salvo com sucesso.');
+                    }
+                }
             });
         })();
     </script>

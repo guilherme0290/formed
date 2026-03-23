@@ -11,6 +11,7 @@ use App\Models\GheFuncao;
 use App\Models\ProtocoloExame;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class GheController extends Controller
 {
@@ -93,10 +94,15 @@ class GheController extends Controller
         ]);
 
         if (!empty($data['grupo_exames_id'])) {
-            $ok = ProtocoloExame::query()
+            $query = ProtocoloExame::query()
                 ->where('empresa_id', $empresaId)
-                ->where('id', $data['grupo_exames_id'])
-                ->exists();
+                ->where('id', $data['grupo_exames_id']);
+
+            if (Schema::hasColumn('protocolos_exames', 'cliente_id')) {
+                $query->whereNull('cliente_id');
+            }
+
+            $ok = $query->exists();
             abort_if(!$ok, 403);
         }
 
@@ -149,10 +155,15 @@ class GheController extends Controller
         ]);
 
         if (!empty($data['grupo_exames_id'])) {
-            $ok = ProtocoloExame::query()
+            $query = ProtocoloExame::query()
                 ->where('empresa_id', $empresaId)
-                ->where('id', $data['grupo_exames_id'])
-                ->exists();
+                ->where('id', $data['grupo_exames_id']);
+
+            if (Schema::hasColumn('protocolos_exames', 'cliente_id')) {
+                $query->whereNull('cliente_id');
+            }
+
+            $ok = $query->exists();
             abort_if(!$ok, 403);
         }
 
