@@ -205,7 +205,14 @@
             }
 
             function buildListUrl() {
-                return PROTOCOLOS.urls.list;
+                const url = new URL(PROTOCOLOS.urls.list, window.location.origin);
+                const clienteId = getCurrentClienteId();
+
+                if (clienteId) {
+                    url.searchParams.set('cliente_id', String(clienteId));
+                }
+
+                return url.toString();
             }
 
             function selectedScope() {

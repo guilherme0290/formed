@@ -167,8 +167,10 @@ class ProtocolosExamesController extends Controller
             sort($currentIds);
             $nextIds = array_values(array_unique(array_map('intval', $validIds)));
             sort($nextIds);
+            $scopeChanged = $supportsClienteScope
+                && (int) ($protocolo->cliente_id ?? 0) !== (int) ($clienteId ?? 0);
 
-            if ($currentIds !== $nextIds) {
+            if ($currentIds !== $nextIds || $scopeChanged) {
                 $this->assertNoDuplicateExamGroup($validIds, $empresaId, $clienteId, $protocolo->id);
             }
 
