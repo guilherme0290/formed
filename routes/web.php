@@ -971,6 +971,10 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
                 ->name('contas-receber');
             Route::view('/contas-receber/wireframe-novo-fluxo', 'financeiro.contas-receber.wireframe-novo-fluxo')
                 ->name('contas-receber.wireframe');
+            Route::view('/contas-receber/wireframe-relatorio-vendas-impressao', 'financeiro.contas-receber.wireframe-relatorio-vendas-impressao')
+                ->name('contas-receber.wireframe-relatorio-vendas-impressao');
+            Route::get('/contas-receber/relatorio-vendas/impressao', [\App\Http\Controllers\Financeiro\ContasReceberController::class, 'relatorioVendasImpressao'])
+                ->name('contas-receber.relatorio-vendas-impressao');
             Route::post('/contas-receber/itens', [\App\Http\Controllers\Financeiro\ContasReceberController::class, 'itens'])
                 ->name('contas-receber.itens');
             Route::post('/contas-receber', [\App\Http\Controllers\Financeiro\ContasReceberController::class, 'store'])

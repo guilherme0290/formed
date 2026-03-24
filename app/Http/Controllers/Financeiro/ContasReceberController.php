@@ -8,6 +8,7 @@ use App\Models\Cliente;
 use App\Models\ClienteContrato;
 use App\Models\ContaReceber;
 use App\Models\ContaReceberItem;
+use App\Models\Empresa;
 use App\Models\ParametroCliente;
 use App\Models\Servico;
 use App\Models\Tarefa;
@@ -81,6 +82,12 @@ class ContasReceberController extends Controller
             ->whereHas('venda', function ($q) use ($empresaId) {
                 $q->where('empresa_id', $empresaId)
                     ->where('status', 'ABERTA');
+            })
+            ->where(function ($q) {
+                $q->whereDoesntHave('venda.tarefa.coluna')
+                    ->orWhereHas('venda.tarefa.coluna', function ($q2) {
+                        $q2->whereRaw("COALESCE(LOWER(slug), '') NOT LIKE 'cancel%'");
+                    });
             })
             ->whereDoesntHave('contasReceberItens', function ($q) {
                 $q->where('status', '!=', 'CANCELADO');
@@ -924,6 +931,63 @@ class ContasReceberController extends Controller
         return $pdf->stream('fatura-' . $contaReceber->id . '.pdf');
     }
 
+    public function relatorioVendasImpressao(Request $request)
+    {
+        $agrupamento = strtolower((string) $request->input('agrupamento', 'servico'));
+        if (!in_array($agrupamento, ['servico', 'cliente'], true)) {
+            $agrupamento = 'servico';
+        }
+
+        $dados = $this->coletarDadosRelatorioVendas($request);
+        $linhas = $dados['linhas'];
+
+        $grupos = ($agrupamento === 'cliente')
+            ? $linhas->groupBy(fn (array $linha) => trim((string) ($linha['cliente_nome'] ?? '')) ?: 'Cliente não informado')
+            : $linhas->groupBy(fn (array $linha) => trim((string) ($linha['tipo_servico'] ?? '')) ?: 'Serviço não informado');
+
+        $grupos = $grupos->map(function ($items, $titulo) {
+            $itensOrdenados = collect($items)
+                ->sortBy(function (array $item) {
+                    $timestamp = optional($item['data_referencia'] ?? null)?->timestamp ?? 0;
+                    $registro = (string) ($item['registro'] ?? '');
+                    return sprintf('%010d|%s', $timestamp, $registro);
+                })
+                ->values();
+
+            return [
+                'titulo' => (string) $titulo,
+                'itens' => $itensOrdenados,
+                'quantidade' => $itensOrdenados->count(),
+                'subtotal' => (float) $itensOrdenados->sum(fn (array $item) => (float) ($item['valor'] ?? 0)),
+            ];
+        })->sortByDesc('subtotal')->values();
+
+        $empresa = Empresa::query()
+            ->with('cidade')
+            ->find($request->user()->empresa_id);
+
+        $logoSrc = null;
+        $logoPath = public_path('favicon.png');
+        if (is_file($logoPath) && is_readable($logoPath)) {
+            $logoBin = @file_get_contents($logoPath);
+            if ($logoBin !== false) {
+                $logoSrc = 'data:image/png;base64,' . base64_encode($logoBin);
+            }
+        }
+
+        $pdf = Pdf::loadView('financeiro.contas-receber.relatorio-vendas-print', [
+            'empresa' => $empresa,
+            'logoSrc' => $logoSrc,
+            'filtros' => $dados['filtros'],
+            'agrupamento' => $agrupamento,
+            'grupos' => $grupos,
+            'totalItens' => (int) $linhas->count(),
+            'totalGeral' => (float) $linhas->sum(fn (array $item) => (float) ($item['valor'] ?? 0)),
+        ])->setPaper('a4', 'portrait');
+
+        return $pdf->stream('relatorio-vendas-' . now()->format('Ymd-His') . '.pdf');
+    }
+
     public function impressaoPublica(Request $request)
     {
         if (!$request->hasValidSignature()) {
@@ -1026,6 +1090,225 @@ class ContasReceberController extends Controller
         return Pdf::loadView('financeiro.contas-receber.print', [
             'conta' => $contaReceber,
         ])->setPaper('a4', 'portrait');
+    }
+
+    private function coletarDadosRelatorioVendas(Request $request): array
+    {
+        $empresaId = (int) $request->user()->empresa_id;
+
+        $tipoData = (string) $request->input('tipo_data', 'venda');
+        if (!in_array($tipoData, ['venda', 'finalizacao'], true)) {
+            $tipoData = 'venda';
+        }
+
+        $statusFinalizacao = (string) $request->input('status_finalizacao', 'todas');
+        if (!in_array($statusFinalizacao, ['todas', 'finalizadas', 'nao_finalizadas'], true)) {
+            $statusFinalizacao = 'todas';
+        }
+
+        $dataInicio = $request->input('data_inicio');
+        $dataFim = $request->input('data_fim');
+        $clienteId = $request->input('cliente_id');
+        $clienteBusca = trim((string) $request->input('cliente', ''));
+        $clientesBuscaIds = [];
+
+        if (!$clienteId && $clienteBusca !== '') {
+            $clienteId = Cliente::query()
+                ->where('empresa_id', $empresaId)
+                ->where('razao_social', $clienteBusca)
+                ->value('id');
+
+            if (!$clienteId) {
+                $clientesBuscaIds = $this->buscarClientesPorTermo($empresaId, $clienteBusca);
+            }
+        }
+
+        $vendaItensQuery = VendaItem::query()
+            ->with(['venda.cliente', 'servico', 'venda.tarefa.funcionario'])
+            ->whereHas('venda', function ($q) use ($empresaId) {
+                $q->where('empresa_id', $empresaId)
+                    ->where('status', 'ABERTA');
+            })
+            ->where(function ($q) {
+                $q->whereDoesntHave('venda.tarefa.coluna')
+                    ->orWhereHas('venda.tarefa.coluna', function ($q2) {
+                        $q2->whereRaw("COALESCE(LOWER(slug), '') NOT LIKE 'cancel%'");
+                    });
+            })
+            ->whereDoesntHave('contasReceberItens', function ($q) {
+                $q->where('status', '!=', 'CANCELADO');
+            });
+
+        if ($clienteId) {
+            $vendaItensQuery->whereHas('venda', function ($q) use ($clienteId) {
+                $q->where('cliente_id', $clienteId);
+            });
+        } elseif (!empty($clientesBuscaIds)) {
+            $vendaItensQuery->whereHas('venda', function ($q) use ($clientesBuscaIds) {
+                $q->whereIn('cliente_id', $clientesBuscaIds);
+            });
+        } elseif ($clienteBusca !== '') {
+            $vendaItensQuery->whereRaw('1 = 0');
+        }
+
+        if ($statusFinalizacao === 'finalizadas') {
+            $vendaItensQuery->whereHas('venda.tarefa', function ($q) {
+                $q->whereNotNull('finalizado_em');
+            });
+        } elseif ($statusFinalizacao === 'nao_finalizadas') {
+            $vendaItensQuery->where(function ($q) {
+                $q->whereDoesntHave('venda.tarefa')
+                    ->orWhereHas('venda.tarefa', function ($q2) {
+                        $q2->whereNull('finalizado_em');
+                    });
+            });
+        }
+
+        if ($dataInicio || $dataFim) {
+            if ($tipoData === 'finalizacao') {
+                $vendaItensQuery->whereHas('venda.tarefa', function ($q) use ($dataInicio, $dataFim) {
+                    $q->whereNotNull('finalizado_em');
+                    if ($dataInicio) {
+                        $q->whereDate('finalizado_em', '>=', $dataInicio);
+                    }
+                    if ($dataFim) {
+                        $q->whereDate('finalizado_em', '<=', $dataFim);
+                    }
+                });
+            } else {
+                $vendaItensQuery->whereHas('venda', function ($q) use ($dataInicio, $dataFim) {
+                    if ($dataInicio) {
+                        $q->whereDate('created_at', '>=', $dataInicio);
+                    }
+                    if ($dataFim) {
+                        $q->whereDate('created_at', '<=', $dataFim);
+                    }
+                });
+            }
+        }
+
+        $vendaItens = $vendaItensQuery
+            ->orderByDesc('id')
+            ->get();
+
+        $tarefasNaoFinalizadasAgrupadas = collect();
+        if ($statusFinalizacao !== 'finalizadas') {
+            $tarefasNaoFinalizadasAgrupadas = $this->buscarTarefasNaoFinalizadasAgrupadas(
+                empresaId: $empresaId,
+                clienteId: $clienteId ? (int) $clienteId : null,
+                clientesBuscaIds: $clientesBuscaIds,
+                clienteBusca: $clienteBusca,
+                tipoData: $tipoData,
+                dataInicio: $dataInicio,
+                dataFim: $dataFim,
+            );
+        }
+
+        $vendasAgrupadas = $vendaItens
+            ->filter(fn ($item) => $item->venda)
+            ->groupBy('venda_id')
+            ->map(function ($itensVenda) use ($tipoData) {
+                $primeiro = $itensVenda->first();
+                $venda = $primeiro?->venda;
+                $dataVenda = $venda?->created_at;
+                $dataFinalizacao = $venda?->tarefa?->finalizado_em;
+                $dataReferencia = $tipoData === 'finalizacao' ? $dataFinalizacao : $dataVenda;
+                $isFinalizada = !is_null($dataFinalizacao);
+
+                return [
+                    'venda' => $venda,
+                    'itens' => $itensVenda,
+                    'is_finalizada' => $isFinalizada,
+                    'cliente_nome' => $venda?->cliente?->razao_social ?? $venda?->cliente?->nome_fantasia ?? 'Cliente',
+                    'data_referencia' => $dataReferencia,
+                    'total' => (float) $itensVenda->sum(fn ($item) => (float) ($item->subtotal_snapshot ?? 0)),
+                    'qtd_itens' => $itensVenda->count(),
+                ];
+            })
+            ->values();
+
+        $registrosFinalizados = $vendasAgrupadas
+            ->where('is_finalizada', true)
+            ->values()
+            ->map(fn ($grupo) => ['tipo' => 'venda', 'grupo' => $grupo]);
+        $registrosNaoFinalizados = collect($tarefasNaoFinalizadasAgrupadas ?? [])
+            ->map(fn ($grupo) => ['tipo' => 'tarefa', 'grupo' => $grupo])
+            ->values();
+
+        $registrosPainelVendas = match ($statusFinalizacao) {
+            'finalizadas' => $registrosFinalizados,
+            'nao_finalizadas' => $registrosNaoFinalizados,
+            default => $registrosFinalizados->concat($registrosNaoFinalizados)->values(),
+        };
+
+        $registrosPainelVendas = $registrosPainelVendas
+            ->sortByDesc(fn ($registro) => optional($registro['grupo']['data_referencia'] ?? null)?->timestamp ?? 0)
+            ->values();
+
+        $linhas = collect();
+
+        foreach ($registrosPainelVendas as $registro) {
+            $grupo = $registro['grupo'] ?? [];
+            $isVenda = ($registro['tipo'] ?? '') === 'venda';
+            $clienteNome = (string) ($grupo['cliente_nome'] ?? 'Cliente');
+
+            if ($isVenda) {
+                $venda = $grupo['venda'] ?? null;
+                $registroRef = '#'.($venda->id ?? '—');
+
+                foreach (($grupo['itens'] ?? collect()) as $itemVenda) {
+                    $tipoServico = (string) ($itemVenda->servico?->nome ?? $itemVenda->descricao_snapshot ?? 'Serviço');
+                    $descricao = (string) ($itemVenda->descricao_snapshot ?? $tipoServico);
+                    $responsavel = (string) ($itemVenda->venda?->tarefa?->funcionario?->nome ?? '-');
+                    $dataLinha = $tipoData === 'finalizacao'
+                        ? $itemVenda->venda?->tarefa?->finalizado_em
+                        : $itemVenda->venda?->created_at;
+
+                    $linhas->push([
+                        'data_referencia' => $dataLinha ? Carbon::parse($dataLinha) : null,
+                        'cliente_nome' => $clienteNome,
+                        'tipo_servico' => $tipoServico !== '' ? $tipoServico : 'Serviço não informado',
+                        'registro' => $registroRef,
+                        'descricao' => $descricao !== '' ? $descricao : '—',
+                        'responsavel' => $responsavel !== '' ? $responsavel : '-',
+                        'valor' => (float) ($itemVenda->subtotal_snapshot ?? 0),
+                    ]);
+                }
+            } else {
+                $tarefa = $grupo['tarefa'] ?? null;
+                $registroRef = 'T#'.($tarefa->id ?? '—');
+                $tipoServico = (string) ($tarefa?->servico?->nome ?? 'Serviço');
+                $responsavel = (string) ($tarefa?->funcionario?->nome ?? '-');
+
+                foreach (($grupo['itens'] ?? []) as $itemEstimado) {
+                    $dataReferencia = !empty($itemEstimado['data_referencia'])
+                        ? Carbon::parse($itemEstimado['data_referencia'])
+                        : null;
+                    $descricao = (string) ($itemEstimado['descricao_snapshot'] ?? $tipoServico);
+
+                    $linhas->push([
+                        'data_referencia' => $dataReferencia,
+                        'cliente_nome' => $clienteNome,
+                        'tipo_servico' => $tipoServico !== '' ? $tipoServico : 'Serviço não informado',
+                        'registro' => $registroRef,
+                        'descricao' => $descricao !== '' ? $descricao : '—',
+                        'responsavel' => $responsavel !== '' ? $responsavel : '-',
+                        'valor' => (float) ($itemEstimado['subtotal_snapshot'] ?? 0),
+                    ]);
+                }
+            }
+        }
+
+        return [
+            'filtros' => [
+                'tipo_data' => $tipoData,
+                'status_finalizacao' => $statusFinalizacao,
+                'data_inicio' => $dataInicio,
+                'data_fim' => $dataFim,
+                'cliente' => $clienteBusca,
+            ],
+            'linhas' => $linhas,
+        ];
     }
 
     public function excluirBaixa(Request $request, ContaReceber $contaReceber, ContaReceberService $service): RedirectResponse

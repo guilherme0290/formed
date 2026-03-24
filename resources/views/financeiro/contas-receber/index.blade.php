@@ -424,6 +424,12 @@
                             </div>
                         </div>
                         <div class="flex items-center gap-2">
+                            <button type="button"
+                                    id="crAbrirModalRelatorioVendas"
+                                    class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 shadow-sm">
+                                <i data-lucide="printer" class="h-4 w-4"></i>
+                                Imprimir Vendas
+                            </button>
                             <button type="submit"
                                     id="crBtnCriarFatura"
                                     class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold shadow-sm {{ $canCreate ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white hover:from-indigo-700 hover:to-violet-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}"
@@ -1103,6 +1109,67 @@
         </section>
     </div>
 
+    <div id="crModalRelatorioVendas" class="fixed inset-0 z-[92] hidden overflow-y-auto">
+        <div class="absolute inset-0 bg-slate-900/50" data-cr-fechar-modal-relatorio-vendas></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg p-5 space-y-4 border border-slate-200">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-sm font-semibold text-slate-900">Gerar impresso de vendas</h3>
+                    <button type="button" data-cr-fechar-modal-relatorio-vendas class="text-slate-400 hover:text-slate-600">✕</button>
+                </div>
+
+                <p class="text-xs text-slate-600">
+                    O relatório será gerado com os mesmos filtros aplicados na aba <strong>Vendas</strong>.
+                </p>
+
+                <form method="GET"
+                      action="{{ route('financeiro.contas-receber.relatorio-vendas-impressao') }}"
+                      target="_blank"
+                      class="space-y-4">
+                    <input type="hidden" name="tipo_data" value="{{ $filtros['tipo_data'] ?? 'venda' }}">
+                    <input type="hidden" name="status_finalizacao" value="{{ $filtros['status_finalizacao'] ?? 'todas' }}">
+                    <input type="hidden" name="data_inicio" value="{{ $filtros['data_inicio'] ?? '' }}">
+                    <input type="hidden" name="data_fim" value="{{ $filtros['data_fim'] ?? '' }}">
+                    <input type="hidden" name="cliente_id" value="{{ $filtros['cliente_id'] ?? '' }}">
+                    <input type="hidden" name="cliente" value="{{ $filtros['cliente'] ?? '' }}">
+
+                    <div class="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                        <p class="text-xs font-semibold text-slate-700">Como deseja agrupar?</p>
+                        <div class="mt-2 space-y-2">
+                            <label class="flex items-start gap-2 text-sm text-slate-700">
+                                <input type="radio" name="agrupamento" value="servico" checked class="mt-0.5">
+                                <span>
+                                    <strong>Por serviço</strong><br>
+                                    Cabeçalho por tipo de serviço e itens logo abaixo.
+                                </span>
+                            </label>
+                            <label class="flex items-start gap-2 text-sm text-slate-700">
+                                <input type="radio" name="agrupamento" value="cliente" class="mt-0.5">
+                                <span>
+                                    <strong>Por cliente</strong><br>
+                                    Cabeçalho por cliente e itens de serviço dentro do grupo.
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-end gap-2">
+                        <button type="button"
+                                data-cr-fechar-modal-relatorio-vendas
+                                class="inline-flex items-center justify-center px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                            Cancelar
+                        </button>
+                        <button type="submit"
+                                class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 text-white text-sm font-semibold hover:from-indigo-700 hover:to-indigo-600">
+                            <i data-lucide="printer" class="h-4 w-4"></i>
+                            Gerar impresso
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     @if($contaDetalheSelecionada)
         <div id="crModalEmailFatura" class="fixed inset-0 z-[91] hidden overflow-y-auto">
             <div class="absolute inset-0 bg-slate-900/50" data-cr-fechar-modal-email-fatura></div>
@@ -1591,6 +1658,9 @@
             const abrirModalEmailFatura = document.getElementById('crAbrirModalEmailFatura');
             const modalEmailFatura = document.getElementById('crModalEmailFatura');
             const fecharModalEmailFaturaBtns = document.querySelectorAll('[data-cr-fechar-modal-email-fatura]');
+            const abrirModalRelatorioVendas = document.getElementById('crAbrirModalRelatorioVendas');
+            const modalRelatorioVendas = document.getElementById('crModalRelatorioVendas');
+            const fecharModalRelatorioVendasBtns = document.querySelectorAll('[data-cr-fechar-modal-relatorio-vendas]');
             const openModalBaixaLinks = document.querySelectorAll('[data-cr-open-modal-baixa-link]');
             const openModalEmailLinks = document.querySelectorAll('[data-cr-open-modal-email-link]');
 
@@ -1605,6 +1675,12 @@
                 if (!modalEmailFatura) return false;
                 if (abrirModalEmailFatura && abrirModalEmailFatura.disabled) return false;
                 modalEmailFatura.classList.remove('hidden');
+                return true;
+            }
+
+            function openModalRelatorioVendas() {
+                if (!modalRelatorioVendas) return false;
+                modalRelatorioVendas.classList.remove('hidden');
                 return true;
             }
 
@@ -1629,6 +1705,18 @@
             fecharModalEmailFaturaBtns.forEach(function (btn) {
                 btn.addEventListener('click', function () {
                     modalEmailFatura?.classList.add('hidden');
+                });
+            });
+
+            if (abrirModalRelatorioVendas && modalRelatorioVendas) {
+                abrirModalRelatorioVendas.addEventListener('click', function () {
+                    openModalRelatorioVendas();
+                });
+            }
+
+            fecharModalRelatorioVendasBtns.forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    modalRelatorioVendas?.classList.add('hidden');
                 });
             });
 
