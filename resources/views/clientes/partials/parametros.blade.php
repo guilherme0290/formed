@@ -324,7 +324,7 @@
                                         </div>
                                         <button type="button"
                                                 class="px-2.5 py-1.5 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-800 text-xs font-semibold hover:bg-emerald-100"
-                                                onclick="openProtocolosModal()">
+                                                onclick="openProtocolosModal({ clienteId: Number(document.querySelector('[name=&quot;cliente_id&quot;]')?.value || 0) || null })">
                                             + Novo Grupo
                                         </button>
                                     </div>
@@ -872,19 +872,57 @@
                     return state.gruposExames.find(g => Number(g.id) === Number(id));
                 }
 
+                function getCurrentClienteId() {
+                    const clienteId = Number(el.clienteSelect?.value || 0);
+                    return clienteId > 0 ? clienteId : null;
+                }
+
                 async function loadGruposExames() {
                     try {
-                        const res = await fetch(URLS.gruposExames, { headers: { 'Accept': 'application/json' } });
+                        const clienteId = getCurrentClienteId();
+                        const url = clienteId
+                            ? `${URLS.gruposExames}?cliente_id=${encodeURIComponent(clienteId)}`
+                            : URLS.gruposExames;
+                        const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
                         const json = await res.json();
                         state.gruposExames = json.data || [];
+                        const gruposIds = new Set(state.gruposExames.map((grupo) => Number(grupo.id || 0)).filter((id) => id > 0));
+
                         Object.entries(state.currentGhe.tipos || {}).forEach(([tipo, row]) => {
                             if (!row?.grupo_id) return;
                             const grupo = getGrupoById(row.grupo_id);
-                            if (grupo) {
-                                row.grupo_titulo = row.grupo_titulo || grupo.titulo || '';
-                                if (!row.total_exames) row.total_exames = Number(grupo.total || 0);
+                            if (!grupo || !gruposIds.has(Number(row.grupo_id || 0))) {
+                                delete state.currentGhe.tipos[tipo];
+                                return;
                             }
+
+                            row.grupo_titulo = row.grupo_titulo || grupo.titulo || '';
+                            if (!row.total_exames) row.total_exames = Number(grupo.total || 0);
                         });
+
+                        state.gheConfigs = state.gheConfigs
+                            .map((cfg) => {
+                                const tipos = { ...(cfg?.tipos || {}) };
+
+                                Object.entries(tipos).forEach(([tipo, row]) => {
+                                    if (!row?.grupo_id) return;
+                                    const grupo = getGrupoById(row.grupo_id);
+                                    if (!grupo || !gruposIds.has(Number(row.grupo_id || 0))) {
+                                        delete tipos[tipo];
+                                        return;
+                                    }
+
+                                    row.grupo_titulo = row.grupo_titulo || grupo.titulo || '';
+                                    if (!row.total_exames) row.total_exames = Number(grupo.total || 0);
+                                });
+
+                                return {
+                                    ...cfg,
+                                    tipos,
+                                };
+                            })
+                            .filter((cfg) => Object.keys(cfg?.tipos || {}).length > 0);
+
                         state.gheConfigs.forEach(cfg => {
                             Object.entries(cfg.tipos || {}).forEach(([tipo, row]) => {
                                 if (!row?.grupo_id) return;
@@ -1121,7 +1159,7 @@
 
                         newBtn?.addEventListener('click', () => {
                             if (typeof window.openProtocolosModal === 'function') {
-                                window.openProtocolosModal();
+                                window.openProtocolosModal({ clienteId: getCurrentClienteId() });
                             }
                         });
 
@@ -1552,8 +1590,15 @@
                     if (el.clienteSelect) {
                         el.clienteSelect.addEventListener('change', () => {
                             const clienteId = el.clienteSelect.value;
-                            if (!clienteId) return;
+                            state.gruposExames = [];
+                            state.gheCatalog = [];
+                            state.gheConfigs = [];
+                            resetCurrentGheConfig();
+                            renderGheConfigsTable();
+                            syncAsoTipoItems();
+                            loadGruposExames();
                             loadGheCatalog();
+                            if (!clienteId) return;
                             if (!INITIAL?.isEdit) {
                                 loadClienteAsoGrupos(clienteId);
                             }

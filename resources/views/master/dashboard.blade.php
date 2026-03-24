@@ -47,134 +47,122 @@
     </style>
 
     <div class="w-full px-4 md:px-8 py-8 space-y-8">
-
-{{--        --}}{{-- Hero --}}
-{{--        <div class="rounded-3xl bg-gradient-to-r from-indigo-700 via-indigo-600 to-blue-600 text-white shadow-xl p-6 md:p-8 flex flex-col gap-4 items-center text-center"--}}
-{{--             data-dashboard-card="hero">--}}
-{{--            <div class="inline-flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-indigo-100">--}}
-{{--                🔒 Master Control--}}
-{{--            </div>--}}
-{{--            <h1 class="text-3xl md:text-4xl font-semibold leading-tight">Painel Master</h1>--}}
-{{--            <p class="text-sm md:text-base text-indigo-100 max-w-2xl">--}}
-{{--                Visão centralizada das principais áreas: acessos, clientes, preços e comissões. Tudo em um só lugar.--}}
-{{--            </p>--}}
-{{--        </div>--}}
-        {{-- Cards m&eacute;tricas --}}
-        <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            <div class="rounded-2xl shadow-lg border border-indigo-400/40 p-5 text-center text-white bg-gradient-to-br from-indigo-700 via-blue-600 to-sky-500"
-                 data-dashboard-card="clientes-ativos">
-                <div class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 text-white mx-auto">&#128101;</div>
-                <div class="mt-2 text-xs uppercase tracking-wide text-indigo-100">Clientes Ativos</div>
-                <div class="text-3xl font-bold text-white mt-1">
-                    {{ $visaoEmpresa['clientes_ativos'] ?? 0 }}
+        <section class="space-y-4">
+            <div class="flex items-end justify-between gap-3 flex-wrap">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-[0.25em] text-indigo-500">Dashboard Executivo</p>
+                    <h2 class="text-2xl font-semibold text-slate-900 mt-1">Visão consolidada da operação</h2>
                 </div>
-                <div class="text-emerald-200 text-xs mt-1">Ativos</div>
             </div>
-            <div class="rounded-2xl shadow-lg border border-emerald-400/40 p-5 text-center text-white bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-500"
-                 data-dashboard-card="faturamento-global">
-                <div class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 text-white mx-auto">&#128181;</div>
-                <div class="mt-2 text-xs uppercase tracking-wide text-emerald-100">Faturamento Global</div>
-                <div class="text-3xl font-bold text-white mt-1">
-                    R$ {{ number_format($visaoEmpresa['faturamento_global'] ?? 0, 2, ',', '.') }}
-                </div>
-                <div class="text-emerald-100 text-xs mt-1">Atualizado</div>
-            </div>
-{{--            <div class="rounded-2xl shadow-lg border border-amber-400/40 p-5 text-center text-white bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500"--}}
-{{--                 data-dashboard-card="tempo-medio">--}}
-{{--                <div class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 text-white mx-auto">&#9201;</div>--}}
-{{--                <div class="mt-2 text-xs uppercase tracking-wide text-amber-100">Tempo M&eacute;dio</div>--}}
-{{--                <div class="text-3xl font-bold text-white mt-1">--}}
-{{--                    {{ $visaoEmpresa['tempo_medio'] ?? '-' }}--}}
-{{--                </div>--}}
-{{--            </div>--}}
-{{--            <div class="rounded-2xl shadow-lg border border-sky-400/40 p-5 text-center text-white bg-gradient-to-br from-sky-600 via-cyan-600 to-blue-500"--}}
-{{--                 data-dashboard-card="servicos-consumidos">--}}
-{{--                <div class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 text-white mx-auto">&#128200;</div>--}}
-{{--                <div class="mt-2 text-xs uppercase tracking-wide text-sky-100">Servi&ccedil;os Consumidos</div>--}}
-{{--                <div class="text-3xl font-bold text-white mt-1">--}}
-{{--                    {{ $visaoEmpresa['servicos_consumidos'] ?? 0 }}--}}
-{{--                </div>--}}
-{{--                <div class="text-sky-100 text-xs mt-1">Total de itens</div>--}}
-{{--            </div>--}}
-            <a href="{{ route('financeiro.contas-receber', [
-                'aba' => 'vendas',
-                'status_finalizacao' => 'nao_finalizadas',
-                'data_inicio' => now()->subMonth()->format('Y-m-d'),
-                'data_fim' => now()->format('Y-m-d'),
-            ]) }}"
-               class="rounded-2xl shadow-lg border border-amber-400/40 p-5 text-center text-white bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 hover:opacity-95 transition"
-               data-dashboard-card="financeiro-pendente">
-                <div class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 text-white mx-auto">&#128184;</div>
-                <div class="mt-2 text-xs uppercase tracking-wide text-amber-100">Faturamento Pendente</div>
-                <div class="text-3xl font-bold text-white mt-1">
-                    R$ {{ number_format($financeiro['total_servicos_nao_finalizados'] ?? 0, 2, ',', '.') }}
-                </div>
-                <div class="text-amber-100 text-xs mt-1">Serviços não finalizados</div>
-            </a>
-            <a href="{{ route('financeiro.contas-receber', [
-                'aba' => 'faturas',
-                'faturas_status' => 'com_baixa',
-                'faturas_data_inicio' => now()->subMonth()->format('Y-m-d'),
-                'faturas_data_fim' => now()->format('Y-m-d'),
-            ]) }}"
-               class="rounded-2xl shadow-lg border border-emerald-400/40 p-5 text-center text-white bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-500 hover:opacity-95 transition"
-               data-dashboard-card="financeiro-recebido">
-                <div class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 text-white mx-auto">&#128176;</div>
-                <div class="mt-2 text-xs uppercase tracking-wide text-emerald-100">Faturas com Baixas Registradas</div>
-                <div class="text-3xl font-bold text-white mt-1">
-                    R$ {{ number_format($financeiro['faturas_com_baixa_registrada'] ?? 0, 2, ',', '.') }}
-                </div>
-                <div class="text-emerald-100 text-xs mt-1">Faturas com ao menos uma baixa</div>
-            </a>
-            <a href="{{ route('master.agendamentos') }}"
-               class="rounded-2xl shadow-lg border border-emerald-400/40 p-5 text-center text-white bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-500 hover:opacity-95 transition"
-               data-dashboard-card="agendamentos-dia">
-                <div class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 text-white mx-auto">&#128197;</div>
-                <div class="mt-2 text-xs uppercase tracking-wide text-emerald-100">Agendamentos do dia</div>
-                <div class="text-3xl font-bold text-white mt-1">
-                    {{ $agendamentosHoje['total'] ?? 0 }}
-                </div>
-                <div class="text-emerald-100 text-xs mt-1">
-                    Abertas: {{ $agendamentosHoje['abertas'] ?? 0 }} • Fechadas: {{ $agendamentosHoje['fechadas'] ?? 0 }}
-                </div>
-            </a>
-            <a href="{{ route('master.relatorios', ['setor' => 'operacional']) }}"
-               class="rounded-2xl shadow-lg border border-indigo-400/40 p-5 text-center text-white bg-gradient-to-br from-indigo-700 via-violet-600 to-purple-500 hover:opacity-95 transition"
-               data-dashboard-card="relatorios-master">
-                <div class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 text-white mx-auto">&#128202;</div>
-                <div class="mt-2 text-xs uppercase tracking-wide text-indigo-100">Relatório</div>
-                <div class="text-lg font-semibold text-white mt-1">
-                    Relatórios Master
-                </div>
-                <div class="text-indigo-100 text-xs mt-1">
-                    Produtividade + tarefas + PDF
-                </div>
-            </a>
 
-            <article class="sm:col-span-2 lg:col-span-2 rounded-2xl shadow-lg border border-indigo-400/40 p-4 text-white bg-gradient-to-br from-indigo-700 via-blue-600 to-sky-500">
-                <div class="flex items-center gap-3">
-                    <div class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 text-white">&#128197;</div>
-                    <div>
-                        <p class="text-xs uppercase tracking-wide text-indigo-100">Resumo da Agenda</p>
-                        <p class="text-xs text-indigo-100">Visao geral das tarefas do master</p>
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
+{{--                <article class="rounded-3xl border border-slate-200 bg-white shadow-sm p-5">--}}
+{{--                    <div class="flex items-start justify-between gap-3 mb-4">--}}
+{{--                        <div>--}}
+{{--                            <h3 class="text-base font-semibold text-slate-900">Funil Comercial</h3>--}}
+{{--                            <p class="text-xs text-slate-500 mt-1">Quantidade de propostas por etapa do pipeline.</p>--}}
+{{--                        </div>--}}
+{{--                        <div class="rounded-xl bg-indigo-50 text-indigo-700 px-3 py-1 text-xs font-semibold">--}}
+{{--                            {{ array_sum($dashboardCharts['pipeline']['quantidades'] ?? []) }} propostas--}}
+{{--                        </div>--}}
+{{--                    </div>--}}
+{{--                    <div class="h-[300px]">--}}
+{{--                        <canvas id="chartPipeline"></canvas>--}}
+{{--                    </div>--}}
+{{--                </article>--}}
+
+                <article class="rounded-3xl border border-slate-200 bg-white shadow-sm p-5">
+                    <div class="flex items-start justify-between gap-3 mb-4">
+                        <div>
+                            <h3 class="text-base font-semibold text-slate-900">Recebido x Pendente</h3>
+                            <p class="text-xs text-slate-500 mt-1">Comparativo financeiro consolidado do painel.</p>
+                        </div>
+                        <div class="rounded-xl bg-emerald-50 text-emerald-700 px-3 py-1 text-xs font-semibold">
+                            Financeiro
+                        </div>
                     </div>
-                </div>
-                <div class="mt-3 grid grid-cols-1 md:grid-cols-3 gap-2.5">
-                    <div class="rounded-xl bg-white/10 border border-white/20 p-3">
-                        <p class="text-[11px] uppercase tracking-wide text-indigo-100 font-semibold">Total de compromissos em aberto</p>
-                        <p class="text-2xl font-bold text-white mt-1">{{ $agendaKpis['aberto_total'] ?? 0 }}</p>
+                    <div class="h-[300px]">
+                        <canvas id="chartFinanceiro"></canvas>
                     </div>
-                    <div class="rounded-xl bg-white/10 border border-white/20 p-3">
-                        <p class="text-[11px] uppercase tracking-wide text-indigo-100 font-semibold">Pendentes do dia</p>
-                        <p class="text-2xl font-bold text-white mt-1">{{ $agendaKpis['pendentes_dia'] ?? 0 }}</p>
+                </article>
+
+{{--                <article class="rounded-3xl border border-slate-200 bg-white shadow-sm p-5">--}}
+{{--                    <div class="flex items-start justify-between gap-3 mb-4">--}}
+{{--                        <div>--}}
+{{--                            <h3 class="text-base font-semibold text-slate-900">Operacional por Status</h3>--}}
+{{--                            <p class="text-xs text-slate-500 mt-1">Tarefas distribuídas pelas colunas do fluxo operacional.</p>--}}
+{{--                        </div>--}}
+{{--                        <div class="rounded-xl bg-amber-50 text-amber-700 px-3 py-1 text-xs font-semibold">--}}
+{{--                            Kanban--}}
+{{--                        </div>--}}
+{{--                    </div>--}}
+{{--                    <div class="h-[300px]">--}}
+{{--                        <canvas id="chartOperacionalStatus"></canvas>--}}
+{{--                    </div>--}}
+{{--                </article>--}}
+
+{{--                <article class="rounded-3xl border border-slate-200 bg-white shadow-sm p-5">--}}
+{{--                    <div class="flex items-start justify-between gap-3 mb-4">--}}
+{{--                        <div>--}}
+{{--                            <h3 class="text-base font-semibold text-slate-900">SLA e Conclusão</h3>--}}
+{{--                            <p class="text-xs text-slate-500 mt-1">Entregas no prazo, fora do prazo e tarefas atrasadas.</p>--}}
+{{--                        </div>--}}
+{{--                        <div class="rounded-xl bg-sky-50 text-sky-700 px-3 py-1 text-xs font-semibold">--}}
+{{--                            SLA {{ $dashboardCharts['slaResumo']['percentual'] ?? 0 }}%--}}
+{{--                        </div>--}}
+{{--                    </div>--}}
+{{--                    <div class="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-4 items-center">--}}
+{{--                        <div class="h-[240px]">--}}
+{{--                            <canvas id="chartSlaResumo"></canvas>--}}
+{{--                        </div>--}}
+{{--                        <div class="grid gap-3">--}}
+{{--                            <div class="rounded-2xl bg-emerald-50 border border-emerald-100 p-4">--}}
+{{--                                <div class="text-xs uppercase tracking-wide text-emerald-700 font-semibold">Dentro do SLA</div>--}}
+{{--                                <div class="text-2xl font-bold text-emerald-900 mt-1">{{ $dashboardCharts['slaResumo']['totais'][0] ?? 0 }}</div>--}}
+{{--                            </div>--}}
+{{--                            <div class="rounded-2xl bg-amber-50 border border-amber-100 p-4">--}}
+{{--                                <div class="text-xs uppercase tracking-wide text-amber-700 font-semibold">Fora do SLA</div>--}}
+{{--                                <div class="text-2xl font-bold text-amber-900 mt-1">{{ $dashboardCharts['slaResumo']['totais'][1] ?? 0 }}</div>--}}
+{{--                            </div>--}}
+{{--                            <div class="rounded-2xl bg-rose-50 border border-rose-100 p-4">--}}
+{{--                                <div class="text-xs uppercase tracking-wide text-rose-700 font-semibold">Atrasadas</div>--}}
+{{--                                <div class="text-2xl font-bold text-rose-900 mt-1">{{ $dashboardCharts['slaResumo']['totais'][2] ?? 0 }}</div>--}}
+{{--                            </div>--}}
+{{--                        </div>--}}
+{{--                    </div>--}}
+{{--                </article>--}}
+
+{{--                <article class="rounded-3xl border border-slate-200 bg-white shadow-sm p-5">--}}
+{{--                    <div class="flex items-start justify-between gap-3 mb-4">--}}
+{{--                        <div>--}}
+{{--                            <h3 class="text-base font-semibold text-slate-900">Serviços Prestados por Tipo</h3>--}}
+{{--                            <p class="text-xs text-slate-500 mt-1">Serviços concluídos com maior volume.</p>--}}
+{{--                        </div>--}}
+{{--                        <div class="rounded-xl bg-violet-50 text-violet-700 px-3 py-1 text-xs font-semibold">--}}
+{{--                            Produção--}}
+{{--                        </div>--}}
+{{--                    </div>--}}
+{{--                    <div class="h-[300px]">--}}
+{{--                        <canvas id="chartServicosPrestados"></canvas>--}}
+{{--                    </div>--}}
+{{--                </article>--}}
+
+                <article class="rounded-3xl border border-slate-200 bg-white shadow-sm p-5">
+                    <div class="flex items-start justify-between gap-3 mb-4">
+                        <div>
+                            <h3 class="text-base font-semibold text-slate-900">Top Clientes por Receita</h3>
+                            <p class="text-xs text-slate-500 mt-1">Clientes com maior faturamento acumulado.</p>
+                        </div>
+                        <div class="rounded-xl bg-fuchsia-50 text-fuchsia-700 px-3 py-1 text-xs font-semibold">
+                            Receita
+                        </div>
                     </div>
-                    <div class="rounded-xl bg-white/10 border border-white/20 p-3">
-                        <p class="text-[11px] uppercase tracking-wide text-indigo-100 font-semibold">Concluidas do dia</p>
-                        <p class="text-2xl font-bold text-white mt-1">{{ $agendaKpis['concluidas_dia'] ?? 0 }}</p>
+                    <div class="h-[300px]">
+                        <canvas id="chartTopClientes"></canvas>
                     </div>
-                </div>
-            </article>
-        </div>
+                </article>
+            </div>
+        </section>
 
         {{-- Relatórios avançados --}}
 {{--        <div class="bg-sky-50 rounded-3xl shadow-sm border border-sky-100 p-6 space-y-5"--}}
@@ -268,12 +256,24 @@
             </div>
         @endif
 
+        <section class="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">Agenda</p>
+                <h3 class="text-2xl font-semibold text-slate-900 mt-1">Compromissos do painel master</h3>
+            </div>
+            <a href="{{ route('master.agenda-vendedores.index') }}"
+               class="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100 hover:text-indigo-900">
+                <i class="fa-regular fa-calendar-days"></i>
+                Ver agenda de vendedores
+            </a>
+        </section>
+
         <section class="bg-white rounded-xl border border-indigo-100 shadow-sm overflow-hidden">
             <div class="bg-gradient-to-r from-indigo-700 via-indigo-600 to-blue-600 text-white px-3 py-2 flex items-center justify-between gap-2 flex-wrap">
                 <div class="flex items-center gap-2">
                     <a href="{{ route('master.dashboard', ['agenda_data' => $agendaMesAnterior->toDateString(), 'agenda_dia' => $agendaMesAnterior->copy()->startOfMonth()->toDateString()]) }}"
                        class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-semibold">
-                        Mes anterior
+                        Mês anterior
                     </a>
                     <form method="GET" action="{{ route('master.dashboard') }}" class="flex items-center gap-2">
                         <input type="month"
@@ -285,7 +285,7 @@
                 </div>
 
                 <div class="text-center">
-                    <p class="text-[11px] uppercase tracking-[0.2em] text-indigo-100">Mes selecionado</p>
+                    <p class="text-[11px] uppercase tracking-[0.2em] text-indigo-100">Mês selecionado</p>
                     <p class="text-xl font-semibold leading-none mt-1">{{ $agendaDataSelecionada->locale('pt_BR')->translatedFormat('F \d\e Y') }}</p>
                 </div>
 
@@ -296,7 +296,7 @@
                     </button>
                     <a href="{{ route('master.dashboard', ['agenda_data' => $agendaMesProximo->toDateString(), 'agenda_dia' => $agendaMesProximo->copy()->startOfMonth()->toDateString()]) }}"
                        class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-semibold">
-                        Proximo mes
+                        Próximo mês
                     </a>
                 </div>
             </div>
@@ -388,7 +388,7 @@
                                     <p class="text-base leading-tight font-semibold text-slate-900 truncate">{{ $tarefa->titulo }}</p>
                                 </div>
                                 <span class="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold whitespace-nowrap {{ $isConcluida ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700' }}">
-                                    {!! $isConcluida ? 'Concluida' : 'Pendente' !!}
+                                    {!! $isConcluida ? 'Concluída' : 'Pendente' !!}
                                 </span>
                             </div>
                             @if($tarefa->descricao)
@@ -461,19 +461,19 @@
                     <input type="hidden" name="agenda_data" value="{{ $agendaDataSelecionada->toDateString() }}">
 
                     <div class="space-y-1">
-                        <label class="text-xs font-semibold text-slate-600">Titulo *</label>
+                        <label class="text-xs font-semibold text-slate-600">Título *</label>
                         <input name="titulo" required class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" placeholder="Ex: Retorno com cliente XPTO">
                     </div>
                     <div class="space-y-1">
-                        <label class="text-xs font-semibold text-slate-600">Descricao</label>
-                        <textarea name="descricao" rows="2" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" placeholder="Detalhes ou observacoes"></textarea>
+                        <label class="text-xs font-semibold text-slate-600">Descrição</label>
+                        <textarea name="descricao" rows="2" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" placeholder="Detalhes ou observações"></textarea>
                     </div>
                     <div class="grid md:grid-cols-2 gap-3">
                         <div class="space-y-1">
                             <label class="text-xs font-semibold text-slate-600">Tipo *</label>
                             <select name="tipo" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
                                 <option>Retorno Cliente</option>
-                                <option>Reuniao</option>
+                                <option>Reunião</option>
                                 <option>Follow-up</option>
                                 <option selected>Tarefa</option>
                                 <option>Outro</option>
@@ -571,7 +571,7 @@
                 form.action = updateActionTemplate.replace('__ID__', data.id || '');
                 if (methodInput) methodInput.value = 'PUT';
                 if (title) title.textContent = 'Editar tarefa';
-                if (submitBtn) submitBtn.textContent = 'Salvar alteracoes';
+                if (submitBtn) submitBtn.textContent = 'Salvar alterações';
 
                 const titulo = form.querySelector('[name="titulo"]');
                 if (titulo) titulo.value = data.titulo || '';
@@ -681,6 +681,210 @@
                 if (e.target === popup) closePopup();
             });
             setTimeout(closePopup, 2400);
+        })();
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        (function () {
+            const charts = @json($dashboardCharts);
+            const brl = (value) => Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            const baseTooltip = {
+                callbacks: {
+                    label(context) {
+                        const value = context.raw ?? 0;
+                        return `${context.dataset.label}: ${typeof value === 'number' ? value.toLocaleString('pt-BR') : value}`;
+                    }
+                }
+            };
+
+            const chartPipeline = document.getElementById('chartPipeline');
+            if (chartPipeline) {
+                new Chart(chartPipeline, {
+                    type: 'bar',
+                    data: {
+                        labels: charts.pipeline.labels,
+                        datasets: [{
+                            label: 'Propostas',
+                            data: charts.pipeline.quantidades,
+                            backgroundColor: ['#334155', '#2563eb', '#f59e0b', '#10b981', '#ef4444'],
+                            borderRadius: 10,
+                            borderSkipped: false,
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false }, tooltip: baseTooltip },
+                        scales: {
+                            x: { beginAtZero: true, ticks: { precision: 0 } },
+                            y: { grid: { display: false } }
+                        }
+                    }
+                });
+            }
+
+            new Chart(document.getElementById('chartFinanceiro'), {
+                type: 'bar',
+                data: {
+                    labels: charts.financeiroMensal.labels,
+                    datasets: [{
+                        label: 'Total',
+                        data: charts.financeiroMensal.totais,
+                        backgroundColor: ['#10b981', '#f59e0b'],
+                        borderRadius: 10,
+                        categoryPercentage: 0.55,
+                        barPercentage: 0.7,
+                        maxBarThickness: 96,
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label(context) {
+                                    const label = charts.financeiroMensal.labels?.[context.dataIndex] || context.dataset.label;
+                                    const linhas = [`${label}: ${brl(context.raw)}`];
+
+                                    if (label === 'Recebido') {
+                                        linhas.push('Faturas pagas com baixa registrada');
+                                    }
+
+                                    if (label === 'Pendente') {
+                                        linhas.push(`Valores a faturar de serviços finalizados: ${brl(charts.financeiroMensal.componentes_pendente?.valores_a_faturar || 0)}`);
+                                        linhas.push(`Valores a receber de serviços não finalizados: ${brl(charts.financeiroMensal.componentes_pendente?.servicos_nao_finalizados || 0)}`);
+                                    }
+
+                                    return linhas;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback(value) {
+                                    return brl(value);
+                                }
+                            }
+                        },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+
+            const chartOperacionalStatus = document.getElementById('chartOperacionalStatus');
+            if (chartOperacionalStatus) {
+                new Chart(chartOperacionalStatus, {
+                    type: 'bar',
+                    data: {
+                        labels: charts.operacionalStatus.labels,
+                        datasets: [{
+                            label: 'Tarefas',
+                            data: charts.operacionalStatus.totais,
+                            backgroundColor: '#6366f1',
+                            borderRadius: 10,
+                        }]
+                    },
+                    options: {
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false }, tooltip: baseTooltip },
+                        scales: {
+                            y: { beginAtZero: true, ticks: { precision: 0 } },
+                            x: { grid: { display: false } }
+                        }
+                    }
+                });
+            }
+
+            const chartSlaResumo = document.getElementById('chartSlaResumo');
+            if (chartSlaResumo) {
+                new Chart(chartSlaResumo, {
+                    type: 'doughnut',
+                    data: {
+                        labels: charts.slaResumo.labels,
+                        datasets: [{
+                            data: charts.slaResumo.totais,
+                            backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
+                            borderWidth: 0,
+                        }]
+                    },
+                    options: {
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom' },
+                            tooltip: baseTooltip,
+                        },
+                        cutout: '68%'
+                    }
+                });
+            }
+
+            const chartServicosPrestados = document.getElementById('chartServicosPrestados');
+            if (chartServicosPrestados) {
+                new Chart(chartServicosPrestados, {
+                    type: 'bar',
+                    data: {
+                        labels: charts.servicosPrestados.labels,
+                        datasets: [{
+                            label: 'Serviços',
+                            data: charts.servicosPrestados.totais,
+                            backgroundColor: '#8b5cf6',
+                            borderRadius: 10,
+                        }]
+                    },
+                    options: {
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false }, tooltip: baseTooltip },
+                        scales: {
+                            y: { beginAtZero: true, ticks: { precision: 0 } },
+                            x: { grid: { display: false } }
+                        }
+                    }
+                });
+            }
+
+            new Chart(document.getElementById('chartTopClientes'), {
+                type: 'bar',
+                data: {
+                    labels: charts.topClientes.labels,
+                    datasets: [{
+                        label: 'Receita',
+                        data: charts.topClientes.totais,
+                        backgroundColor: '#d946ef',
+                        borderRadius: 10,
+                        borderSkipped: false,
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label(context) {
+                                    return `${context.dataset.label}: ${brl(context.raw)}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback(value) {
+                                    return brl(value);
+                                }
+                            }
+                        },
+                        y: { grid: { display: false } }
+                    }
+                }
+            });
         })();
     </script>
 @endsection

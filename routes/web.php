@@ -879,6 +879,8 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
             Route::prefix('protocolos-exames')->name('protocolos-exames.')->group(function () {
                 Route::get('/', [ProtocolosExamesController::class, 'indexJson'])
                     ->name('indexJson');
+                Route::get('/clientes', [ProtocolosExamesController::class, 'clientesJson'])
+                    ->name('clientesJson');
                 Route::post('/', [ProtocolosExamesController::class, 'store'])
                     ->name('store');
                 Route::put('/{protocolo}', [ProtocolosExamesController::class, 'update'])
@@ -1281,6 +1283,8 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
         Route::prefix('protocolos-exames')->name('protocolos-exames.')->group(function () {
             Route::get('/', [ProtocolosExamesController::class, 'indexJson'])
                 ->name('indexJson');
+            Route::get('/clientes', [ProtocolosExamesController::class, 'clientesJson'])
+                ->name('clientesJson');
             Route::post('/', [ProtocolosExamesController::class, 'store'])
                 ->name('store');
             Route::put('/{protocolo}', [ProtocolosExamesController::class, 'update'])

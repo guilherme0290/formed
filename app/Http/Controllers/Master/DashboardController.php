@@ -33,6 +33,7 @@ class DashboardController extends Controller
         $comerciais   = $this->metricasComerciais($empresaId);
         $financeiro   = $this->metricasFinanceiras($empresaId);
         $agendamentosHoje = $this->resumoAgendamentosHoje($empresaId);
+        $dashboardCharts = $this->dashboardCharts($empresaId);
 
         $agendaDataSelecionada = $this->agendaDataSelecionada($request);
         $agendaInicioMes = $agendaDataSelecionada->copy()->startOfMonth();
@@ -96,6 +97,7 @@ class DashboardController extends Controller
             'comerciais'   => $comerciais,
             'financeiro'   => $financeiro,
             'agendamentosHoje' => $agendamentosHoje,
+            'dashboardCharts' => $dashboardCharts,
             'agendaDataSelecionada' => $agendaDataSelecionada,
             'agendaDiaSelecionado' => $agendaDiaSelecionado,
             'agendaDias' => $agendaDias,
@@ -105,6 +107,134 @@ class DashboardController extends Controller
             'agendaMesProximo' => $agendaDataSelecionada->copy()->addMonthNoOverflow(),
             'agendaKpis' => $agendaKpis,
         ]);
+    }
+
+    private function dashboardCharts(?int $empresaId): array
+    {
+        $hoje = Carbon::today();
+
+        $pipelineMap = [
+            'CONTATO_INICIAL' => 'Contato Inicial',
+            'PROPOSTA_ENVIADA' => 'Proposta Enviada',
+            'EM_NEGOCIACAO' => 'Em Negociação',
+            'FECHAMENTO' => 'Fechamento',
+            'PERDIDO' => 'Perdido',
+        ];
+
+        $pipelineRows = Proposta::query()
+            ->when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId))
+            ->selectRaw("COALESCE(pipeline_status, 'CONTATO_INICIAL') as status, COUNT(*) as total, COALESCE(SUM(valor_total), 0) as valor")
+            ->groupByRaw("COALESCE(pipeline_status, 'CONTATO_INICIAL')")
+            ->get()
+            ->keyBy('status');
+
+        $pipeline = [
+            'labels' => array_values($pipelineMap),
+            'quantidades' => collect(array_keys($pipelineMap))->map(fn ($status) => (int) ($pipelineRows->get($status)?->total ?? 0))->all(),
+            'valores' => collect(array_keys($pipelineMap))->map(fn ($status) => round((float) ($pipelineRows->get($status)?->valor ?? 0), 2))->all(),
+        ];
+
+        $recebidoTotal = $this->totalFaturasComBaixaRegistrada($empresaId);
+        $valoresAFaturar = $this->totalValoresAFaturar($empresaId);
+        $servicosNaoFinalizados = $this->totalServicosNaoFinalizados($empresaId);
+        $pendenteTotal = $valoresAFaturar + $servicosNaoFinalizados;
+
+        $financeiroMensal = [
+            'labels' => ['Recebido', 'Pendente'],
+            'totais' => [
+                round($recebidoTotal, 2),
+                round($pendenteTotal, 2),
+            ],
+            'componentes_pendente' => [
+                'valores_a_faturar' => round($valoresAFaturar, 2),
+                'servicos_nao_finalizados' => round($servicosNaoFinalizados, 2),
+            ],
+        ];
+
+        $statusRows = Tarefa::query()
+            ->join('kanban_colunas', 'kanban_colunas.id', '=', 'tarefas.coluna_id')
+            ->when($empresaId, fn ($q) => $q->where('tarefas.empresa_id', $empresaId))
+            ->whereNull('tarefas.deleted_at')
+            ->selectRaw('kanban_colunas.nome as nome, COUNT(*) as total')
+            ->groupBy('kanban_colunas.id', 'kanban_colunas.nome', 'kanban_colunas.ordem')
+            ->orderBy('kanban_colunas.ordem')
+            ->get();
+
+        $operacionalStatus = [
+            'labels' => $statusRows->pluck('nome')->all(),
+            'totais' => $statusRows->map(fn ($row) => (int) $row->total)->all(),
+        ];
+
+        $slaBase = Tarefa::query()
+            ->join('kanban_colunas', 'kanban_colunas.id', '=', 'tarefas.coluna_id')
+            ->when($empresaId, fn ($q) => $q->where('tarefas.empresa_id', $empresaId))
+            ->whereNull('tarefas.deleted_at');
+
+        $slaDentro = (clone $slaBase)
+            ->where('kanban_colunas.finaliza', true)
+            ->whereNotNull('tarefas.fim_previsto')
+            ->whereNotNull('tarefas.finalizado_em')
+            ->whereColumn('tarefas.finalizado_em', '<=', 'tarefas.fim_previsto')
+            ->count();
+
+        $slaFora = (clone $slaBase)
+            ->where('kanban_colunas.finaliza', true)
+            ->whereNotNull('tarefas.fim_previsto')
+            ->whereNotNull('tarefas.finalizado_em')
+            ->whereColumn('tarefas.finalizado_em', '>', 'tarefas.fim_previsto')
+            ->count();
+
+        $tarefasAtrasadas = (clone $slaBase)
+            ->where('kanban_colunas.finaliza', false)
+            ->whereDate('tarefas.fim_previsto', '<', $hoje->toDateString())
+            ->count();
+
+        $totalSla = $slaDentro + $slaFora;
+        $slaResumo = [
+            'labels' => ['Dentro do SLA', 'Fora do SLA', 'Atrasadas'],
+            'totais' => [$slaDentro, $slaFora, $tarefasAtrasadas],
+            'percentual' => $totalSla > 0 ? round(($slaDentro / $totalSla) * 100) : 0,
+        ];
+
+        $servicoRows = Tarefa::query()
+            ->join('kanban_colunas', 'kanban_colunas.id', '=', 'tarefas.coluna_id')
+            ->leftJoin('servicos', 'servicos.id', '=', 'tarefas.servico_id')
+            ->when($empresaId, fn ($q) => $q->where('tarefas.empresa_id', $empresaId))
+            ->whereNull('tarefas.deleted_at')
+            ->where('kanban_colunas.finaliza', true)
+            ->selectRaw("COALESCE(servicos.nome, 'Sem serviço') as nome, COUNT(*) as total")
+            ->groupByRaw("COALESCE(servicos.nome, 'Sem serviço')")
+            ->orderByDesc('total')
+            ->limit(8)
+            ->get();
+
+        $servicosPrestados = [
+            'labels' => $servicoRows->pluck('nome')->all(),
+            'totais' => $servicoRows->map(fn ($row) => (int) $row->total)->all(),
+        ];
+
+        $clientesRows = Venda::query()
+            ->join('clientes', 'clientes.id', '=', 'vendas.cliente_id')
+            ->when($empresaId, fn ($q) => $q->where('vendas.empresa_id', $empresaId))
+            ->selectRaw("COALESCE(clientes.nome_fantasia, clientes.razao_social, CONCAT('Cliente #', clientes.id)) as nome, COALESCE(SUM(vendas.total), 0) as total")
+            ->groupBy('clientes.id', 'clientes.nome_fantasia', 'clientes.razao_social')
+            ->orderByDesc('total')
+            ->limit(8)
+            ->get();
+
+        $topClientes = [
+            'labels' => $clientesRows->pluck('nome')->all(),
+            'totais' => $clientesRows->map(fn ($row) => round((float) $row->total, 2))->all(),
+        ];
+
+        return compact(
+            'pipeline',
+            'financeiroMensal',
+            'operacionalStatus',
+            'slaResumo',
+            'servicosPrestados',
+            'topClientes'
+        );
     }
 
     private function agendaDataSelecionada(\Illuminate\Http\Request $request): Carbon
@@ -353,6 +483,35 @@ class DashboardController extends Controller
             'total_aberto' => $totalEmAberto,
             'faturas_com_baixa_registrada' => $faturasComBaixaRegistrada,
         ];
+    }
+
+    private function totalFaturasComBaixaRegistrada(?int $empresaId): float
+    {
+        return (float) ContaReceber::query()
+            ->when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId))
+            ->whereRaw('COALESCE(total_baixado, 0) > 0')
+            ->sum('total');
+    }
+
+    private function totalValoresAFaturar(?int $empresaId): float
+    {
+        if (!$empresaId) {
+            return 0.0;
+        }
+
+        return (float) DB::table('venda_itens as vi')
+            ->join('vendas as v', 'v.id', '=', 'vi.venda_id')
+            ->leftJoin('tarefas as t', 't.id', '=', 'v.tarefa_id')
+            ->where('v.empresa_id', $empresaId)
+            ->where('v.status', 'ABERTA')
+            ->whereNotNull('t.finalizado_em')
+            ->whereNotExists(function ($q) {
+                $q->select(DB::raw(1))
+                    ->from('contas_receber_itens as cri')
+                    ->whereColumn('cri.venda_item_id', 'vi.id')
+                    ->where('cri.status', '!=', 'CANCELADO');
+            })
+            ->sum('vi.subtotal_snapshot');
     }
 
     private function totalServicosNaoFinalizados(?int $empresaId): float

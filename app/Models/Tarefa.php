@@ -46,6 +46,25 @@ class Tarefa extends Model
         'data_prevista'   => 'date',
     ];
 
+    protected static function booted(): void
+    {
+        static::creating(function (Tarefa $tarefa) {
+            if (empty($tarefa->coluna_id)) {
+                return;
+            }
+
+            if (filled($tarefa->ordem) && (int) $tarefa->ordem > 0) {
+                return;
+            }
+
+            $ultimaOrdem = static::query()
+                ->where('coluna_id', $tarefa->coluna_id)
+                ->max('ordem');
+
+            $tarefa->ordem = ((int) $ultimaOrdem) + 1;
+        });
+    }
+
     // ===== RELACIONAMENTOS =====
     public function cliente()
     {
