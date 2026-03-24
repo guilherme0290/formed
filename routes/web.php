@@ -159,6 +159,9 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
                 [TarefaController::class, 'finalizarComDocumentoExistente']
             )->name('finalizar-documento-existente');
 
+            Route::post('{tarefa}/reprecificar', [PainelController::class, 'reprecificar'])
+                ->name('reprecificar');
+
             Route::post('{tarefa}/documento-cliente',
                 [TarefaController::class, 'substituirDocumentoCliente']
             )->name('documento-cliente');

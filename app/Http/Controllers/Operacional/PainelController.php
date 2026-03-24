@@ -51,6 +51,7 @@ class PainelController extends Controller
         $filtroDe          = $request->input('de');
         $filtroAte         = $request->input('ate');
         $filtroBusca       = trim((string) $request->input('q', ''));
+        $filtroTarefaId    = trim((string) $request->input('tarefa_id', ''));
 
         $filtroCanceladas = ($filtroColuna === 'canceladas');
 
@@ -115,6 +116,14 @@ class PainelController extends Controller
 
         if ($filtroCliente) {
             $tarefasQuery->where('cliente_id', $filtroCliente);
+        }
+
+        if ($filtroTarefaId !== '') {
+            if (ctype_digit($filtroTarefaId)) {
+                $tarefasQuery->whereKey((int) $filtroTarefaId);
+            } else {
+                $tarefasQuery->whereRaw('1 = 0');
+            }
         }
 
         if ($filtroColuna && $filtroCanceladas == null) {
@@ -256,6 +265,7 @@ class PainelController extends Controller
             'filtroDe'          => $filtroDe,
             'filtroAte'         => $filtroAte,
             'filtroBusca'       => $filtroBusca,
+            'filtroTarefaId'    => $filtroTarefaId,
             'filtroCanceladas'  => $filtroCanceladas,
         ]);
     }
@@ -831,6 +841,208 @@ class PainelController extends Controller
             'ok'      => true,
             'message' => 'Tarefa excluída com sucesso.',
         ]);
+    }
+
+    public function reprecificar(Request $request, Tarefa $tarefa, PrecificacaoService $precificacaoService): JsonResponse
+    {
+        $usuario = $request->user();
+        abort_unless($usuario && $usuario->hasPapel(['Master', 'Operacional']), 403);
+        abort_unless((int) $tarefa->empresa_id === (int) $usuario->empresa_id, 403);
+
+        $resultado = DB::transaction(function () use ($tarefa, $precificacaoService) {
+            $venda = Venda::query()
+                ->with(['itens'])
+                ->where('tarefa_id', $tarefa->id)
+                ->latest('id')
+                ->first();
+
+            if (!$venda) {
+                return [
+                    'ok' => false,
+                    'message' => 'Esta tarefa ainda não possui venda para reprecificar.',
+                    'status' => 422,
+                ];
+            }
+
+            $contaReceberIds = ContaReceberItem::query()
+                ->where('venda_id', $venda->id)
+                ->where('status', '!=', 'CANCELADO')
+                ->whereNotNull('conta_receber_id')
+                ->pluck('conta_receber_id')
+                ->map(fn ($id) => (int) $id)
+                ->filter(fn ($id) => $id > 0)
+                ->unique()
+                ->values();
+
+            $temContaReceberVinculada = $contaReceberIds->isNotEmpty();
+
+            if ($temContaReceberVinculada) {
+                $faturasLabel = $contaReceberIds->map(fn ($id) => '#'.$id)->implode(', ');
+                return [
+                    'ok' => false,
+                    'message' => 'Não é possível reprecificar: a venda já está vinculada ao financeiro na(s) fatura(s) '.$faturasLabel.'.',
+                    'status' => 422,
+                ];
+            }
+
+            try {
+                $itensPrecificados = $this->resolverItensPrecificadosTarefa($tarefa, $precificacaoService);
+            } catch (\Throwable $e) {
+                $mensagem = filled($e->getMessage())
+                    ? $e->getMessage()
+                    : 'Não foi possível reprecificar a tarefa com os parâmetros atuais.';
+
+                return [
+                    'ok' => false,
+                    'message' => $mensagem,
+                    'status' => 422,
+                ];
+            }
+
+            $itensVenda = $venda->itens()->orderBy('id')->get();
+            if (count($itensPrecificados) < $itensVenda->count()) {
+                return [
+                    'ok' => false,
+                    'message' => 'Não foi possível reprecificar automaticamente porque a nova composição possui menos itens que a venda atual.',
+                    'status' => 422,
+                ];
+            }
+
+            $totalNovo = 0.0;
+            $itensAtualizados = 0;
+            $itensCriados = 0;
+
+            foreach ($itensPrecificados as $idx => $novo) {
+                $precoUnitario = (float) ($novo['preco_unitario_snapshot'] ?? 0);
+                $quantidade = max(1, (int) ($novo['quantidade'] ?? 1));
+                $subtotal = array_key_exists('subtotal_snapshot', $novo)
+                    ? (float) ($novo['subtotal_snapshot'] ?? 0)
+                    : ($precoUnitario * $quantidade);
+
+                $payload = [
+                    'servico_id' => $novo['servico_id'] ?? null,
+                    'descricao_snapshot' => (string) ($novo['descricao_snapshot'] ?? 'Serviço'),
+                    'preco_unitario_snapshot' => $precoUnitario,
+                    'quantidade' => $quantidade,
+                    'subtotal_snapshot' => $subtotal,
+                ];
+
+                $itemVenda = $itensVenda->get($idx);
+                if ($itemVenda) {
+                    $itemVenda->update([
+                        'servico_id' => $payload['servico_id'],
+                        'descricao_snapshot' => $payload['descricao_snapshot'] !== '' ? $payload['descricao_snapshot'] : ($itemVenda->descricao_snapshot ?? 'Serviço'),
+                        'preco_unitario_snapshot' => $payload['preco_unitario_snapshot'],
+                        'quantidade' => $payload['quantidade'],
+                        'subtotal_snapshot' => $payload['subtotal_snapshot'],
+                    ]);
+                    $itensAtualizados++;
+                } else {
+                    $venda->itens()->create($payload);
+                    $itensCriados++;
+                }
+
+                $totalNovo += $subtotal;
+            }
+
+            $venda->update([
+                'total' => $totalNovo,
+                'status' => 'ABERTA',
+            ]);
+
+            return [
+                'ok' => true,
+                'status' => 200,
+                'total' => $totalNovo,
+                'itens' => count($itensPrecificados),
+                'itens_atualizados' => $itensAtualizados,
+                'itens_criados' => $itensCriados,
+                'message' => $itensCriados > 0
+                    ? 'Venda reprecificada com sucesso e itens faltantes lançados.'
+                    : 'Venda reprecificada com sucesso.',
+            ];
+        });
+
+        if (!($resultado['ok'] ?? false)) {
+            return response()->json([
+                'ok' => false,
+                'message' => $resultado['message'] ?? 'Não foi possível reprecificar.',
+            ], (int) ($resultado['status'] ?? 422));
+        }
+
+        return response()->json([
+            'ok' => true,
+            'message' => $resultado['message'] ?? 'Venda reprecificada com sucesso.',
+            'total' => (float) ($resultado['total'] ?? 0),
+            'itens' => (int) ($resultado['itens'] ?? 0),
+            'itens_atualizados' => (int) ($resultado['itens_atualizados'] ?? 0),
+            'itens_criados' => (int) ($resultado['itens_criados'] ?? 0),
+        ]);
+    }
+
+    private function resolverItensPrecificadosTarefa(Tarefa $tarefa, PrecificacaoService $precificacaoService): array
+    {
+        $dataRef = now()->startOfDay();
+        $contratoAtivo = ClienteContrato::query()
+            ->where('empresa_id', $tarefa->empresa_id)
+            ->where('cliente_id', $tarefa->cliente_id)
+            ->where('status', 'ATIVO')
+            ->where(function ($q) use ($dataRef) {
+                $q->whereNull('vigencia_inicio')->orWhere('vigencia_inicio', '<=', $dataRef);
+            })
+            ->where(function ($q) use ($dataRef) {
+                $q->whereNull('vigencia_fim')->orWhere('vigencia_fim', '>=', $dataRef);
+            })
+            ->with('itens')
+            ->latest('vigencia_inicio')
+            ->first();
+
+        $asoServicoId = app(\App\Services\AsoGheService::class)->resolveServicoAsoIdFromContrato($contratoAtivo);
+        $isAso = $asoServicoId && (int) $tarefa->servico_id === (int) $asoServicoId;
+
+        $servicoTreinamentoId = (int) Servico::where('empresa_id', $tarefa->empresa_id)
+            ->where('nome', 'Treinamentos NRs')
+            ->value('id');
+        $servicoPgrId = (int) Servico::where('empresa_id', $tarefa->empresa_id)
+            ->where('nome', 'PGR')
+            ->value('id');
+        $servicoPcmsoId = (int) Servico::where('empresa_id', $tarefa->empresa_id)
+            ->where('nome', 'PCMSO')
+            ->value('id');
+
+        if ($isAso) {
+            $resultado = $precificacaoService->precificarAso($tarefa);
+            return (array) ($resultado['itensVenda'] ?? []);
+        }
+
+        if ($servicoTreinamentoId && (int) $tarefa->servico_id === $servicoTreinamentoId) {
+            $resultado = $precificacaoService->precificarTreinamentosNr($tarefa);
+            return (array) ($resultado['itensVenda'] ?? []);
+        }
+
+        if ($servicoPgrId && (int) $tarefa->servico_id === $servicoPgrId) {
+            $resultado = $precificacaoService->precificarPgr($tarefa);
+            return (array) ($resultado['itensVenda'] ?? []);
+        }
+
+        if ($servicoPcmsoId && (int) $tarefa->servico_id === $servicoPcmsoId) {
+            $resultado = $precificacaoService->precificarPcmso($tarefa);
+            return (array) ($resultado['itensVenda'] ?? []);
+        }
+
+        $resultado = $precificacaoService->validarServicoNoContrato(
+            (int) $tarefa->cliente_id,
+            (int) $tarefa->servico_id,
+            (int) $tarefa->empresa_id
+        );
+
+        return [[
+            'servico_id' => (int) ($resultado['item']->servico_id ?? 0) ?: null,
+            'descricao_snapshot' => (string) ($resultado['item']->descricao_snapshot ?? ($tarefa->servico?->nome ?? 'Serviço')),
+            'preco_unitario_snapshot' => (float) ($resultado['item']->preco_unitario_snapshot ?? 0),
+            'quantidade' => 1,
+            'subtotal_snapshot' => (float) ($resultado['item']->preco_unitario_snapshot ?? 0),
+        ]];
     }
 
 

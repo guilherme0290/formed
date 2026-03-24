@@ -75,9 +75,13 @@ const ensureLucideLoaded = () => {
 
 const getOverlayTarget = () => document.getElementById('app-overlay-root');
 
+let overlayLocks = 0;
+let swalQueue = Promise.resolve();
+
 const enableOverlayTarget = () => {
     const overlayRoot = getOverlayTarget();
     if (!overlayRoot) return null;
+    overlayLocks += 1;
     overlayRoot.classList.remove('pointer-events-none');
     return overlayRoot;
 };
@@ -85,45 +89,57 @@ const enableOverlayTarget = () => {
 const releaseOverlayTarget = () => {
     const overlayRoot = getOverlayTarget();
     if (!overlayRoot) return;
-    if (!overlayRoot.querySelector('.swal2-container')) {
+    overlayLocks = Math.max(0, overlayLocks - 1);
+    if (overlayLocks === 0 && !overlayRoot.querySelector('.swal2-container')) {
         overlayRoot.classList.add('pointer-events-none');
     }
+};
+
+const enqueueSwal = (task) => {
+    const run = swalQueue.then(task, task);
+    swalQueue = run.catch(() => {});
+    return run;
 };
 
 window.uiAlert = async (message, options = {}) => {
     const swal = await ensureSwalLoaded();
     if (swal) {
-        const releaseOverlay = () => {
-            if (document.activeElement instanceof HTMLElement) {
-                document.activeElement.blur();
-            }
-
-            releaseOverlayTarget();
-        };
-
-        return swal.fire({
-            icon: options.icon || 'info',
-            title: options.title || 'Atenção',
-            ...(options.html
-                ? { html: options.html }
-                : { text: message }),
-            confirmButtonText: options.confirmText || 'OK',
-            target: enableOverlayTarget() || document.body,
-            backdrop: true,
-            returnFocus: false,
-            focusConfirm: false,
-            didOpen: (popup) => {
-                const container = popup?.closest?.('.swal2-container');
-                if (container) {
-                    container.style.zIndex = '25000';
+        return enqueueSwal(async () => {
+            let overlayReleased = false;
+            const releaseOverlay = () => {
+                if (overlayReleased) return;
+                overlayReleased = true;
+                if (document.activeElement instanceof HTMLElement) {
+                    document.activeElement.blur();
                 }
-                if (typeof options.didOpen === 'function') {
-                    options.didOpen(popup);
-                }
-            },
-            didClose: releaseOverlay,
-            didDestroy: releaseOverlay,
-        }).finally(releaseOverlay);
+                releaseOverlayTarget();
+            };
+
+            return swal.fire({
+                icon: options.icon || 'info',
+                title: options.title || 'Atenção',
+                ...(options.html
+                    ? { html: options.html }
+                    : { text: message }),
+                confirmButtonText: options.confirmText || 'OK',
+                target: enableOverlayTarget() || document.body,
+                backdrop: true,
+                returnFocus: false,
+                focusConfirm: false,
+                didOpen: (popup) => {
+                    const container = popup?.closest?.('.swal2-container');
+                    if (container) {
+                        container.style.zIndex = '25000';
+                        container.style.pointerEvents = 'auto';
+                    }
+                    if (typeof options.didOpen === 'function') {
+                        options.didOpen(popup);
+                    }
+                },
+                didClose: releaseOverlay,
+                didDestroy: releaseOverlay,
+            }).finally(releaseOverlay);
+        });
     }
 
     alert(message);
@@ -133,38 +149,43 @@ window.uiAlert = async (message, options = {}) => {
 window.uiConfirm = async (message, options = {}) => {
     const swal = await ensureSwalLoaded();
     if (swal) {
-        const releaseOverlay = () => {
-            if (document.activeElement instanceof HTMLElement) {
-                document.activeElement.blur();
-            }
-
-            releaseOverlayTarget();
-        };
-
-        return swal.fire({
-            icon: options.icon || 'warning',
-            title: options.title || 'Confirmar ação',
-            text: message,
-            showCancelButton: true,
-            confirmButtonText: options.confirmText || 'Confirmar',
-            cancelButtonText: options.cancelText || 'Cancelar',
-            target: enableOverlayTarget() || document.body,
-            backdrop: true,
-            returnFocus: false,
-            focusConfirm: false,
-            didOpen: (popup) => {
-                const container = popup?.closest?.('.swal2-container');
-                if (container) {
-                    container.style.zIndex = '25000';
+        return enqueueSwal(async () => {
+            let overlayReleased = false;
+            const releaseOverlay = () => {
+                if (overlayReleased) return;
+                overlayReleased = true;
+                if (document.activeElement instanceof HTMLElement) {
+                    document.activeElement.blur();
                 }
-                if (typeof options.didOpen === 'function') {
-                    options.didOpen(popup);
-                }
-            },
-            didClose: releaseOverlay,
-            didDestroy: releaseOverlay,
-        }).then((result) => result.isConfirmed)
-            .finally(releaseOverlay);
+                releaseOverlayTarget();
+            };
+
+            return swal.fire({
+                icon: options.icon || 'warning',
+                title: options.title || 'Confirmar ação',
+                text: message,
+                showCancelButton: true,
+                confirmButtonText: options.confirmText || 'Confirmar',
+                cancelButtonText: options.cancelText || 'Cancelar',
+                target: enableOverlayTarget() || document.body,
+                backdrop: true,
+                returnFocus: false,
+                focusConfirm: false,
+                didOpen: (popup) => {
+                    const container = popup?.closest?.('.swal2-container');
+                    if (container) {
+                        container.style.zIndex = '25000';
+                        container.style.pointerEvents = 'auto';
+                    }
+                    if (typeof options.didOpen === 'function') {
+                        options.didOpen(popup);
+                    }
+                },
+                didClose: releaseOverlay,
+                didDestroy: releaseOverlay,
+            }).then((result) => result.isConfirmed)
+                .finally(releaseOverlay);
+        });
     }
 
     return Promise.resolve(confirm(message));

@@ -57,7 +57,7 @@
             <div class="flex-1">
                 <form method="GET" class="relative">
                     @php
-                        $temFiltrosAtivos = !empty($filtroBusca) || !empty($filtroServico) || !empty($filtroResponsavel) || !empty($filtroCliente) || !empty($filtroColuna) || !empty($filtroDe) || !empty($filtroAte);
+                        $temFiltrosAtivos = !empty($filtroBusca) || !empty($filtroServico) || !empty($filtroResponsavel) || !empty($filtroCliente) || !empty($filtroColuna) || !empty($filtroDe) || !empty($filtroAte) || !empty($filtroTarefaId);
                     @endphp
                     <span class="absolute inset-y-0 left-3 flex items-center text-slate-400 text-sm">🔍</span>
                     <input type="text"
@@ -77,6 +77,7 @@
                     <input type="hidden" name="coluna_id" value="{{ $filtroColuna }}">
                     <input type="hidden" name="de" value="{{ $filtroDe }}">
                     <input type="hidden" name="ate" value="{{ $filtroAte }}">
+                    <input type="hidden" name="tarefa_id" value="{{ $filtroTarefaId ?? '' }}">
                     <button type="submit"
                             class="absolute right-1.5 top-1.5 inline-flex items-center px-3 py-1.5 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800">
                         Buscar
@@ -218,6 +219,21 @@
                         </button>
                         <input type="hidden" id="kanban_ate" name="ate" value="{{ $filtroAte }}">
                     </div>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-500 tracking-wide mb-1">
+                        ID da Tarefa
+                    </label>
+                    <input type="number"
+                           min="1"
+                           step="1"
+                           name="tarefa_id"
+                           value="{{ $filtroTarefaId ?? '' }}"
+                           placeholder="Ex.: 1234"
+                           class="w-full rounded-xl border border-slate-200 bg-slate-50/60 py-2 px-3 text-sm
+                              text-slate-700
+                              focus:bg-white focus:ring-2 focus:ring-sky-400 focus:border-sky-400">
                 </div>
 
                 <div class="flex items-end">
@@ -590,6 +606,7 @@
                                     data-finalizar-url="{{ route('operacional.tarefas.finalizar-com-arquivo', $tarefa) }}
                                     "
                                     data-finalizar-documento-existente-url="{{ route('operacional.tarefas.finalizar-documento-existente', $tarefa) }}"
+                                    data-reprecificar-url="{{ route('operacional.tarefas.reprecificar', $tarefa) }}"
                                     data-substituir-doc-url="{{ route('operacional.tarefas.documento-cliente', $tarefa) }}"
                                     data-substituir-doc-complementar-url="{{ route('operacional.tarefas.documento-complementar', $tarefa) }}"
                                     data-substituir-doc-art-url="{{ route('operacional.tarefas.documento-art', $tarefa) }}"
@@ -1608,6 +1625,18 @@
 
                             <button
                                 type="button"
+                                id="modal-reprecificar-btn"
+                                data-permission-locked="{{ $canUpdateTask ? '0' : '1' }}"
+                                @if(!$canUpdateTask) title="Usuário sem permissão" @endif
+                                class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg
+                                       {{ $canUpdateTask ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} text-sm font-semibold shadow-sm
+                                       transition"
+                                @if(!$canUpdateTask) disabled @endif>
+                                Reprecificar venda
+                            </button>
+
+                            <button
+                                type="button"
                                 id="btn-notificar-cliente"
                                 class="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg
                                    bg-emerald-600 text-white text-sm font-semibold shadow-sm
@@ -2032,6 +2061,7 @@
             const certificadosDropzone = document.getElementById('modal-certificados-dropzone');
             const certificadosFileList = document.getElementById('modal-certificados-file-list');
             const finalizarBtn = document.getElementById('modal-finalizar-btn');
+            const reprecificarBtn = document.getElementById('modal-reprecificar-btn');
             const pendenciaWrapper = document.getElementById('modal-pendencia-wrapper');
             const pendenciaTexto = document.getElementById('modal-pendencia-texto');
             const pendenciaContinuarBtn = document.getElementById('modal-pendencia-continuar-btn');
@@ -3099,6 +3129,7 @@
                 const btnEditar      = document.getElementById('btn-editar-tarefa');
                 const btnSalvarObs   = document.getElementById('btn-salvar-observacao');
                 const btnExcluir     = document.getElementById('btn-excluir-tarefa');
+                const btnReprecificar = document.getElementById('modal-reprecificar-btn');
                 const moverBtns      = document.querySelectorAll('.js-mover-coluna');
 
                 // const isCancelada = card.dataset.cancelada === '1';
@@ -3120,11 +3151,13 @@
                     toggleBtn(btnEditar, true);
                     toggleBtn(btnSalvarObs, true);
                     toggleBtn(btnExcluir, true);
+                    toggleBtn(btnReprecificar, true);
                     moverBtns.forEach(b => toggleBtn(b, true));
                 } else {
                     toggleBtn(btnEditar, false);
                     toggleBtn(btnSalvarObs, false);
                     toggleBtn(btnExcluir, false);
+                    toggleBtn(btnReprecificar, false);
                     moverBtns.forEach(b => toggleBtn(b, false));
                 }
 
@@ -4023,6 +4056,62 @@
                         window.uiAlert(error?.message || 'Erro ao finalizar tarefa.');
                     } finally {
                         finalizarBtn.disabled = false;
+                    }
+                });
+            }
+
+            if (reprecificarBtn) {
+                reprecificarBtn.addEventListener('click', async function () {
+                    if (!detalhesCurrentCard) return;
+                    const url = detalhesCurrentCard.dataset.reprecificarUrl || '';
+                    if (!url) {
+                        window.uiAlert('Não foi possível localizar a rota de reprecificação.');
+                        return;
+                    }
+
+                    const confirmar = typeof window.uiConfirm === 'function'
+                        ? await window.uiConfirm(
+                            'Deseja reprecificar esta venda com os parâmetros atuais?',
+                            {
+                                title: 'Reprecificar venda',
+                                icon: 'warning',
+                                confirmText: 'Reprecificar',
+                                cancelText: 'Cancelar',
+                            }
+                        )
+                        : window.confirm('Deseja reprecificar esta venda com os parâmetros atuais?');
+
+                    if (!confirmar) return;
+
+                    reprecificarBtn.disabled = true;
+                    try {
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                'Accept': 'application/json',
+                            },
+                        });
+
+                        const json = await response.json().catch(() => ({}));
+                        if (!response.ok || !json?.ok) {
+                            window.uiAlert(json?.message || 'Não foi possível reprecificar a venda.');
+                            return;
+                        }
+
+                        const totalLabel = (typeof json.total === 'number')
+                            ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(json.total)
+                            : null;
+                        const msg = totalLabel
+                            ? `Venda reprecificada com sucesso. Novo total: ${totalLabel}.`
+                            : 'Venda reprecificada com sucesso.';
+
+                        await window.uiAlert(msg, { icon: 'success', title: 'Sucesso' });
+                        window.location.reload();
+                    } catch (error) {
+                        window.uiAlert('Erro ao reprecificar a venda.');
+                    } finally {
+                        reprecificarBtn.disabled = false;
                     }
                 });
             }
