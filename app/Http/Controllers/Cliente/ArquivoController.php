@@ -13,6 +13,17 @@ use Illuminate\Support\Facades\Auth;
 
 class ArquivoController extends Controller
 {
+    private const SERVICOS_ARQUIVOS = [
+        'aso',
+        'treinamentos nrs',
+        'pcmso',
+        'pgr',
+        'ltcat',
+        'apr',
+        'exame toxicológico',
+        'exame toxicologico',
+    ];
+
     public function downloadFuncionario(Request $request, Funcionario $funcionario, FuncionarioArquivosZipService $zipService)
     {
         $user = $request->user();
@@ -50,7 +61,8 @@ class ArquivoController extends Controller
                 ->pluck('id')
                 ->all();
 
-            $zipPath = $zipService->gerarZipPorIds($cliente, $tarefaIds, null, false);
+            $incluirAnexos = $this->tarefasTemCertificadosTreinamento($cliente->id, $tarefaIds);
+            $zipPath = $zipService->gerarZipPorIds($cliente, $tarefaIds, null, $incluirAnexos);
         } catch (\RuntimeException $e) {
             return back()->with('error', $e->getMessage());
         }
@@ -88,21 +100,20 @@ class ArquivoController extends Controller
                 $tarefaIds = Tarefa::query()
                     ->where('cliente_id', $cliente->id)
                     ->where('funcionario_id', $funcionario->id)
-                    ->whereNotNull('path_documento_cliente')
+                    ->where(function ($q) {
+                        $q->whereNotNull('path_documento_cliente')
+                            ->orWhereHas('anexos', function ($aq) {
+                                $aq->whereRaw('LOWER(COALESCE(servico, "")) = ?', ['certificado_treinamento']);
+                            });
+                    })
                     ->whereHas('servico', function ($sq) {
-                        $sq->where(function ($w) {
-                            $w->whereRaw('LOWER(TRIM(nome)) = ?', ['pcmso'])
-                                ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['pgr'])
-                                ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['ltcat'])
-                                ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['apr'])
-                                ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['exame toxicológico'])
-                                ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['exame toxicologico']);
-                        });
+                        $this->aplicarFiltroServicosArquivos($sq);
                     })
                     ->pluck('id')
                     ->all();
 
-                $zipPath = $zipService->gerarZipPorIds($cliente, $tarefaIds, $funcionario, false);
+                $incluirAnexos = $this->tarefasTemCertificadosTreinamento($cliente->id, $tarefaIds);
+                $zipPath = $zipService->gerarZipPorIds($cliente, $tarefaIds, $funcionario, $incluirAnexos);
                 $zipName = 'arquivos-' . str_replace(' ', '-', mb_strtolower($funcionario->nome)) . '.zip';
 
                 return response()->download($zipPath, $zipName)->deleteFileAfterSend(true);
@@ -111,21 +122,20 @@ class ArquivoController extends Controller
             $tarefaIds = Tarefa::query()
                 ->where('cliente_id', $cliente->id)
                 ->whereNotNull('funcionario_id')
-                ->whereNotNull('path_documento_cliente')
+                ->where(function ($q) {
+                    $q->whereNotNull('path_documento_cliente')
+                        ->orWhereHas('anexos', function ($aq) {
+                            $aq->whereRaw('LOWER(COALESCE(servico, "")) = ?', ['certificado_treinamento']);
+                        });
+                })
                 ->whereHas('servico', function ($sq) {
-                    $sq->where(function ($w) {
-                        $w->whereRaw('LOWER(TRIM(nome)) = ?', ['pcmso'])
-                            ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['pgr'])
-                            ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['ltcat'])
-                            ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['apr'])
-                            ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['exame toxicológico'])
-                            ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['exame toxicologico']);
-                    });
+                    $this->aplicarFiltroServicosArquivos($sq);
                 })
                 ->pluck('id')
                 ->all();
 
-            $zipPath = $zipService->gerarZipPorIds($cliente, $tarefaIds, null, false);
+            $incluirAnexos = $this->tarefasTemCertificadosTreinamento($cliente->id, $tarefaIds);
+            $zipPath = $zipService->gerarZipPorIds($cliente, $tarefaIds, null, $incluirAnexos);
         } catch (\RuntimeException $e) {
             return back()->with('error', $e->getMessage());
         }
@@ -162,14 +172,7 @@ class ArquivoController extends Controller
         $arquivosQuery = Tarefa::query()
             ->where('cliente_id', $cliente->id)
             ->whereHas('servico', function ($sq) {
-                $sq->where(function ($w) {
-                    $w->whereRaw('LOWER(TRIM(nome)) = ?', ['pcmso'])
-                        ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['pgr'])
-                        ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['ltcat'])
-                        ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['apr'])
-                        ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['exame toxicológico'])
-                        ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['exame toxicologico']);
-                });
+                $this->aplicarFiltroServicosArquivos($sq);
             })
             ->where(function ($q) {
                 $q->whereNotNull('path_documento_cliente')
@@ -209,17 +212,15 @@ class ArquivoController extends Controller
         $funcionariosComArquivosIds = Tarefa::query()
             ->where('cliente_id', $cliente->id)
             ->whereHas('servico', function ($sq) {
-                $sq->where(function ($w) {
-                    $w->whereRaw('LOWER(TRIM(nome)) = ?', ['pcmso'])
-                        ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['pgr'])
-                        ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['ltcat'])
-                        ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['apr'])
-                        ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['exame toxicológico'])
-                        ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['exame toxicologico']);
-                });
+                $this->aplicarFiltroServicosArquivos($sq);
             })
             ->whereNotNull('funcionario_id')
-            ->whereNotNull('path_documento_cliente')
+            ->where(function ($q) {
+                $q->whereNotNull('path_documento_cliente')
+                    ->orWhereHas('anexos', function ($aq) {
+                        $aq->whereRaw('LOWER(COALESCE(servico, "")) = ?', ['certificado_treinamento']);
+                    });
+            })
             ->distinct()
             ->pluck('funcionario_id')
             ->filter()
@@ -235,12 +236,13 @@ class ArquivoController extends Controller
         $servicos = Servico::query()
             ->where('empresa_id', $cliente->empresa_id)
             ->where(function ($w) {
-                $w->whereRaw('LOWER(TRIM(nome)) = ?', ['pcmso'])
-                    ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['pgr'])
-                    ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['ltcat'])
-                    ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['apr'])
-                    ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['exame toxicológico'])
-                    ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['exame toxicologico']);
+                foreach (self::SERVICOS_ARQUIVOS as $idx => $nome) {
+                    if ($idx === 0) {
+                        $w->whereRaw('LOWER(TRIM(nome)) = ?', [$nome]);
+                        continue;
+                    }
+                    $w->orWhereRaw('LOWER(TRIM(nome)) = ?', [$nome]);
+                }
             })
             ->orderBy('nome')
             ->get(['id', 'nome']);
@@ -277,17 +279,15 @@ class ArquivoController extends Controller
             ->where('cliente_id', $cliente->id)
             ->whereIn('id', collect($tarefaIds)->map(fn ($id) => (int) $id)->all())
             ->whereHas('servico', function ($sq) {
-                $sq->where(function ($w) {
-                    $w->whereRaw('LOWER(TRIM(nome)) = ?', ['pcmso'])
-                        ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['pgr'])
-                        ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['ltcat'])
-                        ->orWhereRaw('LOWER(TRIM(nome)) = ?', ['apr']);
-                });
+                $this->aplicarFiltroServicosArquivos($sq);
             })
             ->pluck('id')
             ->all();
 
         try {
+            if (!$includeAnexos) {
+                $includeAnexos = $this->tarefasTemCertificadosTreinamento($cliente->id, $tarefaIds);
+            }
             $zipPath = $zipService->gerarZipPorIds($cliente, $tarefaIds, null, $includeAnexos);
         } catch (\RuntimeException $e) {
             return back()->with('error', $e->getMessage());
@@ -336,12 +336,41 @@ class ArquivoController extends Controller
             ->all();
 
         try {
-            $zipPath = $zipService->gerarZipPorIds($cliente, $tarefaIds, null, false);
+            $includeAnexos = $this->tarefasTemCertificadosTreinamento($cliente->id, $tarefaIds);
+            $zipPath = $zipService->gerarZipPorIds($cliente, $tarefaIds, null, $includeAnexos);
         } catch (\RuntimeException $e) {
             return back()->with('error', $e->getMessage());
         }
 
         $zipName = 'arquivos-' . str_replace(' ', '-', mb_strtolower($funcionario->nome)) . '-selecionados.zip';
         return response()->download($zipPath, $zipName)->deleteFileAfterSend(true);
+    }
+
+    private function aplicarFiltroServicosArquivos($query): void
+    {
+        $query->where(function ($w) {
+            foreach (self::SERVICOS_ARQUIVOS as $idx => $nome) {
+                if ($idx === 0) {
+                    $w->whereRaw('LOWER(TRIM(nome)) = ?', [$nome]);
+                    continue;
+                }
+                $w->orWhereRaw('LOWER(TRIM(nome)) = ?', [$nome]);
+            }
+        });
+    }
+
+    private function tarefasTemCertificadosTreinamento(int $clienteId, array $tarefaIds): bool
+    {
+        if (empty($tarefaIds)) {
+            return false;
+        }
+
+        return Tarefa::query()
+            ->where('cliente_id', $clienteId)
+            ->whereIn('id', $tarefaIds)
+            ->whereHas('anexos', function ($aq) {
+                $aq->whereRaw('LOWER(COALESCE(servico, "")) = ?', ['certificado_treinamento']);
+            })
+            ->exists();
     }
 }

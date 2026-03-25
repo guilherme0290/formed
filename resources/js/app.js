@@ -77,10 +77,34 @@ const getOverlayTarget = () => document.getElementById('app-overlay-root');
 
 let overlayLocks = 0;
 let swalQueue = Promise.resolve();
+let overlayWatchdogId = null;
+
+const sanitizeOverlayState = (force = false) => {
+    const overlayRoot = getOverlayTarget();
+    if (!overlayRoot) return;
+
+    const hasSwalContainer = !!overlayRoot.querySelector('.swal2-container');
+    if (force || (!hasSwalContainer && overlayLocks <= 0)) {
+        overlayLocks = 0;
+        overlayRoot.classList.add('pointer-events-none');
+    }
+};
+
+const scheduleOverlaySanitize = (delay = 250) => {
+    if (overlayWatchdogId) {
+        window.clearTimeout(overlayWatchdogId);
+    }
+
+    overlayWatchdogId = window.setTimeout(() => {
+        overlayWatchdogId = null;
+        sanitizeOverlayState(false);
+    }, delay);
+};
 
 const enableOverlayTarget = () => {
     const overlayRoot = getOverlayTarget();
     if (!overlayRoot) return null;
+    sanitizeOverlayState(false);
     overlayLocks += 1;
     overlayRoot.classList.remove('pointer-events-none');
     return overlayRoot;
@@ -93,6 +117,7 @@ const releaseOverlayTarget = () => {
     if (overlayLocks === 0 && !overlayRoot.querySelector('.swal2-container')) {
         overlayRoot.classList.add('pointer-events-none');
     }
+    scheduleOverlaySanitize(300);
 };
 
 const enqueueSwal = (task) => {
@@ -190,6 +215,20 @@ window.uiConfirm = async (message, options = {}) => {
 
     return Promise.resolve(confirm(message));
 };
+
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+        scheduleOverlaySanitize(100);
+    }
+});
+
+window.addEventListener('focus', () => {
+    scheduleOverlaySanitize(100);
+});
+
+window.addEventListener('pageshow', () => {
+    scheduleOverlaySanitize(100);
+});
 
 window.initTailwindAutocomplete = (inputRef, listRef, options = [], config = {}) => {
     const input = typeof inputRef === 'string' ? document.getElementById(inputRef) : inputRef;

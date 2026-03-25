@@ -215,6 +215,9 @@
                                                 $certificadosTreinamento = ($arquivo->anexos ?? collect())->filter(function ($anexo) {
                                                     return mb_strtolower((string) ($anexo->servico ?? '')) === 'certificado_treinamento';
                                                 });
+                                                $showAsoTreinamentosZip = $servicoNomeLower === 'aso'
+                                                    && $arquivo->documento_link
+                                                    && $certificadosTreinamento->isNotEmpty();
                                             @endphp
                                             <tr class="hover:bg-slate-50/80">
                                                 <td class="px-3 py-2">
@@ -224,7 +227,14 @@
                                                 <td class="px-3 py-2 text-slate-700">{{ $tipoLabel }}</td>
                                                 <td class="px-3 py-2 text-slate-700">{{ optional($arquivo->finalizado_em)->format('d/m/Y H:i') ?? '-' }}</td>
                                                 <td class="px-3 py-2 text-right">
-                                                    @if($arquivo->documento_link)
+                                                    @if($showAsoTreinamentosZip)
+                                                        <button type="submit"
+                                                                name="tarefa_ids[]"
+                                                                value="{{ $arquivo->id }}"
+                                                                class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold border border-blue-200 text-blue-700 bg-white hover:bg-blue-50">
+                                                            ASO + Treinamentos (ZIP)
+                                                        </button>
+                                                    @elseif($arquivo->documento_link)
                                                         <a href="{{ $arquivo->documento_link }}"
                                                            target="_blank" rel="noopener"
                                                            class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-700 text-white hover:bg-blue-800">

@@ -131,6 +131,7 @@
                             @foreach($arquivos as $tarefa)
                                 @php
                                     $servicoLabel = $tarefa->servico->nome ?? 'Serviço';
+                                    $isAsoServico = mb_strtolower(trim((string) $servicoLabel)) === 'aso';
                                     $isTreinamentoNr = $servicoLabel === 'Treinamentos NRs';
                                     $certificadosTreinamento = ($tarefa->anexos ?? collect())->filter(function ($anexo) {
                                         return mb_strtolower((string) ($anexo->servico ?? '')) === 'certificado_treinamento';
@@ -223,7 +224,7 @@
                                         <p class="text-[11px] font-semibold text-blue-800">Documento e impressão</p>
 
                                         <div class="flex flex-wrap gap-2">
-                                            @if($tarefa->documento_link && !($servicoLabel === 'ASO' && $totalCertificados > 0))
+                                            @if($tarefa->documento_link && !($isAsoServico && $totalCertificados > 0))
                                                 <a href="{{ $tarefa->documento_link }}"
                                                    class="inline-flex items-center px-3 py-1.5 rounded-lg bg-blue-700 text-white text-xs font-semibold hover:bg-blue-800 transition"
                                                    target="_blank" rel="noopener">
@@ -231,14 +232,14 @@
                                                 </a>
                                             @endif
 
-                                            @if($totalCertificados > 0 && $servicoLabel === 'ASO')
+                                            @if($totalCertificados > 0 && $isAsoServico)
                                                 <button
                                                     type="submit"
                                                     name="tarefa_ids[]"
                                                     value="{{ $tarefa->id }}"
                                                     formaction="{{ route('cliente.arquivos.download-selecionados') }}?include_anexos=1"
                                                     class="inline-flex items-center px-3 py-1.5 rounded-lg border border-blue-200 text-blue-700 text-xs font-semibold hover:bg-blue-100">
-                                                    Baixar ASO + Certificados
+                                                    ASO + Treinamentos (ZIP)
                                                 </button>
                                             @else
                                                 @foreach($certificadosTreinamento as $certificado)
