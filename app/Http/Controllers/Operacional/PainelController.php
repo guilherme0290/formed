@@ -83,6 +83,17 @@ class PainelController extends Controller
                     'logs.deColuna',
                     'logs.paraColuna',
                     'logs.user',
+                    'treinamentoNr.funcionario.funcao',
+                    'treinamentoNrDetalhes.unidade',
+                    'asoSolicitacao.funcionario',
+                    'asoSolicitacao.unidade',
+                    'pgrSolicitacao',
+                    'ltipSolicitacao',
+                    'ltcatSolicitacao',
+                    'paeSolicitacao',
+                    'pcmsoSolicitacao',
+                    'aprSolicitacao',
+                    'exameToxicologicoSolicitacao.unidade',
                 ])
                 ->where('empresa_id', $empresaId);
         } else {
@@ -98,6 +109,17 @@ class PainelController extends Controller
                 'logs.deColuna',
                 'logs.paraColuna',
                 'logs.user',
+                'treinamentoNr.funcionario.funcao',
+                'treinamentoNrDetalhes.unidade',
+                'asoSolicitacao.funcionario',
+                'asoSolicitacao.unidade',
+                'pgrSolicitacao',
+                'ltipSolicitacao',
+                'ltcatSolicitacao',
+                'paeSolicitacao',
+                'pcmsoSolicitacao',
+                'aprSolicitacao',
+                'exameToxicologicoSolicitacao.unidade',
             ])
                 ->where('empresa_id', $empresaId);
         }

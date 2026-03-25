@@ -70,7 +70,7 @@
                         </div>
 
                         <div class="grid grid-cols-12 gap-3 items-end">
-                            <div class="col-span-6">
+                            <div class="col-span-12 md:col-span-6">
                                 <label class="block text-xs font-medium text-slate-600 mb-1">
                                     Nome Completo
                                 </label>
@@ -79,7 +79,7 @@
                                        placeholder="Nome completo">
                             </div>
 
-                            <div class="col-span-3">
+                            <div class="col-span-12 md:col-span-3">
                                 <label class="block text-xs font-medium text-slate-600 mb-1">
                                     CPF
                                 </label>
@@ -88,7 +88,25 @@
                                        placeholder="000.000.000-00">
                             </div>
 
-                            <div class="col-span-3">
+                            <div class="col-span-12 md:col-span-3">
+                                <label class="block text-xs font-medium text-slate-600 mb-1">
+                                    RG
+                                </label>
+                                <input type="text" id="nf-rg" name="rg"
+                                       class="w-full rounded-lg border-slate-200 text-sm px-3 py-2"
+                                       placeholder="00.000.000-0">
+                            </div>
+
+                            <div class="col-span-12 md:col-span-3">
+                                <label class="block text-xs font-medium text-slate-600 mb-1">
+                                    Celular
+                                </label>
+                                <input type="text" id="nf-celular" name="celular"
+                                       class="w-full rounded-lg border-slate-200 text-sm px-3 py-2"
+                                       placeholder="(00) 00000-0000">
+                            </div>
+
+                            <div class="col-span-12 md:col-span-3">
                                 <label class="block text-xs font-medium text-slate-600 mb-1">
                                     Data de Nascimento
                                 </label>
@@ -113,7 +131,32 @@
                                 </div>
                             </div>
 
-                            <div class="col-span-6">
+                            <div class="col-span-12 md:col-span-3">
+                                <label class="block text-xs font-medium text-slate-600 mb-1">
+                                    Data de Admissão
+                                </label>
+                                <div class="relative">
+                                    <input type="text"
+                                           id="nf-admissao-br"
+                                           inputmode="numeric"
+                                           placeholder="dd/mm/aaaa"
+                                           class="w-full rounded-lg border-slate-200 text-sm pl-3 pr-10 py-2 js-date-text"
+                                           data-date-target="nf-admissao">
+                                    <button type="button"
+                                            class="absolute right-0 top-0 h-full w-8 flex items-center justify-center text-slate-400 hover:text-slate-600 date-picker-btn z-10"
+                                            data-date-target="nf-admissao"
+                                            aria-label="Abrir calendário">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 pointer-events-none" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v2H2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 2 0v1zm15 8H2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V10z"/>
+                                        </svg>
+                                    </button>
+                                    <input type="date"
+                                           id="nf-admissao"
+                                           class="absolute right-0 top-0 h-full w-10 opacity-0 pointer-events-none js-date-hidden">
+                                </div>
+                            </div>
+
+                            <div class="col-span-12 md:col-span-6">
                                 <x-funcoes.select-with-create
                                     name="nf_funcao_id"
                                     field-id="nf_funcao_id"
@@ -446,8 +489,12 @@
 
                 const nfNome      = document.getElementById('nf-nome');
                 const nfCpf       = document.getElementById('nf-cpf');
+                const nfRg        = document.getElementById('nf-rg');
+                const nfCelular   = document.getElementById('nf-celular');
                 const nfNasc      = document.getElementById('nf-nascimento');
                 const nfNascBr    = document.getElementById('nf-nascimento-br');
+                const nfAdmissao = document.getElementById('nf-admissao');
+                const nfAdmissaoBr = document.getElementById('nf-admissao-br');
                 const nfFuncaoSel = document.getElementById('nf_funcao_id'); // <-- SELECT de função
 
                 btnToggle.addEventListener('click', () => {
@@ -465,7 +512,10 @@
                     const payload = {
                         nome:       nfNome.value.trim(),
                         cpf:        nfCpf.value.trim(),
+                        rg:         nfRg.value.trim(),
+                        celular:    nfCelular.value.trim(),
                         nascimento: nfNasc.value || null,
+                        admissao:   nfAdmissao.value || null,
                         funcao_id:  nfFuncaoSel.value || null,
                     };
 
@@ -496,8 +546,12 @@
 
                             nfNome.value      = '';
                             nfCpf.value       = '';
+                            nfRg.value        = '';
+                            nfCelular.value   = '';
                             nfNasc.value      = '';
                             if (nfNascBr) nfNascBr.value = '';
+                            nfAdmissao.value = '';
+                            if (nfAdmissaoBr) nfAdmissaoBr.value = '';
                             nfFuncaoSel.value = '';
 
                             cardNovo.classList.add('hidden');
@@ -902,6 +956,24 @@
                             mostrarErroCPF(cpfInput, 'CPF inválido');
                         } else {
                             limparErroCPF(cpfInput);
+                        }
+                    });
+                }
+
+                var celularInput = document.querySelector('input[name="celular"]');
+                if (celularInput) {
+                    celularInput.addEventListener('input', function () {
+                        var v = celularInput.value.replace(/\D/g, '');
+                        v = v.slice(0, 11);
+
+                        if (v.length > 10) {
+                            celularInput.value = v.replace(/(\d{2})(\d{5})(\d{1,4})/, '($1) $2-$3');
+                        } else if (v.length > 6) {
+                            celularInput.value = v.replace(/(\d{2})(\d{4,5})(\d{1,4})/, '($1) $2-$3');
+                        } else if (v.length > 2) {
+                            celularInput.value = v.replace(/(\d{2})(\d{1,5})/, '($1) $2');
+                        } else {
+                            celularInput.value = v;
                         }
                     });
                 }
