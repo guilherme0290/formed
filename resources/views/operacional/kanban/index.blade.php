@@ -1042,6 +1042,20 @@
          data-overlay-root="true"
          class="fixed inset-0 z-[90] hidden items-center justify-center bg-black/50 p-4 overflow-y-auto">
         <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden">
+            <div id="modal-upload-loading"
+                 class="absolute inset-0 z-20 hidden items-center justify-center bg-slate-950/45 backdrop-blur-[1px]">
+                <div class="mx-6 flex max-w-sm flex-col items-center gap-3 rounded-2xl border border-white/20 bg-white px-6 py-5 text-center shadow-2xl">
+                    <div class="h-12 w-12 animate-spin rounded-full border-4 border-slate-200 border-t-sky-600"></div>
+                    <div>
+                        <p id="modal-upload-loading-title" class="text-sm font-semibold text-slate-900">
+                            Enviando anexo
+                        </p>
+                        <p id="modal-upload-loading-text" class="mt-1 text-xs text-slate-500">
+                            Aguarde enquanto o arquivo e processado.
+                        </p>
+                    </div>
+                </div>
+            </div>
             {{-- Cabeçalho --}}
             {{-- Cabeçalho (VERSÃO DEBUG) --}}
             <div
@@ -2003,6 +2017,9 @@
             // =========================================================
             const modal = document.getElementById('tarefa-modal');
             const closeBtn = document.getElementById('tarefa-modal-close');
+            const modalUploadLoading = document.getElementById('modal-upload-loading');
+            const modalUploadLoadingTitle = document.getElementById('modal-upload-loading-title');
+            const modalUploadLoadingText = document.getElementById('modal-upload-loading-text');
 
             const spanId = document.getElementById('modal-tarefa-id');
             const spanCliente = document.getElementById('modal-cliente');
@@ -2126,6 +2143,34 @@
             const arquivoAjuda = document.getElementById('modal-arquivo-ajuda');
             const arquivoImpacto = document.getElementById('modal-arquivo-impacto');
             let detalhesCurrentCard = null;
+            let modalUploadLoadingCount = 0;
+
+            function setModalUploadLoading(active, options = {}) {
+                if (!modalUploadLoading) return;
+
+                if (active) {
+                    modalUploadLoadingCount += 1;
+
+                    if (modalUploadLoadingTitle) {
+                        modalUploadLoadingTitle.textContent = options.title || 'Enviando anexo';
+                    }
+
+                    if (modalUploadLoadingText) {
+                        modalUploadLoadingText.textContent = options.text || 'Aguarde enquanto o arquivo e processado.';
+                    }
+
+                    modalUploadLoading.classList.remove('hidden');
+                    modalUploadLoading.classList.add('flex');
+                    return;
+                }
+
+                modalUploadLoadingCount = Math.max(0, modalUploadLoadingCount - 1);
+
+                if (modalUploadLoadingCount === 0) {
+                    modalUploadLoading.classList.add('hidden');
+                    modalUploadLoading.classList.remove('flex');
+                }
+            }
 
             function formatTelefone(raw) {
                 const digits = String(raw || '').replace(/\D/g, '');
@@ -3196,11 +3241,15 @@
 
                 modal.classList.remove('hidden');
                 modal.classList.add('flex');
+                modalUploadLoadingCount = 0;
+                setModalUploadLoading(false);
             }
 
             function closeModal() {
                 if (!modal) return;
                 if (modal.classList.contains('hidden')) return;
+                modalUploadLoadingCount = 0;
+                setModalUploadLoading(false);
                 modal.classList.add('hidden');
                 modal.classList.remove('flex');
                 closeOverlayAlerts();
@@ -3208,6 +3257,8 @@
 
             function hideModalWithoutReload() {
                 if (!modal) return;
+                modalUploadLoadingCount = 0;
+                setModalUploadLoading(false);
                 modal.classList.add('hidden');
                 modal.classList.remove('flex');
             }
@@ -3693,6 +3744,11 @@
                     return;
                 }
 
+                setModalUploadLoading(true, {
+                    title: 'Enviando documento',
+                    text: 'O documento principal da tarefa esta sendo enviado.',
+                });
+
                 const formData = new FormData();
                 formData.append('arquivo_cliente', file);
 
@@ -3746,6 +3802,9 @@
                     })
                     .catch((error) => {
                         showUploadErrorAlert(error?.message, 'Erro ao enviar documento.', error?.status, detalhesCurrentCard);
+                    })
+                    .finally(() => {
+                        setModalUploadLoading(false);
                     });
             }
 
@@ -3756,6 +3815,11 @@
                     window.uiAlert('Não foi possível enviar o documento complementar desta tarefa.');
                     return;
                 }
+
+                setModalUploadLoading(true, {
+                    title: 'Enviando documento complementar',
+                    text: 'O anexo complementar do PGR + PCMSO esta sendo enviado.',
+                });
 
                 const formData = new FormData();
                 formData.append('arquivo_cliente', file);
@@ -3804,6 +3868,9 @@
                     })
                     .catch((error) => {
                         showUploadErrorAlert(error?.message, 'Erro ao enviar documento complementar.', error?.status, detalhesCurrentCard);
+                    })
+                    .finally(() => {
+                        setModalUploadLoading(false);
                     });
             }
 
@@ -3814,6 +3881,11 @@
                     window.uiAlert('Não foi possível enviar o documento ART desta tarefa.');
                     return;
                 }
+
+                setModalUploadLoading(true, {
+                    title: 'Enviando documento ART',
+                    text: 'O anexo ART do PGR + PCMSO esta sendo enviado.',
+                });
 
                 const formData = new FormData();
                 formData.append('arquivo_cliente', file);
@@ -3862,6 +3934,9 @@
                     })
                     .catch((error) => {
                         showUploadErrorAlert(error?.message, 'Erro ao enviar documento ART.', error?.status, detalhesCurrentCard);
+                    })
+                    .finally(() => {
+                        setModalUploadLoading(false);
                     });
             }
 
@@ -3872,6 +3947,11 @@
                     window.uiAlert('Não foi possível enviar os certificados desta tarefa.');
                     return;
                 }
+
+                setModalUploadLoading(true, {
+                    title: 'Enviando certificados',
+                    text: 'Os arquivos selecionados estao sendo enviados para a tarefa.',
+                });
 
                 const formData = new FormData();
                 Array.from(files).forEach((file) => formData.append('arquivos[]', file));
@@ -3922,6 +4002,9 @@
                     })
                     .catch((error) => {
                         showUploadErrorAlert(error?.message, 'Erro ao enviar certificados.', error?.status, detalhesCurrentCard);
+                    })
+                    .finally(() => {
+                        setModalUploadLoading(false);
                     });
             }
 
