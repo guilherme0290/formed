@@ -357,7 +357,11 @@
                                         $obs          = $tarefa->descricao ?? '';
 
                                         $clienteCnpj  = optional($tarefa->cliente)->documento_principal ?? '';
-                                        $clienteTel   = optional($tarefa->cliente)->telefone ?? '';
+                                        $clienteTelefonePrincipal = trim((string) (optional($tarefa->cliente)->telefone ?? ''));
+                                        $clienteTelefoneSecundario = trim((string) (optional($tarefa->cliente)->telefone_2 ?? ''));
+                                        $clienteTel   = $clienteTelefonePrincipal !== ''
+                                            ? $clienteTelefonePrincipal
+                                            : $clienteTelefoneSecundario;
                                         $clienteTipoPessoa = (string) (optional($tarefa->cliente)->tipo_pessoa ?? '');
                                         $clienteVendedorNome = optional(optional($tarefa->cliente)->vendedor)->name ?? '—';
 
@@ -543,7 +547,9 @@
                                             ];
                                         })->values();
 
-                                        $isTreinamentoTask = (bool) ($tarefa->treinamentoNr && $tarefa->treinamentoNrDetalhes);
+                                        $treinamentosRelacionados = $tarefa->treinamentoNr ?? collect();
+                                        $treinamentoDetalhes = $tarefa->treinamentoNrDetalhes;
+                                        $isTreinamentoTask = $treinamentosRelacionados->isNotEmpty() && (bool) $treinamentoDetalhes;
                                         $certificadosEsperados = 0;
                                         if ($aso && $aso->vai_fazer_treinamento) {
                                             $codigosTreinamentos = [];
@@ -618,8 +624,7 @@
                                     data-finalizado="{{ (!empty($tarefa->finalizado_em) || ($coluna->finaliza ?? false)) ? '1' : '0' }}"
                                     data-observacoes="{{ e($obs) }}"
 
-                                    data-funcionario="{{ $funcionarioNome . ($funcionarioCpf ? ' | CPF '.$funcionarioCpf : '') }}
-                                    "
+                                    data-funcionario="{{ $funcionarioNome ?? '' }}"
                                     data-funcionario-funcao="{{ $funcionarioFuncao }}"
                                     data-funcionario-cpf="{{ $funcionarioCpf }}"
                                     data-funcionario-rg="{{ $funcionarioRg }}"
@@ -773,17 +778,23 @@
                                             data-pcmso-pgr-url="{{ $pcmso->pgr_arquivo_url }}"
                                         @endif
                                     @endif
-                                    @if($tarefa->treinamentoNr && $tarefa->treinamentoNrDetalhes)
+                                    @if($isTreinamentoTask)
                                         @php
-                                            $treiFuncs = $tarefa->treinamentoNr()->with('funcionario')->get();
-                                            $treiDet   = $tarefa->treinamentoNrDetalhes;
+                                            $treiFuncs = $treinamentosRelacionados;
+                                            $treiDet   = $treinamentoDetalhes;
                                             $listaNomesArr = $treiFuncs->pluck('funcionario.nome')
                                                 ->filter()
                                                 ->sort()
                                                 ->values()
                                                 ->all();
                                             $listaNomes = implode(', ', $listaNomesArr);
-                                            $listaFuncoes = $treiFuncs->pluck('funcionario.funcao')->join(', ');
+                                            $listaFuncoes = $treiFuncs->map(function ($treinamento) {
+                                                return $treinamento->funcionario?->funcao?->nome;
+                                            })
+                                                ->filter()
+                                                ->unique()
+                                                ->values()
+                                                ->implode(', ');
                                             $treiPayload = $treiDet->treinamentos ?? [];
                                             $treiModo = is_array($treiPayload) ? ($treiPayload['modo'] ?? null) : null;
                                             $treiPacote = '';
@@ -1094,9 +1105,7 @@
                                 <dd class="font-medium" id="modal-responsavel"></dd>
                             </div>
 
-                            {{-- BLOCO ESPECÍFICO: ASO --}}
-
-                            <div id="modal-bloco-aso" class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div id="modal-bloco-funcionario" class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 hidden">
                                 <div class="md:col-span-2">
                                     <div class="flex items-center gap-3 py-2">
                                         <div class="h-px flex-1 bg-slate-200"></div>
@@ -1137,15 +1146,14 @@
                                         <dd class="font-medium" id="modal-funcionario-admissao">—</dd>
                                     </div>
                                     <div>
-                                        <dt class="text-[11px] text-slate-500">Setor</dt>
-                                        <dd class="font-medium" id="modal-funcionario-setor">—</dd>
-                                    </div>
-                                    <div>
                                         <dt class="text-[11px] text-slate-500">Status</dt>
                                         <dd class="font-medium" id="modal-funcionario-ativo">—</dd>
                                     </div>
                                 </div>
+                            </div>
 
+                            {{-- BLOCO ESPECÍFICO: ASO --}}
+                            <div id="modal-bloco-aso" class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 hidden">
                                 <div class="space-y-1">
                                     <div>
                                         <dt class="text-[11px] text-slate-500">Tipo de ASO</dt>
@@ -1426,11 +1434,6 @@
                         <div class="mt-2">
                             <p class="text-[11px] font-semibold text-indigo-700">Participantes</p>
                             <p id="modal-treinamento-participantes" class="text-sm">—</p>
-                        </div>
-
-                        <div class="mt-2">
-                            <p class="text-[11px] font-semibold text-indigo-700">Funções</p>
-                            <p id="modal-treinamento-funcoes" class="text-sm">—</p>
                         </div>
                     </section>
 
@@ -2012,7 +2015,6 @@
             const spanFuncionarioCelular = document.getElementById('modal-funcionario-celular');
             const spanFuncionarioNascimento = document.getElementById('modal-funcionario-nascimento');
             const spanFuncionarioAdmissao = document.getElementById('modal-funcionario-admissao');
-            const spanFuncionarioSetor = document.getElementById('modal-funcionario-setor');
             const spanFuncionarioAtivo = document.getElementById('modal-funcionario-ativo');
             const spanAsoTipo = document.getElementById('modal-aso-tipo');
             const spanAsoData = document.getElementById('modal-aso-data');
@@ -2023,6 +2025,7 @@
             const spanAsoTreinamentos = document.getElementById('modal-aso-treinamentos');
             const spanAsoPacote = document.getElementById('modal-aso-pacote');
             const spanAsoEmail = document.getElementById('modal-aso-email');
+            const blocoFuncionario = document.getElementById('modal-bloco-funcionario');
             const blocoAso = document.getElementById('modal-bloco-aso');
             const blocoSolicitacao = document.getElementById('modal-bloco-solicitacao');
             const blocoToxicologico = document.getElementById('modal-bloco-toxicologico');
@@ -2093,10 +2096,14 @@
             const spanTreinLocal = document.getElementById('modal-treinamento-local');
             const spanTreinUnidade = document.getElementById('modal-treinamento-unidade');
             const spanTreinPart = document.getElementById('modal-treinamento-participantes');
-            const spanTreinFuncs = document.getElementById('modal-treinamento-funcoes');
             const spanTreinModo = document.getElementById('modal-treinamento-modo');
             const spanTreinCodigos = document.getElementById('modal-treinamento-codigos');
             const spanTreinPacote = document.getElementById('modal-treinamento-pacote');
+            const spanTreinFuncionario = document.getElementById('modal-treinamento-funcionario');
+            const spanTreinCpf = document.getElementById('modal-treinamento-cpf');
+            const spanTreinNascimento = document.getElementById('modal-treinamento-nascimento');
+            const spanTreinAdmissao = document.getElementById('modal-treinamento-admissao');
+            const spanTreinCelular = document.getElementById('modal-treinamento-celular');
 
             // Link do documento da tarefa (arquivo_cliente_path)
             const arquivoWrapper = document.getElementById('modal-arquivo-wrapper');
@@ -2363,8 +2370,20 @@
 
                 spanFuncionario.textContent = card.dataset.funcionario || '—';
                 spanFuncionarioFuncao.textContent = card.dataset.funcionarioFuncao || '—';
+                if (spanFuncionarioCpf) {
+                    spanFuncionarioCpf.textContent = card.dataset.funcionarioCpf || '—';
+                }
+                if (spanFuncionarioRg) {
+                    spanFuncionarioRg.textContent = card.dataset.funcionarioRg || '—';
+                }
                 if (spanFuncionarioNascimento) {
                     spanFuncionarioNascimento.textContent = card.dataset.funcionarioNascimento || '—';
+                }
+                if (spanFuncionarioAdmissao) {
+                    spanFuncionarioAdmissao.textContent = card.dataset.funcionarioAdmissao || '—';
+                }
+                if (spanFuncionarioAtivo) {
+                    spanFuncionarioAtivo.textContent = card.dataset.funcionarioAtivo || '—';
                 }
                 if (spanFuncionarioCelular) {
                     spanFuncionarioCelular.textContent = formatTelefone(card.dataset.funcionarioCelular || '');
@@ -2728,37 +2747,22 @@
                 const isAso = card.dataset.isAso === '1';
                 const isPgr = tipoServico.includes('pgr');
                 const isToxicologico = tipoServico.includes('toxicol');
+                const temFuncionario = Boolean(
+                    (card.dataset.funcionario || '').trim()
+                    || (card.dataset.funcionarioCpf || '').trim()
+                    || (card.dataset.funcionarioFuncao || '').trim()
+                    || (card.dataset.funcionarioNascimento || '').trim()
+                    || (card.dataset.funcionarioAdmissao || '').trim()
+                );
 
-                // ASO
+                if (blocoFuncionario) {
+                    blocoFuncionario.classList.toggle('hidden', !temFuncionario);
+                }
+
                 // ASO
                 if (blocoAso) {
                     if (isAso) {
                         blocoAso.classList.remove('hidden');
-
-                        spanFuncionario.textContent = card.dataset.funcionario || '—';
-                        spanFuncionarioFuncao.textContent = card.dataset.funcionarioFuncao || '—';
-
-                        if (spanFuncionarioCpf) {
-                            spanFuncionarioCpf.textContent = card.dataset.funcionarioCpf || '—';
-                        }
-                        if (spanFuncionarioRg) {
-                            spanFuncionarioRg.textContent = card.dataset.funcionarioRg || '—';
-                        }
-                        if (spanFuncionarioNascimento) {
-                            spanFuncionarioNascimento.textContent = card.dataset.funcionarioNascimento || '—';
-                        }
-                        if (spanFuncionarioAdmissao) {
-                            spanFuncionarioAdmissao.textContent = card.dataset.funcionarioAdmissao || '—';
-                        }
-                        if (spanFuncionarioSetor) {
-                            spanFuncionarioSetor.textContent = card.dataset.funcionarioSetor || '—';
-                        }
-                        if (spanFuncionarioAtivo) {
-                            spanFuncionarioAtivo.textContent = card.dataset.funcionarioAtivo || '—';
-                        }
-                        if (spanFuncionarioCelular) {
-                            spanFuncionarioCelular.textContent = formatTelefone(card.dataset.funcionarioCelular || '');
-                        }
                         if (spanAsoTipo) {
                             spanAsoTipo.textContent = card.dataset.asoTipo || '—';
                         }
@@ -2788,15 +2792,6 @@
                         }
                     } else {
                         blocoAso.classList.add('hidden');
-                        spanFuncionario.textContent = '—';
-                        spanFuncionarioFuncao.textContent = '—';
-                        if (spanFuncionarioCpf) spanFuncionarioCpf.textContent = '—';
-                        if (spanFuncionarioRg) spanFuncionarioRg.textContent = '—';
-                        if (spanFuncionarioNascimento) spanFuncionarioNascimento.textContent = '—';
-                        if (spanFuncionarioAdmissao) spanFuncionarioAdmissao.textContent = '—';
-                        if (spanFuncionarioSetor) spanFuncionarioSetor.textContent = '—';
-                        if (spanFuncionarioAtivo) spanFuncionarioAtivo.textContent = '—';
-                        if (spanFuncionarioCelular) spanFuncionarioCelular.textContent = '—';
                         if (spanAsoTipo) spanAsoTipo.textContent = '—';
                         if (spanAsoData) spanAsoData.textContent = '—';
                         if (spanAsoDataAdmissao) spanAsoDataAdmissao.textContent = '—';
@@ -2996,7 +2991,6 @@
                     const localTipo = card.dataset.treinamentoLocal || '—';
                     const unidade = card.dataset.treinamentoUnidade || '—';
                     let participantes = card.dataset.treinamentoParticipantes || '';
-                    const funcoes = card.dataset.treinamentoFuncoes || '—';
                     const modo = card.dataset.treinamentoModo || '';
                     const pacote = card.dataset.treinamentoPacote || '';
                     const codigos = card.dataset.treinamentoCodigos || '';
@@ -3013,7 +3007,6 @@
                     } catch (e) {
                         spanTreinPart.textContent = participantes || '—';
                     }
-                    spanTreinFuncs.textContent = funcoes;
                     if (spanTreinModo) {
                         spanTreinModo.textContent = modo === 'pacote' ? 'Pacote' : (modo === 'avulso' ? 'Avulso' : '—');
                     }

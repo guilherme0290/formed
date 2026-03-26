@@ -281,7 +281,10 @@ class TreinamentoNrController extends Controller
         $data = $request->validate([
             'nome'      => ['required', 'string', 'max:255'],
             'cpf'       => ['required', 'string', 'max:20'],
+            'rg'        => ['nullable', 'string', 'max:20'],
+            'celular'   => ['nullable', 'string', 'max:20'],
             'nascimento'=> ['nullable', 'date'],
+            'admissao'  => ['nullable', 'date'],
             'funcao_id' => ['required', 'integer', 'exists:funcoes,id'],
         ]);
 
@@ -291,7 +294,10 @@ class TreinamentoNrController extends Controller
             'cliente_id'  => $cliente->id,
             'nome'        => $data['nome'],
             'cpf'         => $data['cpf'],
+            'rg'          => $data['rg'] ?? null,
+            'celular'     => $data['celular'] ?? null,
             'data_nascimento'  => $data['nascimento'] ?? null,
+            'data_admissao'  => $data['admissao'] ?? null,
             'funcao_id'   => $data['funcao_id'],
         ]);
 
@@ -301,7 +307,10 @@ class TreinamentoNrController extends Controller
                 'id' => $funcionario->id,
                 'nome' => $funcionario->nome,
                 'cpf'         => $funcionario->cpf,
+                'rg' => $funcionario->rg,
+                'celular' => $funcionario->celular,
                 'nascimento' => $funcionario->data_nascimento,
+                'admissao' => $funcionario->data_admissao,
                 'funcao_nome' => optional($funcionario->funcao)->nome,
             ],
         ], 201);
@@ -891,8 +900,5 @@ class TreinamentoNrController extends Controller
             ->all();
     }
 }
-
-
-
 
 
