@@ -82,18 +82,14 @@ class TarefaController extends Controller
 
     public function finalizarComArquivo(Request $request, Tarefa $tarefa, PrecificacaoService $precificacaoService, VendaService $vendaService, ComissaoService $comissaoService)
     {
+        $maxUploadMb = $this->resolveTaskUploadLimitMb($tarefa);
+
         $data = $request->validate(
             [
-                'arquivo_cliente' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'],
+                'arquivo_cliente' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:' . $this->mbToKilobytes($maxUploadMb)],
                 'notificar'       => ['nullable', 'boolean'],
             ],
-            [
-                'arquivo_cliente.required' => 'Selecione um arquivo do cliente.',
-                'arquivo_cliente.file' => 'O arquivo do cliente deve ser um arquivo válido.',
-                'arquivo_cliente.uploaded' => 'Não foi possível enviar o arquivo do cliente. Tente novamente.',
-                'arquivo_cliente.mimes' => 'O arquivo do cliente deve ser do tipo: pdf, jpg, jpeg ou png.',
-                'arquivo_cliente.max' => 'O arquivo do cliente deve ter no máximo 10 MB.',
-            ]
+            $this->buildArquivoClienteMessages($maxUploadMb)
         );
         $path = S3Helper::upload($request->file('arquivo_cliente'), 'tarefas');
 
@@ -154,17 +150,13 @@ class TarefaController extends Controller
 
     public function substituirDocumentoCliente(Request $request, Tarefa $tarefa)
     {
+        $maxUploadMb = $this->resolveTaskUploadLimitMb($tarefa);
+
         $request->validate(
             [
-                'arquivo_cliente' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'],
+                'arquivo_cliente' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:' . $this->mbToKilobytes($maxUploadMb)],
             ],
-            [
-                'arquivo_cliente.required' => 'Selecione um arquivo do cliente.',
-                'arquivo_cliente.file' => 'O arquivo do cliente deve ser um arquivo válido.',
-                'arquivo_cliente.uploaded' => 'Não foi possível enviar o arquivo do cliente. Tente novamente.',
-                'arquivo_cliente.mimes' => 'O arquivo do cliente deve ser do tipo: pdf, jpg, jpeg ou png.',
-                'arquivo_cliente.max' => 'O arquivo do cliente deve ter no máximo 10 MB.',
-            ]
+            $this->buildArquivoClienteMessages($maxUploadMb)
         );
 
         $path = S3Helper::upload($request->file('arquivo_cliente'), 'tarefas');
@@ -192,6 +184,38 @@ class TarefaController extends Controller
             'ok' => true,
             'documento_url' => $tarefa->documento_link,
         ]);
+    }
+
+    public function removerDocumentoCliente(Tarefa $tarefa, Request $request)
+    {
+        abort_if((int) $tarefa->empresa_id !== (int) (auth()->user()->empresa_id ?? 0), 403);
+
+        if ($tarefa->path_documento_cliente && S3Helper::exists($tarefa->path_documento_cliente)) {
+            S3Helper::delete($tarefa->path_documento_cliente);
+        }
+
+        $tarefa->update([
+            'path_documento_cliente' => null,
+            'documento_token' => null,
+        ]);
+
+        TarefaLog::create([
+            'tarefa_id' => $tarefa->id,
+            'user_id' => Auth::id(),
+            'de_coluna_id' => $tarefa->coluna_id,
+            'para_coluna_id' => $tarefa->coluna_id,
+            'acao' => 'documento',
+            'observacao' => 'Documento principal da tarefa removido',
+        ]);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'ok' => true,
+                'message' => 'Documento removido com sucesso.',
+            ]);
+        }
+
+        return back()->with('ok', 'Documento removido com sucesso.');
     }
 
     public function substituirDocumentoComplementar(Request $request, Tarefa $tarefa)
@@ -558,17 +582,13 @@ class TarefaController extends Controller
 
     private function substituirDocumentoAdicional(Request $request, Tarefa $tarefa, string $servico, string $pasta, string $observacao)
     {
+        $maxUploadMb = $this->resolveAdditionalDocumentUploadLimitMb($tarefa, $servico);
+
         $request->validate(
             [
-                'arquivo_cliente' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'],
+                'arquivo_cliente' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:' . $this->mbToKilobytes($maxUploadMb)],
             ],
-            [
-                'arquivo_cliente.required' => 'Selecione um arquivo do cliente.',
-                'arquivo_cliente.file' => 'O arquivo do cliente deve ser um arquivo válido.',
-                'arquivo_cliente.uploaded' => 'Não foi possível enviar o arquivo do cliente. Tente novamente.',
-                'arquivo_cliente.mimes' => 'O arquivo do cliente deve ser do tipo: pdf, jpg, jpeg ou png.',
-                'arquivo_cliente.max' => 'O arquivo do cliente deve ter no máximo 10 MB.',
-            ]
+            $this->buildArquivoClienteMessages($maxUploadMb)
         );
 
         $anexoExistente = Anexos::query()
@@ -610,6 +630,50 @@ class TarefaController extends Controller
             'ok' => true,
             'documento_url' => $anexoExistente->fresh()->url,
         ]);
+    }
+
+    private function buildArquivoClienteMessages(int $maxUploadMb): array
+    {
+        return [
+            'arquivo_cliente.required' => 'Selecione um arquivo do cliente.',
+            'arquivo_cliente.file' => 'O arquivo do cliente deve ser um arquivo válido.',
+            'arquivo_cliente.uploaded' => 'Não foi possível enviar o arquivo do cliente. Tente novamente.',
+            'arquivo_cliente.mimes' => 'O arquivo do cliente deve ser do tipo: pdf, jpg, jpeg ou png.',
+            'arquivo_cliente.max' => "O arquivo do cliente deve ter no máximo {$maxUploadMb} MB.",
+        ];
+    }
+
+    private function resolveTaskUploadLimitMb(Tarefa $tarefa): int
+    {
+        $serviceName = $this->resolveTaskServiceName($tarefa);
+        $limits = config('services.upload_limits', []);
+        $defaultMb = max(1, (int) ($limits['default_mb'] ?? 10));
+
+        return match ($serviceName) {
+            'PGR' => max(1, (int) ($limits['pgr_mb'] ?? 100)),
+            'PCMSO' => max(1, (int) ($limits['pcmso_mb'] ?? 100)),
+            default => $defaultMb,
+        };
+    }
+
+    private function resolveAdditionalDocumentUploadLimitMb(Tarefa $tarefa, string $servico): int
+    {
+        return match (mb_strtolower(trim($servico))) {
+            'documento_complementar_pgr_pcmso' => max(1, (int) (config('services.upload_limits.pcmso_mb') ?? 100)),
+            default => $this->resolveTaskUploadLimitMb($tarefa),
+        };
+    }
+
+    private function resolveTaskServiceName(Tarefa $tarefa): string
+    {
+        $tarefa->loadMissing('servico:id,nome');
+
+        return mb_strtoupper(trim((string) ($tarefa->servico?->nome ?? '')));
+    }
+
+    private function mbToKilobytes(int $megabytes): int
+    {
+        return max(1, $megabytes) * 1024;
     }
 
 }

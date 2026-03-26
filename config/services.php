@@ -39,5 +39,10 @@ return [
     'esocial_id'     => env('FORMED_SERVICO_ESOCIAL_ID'),
     'exame_id'       => env('FORMED_SERVICO_EXAME_ID'),
     'aso_id'         => env('FORMED_SERVICO_ASO_ID'),
+    'upload_limits'  => [
+        'default_mb' => (int) env('FORMED_UPLOAD_MAX_MB_DEFAULT', 10),
+        'pgr_mb' => (int) env('FORMED_UPLOAD_MAX_MB_PGR', 100),
+        'pcmso_mb' => (int) env('FORMED_UPLOAD_MAX_MB_PCMSO', 100),
+    ],
 
 ];

@@ -165,6 +165,9 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
             Route::post('{tarefa}/documento-cliente',
                 [TarefaController::class, 'substituirDocumentoCliente']
             )->name('documento-cliente');
+            Route::delete('{tarefa}/documento-cliente',
+                [TarefaController::class, 'removerDocumentoCliente']
+            )->name('documento-cliente.destroy');
 
             Route::post('{tarefa}/documento-complementar',
                 [TarefaController::class, 'substituirDocumentoComplementar']

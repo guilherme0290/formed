@@ -534,6 +534,7 @@
                                                 'id'          => $anexo->id,
                                                 'nome'        => $anexo->nome_original,
                                                 'url'         => $anexo->url,                 // S3
+                                                'delete_url'  => route('operacional.anexos.destroy', $anexo),
                                                 'mime'        => $anexo->mime_type,
                                                 'tamanho'     => $anexo->tamanho_humano,      // opcional
                                                 'servico'     => $anexo->servico,
@@ -608,6 +609,7 @@
                                     data-finalizar-documento-existente-url="{{ route('operacional.tarefas.finalizar-documento-existente', $tarefa) }}"
                                     data-reprecificar-url="{{ route('operacional.tarefas.reprecificar', $tarefa) }}"
                                     data-substituir-doc-url="{{ route('operacional.tarefas.documento-cliente', $tarefa) }}"
+                                    data-remover-documento-cliente-url="{{ route('operacional.tarefas.documento-cliente.destroy', $tarefa) }}"
                                     data-substituir-doc-complementar-url="{{ route('operacional.tarefas.documento-complementar', $tarefa) }}"
                                     data-substituir-doc-art-url="{{ route('operacional.tarefas.documento-art', $tarefa) }}"
                                     data-whatsapp-bundle-url="{{ \Illuminate\Support\Facades\URL::temporarySignedRoute('operacional.tarefas.pacote-publico', now()->addDays(7), ['tarefa' => $tarefa->id]) }}"
@@ -695,9 +697,11 @@
                                     @endif
                                     @if($documentoComplementarPgrPcmso)
                                         data-pcmso-pgr-url="{{ $documentoComplementarPgrPcmso->url }}"
+                                        data-pcmso-pgr-delete-url="{{ route('operacional.anexos.destroy', $documentoComplementarPgrPcmso) }}"
                                     @endif
                                     @if($documentoArtPgrPcmso)
                                         data-art-pgr-url="{{ $documentoArtPgrPcmso->url }}"
+                                        data-art-pgr-delete-url="{{ route('operacional.anexos.destroy', $documentoArtPgrPcmso) }}"
                                     @endif
 
                                     {{-- APR --}}
@@ -2520,30 +2524,49 @@
                 } catch (e) {
                     anexos = [];
                 }
+                const anexosOriginais = Array.isArray(anexos) ? [...anexos] : [];
                 if (docsWrapper && docsList) {
                     // limpa lista anterior
                     docsList.innerHTML = '';
+                    const anexosExibicao = [...anexosOriginais];
 
                     // 1) Documento final da tarefa (path_documento_cliente)
                     if (card.dataset.arquivoClienteUrl) {
-                        anexos.push({
+                        anexosExibicao.push({
+                            id: `principal-${card.dataset.id || 'tarefa'}`,
+                            kind: 'documento_principal',
                             label: isPgrComPcmso ? 'Documento final - PGR' : 'Documento final da tarefa',
-                            url: card.dataset.arquivoClienteUrl
+                            url: card.dataset.arquivoClienteUrl,
+                            delete_url: card.dataset.removerDocumentoClienteUrl || ''
                         });
                     }
 
                     // 2) PGR anexado ao PCMSO (se existir)
+                    const anexoComplementarPgrPcmso = anexosOriginais.find((a) =>
+                        String(a?.servico || '').toLowerCase() === 'documento_complementar_pgr_pcmso'
+                    );
+
                     if (card.dataset.pcmsoPgrUrl) {
-                        anexos.push({
+                        anexosExibicao.push({
+                            id: anexoComplementarPgrPcmso?.id || `complementar-${card.dataset.id || 'tarefa'}`,
+                            kind: 'documento_complementar',
                             label: isPgrComPcmso ? 'Documento final - PCMSO' : 'PGR anexado (PCMSO)',
-                            url: card.dataset.pcmsoPgrUrl
+                            url: card.dataset.pcmsoPgrUrl,
+                            delete_url: card.dataset.pcmsoPgrDeleteUrl || anexoComplementarPgrPcmso?.delete_url || ''
                         });
                     }
 
+                    const anexoArtPgrPcmso = anexosOriginais.find((a) =>
+                        String(a?.servico || '').toLowerCase() === 'documento_art_pgr_pcmso'
+                    );
+
                     if (card.dataset.artPgrUrl) {
-                        anexos.push({
+                        anexosExibicao.push({
+                            id: anexoArtPgrPcmso?.id || `art-${card.dataset.id || 'tarefa'}`,
+                            kind: 'documento_art',
                             label: 'Documento final - ART',
-                            url: card.dataset.artPgrUrl
+                            url: card.dataset.artPgrUrl,
+                            delete_url: card.dataset.artPgrDeleteUrl || anexoArtPgrPcmso?.delete_url || ''
                         });
                     }
 
@@ -2561,7 +2584,7 @@
                         return 'Documento';
                     };
 
-                    const anexosDocs = anexos.filter((a) => {
+                    const anexosDocs = anexosExibicao.filter((a) => {
                         const servico = String(a?.servico || '').toLowerCase();
                         return servico !== 'cancelamento_tarefa'
                             && servico !== 'documento_complementar_pgr_pcmso'
@@ -2593,7 +2616,8 @@
                                                 type="button"
                                                 class="rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] font-semibold text-rose-700 hover:bg-rose-100"
                                                 data-doc-delete-url="${a.delete_url}"
-                                                data-doc-id="${a.id || ''}">
+                                                data-doc-id="${a.id || ''}"
+                                                data-doc-kind="${a.kind || 'anexo'}">
                                                 Excluir
                                             </button>
                                         ` : ''}
@@ -2666,17 +2690,31 @@
                 }
 
                 if (exclusaoAnexoWrapper && exclusaoAnexoList) {
-                    const anexosCancelamento = anexos.filter(a => a && a.servico === 'cancelamento_tarefa');
+                    const anexosCancelamento = anexosOriginais.filter(a => a && a.servico === 'cancelamento_tarefa');
                     if (anexosCancelamento.length) {
                         exclusaoAnexoWrapper.classList.remove('hidden');
                         exclusaoAnexoList.innerHTML = anexosCancelamento.map(a => `
                             <li>
-                                <a href="${a.url}" target="_blank" class="underline text-[13px] font-medium">
-                                    ${a.nome || 'Print do cancelamento'}
-                                </a>
-                                <span class="text-[11px] text-slate-500">
-                                    (${a.tamanho || '-'} · ${a.mime || '-'}${a.data ? ' · ' + a.data : ''}${a.uploaded_by ? ' · ' + a.uploaded_by : ''})
-                                </span>
+                                <div class="flex items-start justify-between gap-2">
+                                    <div>
+                                        <a href="${a.url}" target="_blank" class="underline text-[13px] font-medium">
+                                            ${a.nome || 'Print do cancelamento'}
+                                        </a>
+                                        <span class="text-[11px] text-slate-500">
+                                            (${a.tamanho || '-'} · ${a.mime || '-'}${a.data ? ' · ' + a.data : ''}${a.uploaded_by ? ' · ' + a.uploaded_by : ''})
+                                        </span>
+                                    </div>
+                                    ${a.delete_url ? `
+                                        <button
+                                            type="button"
+                                            class="rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] font-semibold text-rose-700 hover:bg-rose-100"
+                                            data-doc-delete-url="${a.delete_url}"
+                                            data-doc-id="${a.id || ''}"
+                                            data-doc-kind="anexo">
+                                            Excluir
+                                        </button>
+                                    ` : ''}
+                                </div>
                             </li>
                         `).join('');
                     } else {
@@ -3528,7 +3566,7 @@
                             if (whatsappPopup && !whatsappPopup.closed) {
                                 whatsappPopup.close();
                             }
-                            showUploadErrorAlert(error?.message, 'Erro ao finalizar tarefa.', error?.status);
+                            showUploadErrorAlert(error?.message, 'Erro ao finalizar tarefa.', error?.status, finalizarCurrentCard);
                         });
                 });
             }
@@ -3543,6 +3581,9 @@
             const CSRF_TOKEN = @json(csrf_token());
             const POLL_INTERVAL = 30000;
             const TICK_INTERVAL = 1000;
+            const DEFAULT_UPLOAD_MAX_MB = @json((int) config('services.upload_limits.default_mb', 10));
+            const PGR_UPLOAD_MAX_MB = @json((int) config('services.upload_limits.pgr_mb', 100));
+            const PCMSO_UPLOAD_MAX_MB = @json((int) config('services.upload_limits.pcmso_mb', 100));
 
             function sanitizeResponseErrorMessage(raw, fallbackMessage) {
                 const text = String(raw || '')
@@ -3596,37 +3637,42 @@
                     || normalized.includes('payload too large')
                     || normalized.includes('post content length exceeded')
                     || normalized.includes('ultrapassou o tamanho permitido')
-                    || normalized.includes('no maximo 10 mb')
-                    || normalized.includes('no maximo 10mb')
-                    || normalized.includes('no máximo 10 mb')
-                    || normalized.includes('no máximo 10mb');
+                    || /no maximo \d+\s*mb/.test(normalized)
+                    || /no maximo \d+\s*megabytes?/.test(normalized);
             }
 
-            function showUploadTooLargeAlert() {
+            function getUploadLimitMbForCard(card) {
+                const servico = String(card?.dataset?.servico || '').trim().toUpperCase();
+
+                if (servico === 'PGR') {
+                    return PGR_UPLOAD_MAX_MB;
+                }
+
+                if (servico === 'PCMSO') {
+                    return PCMSO_UPLOAD_MAX_MB;
+                }
+
+                return DEFAULT_UPLOAD_MAX_MB;
+            }
+
+            function showUploadTooLargeAlert(card = null) {
+                const maxUploadMb = getUploadLimitMbForCard(card || finalizarCurrentCard || detalhesCurrentCard);
+
                 return window.uiAlert('', {
                     title: 'Atenção',
                     html: `
                         <div class="text-left">
-                            <p>O arquivo ultrapassou o tamanho permitido de 10 MB.</p>
-                            <p class="mt-3">Compacte o documento e tente novamente.</p>
-                            <a
-                                href="https://www.ilovepdf.com/pt/comprimir_pdf"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                class="mt-4 inline-flex items-center rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white no-underline hover:bg-sky-700"
-                            >
-                                Compactar documento
-                            </a>
+                            <p>O arquivo ultrapassou o tamanho permitido de ${maxUploadMb} MB.</p>
                         </div>
                     `,
                 });
             }
 
-            function showUploadErrorAlert(message, fallbackMessage, status = null) {
+            function showUploadErrorAlert(message, fallbackMessage, status = null, card = null) {
                 const safeMessage = message || fallbackMessage;
 
                 if (isUploadTooLargeError(safeMessage, status)) {
-                    return showUploadTooLargeAlert();
+                    return showUploadTooLargeAlert(card);
                 }
 
                 return window.uiAlert(safeMessage || 'Erro ao enviar arquivo.');
@@ -3702,7 +3748,7 @@
                         }
                     })
                     .catch((error) => {
-                        showUploadErrorAlert(error?.message, 'Erro ao enviar documento.', error?.status);
+                        showUploadErrorAlert(error?.message, 'Erro ao enviar documento.', error?.status, detalhesCurrentCard);
                     });
             }
 
@@ -3758,7 +3804,7 @@
                         }
                     })
                     .catch((error) => {
-                        showUploadErrorAlert(error?.message, 'Erro ao enviar documento complementar.', error?.status);
+                        showUploadErrorAlert(error?.message, 'Erro ao enviar documento complementar.', error?.status, detalhesCurrentCard);
                     });
             }
 
@@ -3814,7 +3860,7 @@
                         }
                     })
                     .catch((error) => {
-                        showUploadErrorAlert(error?.message, 'Erro ao enviar documento ART.', error?.status);
+                        showUploadErrorAlert(error?.message, 'Erro ao enviar documento ART.', error?.status, detalhesCurrentCard);
                     });
             }
 
@@ -3874,7 +3920,7 @@
                         openDetalhesModal(detalhesCurrentCard);
                     })
                     .catch((error) => {
-                        showUploadErrorAlert(error?.message, 'Erro ao enviar certificados.', error?.status);
+                        showUploadErrorAlert(error?.message, 'Erro ao enviar certificados.', error?.status, detalhesCurrentCard);
                     });
             }
 
@@ -3933,13 +3979,16 @@
                 return colunaCor;
             }
 
-            if (docsList) {
-                docsList.addEventListener('click', async function (event) {
+            function bindDocumentoDeleteList(listElement) {
+                if (!listElement) return;
+
+                listElement.addEventListener('click', async function (event) {
                     const btn = event.target.closest('[data-doc-delete-url]');
                     if (!btn || !detalhesCurrentCard) return;
 
                     const url = btn.dataset.docDeleteUrl;
                     const docId = String(btn.dataset.docId || '');
+                    const docKind = String(btn.dataset.docKind || 'anexo');
                     if (!url) return;
 
                     const confirmado = await window.uiConfirm(
@@ -3978,6 +4027,14 @@
                         anexos = anexos.filter((a) => String(a?.id || '') !== docId);
                         detalhesCurrentCard.dataset.anexos = JSON.stringify(anexos);
 
+                        if (docKind === 'documento_principal') {
+                            detalhesCurrentCard.dataset.arquivoClienteUrl = '';
+                        } else if (docKind === 'documento_complementar') {
+                            detalhesCurrentCard.dataset.pcmsoPgrUrl = '';
+                        } else if (docKind === 'documento_art') {
+                            detalhesCurrentCard.dataset.artPgrUrl = '';
+                        }
+
                         openDetalhesModal(detalhesCurrentCard);
                     } catch (error) {
                         window.uiAlert(error?.message || 'Erro ao excluir o documento.');
@@ -3986,6 +4043,9 @@
                     }
                 });
             }
+
+            bindDocumentoDeleteList(docsList);
+            bindDocumentoDeleteList(exclusaoAnexoList);
 
             if (certificadosUploadBtn && certificadosInput) {
                 if (certificadosDropzone) {
