@@ -34,16 +34,7 @@ class RequestTiming
         $totalMs = (microtime(true) - $startTotal) * 1000;
         $handleMs = ($endHandle - $startHandle) * 1000;
 
-        Log::info('request_timing', [
-            'method' => $request->getMethod(),
-            'path' => $request->getPathInfo(),
-            'status' => $response->getStatusCode(),
-            'total_ms' => (int) round($totalMs),
-            'boot_ms' => (int) round($bootMs),
-            'handle_ms' => (int) round($handleMs),
-            'db_time_ms' => (int) round($dbTimeMs),
-            'db_queries' => $dbCount,
-        ]);
+
 
         return $response;
     }
