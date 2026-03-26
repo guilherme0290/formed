@@ -3210,7 +3210,7 @@
                 if (modal.classList.contains('hidden')) return;
                 modal.classList.add('hidden');
                 modal.classList.remove('flex');
-                window.location.reload();
+                closeOverlayAlerts();
             }
 
             function hideModalWithoutReload() {
@@ -3264,18 +3264,13 @@
             }
 
             if (modal) {
-                modal.addEventListener('click', function (e) {
-                    if (e.target === modal) {
-                        closeModal();
-                    }
-                });
-            }
-
-            document.addEventListener('keydown', function (e) {
-                if (e.key === 'Escape') {
-                    closeModal();
+                const modalContent = modal.firstElementChild;
+                if (modalContent) {
+                    modalContent.addEventListener('click', function (e) {
+                        e.stopPropagation();
+                    });
                 }
-            });
+            }
 
             if (btnNotificarCliente) {
                 btnNotificarCliente.addEventListener('click', function () {
@@ -3678,6 +3673,13 @@
                 return window.uiAlert(safeMessage || 'Erro ao enviar arquivo.');
             }
 
+            function showUploadSuccessAlert(message = 'Documento anexado com sucesso.') {
+                return window.uiAlert(message, {
+                    icon: 'success',
+                    title: 'Sucesso',
+                });
+            }
+
             function getKanbanCards() {
                 return Array.from(document.querySelectorAll('.kanban-card'));
             }
@@ -3725,7 +3727,7 @@
 
                         return data;
                     })
-                    .then((data) => {
+                    .then(async (data) => {
                         if (!data || !data.ok) {
                             const error =
                                 data?.error
@@ -3746,6 +3748,8 @@
                             }
                             openDetalhesModal(detalhesCurrentCard);
                         }
+
+                        await showUploadSuccessAlert(data?.message || 'Documento anexado com sucesso.');
                     })
                     .catch((error) => {
                         showUploadErrorAlert(error?.message, 'Erro ao enviar documento.', error?.status, detalhesCurrentCard);
@@ -3787,7 +3791,7 @@
 
                         return data;
                     })
-                    .then((data) => {
+                    .then(async (data) => {
                         if (!data || !data.ok) {
                             const error =
                                 data?.error
@@ -3802,6 +3806,8 @@
                             detalhesCurrentCard.dataset.pcmsoPgrUrl = data.documento_url;
                             openDetalhesModal(detalhesCurrentCard);
                         }
+
+                        await showUploadSuccessAlert(data?.message || 'Documento complementar anexado com sucesso.');
                     })
                     .catch((error) => {
                         showUploadErrorAlert(error?.message, 'Erro ao enviar documento complementar.', error?.status, detalhesCurrentCard);
@@ -3843,7 +3849,7 @@
 
                         return data;
                     })
-                    .then((data) => {
+                    .then(async (data) => {
                         if (!data || !data.ok) {
                             const error =
                                 data?.error
@@ -3858,6 +3864,8 @@
                             detalhesCurrentCard.dataset.artPgrUrl = data.documento_url;
                             openDetalhesModal(detalhesCurrentCard);
                         }
+
+                        await showUploadSuccessAlert(data?.message || 'Documento ART anexado com sucesso.');
                     })
                     .catch((error) => {
                         showUploadErrorAlert(error?.message, 'Erro ao enviar documento ART.', error?.status, detalhesCurrentCard);
