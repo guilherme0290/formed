@@ -59,6 +59,14 @@ Route::post('/proposta/{token}/responder', [PropostaPublicController::class, 're
 // ==================== Raiz -> Login ====================
 Route::redirect('/', '/login');
 
+Route::get('/teste/phpinfo', function () {
+    ob_start();
+    phpinfo();
+    $content = ob_get_clean();
+
+    return response($content)->header('Content-Type', 'text/html; charset=UTF-8');
+})->middleware('auth')->name('teste.phpinfo');
+
 Route::view('/apresentacao/construcao-civil', 'apresentacoes.construcao-civil')
     ->name('apresentacoes.construcao-civil');
 
