@@ -65,14 +65,6 @@
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label class="text-xs font-semibold text-slate-600">Nome do Contato *</label>
-                        <input id="contato" name="contato" type="text" required
-                               value="{{ old('contato', $draft['contato'] ?? '') }}"
-                               class="w-full mt-1 rounded-xl border border-slate-200 text-sm px-3 py-2"
-                               placeholder="Ex: João Silva">
-                    </div>
-
-                    <div>
                         <label class="text-xs font-semibold text-slate-600">Telefone *</label>
                         <input id="telefone" name="telefone" type="text" required
                                value="{{ old('telefone', $draft['telefone'] ?? '') }}"

@@ -64,6 +64,7 @@ class ApresentacaoController extends Controller
         $isMaster = $user->hasPapel('Master');
 
         $propostas = Proposta::query()
+            ->padrao()
             ->with('cliente')
             ->where('empresa_id', $empresaId)
             ->when(!$isMaster, fn ($q) => $q->where('vendedor_id', $user->id))
@@ -85,7 +86,6 @@ class ApresentacaoController extends Controller
             'proposta_id' => ['nullable', 'integer'],
             'cnpj' => ['required', 'string', 'max:30'],
             'razao_social' => ['required', 'string', 'max:255'],
-            'contato' => ['required', 'string', 'max:120'],
             'telefone' => ['required', 'string', 'max:30'],
         ]);
 
@@ -93,7 +93,9 @@ class ApresentacaoController extends Controller
         $empresaId = $user->empresa_id;
         $isMaster = $user->hasPapel('Master');
         if (!empty($data['proposta_id'])) {
-            $ok = Proposta::where('id', $data['proposta_id'])
+            $ok = Proposta::query()
+                ->padrao()
+                ->where('id', $data['proposta_id'])
                 ->where('empresa_id', $empresaId)
                 ->when(!$isMaster, fn ($q) => $q->where('vendedor_id', $user->id))
                 ->exists();
@@ -111,6 +113,7 @@ class ApresentacaoController extends Controller
         $proposta = null;
         if (!empty($data['proposta_id'])) {
             $proposta = Proposta::query()
+                ->padrao()
                 ->where('id', $data['proposta_id'])
                 ->where('empresa_id', $empresaId)
                 ->when(!$isMaster, fn ($q) => $q->where('vendedor_id', $user->id))
@@ -123,7 +126,7 @@ class ApresentacaoController extends Controller
             'cliente_id' => $draftAtual['cliente_id'] ?? ($proposta?->cliente_id),
             'cnpj' => $data['cnpj'],
             'razao_social' => $data['razao_social'],
-            'contato' => $data['contato'],
+            'contato' => $draftAtual['contato'] ?? '',
             'telefone' => $data['telefone'],
         ];
 
@@ -623,6 +626,7 @@ class ApresentacaoController extends Controller
     {
         $presentation = $this->currentPresentation($request);
         $payload = is_array($presentation?->payload) ? $presentation->payload : [];
+        $responsavel = $presentation?->user ?: $request->user();
         $modelo = $this->findModelo($request, $segmento);
         $layout = $presentation && ($presentation->segmento === $segmento) && is_array($payload['layout'] ?? null)
             ? $this->mergeLayout($this->layoutPadrao($segmento), (array) $payload['layout'])
@@ -652,6 +656,11 @@ class ApresentacaoController extends Controller
             'segmento' => $segmento,
             'segmentoNome' => $payload['segmento_nome'] ?? self::SEGMENTOS[$segmento],
             'clienteLogoData' => $clienteLogoData,
+            'responsavelApresentacao' => [
+                'name' => $responsavel?->name ?: '—',
+                'email' => $responsavel?->email ?: '—',
+                'telefone' => $presentation?->user?->telefone ?: null,
+            ],
             'conteudo' => $payload['conteudo'] ?? $this->conteudoParaSegmento($request, $segmento),
             'tituloSegmento' => $payload['titulo_segmento'] ?? $this->tituloParaSegmento($request, $segmento),
             'precos' => $this->precosParaSegmento($request, $segmento),
@@ -1204,6 +1213,7 @@ class ApresentacaoController extends Controller
         }
 
         return ApresentacaoComercial::query()
+            ->with('user')
             ->where('id', $presentationId)
             ->where('empresa_id', $request->user()->empresa_id)
             ->first();
@@ -1218,7 +1228,7 @@ class ApresentacaoController extends Controller
 
         $presentation = $this->currentPresentation($request) ?? new ApresentacaoComercial();
         $presentation->empresa_id = $request->user()->empresa_id;
-        $presentation->user_id = $request->user()->id;
+        $presentation->user_id = $presentation->user_id ?: $request->user()->id;
         $presentation->proposta_id = $cliente['proposta_id'] ?? $presentation->proposta_id;
         $presentation->cliente_id = $cliente['cliente_id'] ?? $presentation->cliente_id;
         $presentation->segmento = $segmento ?: $presentation->segmento;
