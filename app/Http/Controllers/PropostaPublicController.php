@@ -12,7 +12,9 @@ class PropostaPublicController extends Controller
 {
     public function show(string $token)
     {
-        $proposta = Proposta::where('public_token', $token)
+        $proposta = Proposta::query()
+            ->padrao()
+            ->where('public_token', $token)
             ->with(['cliente', 'empresa', 'vendedor', 'itens'])
             ->firstOrFail();
 
@@ -30,7 +32,9 @@ class PropostaPublicController extends Controller
 
     public function responder(Request $request, string $token, PropostaService $service)
     {
-        $proposta = Proposta::where('public_token', $token)
+        $proposta = Proposta::query()
+            ->padrao()
+            ->where('public_token', $token)
             ->with(['cliente', 'empresa', 'vendedor', 'itens'])
             ->firstOrFail();
 

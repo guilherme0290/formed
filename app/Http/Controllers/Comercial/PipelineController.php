@@ -39,6 +39,7 @@ class PipelineController extends Controller
         $filtroCustom = $statusFiltro !== '';
 
         $query = Proposta::query()
+            ->padrao()
             ->where('empresa_id', $empresaId)
             ->with(['cliente', 'vendedor', 'itens'])
             ->orderByDesc('id');

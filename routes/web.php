@@ -684,6 +684,25 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
                 Route::post('/', [PropostaController::class, 'store'])
                     ->name('store');
 
+                Route::prefix('rapidas')->name('rapidas.')->group(function () {
+                    Route::get('/', [\App\Http\Controllers\Comercial\PropostaRapidaController::class, 'index'])
+                        ->name('index');
+                    Route::get('/criar', [\App\Http\Controllers\Comercial\PropostaRapidaController::class, 'create'])
+                        ->name('create');
+                    Route::post('/', [\App\Http\Controllers\Comercial\PropostaRapidaController::class, 'store'])
+                        ->name('store');
+                    Route::get('/{proposta}/editar', [\App\Http\Controllers\Comercial\PropostaRapidaController::class, 'edit'])
+                        ->name('edit');
+                    Route::put('/{proposta}', [\App\Http\Controllers\Comercial\PropostaRapidaController::class, 'update'])
+                        ->name('update');
+                    Route::delete('/{proposta}', [\App\Http\Controllers\Comercial\PropostaRapidaController::class, 'destroy'])
+                        ->name('destroy');
+                    Route::get('/{proposta}/pdf', [\App\Http\Controllers\Comercial\PropostaRapidaController::class, 'pdf'])
+                        ->name('pdf');
+                    Route::get('/{proposta}', [\App\Http\Controllers\Comercial\PropostaRapidaController::class, 'show'])
+                        ->name('show');
+                });
+
                 Route::get('/preco-servico/{servico}', [PropostaPrecoController::class, 'precoServico'])
                     ->name('preco-servico');
 
@@ -830,6 +849,8 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
 
                 Route::post('/tabela-precos', [TabelaPrecoController::class, 'update'])
                     ->name('update');
+                Route::post('/tabela-precos/desconto-proposta-rapida', [TabelaPrecoController::class, 'updateDescontoRapido'])
+                    ->name('desconto-proposta-rapida');
 
                 //tabela de preco ITENS
                 Route::prefix('itens')->name('itens.')->group(function () {
@@ -1237,6 +1258,7 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
         Route::prefix('tabela-precos')->name('tabela-precos.')->group(function () {
             Route::get('/', [TabelaPrecoController::class, 'itensIndex'])->name('index');
             Route::post('/', [TabelaPrecoController::class, 'update'])->name('update');
+            Route::post('/desconto-proposta-rapida', [TabelaPrecoController::class, 'updateDescontoRapido'])->name('desconto-proposta-rapida');
 
             Route::get('/itens', [TabelaPrecoController::class, 'itensIndex'])->name('itens.index');
             Route::get('/itens/novo', [TabelaPrecoController::class, 'createItem'])->name('itens.create');

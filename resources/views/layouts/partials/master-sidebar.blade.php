@@ -84,6 +84,12 @@
                         'active' => request()->routeIs('comercial.apresentacao.*'),
                     ],
                     [
+                        'label' => 'Gerar Proposta',
+                        'icon' => 'fa-regular fa-file-lines',
+                        'route' => route('comercial.propostas.rapidas.index'),
+                        'active' => request()->routeIs('comercial.propostas.rapidas.*'),
+                    ],
+                    [
                         'label' => 'Gestão de Propostas',
                         'icon' => 'fa-solid fa-chart-column',
                         'route' => route('comercial.pipeline.index'),

@@ -27,6 +27,16 @@
         || isset($permissionMap[$fallbackPrefix.'.view'])
         || isset($permissionMap[$dashboardPermPrefix.'.view'])
         || isset($permissionMap[$dashboardPermFallback.'.view']);
+    $canManageDescontoRapido = $isMaster;
+    $comerciaisDescontoRapidoData = isset($comerciais)
+        ? $comerciais->map(function ($row) {
+            return [
+                'id' => $row->id,
+                'name' => $row->name,
+                'percentual' => (float) ($row->proposta_desconto_max_percentual ?? 0),
+            ];
+        })->values()->all()
+        : [];
 @endphp
 
 <div class="w-full max-w-full overflow-x-hidden px-2 sm:px-3 md:px-4 py-2 md:py-3 space-y-4 md:space-y-6">
@@ -39,9 +49,9 @@
     </div>
     <header class="flex flex-col gap-3 sm:flex-wrap sm:flex-row sm:items-center sm:justify-between">
         <div>
-            <h1 class="text-2xl font-semibold text-slate-900">Itens da Tabela de Preços</h1>
+            <h1 class="text-2xl font-semibold text-slate-900">Tabela de Preços</h1>
             <p class="text-slate-500 text-sm mt-1">
-                Itens utilizados nas propostas comerciais.
+                Gerencie os itens utilizados nas propostas comerciais.
             </p>
         </div>
         <div class="w-full sm:w-auto flex flex-col sm:flex-row gap-2 sm:items-center">
@@ -108,6 +118,15 @@
                     @if(!$canOpenAuxModals) disabled @endif>
                 <span>Grupo de Exames</span>
             </button>
+            <button type="button"
+                    @if($canManageDescontoRapido && isset($comerciais) && $comerciais->isNotEmpty()) onclick="openDescontoRapidoModal()" @endif
+                    @if(!$canManageDescontoRapido) title="Somente Master pode configurar." @endif
+                    class="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-2xl
+               {{ $canManageDescontoRapido ? 'bg-white hover:bg-fuchsia-50 active:bg-fuchsia-100 text-fuchsia-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }} px-4 py-2 text-sm font-semibold shadow-sm
+               ring-1 ring-fuchsia-200 hover:ring-fuchsia-300 transition"
+                    @if(!$canManageDescontoRapido) disabled @endif>
+                <span>Desconto Proposta Rápida</span>
+            </button>
 {{--            <button type="button"--}}
 {{--                    onclick="openGheModal()"--}}
 {{--                    class="inline-flex items-center justify-center gap-2 rounded-2xl--}}
@@ -127,7 +146,11 @@
     @if ($errors->any())
         <script>
             document.addEventListener('DOMContentLoaded', function () {
-                openNovoItemModal();
+                @if($errors->has('descontos') || collect($errors->keys())->contains(fn ($key) => str_starts_with($key, 'descontos.')))
+                    openDescontoRapidoModal();
+                @else
+                    openNovoItemModal();
+                @endif
             });
         </script>
     @endif
@@ -592,6 +615,85 @@
     'canDelete' => $canDelete,
 ])
 
+@if(isset($comerciais) && $comerciais->isNotEmpty())
+    <div id="modalDescontoRapido" class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/50 p-4">
+        <div class="w-full max-w-4xl rounded-3xl bg-white shadow-2xl overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-semibold text-slate-900">Limite de Desconto</h3>
+                    <p class="text-xs text-slate-500 mt-1">Defina e salve o percentual máximo de desconto para cada comercial.</p>
+                </div>
+                <button type="button"
+                        onclick="closeDescontoRapidoModal()"
+                        class="rounded-lg px-2 py-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700">
+                    ✕
+                </button>
+            </div>
+
+            <form method="POST" action="{{ route($routePrefix.'.tabela-precos.desconto-proposta-rapida') }}" class="p-6 space-y-4" id="formDescontoRapido">
+                @csrf
+                <div class="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3">
+                    <div class="text-sm font-semibold text-blue-900">Edite os percentuais abaixo e clique em salvar alterações.</div>
+                    <div class="mt-1 flex flex-wrap items-center gap-3 text-xs text-blue-700">
+                        <span>Configuração disponível apenas para Master.</span>
+                        <span id="descontoRapidoDirtyBadge" class="hidden rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 font-semibold text-amber-700">
+                            Alterações pendentes
+                        </span>
+                    </div>
+                </div>
+                <div class="rounded-2xl border border-slate-200 overflow-hidden">
+                    <div class="hidden md:grid grid-cols-12 gap-3 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        <div class="col-span-5">Comercial</div>
+                        <div class="col-span-4">E-mail</div>
+                        <div class="col-span-3 text-right">Limite (%)</div>
+                    </div>
+                    <div class="max-h-[60vh] overflow-auto divide-y divide-slate-100">
+                        @foreach($comerciais as $comercial)
+                            <div class="grid grid-cols-1 gap-3 px-4 py-4 md:grid-cols-12 md:items-center">
+                                <div class="md:col-span-5">
+                                    <div class="text-sm font-semibold text-slate-900">{{ $comercial->name }}</div>
+                                    <div class="text-xs text-slate-500 md:hidden">{{ $comercial->email ?? 'Sem e-mail' }}</div>
+                                </div>
+                                <div class="hidden md:block md:col-span-4 text-sm text-slate-600">
+                                    {{ $comercial->email ?? 'Sem e-mail' }}
+                                </div>
+                                <div class="md:col-span-3">
+                                    <label class="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-500 md:hidden">
+                                        Percentual máximo
+                                    </label>
+                                    <div class="flex items-center justify-end gap-2">
+                                        <input type="text"
+                                               name="descontos[{{ $comercial->id }}]"
+                                               inputmode="decimal"
+                                               value="{{ old('descontos.'.$comercial->id, number_format((float) ($comercial->proposta_desconto_max_percentual ?? 0), 2, ',', '.')) }}"
+                                               data-original-value="{{ number_format((float) ($comercial->proposta_desconto_max_percentual ?? 0), 2, '.', '') }}"
+                                               data-desconto-input="1"
+                                               class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm transition md:w-28 md:text-right">
+                                        <span class="text-sm font-semibold text-slate-500">%</span>
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-end gap-2 pt-2">
+                    <button type="button"
+                            onclick="closeDescontoRapidoModal()"
+                            class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                        Cancelar
+                    </button>
+                    <button type="submit"
+                            id="descontoRapidoSubmit"
+                            class="inline-flex items-center justify-center rounded-xl border border-slate-900 bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">
+                        Salvar alterações
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+@endif
+
 
 
 @push('scripts')
@@ -611,6 +713,7 @@
             const storeUrl = @json(route($routePrefix.'.tabela-precos.itens.store'));
             const treinamentosUrl = @json(route($routePrefix.'.treinamentos-nrs.json'));
             const SERVICO_TREINAMENTO_ID = {{ config('services.treinamento_id') ?? 'null' }};
+            const comerciaisDescontoRapido = @json($comerciaisDescontoRapidoData);
 
             const el = {
                 modalItem: document.getElementById('modalNovoItem'),
@@ -633,6 +736,11 @@
 
                 nrWrap: document.getElementById('nrChips'),
                 nrContainer: document.getElementById('nrChipsContainer'),
+
+                modalDescontoRapido: document.getElementById('modalDescontoRapido'),
+                formDescontoRapido: document.getElementById('formDescontoRapido'),
+                descontoRapidoDirtyBadge: document.getElementById('descontoRapidoDirtyBadge'),
+                descontoRapidoSubmit: document.getElementById('descontoRapidoSubmit'),
             };
 
             // Se algo essencial não existir, não quebra a página
@@ -826,6 +934,94 @@
                 el.modalItem.classList.remove('hidden');
             }
 
+            window.openDescontoRapidoModal = function () {
+                if (!el.modalDescontoRapido) return;
+                if (!@json($canManageDescontoRapido)) {
+                    window.uiAlert?.('Somente Master pode configurar esse limite.');
+                    return;
+                }
+
+                el.modalDescontoRapido.classList.remove('hidden');
+                el.modalDescontoRapido.classList.add('flex');
+            }
+
+            window.closeDescontoRapidoModal = function () {
+                if (!el.modalDescontoRapido) return;
+                el.modalDescontoRapido.classList.add('hidden');
+                el.modalDescontoRapido.classList.remove('flex');
+            }
+
+            function syncDescontoRapidoDirtyState() {
+                const inputs = Array.from(document.querySelectorAll('[data-desconto-input="1"]'));
+                const dirtyCount = inputs.reduce((count, input) => {
+                    const current = normalizePercentValue(input.value);
+                    const original = Number(input.dataset.originalValue || 0).toFixed(2);
+                    const dirty = current !== original;
+
+                    input.classList.toggle('border-blue-300', dirty);
+                    input.classList.toggle('bg-amber-50', dirty);
+                    input.classList.toggle('text-amber-900', dirty);
+
+                    return count + (dirty ? 1 : 0);
+                }, 0);
+
+                if (el.descontoRapidoDirtyBadge) {
+                    el.descontoRapidoDirtyBadge.classList.toggle('hidden', dirtyCount === 0);
+                    el.descontoRapidoDirtyBadge.textContent = dirtyCount > 0
+                        ? `${dirtyCount} alteração(ões) pendente(s)`
+                        : 'Alterações pendentes';
+                }
+
+                if (el.descontoRapidoSubmit) {
+                    el.descontoRapidoSubmit.textContent = dirtyCount > 0 ? 'Salvar alterações' : 'Salvar alterações';
+                }
+            }
+
+            function normalizePercentValue(value) {
+                const raw = String(value || '').trim();
+                if (!raw) return Number(0).toFixed(2);
+
+                const normalized = raw
+                    .replace(/\./g, '')
+                    .replace(',', '.')
+                    .replace(/[^0-9.]/g, '');
+
+                return Number(normalized || 0).toFixed(2);
+            }
+
+            function formatPercentInputValue(value) {
+                const normalized = normalizePercentValue(value);
+                return Number(normalized).toLocaleString('pt-BR', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                });
+            }
+
+            function attachDescontoInputMask(input) {
+                if (!input) return;
+
+                input.addEventListener('focus', () => {
+                    input.value = formatPercentInputValue(input.value);
+                    requestAnimationFrame(() => input.select());
+                });
+
+                input.addEventListener('blur', () => {
+                    input.value = formatPercentInputValue(input.value);
+                    syncDescontoRapidoDirtyState();
+                });
+
+                input.addEventListener('input', () => {
+                    const digits = String(input.value || '').replace(/\D+/g, '').slice(0, 5);
+                    const padded = digits.padStart(3, '0');
+                    const integerPart = padded.slice(0, -2).replace(/^0+(?=\d)/, '') || '0';
+                    const decimalPart = padded.slice(-2);
+                    input.value = `${integerPart},${decimalPart}`;
+                    syncDescontoRapidoDirtyState();
+                });
+
+                input.value = formatPercentInputValue(input.value);
+            }
+
             // ============================
             // NR: MOSTRAR CHIPS QUANDO SERVICO = TREINAMENTO
             // ============================
@@ -847,6 +1043,17 @@
             syncAtivoLabel();
             attachPrecoMaskListeners();
             toggleNrChips();
+            document.querySelectorAll('[data-desconto-input="1"]').forEach((input) => {
+                attachDescontoInputMask(input);
+                input.addEventListener('change', syncDescontoRapidoDirtyState);
+            });
+            syncDescontoRapidoDirtyState();
+
+            el.formDescontoRapido?.addEventListener('submit', () => {
+                document.querySelectorAll('[data-desconto-input="1"]').forEach((input) => {
+                    input.value = normalizePercentValue(input.value);
+                });
+            });
 
             el.ativo?.addEventListener('change', syncAtivoLabel);
             el.servico?.addEventListener('change', toggleNrChips);

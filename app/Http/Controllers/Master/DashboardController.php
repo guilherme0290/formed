@@ -122,6 +122,7 @@ class DashboardController extends Controller
         ];
 
         $pipelineRows = Proposta::query()
+            ->padrao()
             ->when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId))
             ->selectRaw("COALESCE(pipeline_status, 'CONTATO_INICIAL') as status, COUNT(*) as total, COALESCE(SUM(valor_total), 0) as valor")
             ->groupByRaw("COALESCE(pipeline_status, 'CONTATO_INICIAL')")
@@ -444,6 +445,7 @@ class DashboardController extends Controller
         $ticketMedio = (float) $vendas->avg('total');
 
         $propostas = Proposta::query()
+            ->padrao()
             ->when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId));
 
         $totalPropostas = (clone $propostas)->count();
@@ -1294,6 +1296,7 @@ class DashboardController extends Controller
         $usuariosDisponiveis = $usuariosQuery->get(['id', 'name']);
 
         $statusPropostaOpcoes = Proposta::query()
+            ->padrao()
             ->when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId))
             ->whereNotNull('status')
             ->select('status')
@@ -1384,6 +1387,7 @@ class DashboardController extends Controller
         }
 
         $propostasBase = Proposta::query()
+            ->padrao()
             ->with(['cliente', 'vendedor'])
             ->when($empresaId, fn ($q) => $q->where('empresa_id', $empresaId))
             ->whereDate('updated_at', '>=', $dataInicio->toDateString())

@@ -25,14 +25,24 @@
                 <p class="text-slate-500 text-sm mt-1">Listagem de propostas comerciais.</p>
             </div>
 
-            <a href="{{ $canCreate ? route('comercial.propostas.create') : 'javascript:void(0)' }}"
-               @if(!$canCreate) title="Usuário sem permissão" aria-disabled="true" @endif
-               class="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-2xl
+            <div class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                <a href="{{ $canCreate ? route('comercial.propostas.rapidas.index') : 'javascript:void(0)' }}"
+                   @if(!$canCreate) title="Usuário sem permissão" aria-disabled="true" @endif
+                   class="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-2xl
+                      {{ $canCreate ? 'bg-white hover:bg-slate-50 text-slate-700 ring-1 ring-slate-200' : 'bg-slate-200 text-slate-500 cursor-not-allowed ring-1 ring-slate-300' }}
+                      px-5 py-2.5 text-sm font-semibold shadow-sm transition">
+                    <span>Propostas Rápidas</span>
+                </a>
+
+                <a href="{{ $canCreate ? route('comercial.propostas.create') : 'javascript:void(0)' }}"
+                   @if(!$canCreate) title="Usuário sem permissão" aria-disabled="true" @endif
+                   class="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-2xl
                       {{ $canCreate ? 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white ring-1 ring-blue-600/20 hover:ring-blue-700/30' : 'bg-slate-200 text-slate-500 cursor-not-allowed ring-1 ring-slate-300' }}
                       px-5 py-2.5 text-sm font-semibold shadow-sm transition">
-                <span class="text-base leading-none">＋</span>
-                <span>Nova Proposta</span>
-            </a>
+                    <span class="text-base leading-none">＋</span>
+                    <span>Nova Proposta</span>
+                </a>
+            </div>
         </header>
 
         @if (session('ok'))
