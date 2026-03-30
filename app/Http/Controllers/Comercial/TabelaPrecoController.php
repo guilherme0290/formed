@@ -9,6 +9,7 @@ use App\Models\Funcao;
 use App\Models\Servico;
 use App\Models\TabelaPrecoPadrao;
 use App\Models\TabelaPrecoItem;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -169,6 +170,43 @@ class TabelaPrecoController extends Controller
             ->with('ok', 'Tabela padrão atualizada.');
     }
 
+    public function updateDescontoRapido(Request $request)
+    {
+        abort_unless(auth()->user()?->isMaster(), 403);
+
+        $empresaId = auth()->user()->empresa_id;
+
+        $comerciais = User::query()
+            ->where('empresa_id', $empresaId)
+            ->whereHas('papel', fn ($query) => $query->where('nome', 'Comercial'))
+            ->orderBy('name')
+            ->get(['id']);
+
+        $idsPermitidos = $comerciais->pluck('id')->map(fn ($id) => (int) $id)->all();
+
+        $data = $request->validate([
+            'descontos' => ['required', 'array'],
+            'descontos.*' => ['nullable', 'numeric', 'min:0', 'max:100'],
+        ]);
+
+        foreach ($data['descontos'] as $userId => $percentual) {
+            $userId = (int) $userId;
+            if (!in_array($userId, $idsPermitidos, true)) {
+                continue;
+            }
+
+            User::query()
+                ->where('id', $userId)
+                ->update([
+                    'proposta_desconto_max_percentual' => round((float) ($percentual ?? 0), 2),
+                ]);
+        }
+
+        return redirect()
+            ->route($this->routeName('index'))
+            ->with('ok', 'Limites de desconto da proposta rápida atualizados.');
+    }
+
     private function authorizeItem(TabelaPrecoItem $item): void
     {
         abort_if(
@@ -235,12 +273,19 @@ class TabelaPrecoController extends Controller
             ->orderBy('nome')
             ->get(['id', 'nome']);
 
+        $comerciais = User::query()
+            ->with('papel')
+            ->where('empresa_id', $empresaId)
+            ->whereHas('papel', fn ($query) => $query->where('nome', 'Comercial'))
+            ->orderBy('name')
+            ->get(['id', 'name', 'email', 'papel_id', 'proposta_desconto_max_percentual']);
+
         $routePrefix = $this->contextPrefix();
         $dashboardRoute = $routePrefix === 'master'
             ? route('master.dashboard')
             : route('comercial.dashboard');
 
-        return compact('padrao', 'servicos', 'itens', 'clientes', 'funcoes', 'routePrefix', 'dashboardRoute');
+        return compact('padrao', 'servicos', 'itens', 'clientes', 'funcoes', 'comerciais', 'routePrefix', 'dashboardRoute');
     }
 
     private function viewPath(): string

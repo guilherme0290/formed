@@ -39,6 +39,7 @@ class PropostaController extends Controller
         $status = strtoupper(trim((string) $request->query('status', '')));
 
         $query = Proposta::query()
+            ->padrao()
             ->with(['cliente', 'empresa'])
             ->where('empresa_id', $empresaId);
 
@@ -137,6 +138,7 @@ class PropostaController extends Controller
         ];
 
         $ultimaPropostaPorCliente = Proposta::query()
+            ->padrao()
             ->where('empresa_id', $empresaId)
             ->orderByDesc('id')
             ->get(['id', 'cliente_id', 'vendedor_id'])
@@ -172,6 +174,7 @@ class PropostaController extends Controller
     {
         $user = auth()->user();
         abort_unless($proposta->empresa_id === $user->empresa_id, 403);
+        abort_if($proposta->isRapida(), 404);
 
         $empresaId = $user->empresa_id ?? 1;
 
@@ -227,6 +230,7 @@ class PropostaController extends Controller
     {
         $user = auth()->user();
         abort_unless($proposta->empresa_id === $user->empresa_id, 403);
+        abort_if($proposta->isRapida(), 404);
 
         return $this->saveProposta($request, $proposta);
     }
@@ -235,6 +239,7 @@ class PropostaController extends Controller
     {
         $user = auth()->user();
         abort_unless($proposta->empresa_id === $user->empresa_id, 403);
+        abort_if($proposta->isRapida(), 404);
 
         return DB::transaction(function () use ($proposta) {
             $proposta->itens()->delete();
@@ -253,6 +258,7 @@ class PropostaController extends Controller
     {
         $user = auth()->user();
         abort_unless($proposta->empresa_id === $user->empresa_id, 403);
+        abort_if($proposta->isRapida(), 404);
 
         $data = $request->validate([
             'telefone' => ['required', 'string', 'max:30'],
@@ -284,6 +290,7 @@ class PropostaController extends Controller
     {
         $user = auth()->user();
         abort_unless($proposta->empresa_id === $user->empresa_id, 403);
+        abort_if($proposta->isRapida(), 404);
 
         $data = $request->validate([
             'email' => ['required', 'email', 'max:255'],
@@ -319,6 +326,7 @@ class PropostaController extends Controller
     {
         $user = auth()->user();
         abort_unless($proposta->empresa_id === $user->empresa_id, 403);
+        abort_if($proposta->isRapida(), 404);
 
         if (!$user->hasPapel('Master')) {
             abort_unless((int) $proposta->vendedor_id === (int) $user->id, 403);
@@ -335,6 +343,7 @@ class PropostaController extends Controller
         abort_if(!$clienteOk, 403);
 
         $temPropostaAberta = Proposta::query()
+            ->padrao()
             ->where('empresa_id', $user->empresa_id)
             ->where('cliente_id', $clienteId)
             ->whereNotIn('status', ['FECHADA', 'CANCELADA'])
@@ -360,6 +369,7 @@ class PropostaController extends Controller
                 'empresa_id' => $proposta->empresa_id,
                 'cliente_id' => $clienteId,
                 'vendedor_id' => auth()->id(),
+                'tipo_modelo' => 'PADRAO',
                 'codigo' => $codigo,
                 'forma_pagamento' => $proposta->forma_pagamento,
                 'prazo_dias' => $proposta->prazo_dias,
@@ -367,6 +377,9 @@ class PropostaController extends Controller
                 'incluir_esocial' => $proposta->incluir_esocial,
                 'esocial_qtd_funcionarios' => $proposta->esocial_qtd_funcionarios,
                 'esocial_valor_mensal' => $proposta->esocial_valor_mensal,
+                'valor_bruto' => $proposta->valor_bruto ?: $valorTotal,
+                'desconto_percentual' => $proposta->desconto_percentual ?? 0,
+                'desconto_valor' => $proposta->desconto_valor ?? 0,
                 'valor_total' => $valorTotal,
                 'status' => 'PENDENTE',
                 'pipeline_status' => 'CONTATO_INICIAL',
@@ -419,6 +432,7 @@ class PropostaController extends Controller
     {
         $user = auth()->user();
         abort_unless($proposta->empresa_id === $user->empresa_id, 403);
+        abort_if($proposta->isRapida(), 404);
         if (!$user->hasPapel('Master')) {
             abort_unless((int) $proposta->vendedor_id === (int) $user->id, 403);
         }
@@ -801,6 +815,7 @@ class PropostaController extends Controller
                 'cliente_id' => $data['cliente_id'],
                 'vendedor_id' => $proposta?->vendedor_id ?? auth()->id(),
                 'codigo' => $codigo,
+                'tipo_modelo' => 'PADRAO',
                 'forma_pagamento' => $data['forma_pagamento'],
                 'prazo_dias' => $prazoDias,
                 'vencimento_servicos' => $vencimentoServicos,
@@ -809,6 +824,9 @@ class PropostaController extends Controller
                 'esocial_qtd_funcionarios' => $incluirEsocial ? ($data['esocial_qtd_funcionarios'] ?? 0) : null,
                 'esocial_valor_mensal' => $incluirEsocial ? $valorEsocialCampo : 0,
 
+                'valor_bruto' => $valorTotal,
+                'desconto_percentual' => 0,
+                'desconto_valor' => 0,
                 'valor_total' => $valorTotal,
             ];
 
@@ -1055,6 +1073,7 @@ class PropostaController extends Controller
     {
         $user = auth()->user();
         abort_unless($proposta->empresa_id === $user->empresa_id, 403);
+        abort_if($proposta->isRapida(), 404);
         $canEdit = $user->hasPapel('Master') || ((int) $proposta->vendedor_id === (int) $user->id);
 
         $proposta->load(['cliente', 'empresa', 'vendedor', 'itens', 'asoGrupos.grupo.itens.exame']);
@@ -1089,6 +1108,7 @@ class PropostaController extends Controller
     {
         $user = auth()->user();
         abort_unless($proposta->empresa_id === $user->empresa_id, 403);
+        abort_if($proposta->isRapida(), 404);
         if (!$user->hasPapel('Master')) {
             abort_unless((int) $proposta->vendedor_id === (int) $user->id, 403);
         }
@@ -1136,6 +1156,7 @@ class PropostaController extends Controller
     {
         $user = auth()->user();
         abort_unless($proposta->empresa_id === $user->empresa_id, 403);
+        abort_if($proposta->isRapida(), 404);
         if (!$user->hasPapel('Master')) {
             abort_unless((int) $proposta->vendedor_id === (int) $user->id, 403);
         }

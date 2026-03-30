@@ -145,6 +145,17 @@
                 <span data-sidebar-label>Gerar Apresentação</span>
             </a>
 
+            @php $canPropostaRapida = $can('comercial.propostas.create'); @endphp
+            @php $activePropostaRapida = request()->routeIs('comercial.propostas.rapidas.*'); @endphp
+            <a href="{{ $canPropostaRapida ? route('comercial.propostas.rapidas.index') : 'javascript:void(0)' }}"
+               @if(!$canPropostaRapida) title="Usuário sem permissão" aria-disabled="true" @endif
+               class="group flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition {{ $menuState($canPropostaRapida, $activePropostaRapida) }}">
+                <span class="{{ $iconState($canPropostaRapida, $activePropostaRapida) }}">
+                    <i class="fa-regular fa-file-lines w-4 text-center"></i>
+                </span>
+                <span data-sidebar-label>Gerar Proposta</span>
+            </a>
+
             @php $canPipeline = $can('comercial.pipeline.view'); @endphp
             @php $activePipeline = request()->routeIs('comercial.pipeline.*'); @endphp
             <a href="{{ $canPipeline ? route('comercial.pipeline.index') : 'javascript:void(0)' }}"
