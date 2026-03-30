@@ -3,6 +3,22 @@
 @section('page-container', 'w-full p-0')
 
 @section('content')
+    @php
+        $formatTelefoneResponsavel = static function ($value) {
+            $digits = preg_replace('/\D+/', '', (string) $value) ?? '';
+
+            if (strlen($digits) === 11) {
+                return sprintf('(%s) %s-%s', substr($digits, 0, 2), substr($digits, 2, 5), substr($digits, 7, 4));
+            }
+
+            if (strlen($digits) === 10) {
+                return sprintf('(%s) %s-%s', substr($digits, 0, 2), substr($digits, 2, 4), substr($digits, 6, 4));
+            }
+
+            return trim((string) $value) !== '' ? (string) $value : '—';
+        };
+    @endphp
+
     <div class="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(251,191,36,0.12),_transparent_28%),linear-gradient(180deg,_#f8fafc_0%,_#eef2f7_100%)]">
         <div class="w-full px-3 py-3 sm:px-4 md:px-5">
             <div class="mb-4 rounded-[30px] border border-slate-200/80 bg-white/90 p-5 shadow-sm backdrop-blur print:hidden">
@@ -82,17 +98,34 @@
                                 </div>
 
                                 <div>
-                                    <label class="text-xs font-semibold text-slate-600">Contato</label>
-                                    <input id="contato" type="text"
-                                           value="{{ $cliente['contato'] ?? '' }}"
-                                           class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
-                                </div>
-
-                                <div>
                                     <label class="text-xs font-semibold text-slate-600">Telefone</label>
                                     <input id="telefone" type="text"
                                            value="{{ $cliente['telefone'] ?? '' }}"
                                            class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                                </div>
+
+                                <div>
+                                    <label class="text-xs font-semibold text-slate-600">Responsável</label>
+                                    <input type="text"
+                                           value="{{ $responsavelApresentacao['name'] ?? '—' }}"
+                                           readonly
+                                           class="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                                </div>
+
+                                <div>
+                                    <label class="text-xs font-semibold text-slate-600">E-mail do responsável</label>
+                                    <input type="text"
+                                           value="{{ $responsavelApresentacao['email'] ?? '—' }}"
+                                           readonly
+                                           class="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                                </div>
+
+                                <div>
+                                    <label class="text-xs font-semibold text-slate-600">Telefone do responsável</label>
+                                    <input type="text"
+                                           value="{{ $responsavelApresentacao['telefone'] ? $formatTelefoneResponsavel($responsavelApresentacao['telefone']) : '' }}"
+                                           readonly
+                                           class="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
                                 </div>
                             </div>
                         </section>
@@ -163,7 +196,6 @@
             (function () {
                 const cnpj = document.getElementById('cnpj');
                 const razao = document.getElementById('razao_social');
-                const contato = document.getElementById('contato');
                 const telefone = document.getElementById('telefone');
                 const btnBuscar = document.getElementById('btnBuscarCnpj');
                 const cnpjMsg = document.getElementById('cnpjMsg');
@@ -187,7 +219,6 @@
                 const previewTargets = {
                     razao_social: Array.from(document.querySelectorAll('[data-preview-field="razao_social"], #view_razao_social')),
                     cnpj: Array.from(document.querySelectorAll('[data-preview-field="cnpj"], #view_cnpj')),
-                    contato: Array.from(document.querySelectorAll('[data-preview-field="contato"], #view_contato')),
                     telefone: Array.from(document.querySelectorAll('[data-preview-field="telefone"], #view_telefone')),
                 };
                 let clienteDraftTimer = null;
@@ -230,7 +261,6 @@
                 function syncPreview() {
                     if (razao) previewTargets.razao_social.forEach((el) => el.textContent = razao.value || '—');
                     if (cnpj) previewTargets.cnpj.forEach((el) => el.textContent = cnpj.value || '—');
-                    if (contato) previewTargets.contato.forEach((el) => el.textContent = contato.value || '—');
                     if (telefone) previewTargets.telefone.forEach((el) => el.textContent = telefone.value || '—');
                 }
 
@@ -248,7 +278,6 @@
                                 body: JSON.stringify({
                                     cnpj: cnpj?.value || '',
                                     razao_social: razao?.value || '',
-                                    contato: contato?.value || '',
                                     telefone: telefone?.value || '',
                                 }),
                             });
@@ -274,7 +303,7 @@
                     });
                 }
 
-                [cnpj, razao, contato, telefone].forEach((el) => {
+                [cnpj, razao, telefone].forEach((el) => {
                     el?.addEventListener('input', () => {
                         syncPreview();
                         persistClienteDraft();
@@ -306,9 +335,6 @@
                         }
 
                         if (razao && json?.razao_social) razao.value = json.razao_social;
-                        if (contato && (json?.contato || json?.nome_fantasia)) {
-                            contato.value = json.contato || json.nome_fantasia;
-                        }
                         if (telefone && (json?.telefone || json?.telefone1 || json?.telefone2)) {
                             telefone.value = maskTelefone(json.telefone || json.telefone1 || json.telefone2);
                         }

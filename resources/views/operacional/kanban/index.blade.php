@@ -1982,6 +1982,19 @@
                         },
                     });
 
+                    if (defaultDate) {
+                        const parsedDefaultDate = fp.parseDate(defaultDate, 'Y-m-d');
+                        if (parsedDefaultDate) {
+                            fp.setDate(parsedDefaultDate, false, 'Y-m-d');
+                            textInput.value = fp.formatDate(parsedDefaultDate, 'd/m/Y');
+                            if (hiddenInput) {
+                                hiddenInput.value = fp.formatDate(parsedDefaultDate, 'Y-m-d');
+                            }
+                        }
+                    } else {
+                        textInput.value = '';
+                    }
+
                     textInput.addEventListener('input', () => {
                         textInput.value = maskBrDate(textInput.value);
                         if (!hiddenInput) return;
@@ -3709,9 +3722,14 @@
 
             function showUploadErrorAlert(message, fallbackMessage, status = null, card = null) {
                 const safeMessage = message || fallbackMessage;
+                const normalizedMessage = String(safeMessage || '').trim().toLowerCase();
 
                 if (isUploadTooLargeError(safeMessage, status)) {
                     return showUploadTooLargeAlert(card);
+                }
+
+                if (normalizedMessage === 'failed to fetch') {
+                    return window.uiAlert('Não foi possível concluir a solicitação. Verifique sua conexão e tente novamente.');
                 }
 
                 return window.uiAlert(safeMessage || 'Erro ao enviar arquivo.');

@@ -14,6 +14,19 @@
             ->filter()
             ->values();
     };
+    $formatPhone = static function ($value) {
+        $digits = preg_replace('/\D+/', '', (string) $value) ?? '';
+
+        if (strlen($digits) === 11) {
+            return sprintf('(%s) %s-%s', substr($digits, 0, 2), substr($digits, 2, 5), substr($digits, 7, 4));
+        }
+
+        if (strlen($digits) === 10) {
+            return sprintf('(%s) %s-%s', substr($digits, 0, 2), substr($digits, 2, 4), substr($digits, 6, 4));
+        }
+
+        return trim((string) $value) !== '' ? (string) $value : null;
+    };
 
     $desafiosItems = collect($desafios['items'] ?? [])
         ->filter(fn ($item) => ($item['active'] ?? true) !== false)
@@ -74,15 +87,18 @@
     $contatoBadge = $contatoFinal['badge'] ?? 'Contato e próximos passos';
     $contatoTitle = $contatoFinal['title'] ?? 'Contato e Próximos Passos';
     $contatoDescription = $contatoFinal['description'] ?? 'Estamos prontos para otimizar a saúde ocupacional da sua empresa. Entre em contato hoje mesmo para agendar uma consulta e descobrir como podemos ser seu parceiro estratégico.';
-    $contatoPhone = $contatoFinal['phone'] ?? '(11) 99228-3886 (WhatsApp)';
-    $contatoEmail = $contatoFinal['email'] ?? 'gestao@formedseg.com.br';
+    $contatoPhone = $responsavelApresentacao['telefone'] ?? null;
+    $contatoEmail = $responsavelApresentacao['email'] ?? ($contatoFinal['email'] ?? 'gestao@formedseg.com.br');
     $contatoAddress = $contatoFinal['address'] ?? "Rua Vergueiro, 1922 - Vila Mariana\nSão Paulo/SP";
     $contatoSchedule = $contatoFinal['schedule'] ?? "Segunda a Sexta: 7h - 14h\nSábados: 9h - 11h";
     $contatoSite = $contatoFinal['site'] ?? 'www.formedseg.com.br';
     $contatoCta = $contatoFinal['cta_label'] ?? 'Fale conosco via WhatsApp';
     $clienteRazaoSocial = $cliente['razao_social'] ?? '—';
     $clienteCnpj = $cliente['cnpj'] ?? '—';
-    $clienteContato = $cliente['contato'] ?? '—';
+    $responsavelNome = $responsavelApresentacao['name'] ?? '—';
+    $responsavelEmail = $responsavelApresentacao['email'] ?? '—';
+    $responsavelTelefone = $formatPhone($responsavelApresentacao['telefone'] ?? null);
+    $contatoPhone = $formatPhone($contatoPhone);
     $clienteTelefone = $cliente['telefone'] ?? '—';
 
     $pages = collect();
@@ -1297,11 +1313,7 @@
                                         <div class="gamma-meta-value" id="view_cnpj" data-preview-field="cnpj">{{ $clienteCnpj }}</div>
                                     </div>
                                     <div class="gamma-meta-card">
-                                        <div class="gamma-meta-label">Contato</div>
-                                        <div class="gamma-meta-value" id="view_contato" data-preview-field="contato">{{ $clienteContato }}</div>
-                                    </div>
-                                    <div class="gamma-meta-card">
-                                        <div class="gamma-meta-label">Telefone</div>
+                                        <div class="gamma-meta-label">Telefone do cliente</div>
                                         <div class="gamma-meta-value" id="view_telefone" data-preview-field="telefone">{{ $clienteTelefone }}</div>
                                     </div>
                                 </div>
@@ -1545,6 +1557,10 @@
 
                             <div class="gamma-contact-grid" style="flex: 1;">
                                 <div class="gamma-contact-stack">
+                                    <div class="gamma-meta-card">
+                                        <div class="gamma-meta-label">Responsável</div>
+                                        <div class="gamma-meta-value">{{ $responsavelNome }}</div>
+                                    </div>
                                     <div class="gamma-meta-card">
                                         <div class="gamma-meta-label">Telefones</div>
                                         <div class="gamma-meta-value">{{ $contatoPhone }}</div>
