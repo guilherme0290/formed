@@ -363,7 +363,9 @@
                                             ? $clienteTelefonePrincipal
                                             : $clienteTelefoneSecundario;
                                         $clienteTipoPessoa = (string) (optional($tarefa->cliente)->tipo_pessoa ?? '');
-                                        $clienteVendedorNome = optional(optional($tarefa->cliente)->vendedor)->name ?? '—';
+                                        $clienteVendedorNome = $tarefa->vendedor_snapshot_nome
+                                            ?? optional(optional($tarefa->cliente)->vendedor)->name
+                                            ?? '—';
 
                                         $pgr  = $tarefa->pgrSolicitacao ?? null;
                                         $ltip = $tarefa->ltipSolicitacao;
@@ -1123,9 +1125,15 @@
                                     <dd class="font-medium" id="modal-telefone">—</dd>
                                 </div>
                             </div>
-                            <div class="mt-2">
-                                <dt class="text-[11px] text-slate-500">Responsável</dt>
-                                <dd class="font-medium" id="modal-responsavel"></dd>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+                                <div>
+                                    <dt class="text-[11px] text-slate-500">Responsável da tarefa</dt>
+                                    <dd class="font-medium" id="modal-responsavel"></dd>
+                                </div>
+                                <div>
+                                    <dt class="text-[11px] text-slate-500">Vendedor do cliente</dt>
+                                    <dd class="font-medium" id="modal-cliente-vendedor">—</dd>
+                                </div>
                             </div>
 
                             <div id="modal-bloco-funcionario" class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 hidden">
@@ -2093,6 +2101,7 @@
 
             const spanTelefone = document.getElementById('modal-telefone');
             const spanResp = document.getElementById('modal-responsavel');
+            const spanClienteVendedor = document.getElementById('modal-cliente-vendedor');
             const spanServico = document.getElementById('modal-servico');
             const spanTipoServ = document.getElementById('modal-tipo-servico');
             const spanDataHora = document.getElementById('modal-datahora');
@@ -2434,6 +2443,7 @@
                 spanCnpj.textContent = card.dataset.cnpj || '—';
                 spanTelefone.textContent = card.dataset.telefone || '—';
                 spanResp.textContent = card.dataset.responsavel ?? '';
+                if (spanClienteVendedor) spanClienteVendedor.textContent = card.dataset.clienteVendedor || '—';
                 if (blocoSolicitacao) {
                     const clienteTipoPessoa = String(card.dataset.clienteTipoPessoa || '').toUpperCase();
                     blocoSolicitacao.classList.toggle('hidden', clienteTipoPessoa === 'PF');
@@ -4470,7 +4480,7 @@
                                 return false; // se a tarefa estiver cancelada, cancela o movimento
                             }
                         },
-                        onEnd: function (evt) {
+                        onEnd: async function (evt) {
                             const card = evt.item;
                             const colunaId = card.closest('.kanban-column').dataset.colunaId;
                             const colunaEl = card.closest('.kanban-column');
@@ -4496,11 +4506,36 @@
                             }
 
                             // Se soltou na coluna "finalizada": NÃO chama mover(),
-                            // abre os detalhes da tarefa para anexar documentos e finalizar.
+                            // tenta finalizar automaticamente se os anexos já estiverem completos.
 
                             if (colunaSlug === 'finalizada') {
+                                const devolverParaOrigem = () => {
+                                    if (!colunaOrigemEl) {
+                                        return;
+                                    }
+
+                                    colunaOrigemEl.insertBefore(card, colunaOrigemEl.children[evt.oldIndex] || null);
+                                    const colunaOrigemCor = colunaOrigemEl?.dataset?.colunaCor || '';
+                                    const corOrigem = resolveCardBorderColor(card, colunaOrigemEl) || colunaOrigemCor;
+                                    if (corOrigem) {
+                                        card.style.borderLeftColor = corOrigem;
+                                    }
+                                };
+
+                                if (tarefaTemDocumentosSuficientes(card)) {
+                                    try {
+                                        await finalizarComDocumentoExistente(card, { closeModal: false });
+                                    } catch (error) {
+                                        devolverParaOrigem();
+                                        openDetalhesModal(card);
+                                        window.uiAlert(error?.message || 'Não foi possível finalizar a tarefa.');
+                                    }
+                                    return;
+                                }
+
+                                devolverParaOrigem();
                                 openDetalhesModal(card);
-                                window.uiAlert('Anexe os documentos necessários e finalize.');
+                                window.uiAlert('Para concluir, anexe os documentos necessários e clique em finalizar no modal.');
                                 return;
                             }
 

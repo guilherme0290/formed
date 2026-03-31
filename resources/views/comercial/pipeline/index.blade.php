@@ -213,8 +213,8 @@
                                             $badgeTipo = 'bg-blue-100 text-blue-700 border border-blue-200';
                                             $prazoDias = (int) ($p->prazo_dias ?? 7);
                                             $avisos = [];
-                                            if ($p->pipeline_status === 'PERDIDO') {
-                                                $avisos[] = 'Perdido: ' . ($p->perdido_motivo ?? 'motivo não informado');
+                                            if (($p->effective_pipeline_status ?? null) === 'PERDIDO') {
+                                                $avisos[] = 'Perdido: ' . ($p->pipeline_perdido_motivo ?? 'motivo não informado');
                                             }
                                             $itensJson = $p->itens->map(function ($i) {
                                                 return [
@@ -236,7 +236,7 @@
                                                  data-email="{{ $p->cliente->email ?? 'Não informado' }}"
                                                  data-codigo="{{ str_pad((int) $p->id, 2, '0', STR_PAD_LEFT) }}"
                                                  data-status-label="{{ $p->status ?? '—' }}"
-                                                 data-pipeline-status="{{ strtoupper((string) ($p->pipeline_status ?? 'CONTATO_INICIAL')) }}"
+                                                 data-pipeline-status="{{ strtoupper((string) ($p->effective_pipeline_status ?? $p->pipeline_status ?? 'CONTATO_INICIAL')) }}"
                                                  data-esocial-enabled="{{ $p->incluir_esocial ? '1' : '0' }}"
                                                  data-esocial-qtd="{{ $p->esocial_qtd_funcionarios ?? 0 }}"
                                                  data-esocial-valor="{{ number_format((float) ($p->esocial_valor_mensal ?? 0), 2, ',', '.') }}"
@@ -546,6 +546,19 @@
                 });
             }
 
+            function syncCardMeta(card, data = {}) {
+                if (!card) return;
+                if (data.pipeline_status) {
+                    card.dataset.pipelineStatus = data.pipeline_status;
+                }
+                if (data.status_label || data.status) {
+                    card.dataset.statusLabel = data.status_label || data.status;
+                }
+                if (fields.status && currentCard === card) {
+                    fields.status.textContent = card.dataset.statusLabel || '—';
+                }
+            }
+
             columns.forEach(col => {
                 new Sortable(col, {
                     group: 'kanban',
@@ -557,7 +570,9 @@
                         const newStatus = col.dataset.coluna;
 
                         try {
-                            await sendMove(cardId, newStatus, newStatus === 'PERDIDO' ? 'Atualizado no kanban' : '');
+                            const data = await sendMove(cardId, newStatus, newStatus === 'PERDIDO' ? 'Atualizado no kanban' : '');
+                            syncCardMeta(card, data);
+                            moveCardToColumn(card, newStatus);
                             updateCounter(col);
                             if (evt.from !== col) updateCounter(evt.from);
                         } catch (e) {
@@ -714,8 +729,8 @@
                 clearStatusMsg();
 
                 try {
-                    await sendMove(currentCard.dataset.card, newStatus, newStatus === 'PERDIDO' ? 'Atualizado no kanban' : '');
-                    currentCard.dataset.pipelineStatus = newStatus;
+                    const data = await sendMove(currentCard.dataset.card, newStatus, newStatus === 'PERDIDO' ? 'Atualizado no kanban' : '');
+                    syncCardMeta(currentCard, data);
                     moveCardToColumn(currentCard, newStatus);
                     closeModalProposta();
                     showToast('Status atualizado.');
@@ -764,5 +779,3 @@
         });
     </script>
 @endpush
-
-

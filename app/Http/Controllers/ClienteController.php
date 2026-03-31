@@ -647,8 +647,8 @@ class ClienteController extends Controller
         $estados = Estado::orderBy('uf')->get(['uf', 'nome']);
         $empresaId = $cliente->empresa_id ?? (auth()->user()->empresa_id ?? 1);
 
-        // se não tiver cidade associada, isso aqui vira null sem quebrar
-        $ufSelecionada = optional(optional($cliente->cidade)->estado)->uf;
+        // Em retorno com erro de validação, prioriza a UF escolhida no formulário.
+        $ufSelecionada = old('uf', optional(optional($cliente->cidade)->estado)->uf);
 
         if ($ufSelecionada) {
             $estado = Estado::where('uf', $ufSelecionada)->first();

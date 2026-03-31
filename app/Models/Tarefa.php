@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Helpers\S3Helper;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
@@ -21,6 +22,8 @@ class Tarefa extends Model
         'coluna_id',
         'responsavel_id',
         'cliente_id',
+        'vendedor_snapshot_id',
+        'vendedor_snapshot_nome',
         'funcionario_id',
         'observacao_interna',
         'motivo_exclusao',
@@ -49,6 +52,8 @@ class Tarefa extends Model
     protected static function booted(): void
     {
         static::creating(function (Tarefa $tarefa) {
+            $tarefa->preencherVendedorSnapshot();
+
             if (empty($tarefa->coluna_id)) {
                 return;
             }
@@ -69,6 +74,11 @@ class Tarefa extends Model
     public function cliente()
     {
         return $this->belongsTo(Cliente::class);
+    }
+
+    public function vendedorSnapshot(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'vendedor_snapshot_id');
     }
 
     public function servico()
@@ -218,6 +228,28 @@ class Tarefa extends Model
     public function exameToxicologicoSolicitacao()
     {
         return $this->hasOne(ExameToxicologicoSolicitacao::class, 'tarefa_id');
+    }
+
+    private function preencherVendedorSnapshot(): void
+    {
+        if (filled($this->vendedor_snapshot_id) || filled($this->vendedor_snapshot_nome)) {
+            return;
+        }
+
+        if (empty($this->cliente_id)) {
+            return;
+        }
+
+        $cliente = $this->relationLoaded('cliente')
+            ? $this->getRelation('cliente')
+            : Cliente::query()->with('vendedor:id,name')->find($this->cliente_id);
+
+        if (!$cliente) {
+            return;
+        }
+
+        $this->vendedor_snapshot_id = $cliente->vendedor_id;
+        $this->vendedor_snapshot_nome = optional($cliente->vendedor)->name;
     }
 
 

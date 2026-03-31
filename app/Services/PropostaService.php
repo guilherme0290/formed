@@ -131,7 +131,7 @@ class PropostaService
 
             foreach ($proposta->itens as $it) {
                 $regrasSnapshot = null;
-                $servicoId = $it->servico_id;
+                $servicoId = $this->resolveServicoId($it, $proposta->empresa_id, $asoGheService);
                 if ($isAsoItem($it)) {
                     if (!$servicoId) {
                         $servicoId = (int) ($asoGheService->resolveServicoAsoCatalogoId($proposta->empresa_id) ?? 0);
@@ -143,13 +143,10 @@ class PropostaService
                     }
                     $regrasSnapshot = $this->buildRegrasSnapshotAso($it, $asoSnapshot);
                 }
-                if (!$servicoId && strtoupper((string) $it->tipo) === 'ESOCIAL') {
-                    $servicoId = (int) (config('services.esocial_id') ?? 0);
-                    if ($servicoId <= 0) {
-                        throw ValidationException::withMessages([
-                            'itens' => 'ServiÃ§o eSocial nÃ£o configurado. Defina FORMED_SERVICO_ESOCIAL_ID.',
-                        ]);
-                    }
+                if (!$servicoId) {
+                    throw ValidationException::withMessages([
+                        'itens' => 'Item sem serviço configurado para fechamento: ' . ($it->nome ?? $it->descricao ?? 'sem nome') . '.',
+                    ]);
                 }
 
                 $descricaoSnapshot = $it->descricao ?? $it->nome;
@@ -173,7 +170,7 @@ class PropostaService
                 ClienteContratoLog::create([
                     'cliente_contrato_id' => $contrato->id,
                     'user_id' => $userId,
-                    'servico_id' => $it->servico_id,
+                    'servico_id' => $servicoId,
                     'acao' => 'SERVICO_CRIADO',
                     'descricao' => sprintf(
                         'USUARIO: %s DEFINIU o serviço %s para a empresa %s. Valor: R$ %s.',
@@ -197,6 +194,45 @@ class PropostaService
 
             return $proposta->fresh(['itens']);
         });
+    }
+
+    private function resolveServicoId(PropostaItens $item, int $empresaId, AsoGheService $asoGheService): ?int
+    {
+        $servicoId = (int) ($item->servico_id ?? 0);
+        if ($servicoId > 0) {
+            return $servicoId;
+        }
+
+        $tipo = strtoupper((string) ($item->tipo ?? ''));
+        $meta = is_array($item->meta) ? $item->meta : [];
+        $origemId = (int) ($meta['origem_id'] ?? 0);
+        $categoria = strtoupper((string) ($meta['categoria'] ?? $tipo));
+
+        if ($categoria === 'SERVICO' && $origemId > 0) {
+            return $origemId;
+        }
+
+        if (in_array($categoria, ['EXAME', 'PACOTE_EXAMES'], true)) {
+            $servicoExameId = (int) (config('services.exame_id') ?? 0);
+            return $servicoExameId > 0 ? $servicoExameId : null;
+        }
+
+        if (in_array($categoria, ['TREINAMENTO', 'PACOTE_TREINAMENTOS'], true)) {
+            $servicoTreinamentoId = (int) (config('services.treinamento_id') ?? 0);
+            return $servicoTreinamentoId > 0 ? $servicoTreinamentoId : null;
+        }
+
+        if ($categoria === 'ESOCIAL') {
+            $servicoEsocialId = (int) (config('services.esocial_id') ?? 0);
+            return $servicoEsocialId > 0 ? $servicoEsocialId : null;
+        }
+
+        if ($categoria === 'ASO_TIPO') {
+            $servicoAsoId = (int) ($asoGheService->resolveServicoAsoCatalogoId($empresaId) ?? 0);
+            return $servicoAsoId > 0 ? $servicoAsoId : null;
+        }
+
+        return null;
     }
 
     private function buildRegrasSnapshotAso(PropostaItens $item, ?array $asoSnapshot): ?array

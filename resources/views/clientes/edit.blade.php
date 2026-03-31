@@ -708,8 +708,11 @@
 
                 const ufInicial = estadoSelect.value;
                 const cidadeInicialId = cidadeSelect.dataset.selectedId;
+                const cidadeJaExisteNaLista = cidadeInicialId
+                    ? Array.from(cidadeSelect.options).some((option) => option.value === String(cidadeInicialId))
+                    : false;
 
-                if (ufInicial && cidadeSelect.options.length <= 1) {
+                if (ufInicial && (cidadeSelect.options.length <= 1 || !cidadeJaExisteNaLista)) {
                     await carregarCidadesPorUf(ufInicial, null, cidadeInicialId);
                 }
             })();

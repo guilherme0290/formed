@@ -5,9 +5,9 @@ namespace App\Http\Controllers\Comercial;
 use App\Http\Controllers\Controller;
 use App\Models\Proposta;
 use App\Models\User;
+use App\Services\PropostaService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 class PipelineController extends Controller
 {
@@ -36,12 +36,13 @@ class PipelineController extends Controller
         }
         $vendedorFiltro = (int) $request->query('vendedor_id', 0);
 
-        $filtroCustom = $statusFiltro !== '';
-
         $query = Proposta::query()
-            ->padrao()
             ->where('empresa_id', $empresaId)
-            ->with(['cliente', 'vendedor', 'itens'])
+            ->with([
+                'cliente:id,razao_social,telefone,email,vendedor_id',
+                'vendedor:id,name',
+                'itens:id,proposta_id,nome,quantidade,valor_total,tipo',
+            ])
             ->orderByDesc('id');
 
         if (!$isMaster) {
@@ -61,22 +62,37 @@ class PipelineController extends Controller
             });
         }
 
-        if ($statusFiltro !== '') {
-            $query->where('pipeline_status', $statusFiltro);
-        }
-
         if ($vendedorFiltro > 0) {
             $query->where('vendedor_id', $vendedorFiltro);
         }
 
         $propostas = $query->get();
+        $agora = Carbon::now();
+
+        $propostas->each(function (Proposta $proposta) use ($agora) {
+            $effectiveStatus = $this->resolvePipelineStatus($proposta, $agora);
+            $proposta->setAttribute('effective_pipeline_status', $effectiveStatus);
+            $proposta->setAttribute('effective_pipeline_label', $this->colunas[$effectiveStatus] ?? $effectiveStatus);
+
+            if ($effectiveStatus === 'PERDIDO' && strtoupper((string) $proposta->status) !== 'CANCELADA' && empty($proposta->perdido_motivo)) {
+                $proposta->setAttribute('pipeline_perdido_motivo', 'Prazo expirado');
+            } else {
+                $proposta->setAttribute('pipeline_perdido_motivo', $proposta->perdido_motivo);
+            }
+        });
+
+        if ($statusFiltro !== '') {
+            $propostas = $propostas
+                ->filter(fn (Proposta $proposta) => strtoupper((string) $proposta->effective_pipeline_status) === $statusFiltro)
+                ->values();
+        }
 
         // KPIs
         $total = $propostas->count();
         $fechadas = $propostas->where('status', 'FECHADA')->count();
         $emAberto = $propostas->whereNotIn('status', ['FECHADA', 'CANCELADA'])->count();
         $taxaConversao = $total > 0 ? round(($fechadas / $total) * 100, 1) : 0;
-        $emNegociacaoValor = $propostas->where('pipeline_status', 'EM_NEGOCIACAO')->sum('valor_total');
+        $emNegociacaoValor = $propostas->where('effective_pipeline_status', 'EM_NEGOCIACAO')->sum('valor_total');
 
         // agrupa colunas
         $colunas = [];
@@ -87,54 +103,8 @@ class PipelineController extends Controller
             ];
         }
 
-        $agora = Carbon::now();
         foreach ($propostas as $p) {
-            $statusProposta = strtoupper((string) $p->status);
-            $prazoDias = (int) ($p->prazo_dias ?? 7);
-            $expirou = false;
-
-            if ($prazoDias > 0 && $p->created_at) {
-                $expiraEm = $p->created_at->copy()->addDays($prazoDias)->endOfDay();
-                $expirou = $agora->greaterThan($expiraEm)
-                    && !in_array($statusProposta, ['FECHADA', 'CANCELADA'], true);
-            }
-
-            if ($expirou && strtoupper((string) $p->pipeline_status) !== 'PERDIDO') {
-                $p->update([
-                    'pipeline_status' => 'PERDIDO',
-                    'pipeline_updated_at' => $agora,
-                    'pipeline_updated_by' => null,
-                    'perdido_motivo' => 'Prazo expirado',
-                ]);
-            } elseif ($statusProposta === 'ENVIADA' && strtoupper((string) $p->pipeline_status) !== 'PROPOSTA_ENVIADA') {
-                $p->update([
-                    'pipeline_status' => 'PROPOSTA_ENVIADA',
-                    'pipeline_updated_at' => $agora,
-                    'pipeline_updated_by' => $p->pipeline_updated_by,
-                ]);
-            } elseif ($statusProposta === 'FECHADA' && strtoupper((string) $p->pipeline_status) !== 'FECHAMENTO') {
-                $p->update([
-                    'pipeline_status' => 'FECHAMENTO',
-                    'pipeline_updated_at' => $agora,
-                    'pipeline_updated_by' => $p->pipeline_updated_by,
-                ]);
-            } elseif ($statusProposta === 'CANCELADA' && strtoupper((string) $p->pipeline_status) !== 'PERDIDO') {
-                $p->update([
-                    'pipeline_status' => 'PERDIDO',
-                    'pipeline_updated_at' => $agora,
-                    'pipeline_updated_by' => $p->pipeline_updated_by,
-                ]);
-            }
-
-            if ($expirou || $statusProposta === 'CANCELADA') {
-                $status = 'PERDIDO';
-            } elseif ($statusProposta === 'FECHADA') {
-                $status = 'FECHAMENTO';
-            } elseif ($statusProposta === 'ENVIADA') {
-                $status = 'PROPOSTA_ENVIADA';
-            } else {
-                $status = strtoupper($p->pipeline_status ?? 'CONTATO_INICIAL');
-            }
+            $status = strtoupper((string) $p->effective_pipeline_status);
 
             if (!array_key_exists($status, $colunas)) {
                 $status = 'CONTATO_INICIAL';
@@ -179,7 +149,39 @@ class PipelineController extends Controller
         ]);
     }
 
-    public function mover(Request $request, Proposta $proposta)
+    private function resolvePipelineStatus(Proposta $proposta, Carbon $agora): string
+    {
+        $statusProposta = strtoupper((string) $proposta->status);
+        $prazoDias = (int) ($proposta->prazo_dias ?? 7);
+        $pipelineStatus = strtoupper((string) ($proposta->pipeline_status ?? 'CONTATO_INICIAL'));
+
+        if ($statusProposta === 'CANCELADA') {
+            return 'PERDIDO';
+        }
+
+        if ($statusProposta === 'FECHADA') {
+            return 'FECHAMENTO';
+        }
+
+        if ($statusProposta === 'ENVIADA') {
+            if (in_array($pipelineStatus, ['EM_NEGOCIACAO', 'FECHAMENTO'], true)) {
+                return $pipelineStatus;
+            }
+
+            return 'PROPOSTA_ENVIADA';
+        }
+
+        if ($prazoDias > 0 && $proposta->created_at) {
+            $expiraEm = $proposta->created_at->copy()->addDays($prazoDias)->endOfDay();
+            if ($agora->greaterThan($expiraEm)) {
+                return 'PERDIDO';
+            }
+        }
+
+        return array_key_exists($pipelineStatus, $this->colunas) ? $pipelineStatus : 'CONTATO_INICIAL';
+    }
+
+    public function mover(Request $request, Proposta $proposta, PropostaService $service)
     {
         $user = $request->user();
         abort_unless($proposta->empresa_id === $user->empresa_id, 403);
@@ -205,22 +207,35 @@ class PipelineController extends Controller
             return response()->json(['message' => 'Informe o motivo de perda.'], 422);
         }
 
-        $payload = [
-            'pipeline_status' => $novo,
-            'pipeline_updated_at' => Carbon::now(),
-            'pipeline_updated_by' => $user->id,
-        ];
+        if ($novo === 'FECHAMENTO') {
+            $service->fechar($proposta->id, $user->id);
+            $proposta->refresh();
+        } else {
+            $payload = [
+                'status' => in_array($novo, ['PROPOSTA_ENVIADA', 'EM_NEGOCIACAO'], true) ? 'ENVIADA' : 'PENDENTE',
+                'pipeline_status' => $novo,
+                'pipeline_updated_at' => Carbon::now(),
+                'pipeline_updated_by' => $user->id,
+                'perdido_motivo' => null,
+                'perdido_observacao' => null,
+            ];
 
-        if ($novo === 'PERDIDO') {
-            $payload['perdido_motivo'] = $data['perdido_motivo'];
-            $payload['perdido_observacao'] = $data['perdido_observacao'] ?? null;
+            if ($novo === 'PERDIDO') {
+                $payload['status'] = 'CANCELADA';
+                $payload['perdido_motivo'] = $data['perdido_motivo'];
+                $payload['perdido_observacao'] = $data['perdido_observacao'] ?? null;
+            }
+
+            $proposta->update($payload);
+            $proposta->refresh();
         }
-
-        $proposta->update($payload);
 
         return response()->json([
             'message' => 'Proposta atualizada.',
-            'status' => $novo,
+            'status' => strtoupper((string) $proposta->status),
+            'status_label' => ucfirst(strtolower((string) $proposta->status)),
+            'pipeline_status' => strtoupper((string) $proposta->pipeline_status),
+            'pipeline_label' => $this->colunas[strtoupper((string) $proposta->pipeline_status)] ?? strtoupper((string) $proposta->pipeline_status),
         ]);
     }
 }
