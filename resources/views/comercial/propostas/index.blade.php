@@ -9,6 +9,20 @@
         $canCreate = $isMaster || isset($permissionMap['comercial.propostas.create']);
         $canUpdate = $isMaster || isset($permissionMap['comercial.propostas.update']);
         $canDelete = $isMaster || isset($permissionMap['comercial.propostas.delete']);
+        $pipelineLabels = [
+            'CONTATO_INICIAL' => 'Contato Inicial',
+            'PROPOSTA_ENVIADA' => 'Proposta Enviada',
+            'EM_NEGOCIACAO' => 'Em Negociação',
+            'FECHAMENTO' => 'Fechamento',
+            'PERDIDO' => 'Perdido',
+        ];
+        $pipelineBadgeByStatus = [
+            'CONTATO_INICIAL' => 'bg-sky-50 text-sky-700 border-sky-200',
+            'PROPOSTA_ENVIADA' => 'bg-indigo-50 text-indigo-700 border-indigo-200',
+            'EM_NEGOCIACAO' => 'bg-amber-50 text-amber-800 border-amber-200',
+            'FECHAMENTO' => 'bg-emerald-50 text-emerald-800 border-emerald-200',
+            'PERDIDO' => 'bg-rose-50 text-rose-700 border-rose-200',
+        ];
     @endphp
     <div class="w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
@@ -59,6 +73,10 @@
 
         <section class="bg-white rounded-2xl shadow border border-slate-100 overflow-hidden">
             <div class="p-4 md:p-5 border-b border-slate-100">
+                <div class="mb-3 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+                    O andamento comercial agora deve ser atualizado em
+                    <a href="{{ route('comercial.pipeline.index') }}" class="font-semibold underline underline-offset-2">Comercial / Pipeline</a>.
+                </div>
                 <form method="GET" action="{{ route('comercial.propostas.index') }}"
                       class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
                     <div class="md:col-span-7">
@@ -105,6 +123,7 @@
                         $cnpjClienteTxt = $cliente?->documento_principal ?? 'â€”';
                         $ref = str_pad((int) $proposta->id, 2, '0', STR_PAD_LEFT);
                         $status = strtoupper((string) ($proposta->status ?? ''));
+                        $pipelineStatus = strtoupper((string) ($proposta->pipeline_status ?? 'CONTATO_INICIAL'));
                         $badgeByStatus = [
                             'PENDENTE' => 'bg-amber-50 text-amber-800 border-amber-200',
                             'ENVIADA'  => 'bg-blue-50 text-blue-700 border-blue-200',
@@ -112,6 +131,8 @@
                             'CANCELADA' => 'bg-red-50 text-red-700 border-red-200',
                         ];
                         $badge = $badgeByStatus[$status] ?? 'bg-slate-100 text-slate-700 border-slate-200';
+                        $pipelineBadge = $pipelineBadgeByStatus[$pipelineStatus] ?? 'bg-slate-100 text-slate-700 border-slate-200';
+                        $pipelineUrl = route('comercial.pipeline.index', ['q' => $proposta->id]);
                     @endphp
 
                     <article class="p-4 space-y-3">
@@ -120,16 +141,9 @@
                                 <div class="text-sm font-semibold text-slate-900 truncate">{{ $clienteTxt }}</div>
                                 <div class="text-xs text-slate-500">{{ $cnpjClienteTxt }}</div>
                             </div>
-                            <button type="button"
-                                    class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold border {{ $badge }} {{ $canUpdate ? 'hover:shadow-sm transition' : 'opacity-60 cursor-not-allowed' }}"
-                                    data-act="status"
-                                    data-action="{{ route('comercial.propostas.status', $proposta) }}"
-                                    data-id="{{ $proposta->id }}"
-                                    data-cliente="{{ e($clienteTxt) }}"
-                                    data-status="{{ $status ?: 'â€”' }}"
-                                    @if(!$canUpdate) disabled @endif>
+                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold border {{ $badge }}">
                                 {{ $status ?: 'â€”' }}
-                            </button>
+                            </span>
                         </div>
 
                         <div class="grid grid-cols-2 gap-2 text-xs">
@@ -145,9 +159,21 @@
                                 <div class="text-slate-500">Criada em</div>
                                 <div class="font-medium text-slate-700">{{ optional($proposta->created_at)->format('d/m/Y H:i') ?? 'â€”' }}</div>
                             </div>
+                            <div class="col-span-2">
+                                <div class="text-slate-500">Etapa no pipeline</div>
+                                <a href="{{ $pipelineUrl }}"
+                                   class="mt-1 inline-flex items-center rounded-full border px-2 py-1 text-xs font-semibold {{ $pipelineBadge }}">
+                                    {{ $pipelineLabels[$pipelineStatus] ?? $pipelineStatus }}
+                                </a>
+                            </div>
                         </div>
 
-                        <div class="grid grid-cols-4 gap-2 pt-1">
+                        <div class="grid grid-cols-5 gap-2 pt-1">
+                            <a href="{{ $pipelineUrl }}"
+                               class="inline-flex items-center justify-center h-9 rounded-xl border border-sky-200 bg-sky-50 text-sky-800"
+                               title="Abrir no pipeline">
+                                <i class="fa-solid fa-table-columns text-sm"></i>
+                            </a>
                             <button type="button"
                                     class="inline-flex items-center justify-center h-9 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800"
                                     data-act="whatsapp"
@@ -214,6 +240,8 @@
                             $cnpjClienteTxt = $cliente?->documento_principal ?? '—';
                             $ref = str_pad((int) $proposta->id, 2, '0', STR_PAD_LEFT);
                             $status = strtoupper((string) ($proposta->status ?? ''));
+                            $pipelineStatus = strtoupper((string) ($proposta->pipeline_status ?? 'CONTATO_INICIAL'));
+                            $pipelineUrl = route('comercial.pipeline.index', ['q' => $proposta->id]);
 
                             $badgeByStatus = [
                                 'PENDENTE' => 'bg-amber-50 text-amber-800 border-amber-200',
@@ -222,6 +250,7 @@
                                 'CANCELADA' => 'bg-red-50 text-red-700 border-red-200',
                             ];
                             $badge = $badgeByStatus[$status] ?? 'bg-slate-100 text-slate-700 border-slate-200';
+                            $pipelineBadge = $pipelineBadgeByStatus[$pipelineStatus] ?? 'bg-slate-100 text-slate-700 border-slate-200';
                         @endphp
 
                         <tr>
@@ -238,17 +267,15 @@
                             </td>
 
                             <td class="px-5 py-3">
-                                <button type="button"
-                                        class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold border {{ $badge }} {{ $canUpdate ? 'hover:shadow-sm transition' : 'opacity-60 cursor-not-allowed' }}"
-                                        data-act="status"
-                                        data-action="{{ route('comercial.propostas.status', $proposta) }}"
-                                        data-id="{{ $proposta->id }}"
-                                        data-cliente="{{ e($clienteTxt) }}"
-                                        data-status="{{ $status ?: '—' }}"
-                                        title="{{ $canUpdate ? 'Alterar status' : 'Usuário sem permissão' }}"
-                                        @if(!$canUpdate) disabled @endif>
-                                    {{ $status ?: '—' }}
-                                </button>
+                                <div class="flex flex-col gap-2">
+                                    <span class="inline-flex w-fit items-center px-2 py-1 rounded-full text-xs font-semibold border {{ $badge }}">
+                                        {{ $status ?: '—' }}
+                                    </span>
+                                    <a href="{{ $pipelineUrl }}"
+                                       class="inline-flex w-fit items-center px-2 py-1 rounded-full text-xs font-semibold border {{ $pipelineBadge }}">
+                                        {{ $pipelineLabels[$pipelineStatus] ?? $pipelineStatus }}
+                                    </a>
+                                </div>
                             </td>
 
                             <td class="px-5 py-3 font-semibold text-slate-800">
@@ -261,6 +288,15 @@
 
                             <td class="px-5 py-3 whitespace-nowrap">
                                 <div class="flex items-center gap-2 flex-nowrap">
+                                    <button type="button"
+                                            class="inline-flex items-center justify-center h-9 w-9 rounded-xl border border-sky-200 bg-sky-50 text-sky-800 hover:bg-sky-100"
+                                            title="Abrir no pipeline"
+                                            aria-label="Abrir no pipeline"
+                                            onclick="window.location.href='{{ $pipelineUrl }}'">
+                                        <i class="fa-solid fa-table-columns text-sm"></i>
+                                        <span class="sr-only">Abrir no pipeline</span>
+                                    </button>
+
                                     <button type="button"
                                             class="inline-flex items-center justify-center h-9 w-9 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
                                             title="Enviar por WhatsApp"
@@ -493,50 +529,6 @@
             </div>
         </div>
 
-        {{-- Modal Status --}}
-        <div id="modalStatus" class="fixed inset-0 z-[90] hidden bg-black/50 overflow-y-auto">
-            <div class="min-h-full flex items-center justify-center p-4">
-                <div class="bg-white w-full max-w-xl rounded-2xl shadow-xl overflow-hidden max-h-[90vh] overflow-y-auto">
-                    <div class="px-6 py-4 border-b flex items-center justify-between">
-                        <h3 class="text-lg font-semibold text-slate-800">Alterar status da proposta</h3>
-                        <button type="button" class="h-9 w-9 rounded-xl hover:bg-slate-100 text-slate-500"
-                                onclick="closeStatusModal()">✕</button>
-                    </div>
-
-                    <form id="statusForm" method="POST" class="p-6 space-y-4">
-                        @csrf
-
-                        <div class="text-sm text-slate-700 space-y-1">
-                            <div><span class="text-slate-500">Proposta:</span> <span class="font-semibold text-slate-800">#<span id="statusPropostaId">—</span></span></div>
-                            <div><span class="text-slate-500">Cliente:</span> <span id="statusCliente" class="font-medium text-slate-800">—</span></div>
-                            <div><span class="text-slate-500">Status atual:</span> <span id="statusAtual" class="font-medium text-slate-800">—</span></div>
-                        </div>
-
-                        <div>
-                            <label class="text-xs font-semibold text-slate-600">Novo status</label>
-                            <select id="statusSelect" name="status"
-                                    class="mt-1 w-full rounded-xl border border-slate-200 text-sm px-3 py-2"></select>
-                            <p id="statusHelp" class="text-xs text-slate-500 mt-1">Selecione o novo status permitido.</p>
-                        </div>
-
-                        <div id="statusError" class="hidden rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"></div>
-
-                        <div class="pt-2 flex justify-end gap-2">
-                            <button type="button"
-                                    class="rounded-xl px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
-                                    onclick="closeStatusModal()">
-                                Cancelar
-                            </button>
-                            <button id="statusSubmit" type="submit"
-                                    class="rounded-xl bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 text-sm font-semibold">
-                                Salvar
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-
     </div>
 
     @push('scripts')
@@ -616,142 +608,9 @@
                     modalDuplicar?.classList.add('hidden');
                 }
 
-                // Status
-                const modalStatus = document.getElementById('modalStatus');
-                const statusForm = document.getElementById('statusForm');
-                const statusSelect = document.getElementById('statusSelect');
-                const statusPropostaId = document.getElementById('statusPropostaId');
-                const statusCliente = document.getElementById('statusCliente');
-                const statusAtual = document.getElementById('statusAtual');
-                const statusError = document.getElementById('statusError');
-                const statusHelp = document.getElementById('statusHelp');
-                const statusSubmit = document.getElementById('statusSubmit');
-                const statusTransitions = {
-                    'PENDENTE': ['PENDENTE', 'ENVIADA', 'CANCELADA'],
-                    'ENVIADA': ['ENVIADA', 'FECHADA', 'CANCELADA'],
-                };
-                const badgeClassByStatus = {
-                    'PENDENTE': 'bg-amber-50 text-amber-800 border-amber-200',
-                    'ENVIADA': 'bg-blue-50 text-blue-700 border-blue-200',
-                    'FECHADA': 'bg-emerald-50 text-emerald-800 border-emerald-200',
-                    'CANCELADA': 'bg-red-50 text-red-700 border-red-200',
-                };
-                const badgeBaseClass = 'inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold border hover:shadow-sm transition';
-                let statusTrigger = null;
-
-                function formatStatusLabel(status) {
-                    const map = {
-                        'PENDENTE': 'Pendente',
-                        'ENVIADA': 'Enviada',
-                        'FECHADA': 'Fechada',
-                        'CANCELADA': 'Cancelada',
-                    };
-                    return map[status] || status || '—';
-                }
-
-                function buildStatusOptions(atual) {
-                    const transitions = statusTransitions[atual] || [];
-                    statusSelect.innerHTML = '';
-
-                    transitions.forEach(status => {
-                        const opt = document.createElement('option');
-                        opt.value = status;
-                        opt.textContent = formatStatusLabel(status);
-                        statusSelect.appendChild(opt);
-                    });
-
-                    const hasOptions = transitions.length > 0;
-                    statusSelect.disabled = !hasOptions;
-                    statusSubmit.disabled = !hasOptions;
-                    statusHelp.textContent = hasOptions
-                        ? 'Selecione o novo status permitido.'
-                        : 'Transição não permitida para este status.';
-                }
-
-                function openStatusModal(btn) {
-                    if (!modalStatus || !statusForm) return;
-                    statusTrigger = btn;
-                    const id = btn?.dataset?.id || '—';
-                    const cliente = btn?.dataset?.cliente || '—';
-                    const atual = (btn?.dataset?.status || '').toUpperCase();
-
-                    statusForm.action = btn?.dataset?.action || '#';
-                    statusPropostaId.textContent = id;
-                    statusCliente.textContent = cliente;
-                    statusAtual.textContent = formatStatusLabel(atual);
-                    statusError?.classList.add('hidden');
-                    statusError.textContent = '';
-
-                    buildStatusOptions(atual);
-                    if (statusSelect.options.length > 0) {
-                        statusSelect.value = statusSelect.options[0].value;
-                    }
-
-                    modalStatus.classList.remove('hidden');
-                    setTimeout(() => statusSelect?.focus(), 0);
-                }
-
-                function closeStatusModal() {
-                    modalStatus?.classList.add('hidden');
-                    statusTrigger = null;
-                    if (statusError) {
-                        statusError.classList.add('hidden');
-                        statusError.textContent = '';
-                    }
-                }
-
-                async function submitStatus(e) {
-                    e.preventDefault();
-                    if (!statusForm || !statusSelect) return;
-
-                    const action = statusForm.action;
-                    if (!action) return;
-
-                    statusSubmit.disabled = true;
-                    statusSubmit.textContent = 'Salvando...';
-                    statusError?.classList.add('hidden');
-                    statusError.textContent = '';
-
-                    try {
-                        const formData = new FormData(statusForm);
-                        const response = await fetch(action, {
-                            method: 'POST',
-                            headers: {
-                                'Accept': 'application/json',
-                                'X-Requested-With': 'XMLHttpRequest',
-                            },
-                            body: formData,
-                        });
-
-                        const data = await response.json();
-                        if (!response.ok) {
-                            throw new Error(data?.message || 'Erro ao atualizar status.');
-                        }
-
-                        const novoStatus = (data?.status || statusSelect.value || '').toUpperCase();
-                        if (statusTrigger) {
-                            statusTrigger.dataset.status = novoStatus;
-                            statusTrigger.textContent = novoStatus || '—';
-                            const cls = badgeClassByStatus[novoStatus] || badgeClassByStatus['PENDENTE'];
-                            statusTrigger.className = `${badgeBaseClass} ${cls}`;
-                        }
-
-                        closeStatusModal();
-                    } catch (err) {
-                        if (statusError) {
-                            statusError.textContent = err.message || 'Erro ao atualizar status.';
-                            statusError.classList.remove('hidden');
-                        }
-                    } finally {
-                        statusSubmit.disabled = false;
-                        statusSubmit.textContent = 'Salvar';
-                    }
-                }
-
                 window.closeWhatsappModal = closeWhatsappModal;
                 window.closeEmailModal = closeEmailModal;
                 window.closeDuplicarModal = closeDuplicarModal;
-                window.closeStatusModal = closeStatusModal;
 
                 document.querySelectorAll('[data-act="whatsapp"]').forEach(btn => {
                     btn.addEventListener('click', () => {
@@ -771,17 +630,10 @@
                     });
                 });
 
-                document.querySelectorAll('[data-act="status"]').forEach(btn => {
-                    btn.addEventListener('click', () => openStatusModal(btn));
-                });
-
-                statusForm?.addEventListener('submit', submitStatus);
-
                 document.addEventListener('click', (e) => {
                     if (modalWhatsapp && !modalWhatsapp.classList.contains('hidden') && e.target === modalWhatsapp) closeWhatsappModal();
                     if (modalEmail && !modalEmail.classList.contains('hidden') && e.target === modalEmail) closeEmailModal();
                     if (modalDuplicar && !modalDuplicar.classList.contains('hidden') && e.target === modalDuplicar) closeDuplicarModal();
-                    if (modalStatus && !modalStatus.classList.contains('hidden') && e.target === modalStatus) closeStatusModal();
                 });
 
                 document.addEventListener('keydown', (e) => {
@@ -789,7 +641,6 @@
                     if (modalWhatsapp && !modalWhatsapp.classList.contains('hidden')) return closeWhatsappModal();
                     if (modalEmail && !modalEmail.classList.contains('hidden')) return closeEmailModal();
                     if (modalDuplicar && !modalDuplicar.classList.contains('hidden')) return closeDuplicarModal();
-                    if (modalStatus && !modalStatus.classList.contains('hidden')) return closeStatusModal();
                 });
             })();
         </script>
