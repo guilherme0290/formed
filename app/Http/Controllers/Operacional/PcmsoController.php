@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Operacional;
 
 use App\Helpers\S3Helper;
-use App\Http\Controllers\Operacional\Concerns\ValidatesClientePortalTaskEditing;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Operacional\Concerns\ValidatesClientePortalTaskEditing;
 use App\Models\Anexos;
 use App\Models\Cliente;
 use App\Models\Funcao;
@@ -18,22 +18,50 @@ use App\Services\AsoGheService;
 use App\Services\ContratoClienteService;
 use App\Services\TempoTarefaService;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PcmsoController extends Controller
 {
     use ValidatesClientePortalTaskEditing;
+
+    public function downloadPgrPublico(string $token): StreamedResponse
+    {
+        $pcmso = PcmsoSolicitacoes::query()
+            ->where('pgr_public_token', $token)
+            ->firstOrFail();
+
+        abort_if(blank($pcmso->pgr_arquivo_path), 404);
+
+        $disk = $this->resolverDiskParaPath((string) $pcmso->pgr_arquivo_path);
+        abort_if($disk === null, 404);
+
+        $stream = Storage::disk($disk)->readStream($pcmso->pgr_arquivo_path);
+        abort_if($stream === false, 404);
+
+        $mime = (string) (Storage::disk($disk)->mimeType($pcmso->pgr_arquivo_path) ?: 'application/pdf');
+        $nome = trim((string) ($pcmso->pgr_arquivo_nome ?: basename((string) $pcmso->pgr_arquivo_path)));
+        $nome = $nome !== '' ? $nome : 'pcmso-pgr.pdf';
+
+        return response()->stream(function () use ($stream) {
+            fpassthru($stream);
+            fclose($stream);
+        }, 200, [
+            'Content-Type' => $mime,
+            'Content-Disposition' => 'inline; filename="'.addslashes($nome).'"',
+        ]);
+    }
 
     /**
      * Tela: PCMSO - Selecione o Tipo (Matriz / Específico)
      */
     public function selecionarTipo(Cliente $cliente, Request $request)
     {
-        $usuario   = $request->user();
+        $usuario = $request->user();
         $empresaId = $usuario->empresa_id;
 
         abort_if($cliente->empresa_id !== $empresaId, 403);
@@ -42,7 +70,7 @@ class PcmsoController extends Controller
 
         return view('operacional.kanban.pcmso.tipo', [
             'cliente' => $cliente,
-            'origem'  => $origem,
+            'origem' => $origem,
         ]);
     }
 
@@ -59,7 +87,7 @@ class PcmsoController extends Controller
 
         if ($tipo === 'especifico') {
             $pcmsoEspecificoInfo = $this->pcmsoEspecificoInfoParaCliente($cliente);
-            if (!($pcmsoEspecificoInfo['disponivel'] ?? false)) {
+            if (! ($pcmsoEspecificoInfo['disponivel'] ?? false)) {
                 return redirect()
                     ->route('operacional.pcmso.tipo', ['cliente' => $cliente, 'origem' => $origem])
                     ->with('erro', 'PCMSO Específico não está disponível no contrato ativo do cliente.');
@@ -68,8 +96,8 @@ class PcmsoController extends Controller
 
         return view('operacional.kanban.pcmso.possui-pgr', [
             'cliente' => $cliente,
-            'tipo'    => $tipo,
-            'origem'  => $origem,
+            'tipo' => $tipo,
+            'origem' => $origem,
         ]);
     }
 
@@ -94,10 +122,10 @@ class PcmsoController extends Controller
 
             return view('operacional.kanban.pcmso.form_matriz', [
                 'cliente' => $cliente,
-                'tipo'    => $tipo,
+                'tipo' => $tipo,
                 'funcoes' => $funcoes,
-                'anexos'  => collect(),
-                'origem'  => $origem,
+                'anexos' => collect(),
+                'origem' => $origem,
                 'submissionToken' => $this->issueSubmissionToken($request),
                 'duplicidadeAtiva' => $duplicidadeAtiva,
                 'funcaoQtdMap' => $funcaoQtdMap,
@@ -105,7 +133,7 @@ class PcmsoController extends Controller
         }
 
         $pcmsoEspecificoInfo = $this->pcmsoEspecificoInfoParaCliente($cliente);
-        if (!($pcmsoEspecificoInfo['disponivel'] ?? false)) {
+        if (! ($pcmsoEspecificoInfo['disponivel'] ?? false)) {
             return redirect()
                 ->route('operacional.pcmso.tipo', ['cliente' => $cliente, 'origem' => $origem])
                 ->with('erro', 'PCMSO Específico não está disponível no contrato ativo do cliente.');
@@ -115,10 +143,10 @@ class PcmsoController extends Controller
 
         return view('operacional.kanban.pcmso.form_especifico', [
             'cliente' => $cliente,
-            'tipo'    => $tipo,
+            'tipo' => $tipo,
             'funcoes' => $funcoes,
-            'anexos'  => collect(),
-            'origem'  => $origem,
+            'anexos' => collect(),
+            'origem' => $origem,
             'submissionToken' => $this->issueSubmissionToken($request),
             'duplicidadeAtiva' => $duplicidadeAtiva,
             'valorPcmsoEspecifico' => $pcmsoEspecificoInfo['valor'] ?? null,
@@ -131,7 +159,7 @@ class PcmsoController extends Controller
      */
     public function storeComPgr(Cliente $cliente, string $tipo, Request $request)
     {
-        $usuario   = $request->user();
+        $usuario = $request->user();
         $empresaId = $usuario->empresa_id;
         $uploadMax = ini_get('upload_max_filesize') ?: '2MB';
 
@@ -141,7 +169,7 @@ class PcmsoController extends Controller
 
         if ($tipo === 'especifico') {
             $pcmsoEspecificoInfo = $this->pcmsoEspecificoInfoParaCliente($cliente);
-            if (!($pcmsoEspecificoInfo['disponivel'] ?? false)) {
+            if (! ($pcmsoEspecificoInfo['disponivel'] ?? false)) {
                 return back()
                     ->withInput()
                     ->withErrors(['contrato' => 'Não é possível solicitar PCMSO Específico porque este item não está ativo no contrato do cliente.']);
@@ -161,26 +189,26 @@ class PcmsoController extends Controller
 
         // regras comuns
         $rules = [
-            'inserir_pgr'            => ['nullable', 'boolean'],
+            'inserir_pgr' => ['nullable', 'boolean'],
             'confirmar_pcmso_existente' => ['nullable', 'boolean'],
             'duplicidade_referencia_tarefa_id' => ['nullable', 'integer'],
             'pgr_arquivo' => ['nullable', 'file', 'mimes:pdf', 'max:10240'],
-            'anexos'      => ['nullable', 'array'],
-            'anexos.*'    => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:10240'],
-            'funcoes'                 => $funcoesRule,
-            'funcoes.*.funcao_id'     => $funcaoIdRule,
-            'funcoes.*.quantidade'    => $funcaoQtdRule,
-            'funcoes.*.cbo'           => ['nullable', 'string', 'max:20'],
-            'funcoes.*.descricao'     => ['nullable', 'string'],
+            'anexos' => ['nullable', 'array'],
+            'anexos.*' => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:10240'],
+            'funcoes' => $funcoesRule,
+            'funcoes.*.funcao_id' => $funcaoIdRule,
+            'funcoes.*.quantidade' => $funcaoQtdRule,
+            'funcoes.*.cbo' => ['nullable', 'string', 'max:20'],
+            'funcoes.*.descricao' => ['nullable', 'string'],
         ];
 
         // se for específico, exige dados da obra
         if ($tipo === 'especifico') {
             $rules = array_merge($rules, [
-                'obra_nome'              => ['required', 'string', 'max:255'],
-                'obra_cnpj_contratante'  => ['string', 'max:20'],
-                'obra_cei_cno'           => ['string', 'max:50'],
-                'obra_endereco'          => ['string', 'max:255'],
+                'obra_nome' => ['required', 'string', 'max:255'],
+                'obra_cnpj_contratante' => ['string', 'max:20'],
+                'obra_cei_cno' => ['string', 'max:50'],
+                'obra_endereco' => ['string', 'max:255'],
             ]);
         }
 
@@ -208,20 +236,20 @@ class PcmsoController extends Controller
         $inserirPgr = (bool) ($data['inserir_pgr'] ?? true);
         $funcoes = collect($data['funcoes'] ?? [])
             ->filter(function ($item) {
-                return !empty($item['funcao_id']);
+                return ! empty($item['funcao_id']);
             })
             ->values()
             ->all();
 
         $arquivoPgr = $request->file('pgr_arquivo');
-        if (!$arquivoPgr) {
+        if (! $arquivoPgr) {
             $arquivoPgr = collect($request->file('anexos', []))
                 ->first(function ($file) {
                     return $file && strtolower((string) $file->getClientOriginalExtension()) === 'pdf';
                 });
         }
 
-        if ($inserirPgr && !$arquivoPgr) {
+        if ($inserirPgr && ! $arquivoPgr) {
             return back()
                 ->withInput()
                 ->withErrors(['anexos' => 'Anexe o PGR em PDF na aba de anexos.']);
@@ -230,7 +258,7 @@ class PcmsoController extends Controller
         $tipoLabel = $tipo === 'matriz' ? 'Matriz' : 'Especifico';
         $duplicidadeAtiva = $this->buscarDuplicidadeAtivaPcmso($empresaId, $cliente->id, $tipo);
         $confirmouDuplicidade = $request->boolean('confirmar_pcmso_existente');
-        if ($duplicidadeAtiva && !$confirmouDuplicidade) {
+        if ($duplicidadeAtiva && ! $confirmouDuplicidade) {
             throw ValidationException::withMessages([
                 'confirmar_pcmso_existente' => "Ja existe um PCMSO {$tipoLabel} pendente para este cliente. Confirme para criar outro.",
             ]);
@@ -256,7 +284,7 @@ class PcmsoController extends Controller
         // armazena PDF do PGR no S3 quando o usuário optar por inserir
         // o campo pgr_arquivo_path vai guardar a "key" do S3 (ex: pcmso_pgr/1/arquivo.pdf)
         $path = $inserirPgr
-            ? S3Helper::upload($arquivoPgr, 'pcmso_pgr/' . $empresaId)
+            ? S3Helper::upload($arquivoPgr, 'pcmso_pgr/'.$empresaId)
             : null;
 
         // coluna inicial (Pendente)
@@ -301,36 +329,36 @@ class PcmsoController extends Controller
 
             // cria Tarefa no Kanban
             $tarefa = Tarefa::create([
-                'empresa_id'      => $empresaId,
-                'cliente_id'      => $cliente->id,
-                'responsavel_id'  => $usuario->id,
-                'coluna_id'       => optional($colunaInicial)->id,
-                'servico_id'      => optional($servicoPcmso)->id,
-                'titulo'          => "PCMSO - {$tipoLabel}",
-                'descricao'       => "PCMSO - {$tipoLabel} com PGR anexado pelo cliente.",
+                'empresa_id' => $empresaId,
+                'cliente_id' => $cliente->id,
+                'responsavel_id' => $usuario->id,
+                'coluna_id' => optional($colunaInicial)->id,
+                'servico_id' => optional($servicoPcmso)->id,
+                'titulo' => "PCMSO - {$tipoLabel}",
+                'descricao' => "PCMSO - {$tipoLabel} com PGR anexado pelo cliente.",
                 'inicio_previsto' => $inicioPrevisto,
-                'fim_previsto'    => $fimPrevisto,
+                'fim_previsto' => $fimPrevisto,
             ]);
 
             $tarefaId = $tarefa->id;
 
             // cria registro PCMSO
             PcmsoSolicitacoes::create([
-                'empresa_id'            => $empresaId,
-                'cliente_id'            => $cliente->id,
-                'tarefa_id'             => $tarefa->id,
-                'responsavel_id'        => $usuario->id,
-                'tipo'                  => $tipo,
-                'pgr_origem'            => $inserirPgr ? 'arquivo_cliente' : null,
-                'pgr_arquivo_path'      => $path, // key do S3
-                'funcoes'               => $funcoes,
-                'obra_nome'             => $data['obra_nome']             ?? null,
+                'empresa_id' => $empresaId,
+                'cliente_id' => $cliente->id,
+                'tarefa_id' => $tarefa->id,
+                'responsavel_id' => $usuario->id,
+                'tipo' => $tipo,
+                'pgr_origem' => $inserirPgr ? 'arquivo_cliente' : null,
+                'pgr_arquivo_path' => $path, // key do S3
+                'funcoes' => $funcoes,
+                'obra_nome' => $data['obra_nome'] ?? null,
                 'obra_cnpj_contratante' => $data['obra_cnpj_contratante'] ?? null,
-                'obra_cei_cno'          => $data['obra_cei_cno']          ?? null,
-                'obra_endereco'         => $data['obra_endereco']         ?? null,
-                'prazo_dias'            => $prazoDias,
-                'pgr_arquivo_nome'      => $nomeArquivoPgr,
-                'pgr_arquivo_checksum'  => $checksumArquivoPgr,
+                'obra_cei_cno' => $data['obra_cei_cno'] ?? null,
+                'obra_endereco' => $data['obra_endereco'] ?? null,
+                'prazo_dias' => $prazoDias,
+                'pgr_arquivo_nome' => $nomeArquivoPgr,
+                'pgr_arquivo_checksum' => $checksumArquivoPgr,
                 'duplicidade_confirmada' => $confirmouDuplicidade && $duplicidadeAtiva !== null,
                 'duplicidade_confirmada_por' => $confirmouDuplicidade && $duplicidadeAtiva !== null ? $usuario->id : null,
                 'duplicidade_confirmada_em' => $confirmouDuplicidade && $duplicidadeAtiva !== null ? now() : null,
@@ -339,34 +367,34 @@ class PcmsoController extends Controller
 
             // log inicial da tarefa
             TarefaLog::create([
-                'tarefa_id'     => $tarefa->id,
-                'user_id'       => $usuario->id,
-                'de_coluna_id'  => null,
-                'para_coluna_id'=> optional($colunaInicial)->id,
-                'acao'          => 'criado',
-                'observacao'    => 'Tarefa PCMSO criada pelo usuário.',
+                'tarefa_id' => $tarefa->id,
+                'user_id' => $usuario->id,
+                'de_coluna_id' => null,
+                'para_coluna_id' => optional($colunaInicial)->id,
+                'acao' => 'criado',
+                'observacao' => 'Tarefa PCMSO criada pelo usuário.',
             ]);
 
             if ($confirmouDuplicidade && $duplicidadeAtiva !== null) {
                 TarefaLog::create([
-                    'tarefa_id'      => $tarefa->id,
-                    'user_id'        => $usuario->id,
-                    'de_coluna_id'   => optional($colunaInicial)->id,
+                    'tarefa_id' => $tarefa->id,
+                    'user_id' => $usuario->id,
+                    'de_coluna_id' => optional($colunaInicial)->id,
                     'para_coluna_id' => optional($colunaInicial)->id,
-                    'acao'           => 'duplicidade_confirmada',
-                    'observacao'     => "Usuario confirmou a criacao de outro PCMSO {$tipoLabel} mesmo com tarefa ativa #{$duplicidadeAtiva->tarefa_id}.",
+                    'acao' => 'duplicidade_confirmada',
+                    'observacao' => "Usuario confirmou a criacao de outro PCMSO {$tipoLabel} mesmo com tarefa ativa #{$duplicidadeAtiva->tarefa_id}.",
                 ]);
             }
 
             // anexos adicionais (também já estão indo pro S3 via helper)
             Anexos::salvarDoRequest($request, 'anexos', [
-                'empresa_id'     => $empresaId,
-                'cliente_id'     => $cliente->id,
-                'tarefa_id'      => $tarefa->id,
-                'funcionario_id' =>  null,
-                'uploaded_by'    => auth()->user()->id,
-                'servico'        => 'PCMSO',
-                'subpath'        => 'anexos-custom/' . $empresaId,
+                'empresa_id' => $empresaId,
+                'cliente_id' => $cliente->id,
+                'tarefa_id' => $tarefa->id,
+                'funcionario_id' => null,
+                'uploaded_by' => auth()->user()->id,
+                'servico' => 'PCMSO',
+                'subpath' => 'anexos-custom/'.$empresaId,
             ]);
         });
 
@@ -387,13 +415,13 @@ class PcmsoController extends Controller
             return $redirect;
         }
 
-        $usuario   = $request->user();
+        $usuario = $request->user();
         $empresaId = $usuario->empresa_id;
 
         abort_if($tarefa->empresa_id !== $empresaId, 403);
 
         $pcmso = $tarefa->pcmsoSolicitacao;
-        abort_if(!$pcmso, 404);
+        abort_if(! $pcmso, 404);
 
         $anexos = Anexos::where('empresa_id', $empresaId)
             ->where('tarefa_id', $tarefa->id)
@@ -402,7 +430,7 @@ class PcmsoController extends Controller
             ->get();
 
         $cliente = $tarefa->cliente;
-        $tipo    = $pcmso->tipo === 'especifico' ? 'especifico' : 'matriz';
+        $tipo = $pcmso->tipo === 'especifico' ? 'especifico' : 'matriz';
 
         $funcoes = app(AsoGheService::class)
             ->funcoesDisponiveisParaCliente($empresaId, $cliente->id);
@@ -412,12 +440,12 @@ class PcmsoController extends Controller
         if ($tipo === 'matriz') {
             return view('operacional.kanban.pcmso.form_matriz', [
                 'cliente' => $cliente,
-                'tipo'    => $tipo,
+                'tipo' => $tipo,
                 'funcoes' => $funcoes,
-                'pcmso'   => $pcmso,
-                'isEdit'  => true,
-                'anexos'  => $anexos,
-                'origem'  => $request->query('origem', $request->input('origem')),
+                'pcmso' => $pcmso,
+                'isEdit' => true,
+                'anexos' => $anexos,
+                'origem' => $request->query('origem', $request->input('origem')),
                 'funcaoQtdMap' => $funcaoQtdMap,
             ]);
         }
@@ -426,12 +454,12 @@ class PcmsoController extends Controller
 
         return view('operacional.kanban.pcmso.form_especifico', [
             'cliente' => $cliente,
-            'tipo'    => $tipo,
+            'tipo' => $tipo,
             'funcoes' => $funcoes,
-            'pcmso'   => $pcmso,
-            'isEdit'  => true,
-            'anexos'  => $anexos,
-            'origem'  => $request->query('origem', $request->input('origem')),
+            'pcmso' => $pcmso,
+            'isEdit' => true,
+            'anexos' => $anexos,
+            'origem' => $request->query('origem', $request->input('origem')),
             'valorPcmsoEspecifico' => $pcmsoEspecificoInfo['valor'] ?? null,
             'funcaoQtdMap' => $funcaoQtdMap,
         ]);
@@ -443,17 +471,17 @@ class PcmsoController extends Controller
             return $redirect;
         }
 
-        $usuario   = $request->user();
+        $usuario = $request->user();
         $empresaId = $usuario->empresa_id;
         $uploadMax = ini_get('upload_max_filesize') ?: '2MB';
 
         abort_if($tarefa->empresa_id !== $empresaId, 403);
 
         $pcmso = $tarefa->pcmsoSolicitacao;
-        abort_if(!$pcmso, 404);
+        abort_if(! $pcmso, 404);
 
         $cliente = $tarefa->cliente;
-        $tipo    = $pcmso->tipo === 'especifico' ? 'especifico' : 'matriz';
+        $tipo = $pcmso->tipo === 'especifico' ? 'especifico' : 'matriz';
 
         $inserirPgrSolicitado = $request->boolean('inserir_pgr', true);
         $funcoesRule = $inserirPgrSolicitado
@@ -468,25 +496,25 @@ class PcmsoController extends Controller
 
         // regras comuns
         $rules = [
-            'inserir_pgr'            => ['nullable', 'boolean'],
-            'pgr_arquivo'    => ['nullable', 'file', 'mimes:pdf', 'max:10240'],
-            'remover_arquivo'=> ['nullable', 'boolean'],
-            'anexos'         => ['nullable', 'array'],
-            'anexos.*'       => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:10240'],
-            'funcoes'                 => $funcoesRule,
-            'funcoes.*.funcao_id'     => $funcaoIdRule,
-            'funcoes.*.quantidade'    => $funcaoQtdRule,
-            'funcoes.*.cbo'           => ['nullable', 'string', 'max:20'],
-            'funcoes.*.descricao'     => ['nullable', 'string'],
+            'inserir_pgr' => ['nullable', 'boolean'],
+            'pgr_arquivo' => ['nullable', 'file', 'mimes:pdf', 'max:10240'],
+            'remover_arquivo' => ['nullable', 'boolean'],
+            'anexos' => ['nullable', 'array'],
+            'anexos.*' => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:10240'],
+            'funcoes' => $funcoesRule,
+            'funcoes.*.funcao_id' => $funcaoIdRule,
+            'funcoes.*.quantidade' => $funcaoQtdRule,
+            'funcoes.*.cbo' => ['nullable', 'string', 'max:20'],
+            'funcoes.*.descricao' => ['nullable', 'string'],
         ];
 
         // se for específico, atualiza dados da obra também
         if ($tipo === 'especifico') {
             $rules = array_merge($rules, [
-                'obra_nome'              => ['required', 'string', 'max:255'],
-                'obra_cnpj_contratante'  => ['nullable', 'string', 'max:20'],
-                'obra_cei_cno'           => ['nullable', 'string', 'max:50'],
-                'obra_endereco'          => ['nullable', 'string', 'max:255'],
+                'obra_nome' => ['required', 'string', 'max:255'],
+                'obra_cnpj_contratante' => ['nullable', 'string', 'max:20'],
+                'obra_cei_cno' => ['nullable', 'string', 'max:50'],
+                'obra_endereco' => ['nullable', 'string', 'max:255'],
             ]);
         }
 
@@ -514,7 +542,7 @@ class PcmsoController extends Controller
         $inserirPgr = (bool) ($data['inserir_pgr'] ?? true);
         $funcoes = collect($data['funcoes'] ?? [])
             ->filter(function ($item) {
-                return !empty($item['funcao_id']);
+                return ! empty($item['funcao_id']);
             })
             ->values()
             ->all();
@@ -523,7 +551,7 @@ class PcmsoController extends Controller
 
         $pathAtual = $pcmso->pgr_arquivo_path;
         $arquivoPgr = $request->file('pgr_arquivo');
-        if (!$arquivoPgr) {
+        if (! $arquivoPgr) {
             $arquivoPgr = collect($request->file('anexos', []))
                 ->first(function ($file) {
                     return $file && strtolower((string) $file->getClientOriginalExtension()) === 'pdf';
@@ -531,7 +559,7 @@ class PcmsoController extends Controller
         }
 
         // se marcou para remover o arquivo
-        $remover = (bool)($data['remover_arquivo'] ?? false);
+        $remover = (bool) ($data['remover_arquivo'] ?? false);
         if ($remover && $pathAtual) {
             if ($disk->exists($pathAtual)) {
                 $disk->delete($pathAtual);
@@ -547,12 +575,12 @@ class PcmsoController extends Controller
 
             $pathAtual = S3Helper::upload(
                 $arquivoPgr,
-                'pcmso_pgr/' . $empresaId
+                'pcmso_pgr/'.$empresaId
             );
         }
 
         // quando marcado "Sim", exige manter um PGR anexado
-        if ($inserirPgr && !$pathAtual) {
+        if ($inserirPgr && ! $pathAtual) {
             return back()
                 ->withInput()
                 ->withErrors(['pgr_arquivo' => 'E necessario manter um PGR anexado (envie um novo arquivo ou nao marque para remover).']);
@@ -561,28 +589,28 @@ class PcmsoController extends Controller
         // monta payload de atualização
         $updateData = [
             'pgr_arquivo_path' => $pathAtual, // key no S3
-            'pgr_origem'       => $pathAtual ? 'arquivo_cliente' : null,
-            'funcoes'          => $funcoes,
+            'pgr_origem' => $pathAtual ? 'arquivo_cliente' : null,
+            'funcoes' => $funcoes,
         ];
 
         if ($tipo === 'especifico') {
             $updateData = array_merge($updateData, [
-                'obra_nome'             => $data['obra_nome'],
+                'obra_nome' => $data['obra_nome'],
                 'obra_cnpj_contratante' => $data['obra_cnpj_contratante'] ?? null,
-                'obra_cei_cno'          => $data['obra_cei_cno'] ?? null,
-                'obra_endereco'         => $data['obra_endereco'] ?? null,
+                'obra_cei_cno' => $data['obra_cei_cno'] ?? null,
+                'obra_endereco' => $data['obra_endereco'] ?? null,
             ]);
         }
 
         // salva anexos adicionais (continua igual)
         Anexos::salvarDoRequest($request, 'anexos', [
-            'empresa_id'     => $empresaId,
-            'cliente_id'     => $cliente->id,
-            'tarefa_id'      => $tarefa->id,
+            'empresa_id' => $empresaId,
+            'cliente_id' => $cliente->id,
+            'tarefa_id' => $tarefa->id,
             'funcionario_id' => null,
-            'uploaded_by'    => auth()->user()->id,
-            'servico'        => 'PCMSO',
-            'subpath'        => 'anexos-custom/' . $empresaId,
+            'uploaded_by' => auth()->user()->id,
+            'servico' => 'PCMSO',
+            'subpath' => 'anexos-custom/'.$empresaId,
         ]);
 
         $pcmso->update($updateData);
@@ -659,7 +687,7 @@ class PcmsoController extends Controller
         $token = trim((string) $request->input('_submission_token'));
         $tokens = (array) $request->session()->get('pcmso_submission_tokens', []);
 
-        if ($token === '' || !array_key_exists($token, $tokens)) {
+        if ($token === '' || ! array_key_exists($token, $tokens)) {
             throw ValidationException::withMessages([
                 '_submission_token' => 'Este formulario de PCMSO ja foi enviado ou expirou. Recarregue a tela e tente novamente.',
             ]);
@@ -704,7 +732,7 @@ class PcmsoController extends Controller
             })
             ->first();
 
-        if (!$duplicado) {
+        if (! $duplicado) {
             return;
         }
 
@@ -734,13 +762,13 @@ class PcmsoController extends Controller
         $contratoService = app(ContratoClienteService::class);
         $contrato = $contratoService->getContratoAtivo($cliente->id, $cliente->empresa_id, null);
 
-        if (!$contrato) {
+        if (! $contrato) {
             return ['disponivel' => false, 'valor' => null, 'item_id' => null];
         }
 
         $item = $contratoService->findPcmsoItem($contrato, 'especifico');
 
-        if (!$item) {
+        if (! $item) {
             return ['disponivel' => false, 'valor' => null, 'item_id' => null];
         }
 
@@ -752,4 +780,18 @@ class PcmsoController extends Controller
         return ['disponivel' => true, 'valor' => $valor, 'item_id' => (int) $item->id];
     }
 
+    private function resolverDiskParaPath(string $path): ?string
+    {
+        foreach (['public', 's3'] as $disk) {
+            try {
+                if (Storage::disk($disk)->exists($path)) {
+                    return $disk;
+                }
+            } catch (\Throwable $e) {
+                continue;
+            }
+        }
+
+        return null;
+    }
 }

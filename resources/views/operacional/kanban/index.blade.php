@@ -544,7 +544,7 @@
                                             return [
                                                 'id'          => $anexo->id,
                                                 'nome'        => $anexo->nome_original,
-                                                'url'         => $anexo->url,                 // S3
+                                                'url'         => $anexo->public_link,
                                                 'delete_url'  => route('operacional.anexos.destroy', $anexo),
                                                 'mime'        => $anexo->mime_type,
                                                 'tamanho'     => $anexo->tamanho_humano,      // opcional
@@ -711,11 +711,11 @@
                                         data-arquivo-cliente-url="{{ $tarefa->documento_link }}"
                                     @endif
                                     @if($documentoComplementarPgrPcmso)
-                                        data-pcmso-pgr-url="{{ $documentoComplementarPgrPcmso->url }}"
+                                        data-pcmso-pgr-url="{{ $documentoComplementarPgrPcmso->public_link }}"
                                         data-pcmso-pgr-delete-url="{{ route('operacional.anexos.destroy', $documentoComplementarPgrPcmso) }}"
                                     @endif
                                     @if($documentoArtPgrPcmso)
-                                        data-art-pgr-url="{{ $documentoArtPgrPcmso->url }}"
+                                        data-art-pgr-url="{{ $documentoArtPgrPcmso->public_link }}"
                                         data-art-pgr-delete-url="{{ route('operacional.anexos.destroy', $documentoArtPgrPcmso) }}"
                                     @endif
 
@@ -786,7 +786,7 @@
                                         data-pcmso-obra-endereco="{{ $pcmso->obra_endereco }}"
                                         data-pcmso-pgr-origem="{{ $pcmso->pgr_origem }}"
                                         @if($pcmso->pgr_arquivo_path)
-                                            data-pcmso-pgr-url="{{ $pcmso->pgr_arquivo_url }}"
+                                            data-pcmso-pgr-url="{{ $pcmso->pgr_public_link }}"
                                         @endif
                                     @endif
                                     @if($isTreinamentoTask)
@@ -2315,12 +2315,29 @@
 
                 const links = collectWhatsappLinks(card, arquivoUrl);
                 const bundleUrl = String(card?.dataset?.whatsappBundleUrl || '').trim();
+                const possuiMultiplosDocumentos = links.length > 1;
+                const labelsLinks = links.map((item) => String(item?.label || '').trim().toUpperCase()).filter(Boolean);
+                const possuiPgr = labelsLinks.includes('PGR');
+                const possuiPcmso = labelsLinks.includes('PCMSO');
+                const possuiArt = labelsLinks.includes('ART');
+
+                if (possuiPgr && possuiPcmso) {
+                    servico = 'PGR e PCMSO';
+                    if (possuiArt) {
+                        servico = 'PGR, PCMSO e ART';
+                    }
+                }
+
                 const linksTexto = links.length > 1 && bundleUrl
                     ? `\n\nBaixar todos os documentos:\n${bundleUrl}`
                     : (links.length
                         ? `\n\nLinks:\n${links.map((item) => `${item.label}: ${item.url}`).join('\n')}`
                         : '');
-                const mensagem = `Olá! Segue abaixo o anexo do ${servico}.\n\nEnviado pela Formed.${linksTexto}`;
+                const artigoServico = /^(PGR e PCMSO|PGR, PCMSO e ART)$/i.test(servico) ? 'de' : 'do';
+                const introducao = possuiMultiplosDocumentos
+                    ? `Olá! Seguem abaixo os documentos ${artigoServico} ${servico}.`
+                    : `Olá! Segue abaixo o anexo ${artigoServico} ${servico}.`;
+                const mensagem = `${introducao}\n\nEnviado pela Formed.${linksTexto ? `${linksTexto}` : ''}`;
 
                 return { telefone, mensagem };
             }

@@ -130,16 +130,6 @@ window.uiAlert = async (message, options = {}) => {
     const swal = await ensureSwalLoaded();
     if (swal) {
         return enqueueSwal(async () => {
-            let overlayReleased = false;
-            const releaseOverlay = () => {
-                if (overlayReleased) return;
-                overlayReleased = true;
-                if (document.activeElement instanceof HTMLElement) {
-                    document.activeElement.blur();
-                }
-                releaseOverlayTarget();
-            };
-
             return swal.fire({
                 icon: options.icon || 'info',
                 title: options.title || 'Atenção',
@@ -147,7 +137,7 @@ window.uiAlert = async (message, options = {}) => {
                     ? { html: options.html }
                     : { text: message }),
                 confirmButtonText: options.confirmText || 'OK',
-                target: enableOverlayTarget() || document.body,
+                target: document.body,
                 backdrop: true,
                 returnFocus: false,
                 focusConfirm: false,
@@ -161,9 +151,7 @@ window.uiAlert = async (message, options = {}) => {
                         options.didOpen(popup);
                     }
                 },
-                didClose: releaseOverlay,
-                didDestroy: releaseOverlay,
-            }).finally(releaseOverlay);
+            });
         });
     }
 
@@ -175,16 +163,6 @@ window.uiConfirm = async (message, options = {}) => {
     const swal = await ensureSwalLoaded();
     if (swal) {
         return enqueueSwal(async () => {
-            let overlayReleased = false;
-            const releaseOverlay = () => {
-                if (overlayReleased) return;
-                overlayReleased = true;
-                if (document.activeElement instanceof HTMLElement) {
-                    document.activeElement.blur();
-                }
-                releaseOverlayTarget();
-            };
-
             return swal.fire({
                 icon: options.icon || 'warning',
                 title: options.title || 'Confirmar ação',
@@ -192,7 +170,7 @@ window.uiConfirm = async (message, options = {}) => {
                 showCancelButton: true,
                 confirmButtonText: options.confirmText || 'Confirmar',
                 cancelButtonText: options.cancelText || 'Cancelar',
-                target: enableOverlayTarget() || document.body,
+                target: document.body,
                 backdrop: true,
                 returnFocus: false,
                 focusConfirm: false,
@@ -206,10 +184,7 @@ window.uiConfirm = async (message, options = {}) => {
                         options.didOpen(popup);
                     }
                 },
-                didClose: releaseOverlay,
-                didDestroy: releaseOverlay,
-            }).then((result) => result.isConfirmed)
-                .finally(releaseOverlay);
+            }).then((result) => result.isConfirmed);
         });
     }
 

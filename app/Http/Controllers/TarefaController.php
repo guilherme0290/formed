@@ -3,22 +3,24 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\S3Helper;
-use App\Models\TarefaLog;
-use Illuminate\Http\Request;
-use App\Models\Tarefa;
-use App\Models\KanbanColuna;
-use App\Models\ClienteContrato;
-use App\Models\Servico;
 use App\Models\Anexos;
 use App\Models\AsoSolicitacoes;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
+use App\Models\ClienteContrato;
+use App\Models\KanbanColuna;
+use App\Models\Servico;
+use App\Models\Tarefa;
+use App\Models\TarefaLog;
+use App\Services\AsoGheService;
+use App\Services\ComissaoService;
+use App\Services\FuncionarioArquivosZipService;
 use App\Services\PrecificacaoService;
 use App\Services\VendaService;
-use App\Services\ComissaoService;
-use App\Services\AsoGheService;
-use App\Services\FuncionarioArquivosZipService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
 
 class TarefaController extends Controller
@@ -26,13 +28,15 @@ class TarefaController extends Controller
     public function index()
     {
         $tarefas = Tarefa::latest()->paginate(20);
+
         return view('tarefas.index', compact('tarefas'));
     }
 
     public function create()
     {
         $colunas = KanbanColuna::orderBy('ordem')->get();
-        return view('tarefas.form', ['tarefa'=>new Tarefa(), 'colunas'=>$colunas]);
+
+        return view('tarefas.form', ['tarefa' => new Tarefa, 'colunas' => $colunas]);
     }
 
     public function store(Request $r)
@@ -47,6 +51,7 @@ class TarefaController extends Controller
         $data['responsavel_id'] = auth()->id();
 
         $tarefa = Tarefa::create($data);
+
         return redirect()->route('tarefas.show', $tarefa)->with('ok', 'Tarefa criada.');
     }
 
@@ -58,7 +63,8 @@ class TarefaController extends Controller
     public function edit(Tarefa $tarefa)
     {
         $colunas = KanbanColuna::orderBy('ordem')->get();
-        return view('tarefas.form', compact('tarefa','colunas'));
+
+        return view('tarefas.form', compact('tarefa', 'colunas'));
     }
 
     public function update(Request $r, Tarefa $tarefa)
@@ -70,15 +76,16 @@ class TarefaController extends Controller
         ]);
 
         $tarefa->update($data);
+
         return redirect()->route('tarefas.show', $tarefa)->with('ok', 'Tarefa atualizada.');
     }
 
     public function destroy(Tarefa $tarefa)
     {
         $tarefa->delete();
+
         return redirect()->route('tarefas.index')->with('ok', 'Tarefa removida.');
     }
-
 
     public function finalizarComArquivo(Request $request, Tarefa $tarefa, PrecificacaoService $precificacaoService, VendaService $vendaService, ComissaoService $comissaoService)
     {
@@ -86,8 +93,8 @@ class TarefaController extends Controller
 
         $data = $request->validate(
             [
-                'arquivo_cliente' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:' . $this->mbToKilobytes($maxUploadMb)],
-                'notificar'       => ['nullable', 'boolean'],
+                'arquivo_cliente' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:'.$this->mbToKilobytes($maxUploadMb)],
+                'notificar' => ['nullable', 'boolean'],
             ],
             $this->buildArquivoClienteMessages($maxUploadMb)
         );
@@ -105,9 +112,9 @@ class TarefaController extends Controller
     {
         $pendenciaCertificados = $this->resolverPendenciaCertificadosTreinamento($tarefa);
         $permiteSemDocumento = $pendenciaCertificados['requer_certificados']
-            && !($pendenciaCertificados['exige_documento_base'] ?? false);
+            && ! ($pendenciaCertificados['exige_documento_base'] ?? false);
 
-        if (blank($tarefa->path_documento_cliente) && !$permiteSemDocumento) {
+        if (blank($tarefa->path_documento_cliente) && ! $permiteSemDocumento) {
             return response()->json([
                 'ok' => false,
                 'error' => 'Anexe primeiro o documento final da tarefa antes de finalizar.',
@@ -123,9 +130,11 @@ class TarefaController extends Controller
             ->whereNotNull('path_documento_cliente')
             ->firstOrFail();
 
-        $url = S3Helper::temporaryUrl($tarefa->path_documento_cliente, 10);
-
-        return redirect()->away($url);
+        return $this->responderArquivoPorPath(
+            (string) $tarefa->path_documento_cliente,
+            $this->nomeArquivoDocumentoCompartilhado($tarefa),
+            'application/pdf'
+        );
     }
 
     public function downloadPacotePublico(Request $request, Tarefa $tarefa, FuncionarioArquivosZipService $zipService)
@@ -139,7 +148,7 @@ class TarefaController extends Controller
         }
 
         return response()
-            ->download($zipPath, 'tarefa-' . $tarefa->id . '-arquivos.zip')
+            ->download($zipPath, 'tarefa-'.$tarefa->id.'-arquivos.zip')
             ->deleteFileAfterSend(true);
     }
 
@@ -155,7 +164,7 @@ class TarefaController extends Controller
         }
 
         return response()
-            ->download($zipPath, 'tarefa-' . $tarefa->id . '-arquivos.zip')
+            ->download($zipPath, 'tarefa-'.$tarefa->id.'-arquivos.zip')
             ->deleteFileAfterSend(true);
     }
 
@@ -165,7 +174,7 @@ class TarefaController extends Controller
 
         $request->validate(
             [
-                'arquivo_cliente' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:' . $this->mbToKilobytes($maxUploadMb)],
+                'arquivo_cliente' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:'.$this->mbToKilobytes($maxUploadMb)],
             ],
             $this->buildArquivoClienteMessages($maxUploadMb)
         );
@@ -226,7 +235,7 @@ class TarefaController extends Controller
 
     public function substituirDocumentoComplementar(Request $request, Tarefa $tarefa)
     {
-        if (!(bool) optional($tarefa->pgr)->com_pcms0) {
+        if (! (bool) optional($tarefa->pgr)->com_pcms0) {
             return response()->json([
                 'ok' => false,
                 'error' => 'Esta tarefa não exige documento complementar.',
@@ -244,7 +253,7 @@ class TarefaController extends Controller
 
     public function substituirDocumentoArt(Request $request, Tarefa $tarefa)
     {
-        if (!(bool) optional($tarefa->pgr)->com_art) {
+        if (! (bool) optional($tarefa->pgr)->com_art) {
             return response()->json([
                 'ok' => false,
                 'error' => 'Esta tarefa não exige ART.',
@@ -271,7 +280,7 @@ class TarefaController extends Controller
         abort_if($empresaId <= 0 || (int) $tarefa->empresa_id !== $empresaId, 403);
 
         $pendenciaInicial = $this->resolverPendenciaCertificadosTreinamento($tarefa);
-        if (!$pendenciaInicial['requer_certificados']) {
+        if (! $pendenciaInicial['requer_certificados']) {
             return response()->json([
                 'ok' => false,
                 'error' => 'Esta tarefa não possui pendência de certificados de treinamento.',
@@ -286,7 +295,7 @@ class TarefaController extends Controller
         }
 
         foreach ($request->file('arquivos', []) as $file) {
-            $path = S3Helper::upload($file, 'anexos/' . $tarefa->id . '/certificados-treinamento');
+            $path = S3Helper::upload($file, 'anexos/'.$tarefa->id.'/certificados-treinamento');
 
             Anexos::create([
                 'empresa_id' => $tarefa->empresa_id,
@@ -322,7 +331,7 @@ class TarefaController extends Controller
 
         if ($aso && (bool) $aso->vai_fazer_treinamento) {
             $codigos = (array) ($aso->treinamentos ?? []);
-            if (empty($codigos) && is_array($aso->treinamento_pacote) && !empty($aso->treinamento_pacote['codigos'])) {
+            if (empty($codigos) && is_array($aso->treinamento_pacote) && ! empty($aso->treinamento_pacote['codigos'])) {
                 $codigos = (array) $aso->treinamento_pacote['codigos'];
             }
             $origem = 'aso';
@@ -419,7 +428,7 @@ class TarefaController extends Controller
         DB::beginTransaction();
 
         try {
-            if (!$moverParaAguardandoFornecedor) {
+            if (! $moverParaAguardandoFornecedor) {
                 try {
                     $dataRef = now()->startOfDay();
                     $contratoAtivo = ClienteContrato::query()
@@ -528,7 +537,7 @@ class TarefaController extends Controller
                 'status_label' => $colunaDestino->nome,
                 'documento_url' => $tarefa->fresh()->documento_link,
                 'coluna_destino_slug' => $colunaDestino->slug,
-                'finalizada_total' => !$moverParaAguardandoFornecedor,
+                'finalizada_total' => ! $moverParaAguardandoFornecedor,
                 'certificados' => $pendenciaCertificados,
                 'message' => $mensagemRetorno,
                 'log' => [
@@ -553,7 +562,7 @@ class TarefaController extends Controller
         $pgr = $tarefa->pgr;
         $requerDoisDocumentos = (bool) ($pgr?->com_pcms0);
 
-        if (!$requerDoisDocumentos) {
+        if (! $requerDoisDocumentos) {
             return [
                 'pendente' => false,
                 'message' => null,
@@ -566,7 +575,7 @@ class TarefaController extends Controller
             ->whereRaw('LOWER(COALESCE(servico, "")) = ?', ['documento_complementar_pgr_pcmso'])
             ->exists();
         $requerArt = (bool) ($pgr?->com_art);
-        $temDocumentoArt = !$requerArt || Anexos::query()
+        $temDocumentoArt = ! $requerArt || Anexos::query()
             ->where('tarefa_id', $tarefa->id)
             ->whereRaw('LOWER(COALESCE(servico, "")) = ?', ['documento_art_pgr_pcmso'])
             ->exists();
@@ -592,7 +601,7 @@ class TarefaController extends Controller
 
         $request->validate(
             [
-                'arquivo_cliente' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:' . $this->mbToKilobytes($maxUploadMb)],
+                'arquivo_cliente' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:'.$this->mbToKilobytes($maxUploadMb)],
             ],
             $this->buildArquivoClienteMessages($maxUploadMb)
         );
@@ -682,4 +691,52 @@ class TarefaController extends Controller
         return max(1, $megabytes) * 1024;
     }
 
+    private function responderArquivoPorPath(string $path, string $nomeArquivo, string $mimePadrao): StreamedResponse
+    {
+        abort_if(blank($path), 404);
+
+        $disk = $this->resolverDiskParaPath($path);
+        abort_if($disk === null, 404);
+
+        $stream = Storage::disk($disk)->readStream($path);
+        abort_if($stream === false, 404);
+
+        $mime = (string) (Storage::disk($disk)->mimeType($path) ?: $mimePadrao);
+        $disposition = str_starts_with($mime, 'image/') || $mime === 'application/pdf'
+            ? 'inline'
+            : 'attachment';
+
+        return response()->stream(function () use ($stream) {
+            fpassthru($stream);
+            fclose($stream);
+        }, 200, [
+            'Content-Type' => $mime,
+            'Content-Disposition' => $disposition.'; filename="'.addslashes($nomeArquivo).'"',
+        ]);
+    }
+
+    private function resolverDiskParaPath(string $path): ?string
+    {
+        foreach (['public', 's3'] as $disk) {
+            try {
+                if (Storage::disk($disk)->exists($path)) {
+                    return $disk;
+                }
+            } catch (\Throwable $e) {
+                continue;
+            }
+        }
+
+        return null;
+    }
+
+    private function nomeArquivoDocumentoCompartilhado(Tarefa $tarefa): string
+    {
+        $servico = trim((string) optional($tarefa->servico)->nome);
+        $servico = $servico !== '' ? Str::slug($servico) : 'documento';
+        $ext = strtolower((string) pathinfo((string) $tarefa->path_documento_cliente, PATHINFO_EXTENSION));
+        $ext = $ext !== '' ? $ext : 'pdf';
+
+        return sprintf('tarefa-%d-%s.%s', (int) $tarefa->id, $servico, $ext);
+    }
 }

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Helpers\S3Helper;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class PcmsoSolicitacoes extends Model
 {
@@ -18,6 +19,7 @@ class PcmsoSolicitacoes extends Model
         'pgr_origem',
         'pgr_solicitacao_id',
         'pgr_arquivo_path',
+        'pgr_public_token',
         'pgr_arquivo_nome',
         'pgr_arquivo_checksum',
         'funcoes',
@@ -37,6 +39,21 @@ class PcmsoSolicitacoes extends Model
         'duplicidade_confirmada' => 'boolean',
         'duplicidade_confirmada_em' => 'datetime',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (self $pcmso) {
+            if (filled($pcmso->pgr_arquivo_path) && blank($pcmso->pgr_public_token)) {
+                $pcmso->pgr_public_token = static::gerarPgrPublicToken();
+            }
+        });
+
+        static::updating(function (self $pcmso) {
+            if (filled($pcmso->pgr_arquivo_path) && blank($pcmso->pgr_public_token)) {
+                $pcmso->pgr_public_token = static::gerarPgrPublicToken();
+            }
+        });
+    }
 
     public function empresa()
     {
@@ -82,15 +99,50 @@ class PcmsoSolicitacoes extends Model
 
     public function getPgrArquivoUrlAttribute(): ?string
     {
-        if (!$this->pgr_arquivo_path) {
+        if (! $this->pgr_arquivo_path) {
             return null;
         }
 
         return S3Helper::temporaryUrl($this->pgr_arquivo_path, 10);
     }
 
+    public function getPgrPublicLinkAttribute(): ?string
+    {
+        if (! $this->pgr_arquivo_path) {
+            return null;
+        }
+
+        $token = $this->pgr_public_token ?: $this->garantirPgrPublicToken();
+
+        return $token
+            ? route('public.pcmso-pgr', ['token' => $token])
+            : null;
+    }
+
     public function pgrFoiEnviadoPeloCliente(): bool
     {
         return mb_strtolower(trim((string) $this->pgr_origem)) === 'arquivo_cliente';
+    }
+
+    private function garantirPgrPublicToken(): ?string
+    {
+        if (! $this->exists || ! $this->pgr_arquivo_path) {
+            return null;
+        }
+
+        $token = static::gerarPgrPublicToken();
+
+        $this->forceFill(['pgr_public_token' => $token])->saveQuietly();
+
+        return $this->pgr_public_token;
+    }
+
+    public static function gerarPgrPublicToken(): string
+    {
+        do {
+            $token = Str::random(8);
+        } while (static::query()->where('pgr_public_token', $token)->exists());
+
+        return $token;
     }
 }

@@ -39,14 +39,14 @@ class Tarefa extends Model
         'finalizado_em',
         'data_prevista',
         'path_documento_cliente',
-        'documento_token'
+        'documento_token',
     ];
 
     protected $casts = [
         'inicio_previsto' => 'datetime',
-        'fim_previsto'    => 'datetime',
-        'finalizado_em'   => 'datetime',
-        'data_prevista'   => 'date',
+        'fim_previsto' => 'datetime',
+        'finalizado_em' => 'datetime',
+        'data_prevista' => 'date',
     ];
 
     protected static function booted(): void
@@ -113,7 +113,7 @@ class Tarefa extends Model
 
     public function getArquivoClienteUrlAttribute(): ?string
     {
-        if (!$this->path_documento_cliente) {
+        if (! $this->path_documento_cliente) {
             return null;
         }
 
@@ -122,7 +122,7 @@ class Tarefa extends Model
 
     public function getDocumentoLinkAttribute(): ?string
     {
-        if (!$this->path_documento_cliente) {
+        if (! $this->path_documento_cliente) {
             return null;
         }
 
@@ -144,7 +144,7 @@ class Tarefa extends Model
 
     private function garantirDocumentoToken(): ?string
     {
-        if (!$this->exists || !$this->path_documento_cliente) {
+        if (! $this->exists) {
             return null;
         }
 
@@ -244,22 +244,11 @@ class Tarefa extends Model
             ? $this->getRelation('cliente')
             : Cliente::query()->with('vendedor:id,name')->find($this->cliente_id);
 
-        if (!$cliente) {
+        if (! $cliente) {
             return;
         }
 
         $this->vendedor_snapshot_id = $cliente->vendedor_id;
         $this->vendedor_snapshot_nome = optional($cliente->vendedor)->name;
     }
-
-
-
-
-
-
-
-
-
-
-
 }
