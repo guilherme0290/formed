@@ -1558,7 +1558,7 @@
                             <div class="gamma-contact-grid" style="flex: 1;">
                                 <div class="gamma-contact-stack">
                                     <div class="gamma-meta-card">
-                                        <div class="gamma-meta-label">Responsável</div>
+                                        <div class="gamma-meta-label">Comercial Responsável</div>
                                         <div class="gamma-meta-value">{{ $responsavelNome }}</div>
                                     </div>
                                     <div class="gamma-meta-card">
