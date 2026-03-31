@@ -88,4 +88,9 @@ class PcmsoSolicitacoes extends Model
 
         return S3Helper::temporaryUrl($this->pgr_arquivo_path, 10);
     }
+
+    public function pgrFoiEnviadoPeloCliente(): bool
+    {
+        return mb_strtolower(trim((string) $this->pgr_origem)) === 'arquivo_cliente';
+    }
 }

@@ -4,18 +4,33 @@
 @section('content')
     @php
         $isEdit = isset($proposta) && $proposta;
+        $propostaBase = $propostaBase ?? null;
+        $fonteProposta = $isEdit ? $proposta : $propostaBase;
+        $duplicandoProposta = !$isEdit && $propostaBase;
         $clienteSelecionadoId = data_get($clienteSelecionado, 'id');
-        $clienteInicial = old('cliente_existente_id', $clienteSelecionadoId ?? ($proposta->cliente_id ?? null));
-        $modoPadrao = $clienteInicial ? 'existente' : 'novo';
+        $clienteInicial = old('cliente_existente_id', $clienteSelecionadoId ?? ($isEdit ? ($proposta->cliente_id ?? null) : null));
+        $modoPadrao = $clienteInicial ? 'existente' : (($clienteModoDuplicacao === 'novo') ? 'novo' : 'existente');
         $modoInicial = old('cliente_modo', $modoPadrao);
+        $prazoDiasInicial = (int) old('prazo_dias', $fonteProposta->prazo_dias ?? 7);
+        $dataEmissaoBase = optional($fonteProposta->created_at ?? now())->format('Y-m-d');
+        $mostrarResumoFinanceiro = old('mostrar_resumo_financeiro', $fonteProposta->mostrar_resumo_financeiro ?? true);
+        $telefoneComercial = preg_replace('/\D+/', '', (string) ($empresa?->vendedor?->telefone ?? ''));
+        $telefoneComercialFormatado = match (strlen($telefoneComercial)) {
+            11 => preg_replace('/(\d{2})(\d{5})(\d{4})/', '($1) $2-$3', $telefoneComercial),
+            10 => preg_replace('/(\d{2})(\d{4})(\d{4})/', '($1) $2-$3', $telefoneComercial),
+            default => ($empresa?->vendedor?->telefone ?? '—'),
+        };
+        $mensagemErroDesconto = 'O desconto informado ultrapassa o limite liberado para este vendedor.';
+        $mostrarPopupErroDesconto = $errors->first('desconto_percentual') === $mensagemErroDesconto;
+        $errosFormulario = collect($errors->all())->reject(fn ($error) => $error === $mensagemErroDesconto)->values();
 
         $initialItems = old('items_payload');
         if (is_string($initialItems) && $initialItems !== '') {
             $decodedItems = json_decode($initialItems, true);
             $initialItems = is_array($decodedItems) ? $decodedItems : [];
         } else {
-            $initialItems = $isEdit
-                ? $proposta->itens->map(function ($item) {
+            $initialItems = $fonteProposta
+                ? $fonteProposta->itens->map(function ($item) {
                     return [
                         'categoria' => strtoupper((string) data_get($item->meta, 'categoria', $item->tipo)),
                         'origem_id' => data_get($item->meta, 'origem_id'),
@@ -47,10 +62,12 @@
                     <div class="max-w-2xl">
                         <div class="text-[11px] font-semibold uppercase tracking-[0.28em] text-blue-100/80">Comercial</div>
                         <h1 class="mt-3 text-3xl font-black tracking-tight sm:text-4xl">
-                            {{ $isEdit ? 'Editar proposta' : 'Montar proposta' }}
+                            {{ $isEdit ? 'Editar proposta' : ($duplicandoProposta ? 'Duplicar proposta' : 'Montar proposta') }}
                         </h1>
                         <p class="mt-3 max-w-xl text-sm leading-6 text-blue-50/85">
-                            Cadastre ou selecione o cliente, monte os itens e feche a proposta em um único fluxo.
+                            {{ $duplicandoProposta
+                                ? 'Os itens e condições foram copiados da proposta original. Agora escolha o novo cliente para finalizar a duplicação.'
+                                : 'Cadastre ou selecione o cliente, monte os itens e feche a proposta em um único fluxo.' }}
                         </p>
                     </div>
 
@@ -66,14 +83,20 @@
             </div>
         </div>
 
-        @if($errors->any())
+        @if($errosFormulario->isNotEmpty())
             <div class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
                 <div class="font-semibold">Corrija os campos obrigatórios:</div>
                 <ul class="mt-2 list-disc pl-5 space-y-1">
-                    @foreach($errors->all() as $error)
+                    @foreach($errosFormulario as $error)
                         <li>{{ $error }}</li>
                     @endforeach
                 </ul>
+            </div>
+        @endif
+
+        @if($duplicandoProposta)
+            <div class="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+                Duplicando a proposta <strong>{{ $propostaBase->codigo ?? ('#' . $propostaBase->id) }}</strong>. O cliente original não será reaproveitado.
             </div>
         @endif
 
@@ -87,7 +110,9 @@
                     clienteInicialId: @js((string) $clienteInicial),
                     modoInicial: @js($modoInicial),
                     itensIniciais: @js($initialItems),
-                    descontoInicial: @js((string) old('desconto_percentual', $proposta->desconto_percentual ?? 0)),
+                    descontoInicial: @js((string) old('desconto_percentual', $fonteProposta->desconto_percentual ?? 0)),
+                    prazoDiasInicial: @js((string) $prazoDiasInicial),
+                    dataEmissaoBase: @js($dataEmissaoBase),
                     descontoMaximo: @js((float) $descontoMaximo),
                     consultaExistsUrl: @js(route('comercial.clientes.cnpj-exists', ['cnpj' => '__CNPJ__'])),
                     consultaCnpjUrl: @js(route('comercial.clientes.consulta-cnpj', ['cnpj' => '__CNPJ__'])),
@@ -214,7 +239,14 @@
                         <div class="space-y-1">
                             <div class="text-lg font-bold text-slate-900" x-text="empresa.razao_social || 'FORMED'"></div>
                             <div class="text-sm text-slate-600" x-text="formatDocumento(empresa.cnpj) || '—'"></div>
-                            <div class="text-sm text-slate-600" x-text="empresa.endereco || '—'"></div>
+                            <div class="text-sm text-slate-600">
+                                <span class="font-semibold text-slate-700">Comercial Responsável:</span>
+                                <span>{{ $empresa?->vendedor?->name ?? '—' }}</span>
+                            </div>
+                            <div class="text-sm text-slate-600">
+                                <span class="font-semibold text-slate-700">Telefone:</span>
+                                <span>{{ $telefoneComercialFormatado }}</span>
+                            </div>
                         </div>
                     </div>
                     <div class="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
@@ -422,7 +454,41 @@
                                 </div>
                             </div>
 
+                            <div class="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                                <input type="hidden" name="mostrar_resumo_financeiro" value="0">
+                                <label class="flex items-center gap-3 text-sm text-slate-700">
+                                    <input type="checkbox"
+                                           name="mostrar_resumo_financeiro"
+                                           value="1"
+                                           @checked((bool) $mostrarResumoFinanceiro)
+                                           class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+                                    <span>Mostrar resumo financeiro para o cliente</span>
+                                </label>
+                            </div>
+
                             <div class="mt-5 divide-y divide-slate-100">
+                                <div class="grid gap-4 py-3 md:grid-cols-3">
+                                    <div>
+                                        <label class="text-xs font-semibold text-slate-600">Data de emissão</label>
+                                        <div class="mt-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-700"
+                                             x-text="formatDateBr(dataEmissaoBase)"></div>
+                                    </div>
+                                    <div>
+                                        <label class="text-xs font-semibold text-slate-600">Validade da proposta (dias)</label>
+                                        <input type="number"
+                                               name="prazo_dias"
+                                               min="1"
+                                               max="365"
+                                               step="1"
+                                               x-model="prazoDias"
+                                               class="mt-1 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm">
+                                    </div>
+                                    <div>
+                                        <label class="text-xs font-semibold text-slate-600">Data de vencimento</label>
+                                        <div class="mt-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-700"
+                                             x-text="dataVencimentoFormatada()"></div>
+                                    </div>
+                                </div>
                                 <div class="flex items-center justify-between py-3 text-sm">
                                     <span class="text-slate-500">Subtotal</span>
                                     <span class="font-semibold text-slate-900" x-text="formatMoney(subtotal())"></span>
@@ -537,6 +603,19 @@
             </div>
         </form>
     </div>
+
+    @if($mostrarPopupErroDesconto)
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                if (typeof window.uiAlert === 'function') {
+                    window.uiAlert(@json($mensagemErroDesconto), {
+                        icon: 'error',
+                        title: 'Limite de desconto'
+                    });
+                }
+            });
+        </script>
+    @endif
 @endsection
 
 @push('scripts')
@@ -557,6 +636,8 @@
                     email: @js(old('novo_email', '')),
                 },
                 descontoPercentual: String(config.descontoInicial || '0'),
+                prazoDias: String(config.prazoDiasInicial || '7'),
+                dataEmissaoBase: String(config.dataEmissaoBase || ''),
                 descontoMaximo: Number(config.descontoMaximo || 0),
                 catalogoTab: 'servicos',
                 items: (config.itensIniciais || []).map((item, index) => ({
@@ -760,6 +841,20 @@
                 formatMoney(value) {
                     const number = Number(value || 0);
                     return number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                },
+                formatDateBr(value) {
+                    if (!value) return '—';
+                    const date = new Date(`${value}T12:00:00`);
+                    if (Number.isNaN(date.getTime())) return '—';
+                    return date.toLocaleDateString('pt-BR');
+                },
+                dataVencimentoFormatada() {
+                    if (!this.dataEmissaoBase) return '—';
+                    const dias = Math.max(1, parseInt(this.prazoDias || '1', 10) || 1);
+                    const date = new Date(`${this.dataEmissaoBase}T12:00:00`);
+                    if (Number.isNaN(date.getTime())) return '—';
+                    date.setDate(date.getDate() + dias);
+                    return date.toLocaleDateString('pt-BR');
                 },
                 formatDocumento(value) {
                     const digits = String(value || '').replace(/\D+/g, '');

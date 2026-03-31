@@ -76,6 +76,15 @@ class Anexos extends Model
         return $bytes . ' B';
     }
 
+    public function foiEnviadoPorCliente(): bool
+    {
+        $uploader = $this->relationLoaded('uploader')
+            ? $this->uploader
+            : $this->uploader()->with('papel')->first();
+
+        return (bool) ($uploader && $uploader->isCliente());
+    }
+
     /**
      * Salva UM arquivo de upload no S3 + registra na tabela anexos.
      *

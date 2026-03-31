@@ -96,5 +96,9 @@ class AnexoController extends Controller
         if (!$user || $anexo->empresa_id !== $user->empresa_id) {
             abort(403);
         }
+
+        if ($user->isCliente() && $anexo->foiEnviadoPorCliente()) {
+            abort(403);
+        }
     }
 }
