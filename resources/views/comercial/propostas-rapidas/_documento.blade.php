@@ -6,6 +6,7 @@
     $dataVencimento = optional($proposta->created_at ?? now())->copy()->addDays($diasValidade)->format('d/m/Y');
     $descontoPercentual = (float) ($proposta->desconto_percentual ?? 0);
     $valorTotalLiquido = (float) ($proposta->valor_total ?? 0);
+    $mostrarResumoFinanceiro = (bool) ($proposta->mostrar_resumo_financeiro ?? true);
     $totaisItensComDesconto = [];
     $acumuladoItensComDesconto = 0.0;
     $ultimoIndiceItem = max(0, $itens->count() - 1);
@@ -26,6 +27,12 @@
             break;
         }
     }
+    $telefoneComercial = preg_replace('/\D+/', '', (string) ($proposta->vendedor?->telefone ?? ''));
+    $telefoneComercialFormatado = match (strlen($telefoneComercial)) {
+        11 => preg_replace('/(\d{2})(\d{5})(\d{4})/', '($1) $2-$3', $telefoneComercial),
+        10 => preg_replace('/(\d{2})(\d{4})(\d{4})/', '($1) $2-$3', $telefoneComercial),
+        default => ($proposta->vendedor?->telefone ?? '—'),
+    };
     $logoWebUrl = asset('favicon.png');
 @endphp
 
@@ -43,7 +50,7 @@
                             </td>
                             <td style="vertical-align: middle;">
                                 <div style="font-size: 28px; font-weight: 800; line-height: 1;">FORMED</div>
-                                <div style="font-size: 10px; margin-top: 4px; color: #d7deff;">Proposta Comercial</div>
+                                <div style="font-size: 10px; margin-top: 4px; color: #d7deff;">Medicina e Seguranca do Trabalho LTDA</div>
                             </td>
                         </tr>
                     </table>
@@ -56,6 +63,10 @@
                             <td style="padding: 8px 10px;">
                                 <div style="font-size: 9px; text-transform: uppercase; color: #5f6f88; font-weight: 700;">Data de emissão</div>
                                 <div style="font-size: 14px; font-weight: 800; color: #20304e; margin-top: 2px;">{{ $dataEmissao }}</div>
+                            </td>
+                            <td style="padding: 8px 10px; border-left: 1px solid #d6dfeb;">
+                                <div style="font-size: 9px; text-transform: uppercase; color: #5f6f88; font-weight: 700;">Data de vencimento</div>
+                                <div style="font-size: 14px; font-weight: 800; color: #20304e; margin-top: 2px;">{{ $dataVencimento }}</div>
                             </td>
                         </tr>
                     </table>
@@ -76,8 +87,8 @@
                             <td style="padding: 10px 8px;">
                                 <div style="font-size: 14px; font-weight: 800; color: #1f2f4c; line-height: 1.35;">{{ $proposta->empresa?->nome ?? 'FORMED' }}</div>
                                 <div style="font-size: 11px; color: #2e3d57; margin-top: 7px;"><strong>CNPJ:</strong> {{ $proposta->empresa?->cnpj ?? '—' }}</div>
-                                <div style="font-size: 11px; color: #2e3d57; margin-top: 3px;"><strong>Endereço:</strong> {{ $proposta->empresa?->endereco ?? '—' }}</div>
-                                <div style="font-size: 11px; color: #2e3d57; margin-top: 3px;"><strong>Responsável:</strong> {{ $proposta->vendedor?->name ?? '—' }}</div>
+                                <div style="font-size: 11px; color: #2e3d57; margin-top: 3px;"><strong>Comercial Responsável:</strong> {{ $proposta->vendedor?->name ?? '—' }}</div>
+                                <div style="font-size: 11px; color: #2e3d57; margin-top: 3px;"><strong>Telefone:</strong> {{ $telefoneComercialFormatado }}</div>
                                 <div style="font-size: 11px; color: #2e3d57; margin-top: 3px;"><strong>E-mail:</strong> {{ $proposta->vendedor?->email ?? '—' }}</div>
                             </td>
                         </tr>
@@ -140,6 +151,7 @@
             </tbody>
         </table>
 
+        @if($mostrarResumoFinanceiro)
         <table style="width: 100%; border-collapse: collapse; border: 1px solid #d6dfeb;">
             <tr>
                 <td style="background: #eef3fb; border-bottom: 1px solid #d6dfeb; padding: 6px 8px; font-size: 9px; font-weight: 700; text-transform: uppercase; color: #53657f;">
@@ -175,6 +187,7 @@
                 </td>
             </tr>
         </table>
+        @endif
 
         @if(!empty($proposta->observacoes))
             <table style="width: 100%; border-collapse: collapse; margin-top: 8px; border: 1px solid #d6dfeb;">
@@ -202,14 +215,18 @@
                     </div>
                     <div>
                         <div class="text-4xl font-black leading-none">FORMED</div>
-                        <div class="mt-1 text-xs text-indigo-100">Proposta Comercial</div>
+                        <div class="mt-1 text-xs text-indigo-100">Medicina e Seguranca do Trabalho LTDA</div>
                     </div>
                 </div>
             </div>
-            <div class="grid gap-0 border-t border-slate-300 md:grid-cols-1">
+            <div class="grid gap-0 border-t border-slate-300 md:grid-cols-2">
                 <div class="bg-slate-50 px-4 py-3">
                     <div class="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Data de emissão</div>
                     <div class="mt-1 text-lg font-extrabold text-slate-900">{{ $dataEmissao }}</div>
+                </div>
+                <div class="bg-slate-50 px-4 py-3 md:border-l md:border-slate-300">
+                    <div class="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Data de vencimento</div>
+                    <div class="mt-1 text-lg font-extrabold text-slate-900">{{ $dataVencimento }}</div>
                 </div>
             </div>
         </div>
@@ -220,8 +237,8 @@
                 <div class="px-3 py-3">
                     <div class="text-xl font-extrabold leading-tight text-slate-900">{{ $proposta->empresa?->nome ?? 'FORMED' }}</div>
                     <div class="mt-3 text-sm text-slate-700"><strong>CNPJ:</strong> {{ $proposta->empresa?->cnpj ?? '—' }}</div>
-                    <div class="mt-1 text-sm text-slate-700"><strong>Endereço:</strong> {{ $proposta->empresa?->endereco ?? '—' }}</div>
-                    <div class="mt-1 text-sm text-slate-700"><strong>Responsável:</strong> {{ $proposta->vendedor?->name ?? '—' }}</div>
+                    <div class="mt-1 text-sm text-slate-700"><strong>Comercial Responsável:</strong> {{ $proposta->vendedor?->name ?? '—' }}</div>
+                    <div class="mt-1 text-sm text-slate-700"><strong>Telefone:</strong> {{ $telefoneComercialFormatado }}</div>
                     <div class="mt-1 text-sm text-slate-700"><strong>E-mail:</strong> {{ $proposta->vendedor?->email ?? '—' }}</div>
                 </div>
             </div>
@@ -274,6 +291,7 @@
             </table>
         </div>
 
+        @if($mostrarResumoFinanceiro)
         <div class="overflow-hidden border border-slate-300 bg-white shadow-sm">
             <div class="border-b border-slate-300 bg-slate-100 px-3 py-2 text-[10px] font-bold uppercase tracking-wide text-slate-600">Resumo Financeiro</div>
             <div class="px-3 py-3">
@@ -295,6 +313,7 @@
                 <strong class="text-3xl font-black">R$ {{ number_format((float) ($proposta->valor_total ?? 0), 2, ',', '.') }}</strong>
             </div>
         </div>
+        @endif
 
         @if(!empty($proposta->observacoes))
             <div class="border border-slate-300 bg-white shadow-sm">

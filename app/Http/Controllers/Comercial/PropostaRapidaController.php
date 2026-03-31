@@ -59,22 +59,36 @@ class PropostaRapidaController extends Controller
         $user = $request->user();
         $empresaId = $user->empresa_id;
         $empresa = Empresa::findOrFail($empresaId);
+        $propostaBase = null;
+
+        $duplicarDe = (int) $request->query('duplicar_de');
+        if ($duplicarDe > 0) {
+            $propostaBase = Proposta::query()
+                ->with(['cliente', 'empresa', 'vendedor', 'itens'])
+                ->findOrFail($duplicarDe);
+
+            $this->authorizeProposta($request, $propostaBase);
+        }
 
         $clienteSelecionado = null;
-        $clienteSelecionadoId = (int) $request->query('cliente_id');
-        if ($clienteSelecionadoId > 0) {
-            $clienteSelecionado = Cliente::query()
-                ->where('empresa_id', $empresaId)
-                ->find($clienteSelecionadoId);
+        if (!$propostaBase) {
+            $clienteSelecionadoId = (int) $request->query('cliente_id');
+            if ($clienteSelecionadoId > 0) {
+                $clienteSelecionado = Cliente::query()
+                    ->where('empresa_id', $empresaId)
+                    ->find($clienteSelecionadoId);
+            }
         }
 
         return view('comercial.propostas-rapidas.form', [
             'proposta' => null,
+            'propostaBase' => $propostaBase,
             'empresa' => $empresa,
             'clientes' => $this->clientesParaSelecao($empresaId),
             'catalogo' => $this->catalogo($empresaId),
             'clienteSelecionado' => $clienteSelecionado,
             'descontoMaximo' => $this->descontoMaximo($user),
+            'clienteModoDuplicacao' => $request->query('cliente_modo'),
         ]);
     }
 
@@ -153,6 +167,8 @@ class PropostaRapidaController extends Controller
             'novo_endereco' => ['nullable', 'string', 'max:255'],
             'novo_telefone' => ['nullable', 'string', 'max:30'],
             'novo_email' => ['nullable', 'email', 'max:255'],
+            'prazo_dias' => ['required', 'integer', 'min:1', 'max:365'],
+            'mostrar_resumo_financeiro' => ['nullable', 'boolean'],
             'observacoes' => ['nullable', 'string', 'max:4000'],
             'desconto_percentual' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'items_payload' => ['required', 'string'],
@@ -191,6 +207,7 @@ class PropostaRapidaController extends Controller
         });
         $descontoValor = round($subtotal * ($descontoPercentual / 100), 2);
         $totalFinal = max(0, round($subtotal - $descontoValor, 2));
+        $mostrarResumoFinanceiro = $request->boolean('mostrar_resumo_financeiro', true);
 
         $proposta = DB::transaction(function () use (
             $proposta,
@@ -201,6 +218,7 @@ class PropostaRapidaController extends Controller
             $descontoPercentual,
             $descontoValor,
             $totalFinal,
+            $mostrarResumoFinanceiro,
             $data,
             $itens
         ) {
@@ -220,8 +238,9 @@ class PropostaRapidaController extends Controller
                 'desconto_percentual' => $descontoPercentual,
                 'desconto_valor' => $descontoValor,
                 'valor_total' => $totalFinal,
+                'mostrar_resumo_financeiro' => $mostrarResumoFinanceiro,
                 'status' => 'PENDENTE',
-                'prazo_dias' => 7,
+                'prazo_dias' => (int) $data['prazo_dias'],
                 'vencimento_servicos' => null,
                 'observacoes' => $data['observacoes'] ?? null,
                 'pipeline_status' => 'CONTATO_INICIAL',

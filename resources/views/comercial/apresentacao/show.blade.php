@@ -105,7 +105,7 @@
                                 </div>
 
                                 <div>
-                                    <label class="text-xs font-semibold text-slate-600">Responsável</label>
+                                    <label class="text-xs font-semibold text-slate-600">Comercial Responsável</label>
                                     <input type="text"
                                            value="{{ $responsavelApresentacao['name'] ?? '—' }}"
                                            readonly
@@ -113,7 +113,7 @@
                                 </div>
 
                                 <div>
-                                    <label class="text-xs font-semibold text-slate-600">E-mail do responsável</label>
+                                    <label class="text-xs font-semibold text-slate-600">E-mail</label>
                                     <input type="text"
                                            value="{{ $responsavelApresentacao['email'] ?? '—' }}"
                                            readonly
@@ -121,7 +121,7 @@
                                 </div>
 
                                 <div>
-                                    <label class="text-xs font-semibold text-slate-600">Telefone do responsável</label>
+                                    <label class="text-xs font-semibold text-slate-600">Telefone</label>
                                     <input type="text"
                                            value="{{ $responsavelApresentacao['telefone'] ? $formatTelefoneResponsavel($responsavelApresentacao['telefone']) : '' }}"
                                            readonly

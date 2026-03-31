@@ -93,14 +93,9 @@ class TarefaController extends Controller
         );
         $path = S3Helper::upload($request->file('arquivo_cliente'), 'tarefas');
 
-        $token = Str::uuid()->toString();
-        while (Tarefa::where('documento_token', $token)->exists()) {
-            $token = Str::uuid()->toString();
-        }
-
         $tarefa->update([
             'path_documento_cliente' => $path,
-            'documento_token' => $token,
+            'documento_token' => Tarefa::gerarDocumentoTokenCurto(),
         ]);
 
         return $this->finalizarTarefaPersistida($tarefa, $precificacaoService, $vendaService, $comissaoService);
@@ -148,6 +143,22 @@ class TarefaController extends Controller
             ->deleteFileAfterSend(true);
     }
 
+    public function downloadPacotePublicoPorToken(string $token, FuncionarioArquivosZipService $zipService)
+    {
+        $tarefa = Tarefa::where('documento_token', $token)
+            ->firstOrFail();
+
+        try {
+            $zipPath = $zipService->gerarZipPorIds($tarefa->cliente, [$tarefa->id], null, true);
+        } catch (\RuntimeException $e) {
+            abort(404, $e->getMessage());
+        }
+
+        return response()
+            ->download($zipPath, 'tarefa-' . $tarefa->id . '-arquivos.zip')
+            ->deleteFileAfterSend(true);
+    }
+
     public function substituirDocumentoCliente(Request $request, Tarefa $tarefa)
     {
         $maxUploadMb = $this->resolveTaskUploadLimitMb($tarefa);
@@ -161,14 +172,9 @@ class TarefaController extends Controller
 
         $path = S3Helper::upload($request->file('arquivo_cliente'), 'tarefas');
 
-        $token = Str::uuid()->toString();
-        while (Tarefa::where('documento_token', $token)->exists()) {
-            $token = Str::uuid()->toString();
-        }
-
         $tarefa->update([
             'path_documento_cliente' => $path,
-            'documento_token' => $token,
+            'documento_token' => Tarefa::gerarDocumentoTokenCurto(),
         ]);
 
         TarefaLog::create([

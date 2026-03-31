@@ -171,7 +171,7 @@
                                 </td>
                                 <td class="brand-text-cell">
                                     <div class="brand-name">FORMED</div>
-                                    <div class="brand-sub">Medicina e Segurança do Trabalho</div>
+                                    <div class="brand-sub">MEDICINA E SEGURANCA DO TRABALHO LTDA</div>
                                 </td>
                             </tr>
                         </table>

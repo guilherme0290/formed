@@ -411,6 +411,8 @@
                                         $asoTreinamentosLista = '';
                                         $asoEmail             = '';
                                         $asoPacoteNome        = '';
+                                        $asoPcmsoExternoUrl   = '';
+                                        $asoPcmsoExternoNome  = '';
 
                                         if ($aso) {
                                             $mapTiposAso = [
@@ -471,6 +473,9 @@
                                                 $pacote = (array) $aso->treinamento_pacote;
                                                 $asoPacoteNome = $pacote['nome'] ?? '';
                                             }
+
+                                            $asoPcmsoExternoUrl = optional($aso->pcmsoExternoAnexo)->url ?? '';
+                                            $asoPcmsoExternoNome = optional($aso->pcmsoExternoAnexo)->nome_original ?? '';
                                         }
 
                                         $isAsoTask = (bool) $aso;
@@ -543,6 +548,7 @@
                                                 'tamanho'     => $anexo->tamanho_humano,      // opcional
                                                 'servico'     => $anexo->servico,
                                                 'uploaded_by' => optional($anexo->uploader)->name,
+                                                'uploaded_by_is_cliente' => $anexo->foiEnviadoPorCliente(),
                                                 'data'        => optional($anexo->created_at)->format('d/m/Y H:i'),
                                             ];
                                         })->values();
@@ -618,7 +624,7 @@
                                     data-remover-documento-cliente-url="{{ route('operacional.tarefas.documento-cliente.destroy', $tarefa) }}"
                                     data-substituir-doc-complementar-url="{{ route('operacional.tarefas.documento-complementar', $tarefa) }}"
                                     data-substituir-doc-art-url="{{ route('operacional.tarefas.documento-art', $tarefa) }}"
-                                    data-whatsapp-bundle-url="{{ \Illuminate\Support\Facades\URL::temporarySignedRoute('operacional.tarefas.pacote-publico', now()->addDays(7), ['tarefa' => $tarefa->id]) }}"
+                                    data-whatsapp-bundle-url="{{ $tarefa->pacote_publico_link }}"
                                     data-prioridade="{{ ucfirst($tarefa->prioridade) }}"
                                     data-status="{{ $coluna->nome }}"
                                     data-finalizado="{{ (!empty($tarefa->finalizado_em) || ($coluna->finaliza ?? false)) ? '1' : '0' }}"
@@ -643,6 +649,8 @@
                                     data-aso-treinamentos="{{ $asoTreinamentosLista }}"
                                     data-aso-pacote="{{ $asoPacoteNome }}"
                                     data-aso-email="{{ $asoEmail }}"
+                                    data-aso-pcmso-externo-url="{{ $asoPcmsoExternoUrl }}"
+                                    data-aso-pcmso-externo-nome="{{ $asoPcmsoExternoNome }}"
                                     data-is-aso="{{ $isAsoTask ? '1' : '0' }}"
                                     data-is-treinamento-task="{{ $isTreinamentoTask ? '1' : '0' }}"
                                     data-certificados-pendentes="{{ $certificadosPendentes ? '1' : '0' }}"
@@ -766,14 +774,15 @@
                                     @endif
 
                                     {{-- PCMSO --}}
-                                    @if($tarefa->pcmsoSolicitacao)
-                                        @php $pcmso = $tarefa->pcmsoSolicitacao; @endphp
+                                        @if($tarefa->pcmsoSolicitacao)
+                                            @php $pcmso = $tarefa->pcmsoSolicitacao; @endphp
                                         data-pcmso-tipo="{{ $pcmso->tipo }}"
                                         data-pcmso-prazo="{{ $pcmso->prazo_dias }}"
                                         data-pcmso-obra-nome="{{ $pcmso->obra_nome }}"
                                         data-pcmso-obra-cnpj="{{ $pcmso->obra_cnpj_contratante }}"
                                         data-pcmso-obra-cei="{{ $pcmso->obra_cei_cno }}"
                                         data-pcmso-obra-endereco="{{ $pcmso->obra_endereco }}"
+                                        data-pcmso-pgr-origem="{{ $pcmso->pgr_origem }}"
                                         @if($pcmso->pgr_arquivo_path)
                                             data-pcmso-pgr-url="{{ $pcmso->pgr_arquivo_url }}"
                                         @endif
@@ -1297,6 +1306,17 @@
                         </h3>
                         <p class="font-semibold text-slate-800 mb-1" id="modal-servico"></p>
                         <p class="text-sm text-slate-700" id="modal-observacoes"></p>
+                        <div id="modal-documento-cliente-wrapper" class="mt-3 hidden">
+                            <p class="text-[11px] font-semibold uppercase tracking-wide text-violet-700">
+                                Documento enviado pelo cliente
+                            </p>
+                            <a id="modal-documento-cliente-link"
+                               href="#"
+                               target="_blank"
+                               class="mt-1 inline-flex items-center gap-1 text-sm font-medium text-cyan-700 underline hover:text-cyan-900">
+                                Ver documento
+                            </a>
+                        </div>
                     </section>
                     {{-- BLOCO PGR (aparece só em serviços PGR) --}}
                     <section id="modal-bloco-pgr"
@@ -1471,7 +1491,7 @@
                                href="#"
                                target="_blank"
                                class="inline-flex items-center gap-1 text-xs font-semibold text-cyan-700 hover:text-cyan-900 underline">
-                                📎 Abrir PGR anexado (PDF)
+                                📎 Abrir PGR anexado pelo cliente
                             </a>
                         </div>
                     </section>
@@ -2087,6 +2107,8 @@
             const exclusaoAnexoWrapper = document.getElementById('modal-exclusao-anexo-wrapper');
             const exclusaoAnexoList = document.getElementById('modal-exclusao-anexo-list');
             const spanObs = document.getElementById('modal-observacoes');
+            const documentoClienteWrapper = document.getElementById('modal-documento-cliente-wrapper');
+            const documentoClienteLink = document.getElementById('modal-documento-cliente-link');
             const textareaObsInterna = document.getElementById('modal-observacao-interna');
 
             const docsWrapper = document.getElementById('modal-docs-wrapper');
@@ -2220,7 +2242,9 @@
                     );
                 }
 
-                if (card.dataset.pcmsoPgrUrl) {
+                const pcmsoPgrEhArquivoDoCliente = String(card?.dataset?.pcmsoPgrOrigem || '').toLowerCase() === 'arquivo_cliente';
+
+                if (card.dataset.pcmsoPgrUrl && !pcmsoPgrEhArquivoDoCliente) {
                     appendLink('PCMSO', card.dataset.pcmsoPgrUrl);
                 }
 
@@ -2237,10 +2261,12 @@
 
                 anexos
                     .filter((anexo) => String(anexo?.servico || '').toLowerCase() === 'certificado_treinamento')
+                    .filter((anexo) => !anexo?.uploaded_by_is_cliente)
                     .forEach((anexo, index) => appendLink(`Certificado ${index + 1}`, anexo?.url || ''));
 
                 if (isTreinamentoTask && !links.length) {
                     anexos
+                        .filter((anexo) => !anexo?.uploaded_by_is_cliente)
                         .filter((anexo) => String(anexo?.servico || '').toLowerCase() !== 'cancelamento_tarefa')
                         .forEach((anexo, index) => appendLink(`Documento ${index + 1}`, anexo?.url || ''));
                 }
@@ -2281,7 +2307,7 @@
                 const links = collectWhatsappLinks(card, arquivoUrl);
                 const bundleUrl = String(card?.dataset?.whatsappBundleUrl || '').trim();
                 const linksTexto = links.length > 1 && bundleUrl
-                    ? `\n\nBaixar pacote ZIP:\n${bundleUrl}`
+                    ? `\n\nBaixar todos os documentos:\n${bundleUrl}`
                     : (links.length
                         ? `\n\nLinks:\n${links.map((item) => `${item.label}: ${item.url}`).join('\n')}`
                         : '');
@@ -2424,6 +2450,24 @@
                 spanStatusText.textContent = card.dataset.status ?? '';
                 let observacoesModal = card.dataset.observacoes ?? '';
                 spanObs.textContent = observacoesModal;
+                if (documentoClienteWrapper && documentoClienteLink) {
+                    documentoClienteWrapper.classList.add('hidden');
+                    documentoClienteLink.href = '#';
+                    documentoClienteLink.textContent = 'Ver documento';
+
+                    if (card.dataset.servico === 'ASO') {
+                        const documentoClienteUrl = String(card.dataset.asoPcmsoExternoUrl || '').trim();
+                        const documentoClienteNome = String(card.dataset.asoPcmsoExternoNome || '').trim();
+
+                        if (documentoClienteUrl) {
+                            documentoClienteLink.href = documentoClienteUrl;
+                            documentoClienteLink.textContent = documentoClienteNome
+                                ? documentoClienteNome
+                                : 'Documento enviado pelo cliente';
+                            documentoClienteWrapper.classList.remove('hidden');
+                        }
+                    }
+                }
                 updateModalTempo(card, Date.now());
 
                 spanFuncionario.textContent = card.dataset.funcionario || '—';
@@ -2606,6 +2650,7 @@
                     // limpa lista anterior
                     docsList.innerHTML = '';
                     const anexosExibicao = [...anexosOriginais];
+                    const pcmsoPgrEhArquivoDoCliente = String(card?.dataset?.pcmsoPgrOrigem || '').toLowerCase() === 'arquivo_cliente';
 
                     // 1) Documento final da tarefa (path_documento_cliente)
                     if (card.dataset.arquivoClienteUrl) {
@@ -2623,13 +2668,17 @@
                         String(a?.servico || '').toLowerCase() === 'documento_complementar_pgr_pcmso'
                     );
 
-                    if (card.dataset.pcmsoPgrUrl) {
+                    if (card.dataset.pcmsoPgrUrl && !pcmsoPgrEhArquivoDoCliente) {
                         anexosExibicao.push({
                             id: anexoComplementarPgrPcmso?.id || `complementar-${card.dataset.id || 'tarefa'}`,
-                            kind: 'documento_complementar',
-                            label: isPgrComPcmso ? 'Documento final - PCMSO' : 'PGR anexado (PCMSO)',
+                            kind: pcmsoPgrEhArquivoDoCliente ? 'documento_cliente_referencia' : 'documento_complementar',
+                            label: isPgrComPcmso
+                                ? 'Documento final - PCMSO'
+                                : 'Documento PGR anexado pelo cliente',
                             url: card.dataset.pcmsoPgrUrl,
-                            delete_url: card.dataset.pcmsoPgrDeleteUrl || anexoComplementarPgrPcmso?.delete_url || ''
+                            delete_url: pcmsoPgrEhArquivoDoCliente
+                                ? ''
+                                : (card.dataset.pcmsoPgrDeleteUrl || anexoComplementarPgrPcmso?.delete_url || '')
                         });
                     }
 
@@ -2663,6 +2712,10 @@
 
                     const anexosDocs = anexosExibicao.filter((a) => {
                         const servico = String(a?.servico || '').toLowerCase();
+                        if (a?.uploaded_by_is_cliente) {
+                            return false;
+                        }
+
                         return servico !== 'cancelamento_tarefa'
                             && servico !== 'documento_complementar_pgr_pcmso'
                             && servico !== 'documento_art_pgr_pcmso';

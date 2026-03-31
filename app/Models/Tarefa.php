@@ -119,8 +119,17 @@ class Tarefa extends Model
         $token = $this->documento_token ?: $this->garantirDocumentoToken();
 
         return $token
-            ? route('operacional.tarefas.documento', ['token' => $token])
+            ? route('public.documento', ['token' => $token])
             : $this->arquivo_cliente_url;
+    }
+
+    public function getPacotePublicoLinkAttribute(): ?string
+    {
+        $token = $this->documento_token ?: $this->garantirDocumentoToken();
+
+        return $token
+            ? route('public.pacote', ['token' => $token])
+            : null;
     }
 
     private function garantirDocumentoToken(): ?string
@@ -129,14 +138,20 @@ class Tarefa extends Model
             return null;
         }
 
-        $token = Str::uuid()->toString();
-        while (static::query()->where('documento_token', $token)->exists()) {
-            $token = Str::uuid()->toString();
-        }
+        $token = static::gerarDocumentoTokenCurto();
 
         $this->forceFill(['documento_token' => $token])->saveQuietly();
 
         return $this->documento_token;
+    }
+
+    public static function gerarDocumentoTokenCurto(): string
+    {
+        do {
+            $token = Str::random(8);
+        } while (static::query()->where('documento_token', $token)->exists());
+
+        return $token;
     }
 
     public function ultimoLogMovimentacao(): ?TarefaLog

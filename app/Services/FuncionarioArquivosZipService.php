@@ -20,7 +20,7 @@ class FuncionarioArquivosZipService
             ->orderByDesc('finalizado_em')
             ->orderByDesc('updated_at');
 
-        $query->with($includeAnexos ? ['servico', 'anexos'] : ['servico']);
+        $query->with($includeAnexos ? ['servico', 'anexos.uploader.papel'] : ['servico']);
         $tarefas = $query->get();
 
         return $this->gerarZipComTarefas($tarefas, 'funcionario-arquivos-' . $funcionario->id, $includeAnexos);
@@ -135,7 +135,7 @@ class FuncionarioArquivosZipService
             ->orderByDesc('finalizado_em')
             ->orderByDesc('updated_at');
 
-        $query->with($includeAnexos ? ['servico', 'anexos'] : ['servico']);
+        $query->with($includeAnexos ? ['servico', 'anexos.uploader.papel'] : ['servico']);
 
         if ($funcionario) {
             $query->where('funcionario_id', $funcionario->id);
@@ -163,7 +163,7 @@ class FuncionarioArquivosZipService
 
             if ($includeAnexos) {
                 foreach ($tarefa->anexos as $anexo) {
-                    if (empty($anexo->path)) {
+                    if (empty($anexo->path) || $anexo->foiEnviadoPorCliente()) {
                         continue;
                     }
 
