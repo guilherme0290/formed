@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 class Anexos extends Model
 {
@@ -22,9 +23,19 @@ class Anexos extends Model
         'servico',
         'nome_original',
         'path',
+        'public_token',
         'mime_type',
         'tamanho',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (self $anexo) {
+            if (blank($anexo->public_token)) {
+                $anexo->public_token = static::gerarPublicToken();
+            }
+        });
+    }
 
     public function tarefa(): BelongsTo
     {
@@ -58,22 +69,37 @@ class Anexos extends Model
             : null;
     }
 
+    public function getPublicLinkAttribute(): ?string
+    {
+        if (! $this->path) {
+            return null;
+        }
+
+        $token = $this->public_token ?: $this->garantirPublicToken();
+
+        return $token
+            ? route('public.anexo', ['token' => $token])
+            : null;
+    }
+
     public function getTamanhoHumanoAttribute(): ?string
     {
-        if (!$this->tamanho) return null;
+        if (! $this->tamanho) {
+            return null;
+        }
 
         $bytes = (int) $this->tamanho;
         if ($bytes >= 1073741824) {
-            return number_format($bytes / 1073741824, 2, ',', '.') . ' GB';
+            return number_format($bytes / 1073741824, 2, ',', '.').' GB';
         }
         if ($bytes >= 1048576) {
-            return number_format($bytes / 1048576, 2, ',', '.') . ' MB';
+            return number_format($bytes / 1048576, 2, ',', '.').' MB';
         }
         if ($bytes >= 1024) {
-            return number_format($bytes / 1024, 2, ',', '.') . ' KB';
+            return number_format($bytes / 1024, 2, ',', '.').' KB';
         }
 
-        return $bytes . ' B';
+        return $bytes.' B';
     }
 
     public function foiEnviadoPorCliente(): bool
@@ -100,14 +126,14 @@ class Anexos extends Model
         $empresaId = $context['empresa_id'] ?? null;
         $uploadedBy = $context['uploaded_by'] ?? null;
 
-        if (!$empresaId || !$uploadedBy) {
+        if (! $empresaId || ! $uploadedBy) {
             throw new InvalidArgumentException('empresa_id e uploaded_by são obrigatórios para salvar anexos.');
         }
 
         $servico = $context['servico'] ?? null;
 
         // subpasta padrão: anexos/{empresa_id}/{servico}
-        $subpath = $context['subpath'] ?? ('anexos/' . $empresaId . ($servico ? '/' . strtolower($servico) : ''));
+        $subpath = $context['subpath'] ?? ('anexos/'.$empresaId.($servico ? '/'.strtolower($servico) : ''));
 
         // upload no S3 usando o helper que você já tem
         $path = S3Helper::upload($file, $subpath);
@@ -133,7 +159,7 @@ class Anexos extends Model
     /**
      * Salva VÁRIOS arquivos (array ou Collection de UploadedFile).
      *
-     * @param iterable<UploadedFile> $files
+     * @param  iterable<UploadedFile>  $files
      * @return \Illuminate\Support\Collection<Anexos>
      */
     public static function salvarVarios(iterable $files, array $context): Collection
@@ -141,7 +167,7 @@ class Anexos extends Model
         $criados = collect();
 
         foreach ($files as $file) {
-            if (!$file instanceof UploadedFile) {
+            if (! $file instanceof UploadedFile) {
                 continue;
             }
 
@@ -158,7 +184,7 @@ class Anexos extends Model
      */
     public static function salvarDoRequest(Request $request, string $field, array $context): Collection
     {
-        if (!$request->hasFile($field)) {
+        if (! $request->hasFile($field)) {
             return collect();
         }
 
@@ -170,5 +196,27 @@ class Anexos extends Model
         }
 
         return static::salvarVarios($files, $context);
+    }
+
+    private function garantirPublicToken(): ?string
+    {
+        if (! $this->exists) {
+            return null;
+        }
+
+        $token = static::gerarPublicToken();
+
+        $this->forceFill(['public_token' => $token])->saveQuietly();
+
+        return $this->public_token;
+    }
+
+    public static function gerarPublicToken(): string
+    {
+        do {
+            $token = Str::random(8);
+        } while (static::query()->where('public_token', $token)->exists());
+
+        return $token;
     }
 }

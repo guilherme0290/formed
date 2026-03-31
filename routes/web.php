@@ -1,54 +1,52 @@
 <?php
 
+use App\Http\Controllers\AnexoController;
 use App\Http\Controllers\Api\ClientesApiController;
 use App\Http\Controllers\Api\ServicosApiController;
 use App\Http\Controllers\Cliente\ArquivoController;
+use App\Http\Controllers\Cliente\ClienteDashboardController;
+use App\Http\Controllers\Cliente\ClienteFuncionarioController;
 use App\Http\Controllers\ClienteController;
+use App\Http\Controllers\Comercial\ClienteAsoGrupoController;
+use App\Http\Controllers\Comercial\ClienteGheController;
+use App\Http\Controllers\Comercial\DashboardController as DashboardComercial;
 use App\Http\Controllers\Comercial\EsocialFaixaController;
 use App\Http\Controllers\Comercial\ExamesTabPrecoController;
-use App\Http\Controllers\Comercial\ClienteGheController;
-use App\Http\Controllers\Comercial\GheController;
-use App\Http\Controllers\Comercial\ClienteAsoGrupoController;
-use App\Http\Controllers\Comercial\ProtocolosExamesController;
-use App\Http\Controllers\Comercial\PropostaPrecoController;
-use App\Http\Controllers\Master\AcessosController;
-use App\Http\Controllers\Master\DashboardController as DashboardMaster;
-use App\Http\Controllers\Master\EmailCaixaController;
-use App\Http\Controllers\Master\AgendaVendedorController;
-use App\Http\Controllers\Master\DashboardPreferenceController;
-use App\Http\Controllers\Comercial\DashboardController as DashboardComercial;
 use App\Http\Controllers\Comercial\FuncoesController as ComercialFuncoesController;
+use App\Http\Controllers\Comercial\GheController;
+use App\Http\Controllers\Comercial\PropostaController;
+use App\Http\Controllers\Comercial\PropostaPrecoController;
+use App\Http\Controllers\Comercial\ProtocolosExamesController;
+use App\Http\Controllers\Comercial\TabelaPrecoController;
+use App\Http\Controllers\Comercial\TreinamentoNrController as ComercialTreinamentoNrController;
+use App\Http\Controllers\FuncaoController;
+use App\Http\Controllers\Master\AcessosController;
+use App\Http\Controllers\Master\AgendaVendedorController;
+use App\Http\Controllers\Master\DashboardController as DashboardMaster;
+use App\Http\Controllers\Master\DashboardPreferenceController;
+use App\Http\Controllers\Master\EmailCaixaController;
+use App\Http\Controllers\Operacional\AprController;
 use App\Http\Controllers\Operacional\AsoController;
 use App\Http\Controllers\Operacional\FuncionarioController;
+use App\Http\Controllers\Operacional\LtcatController;
 use App\Http\Controllers\Operacional\LtipController;
+use App\Http\Controllers\Operacional\PaeController;
 use App\Http\Controllers\Operacional\PainelController;
 use App\Http\Controllers\Operacional\PcmsoController;
 use App\Http\Controllers\Operacional\PgrController;
+use App\Http\Controllers\Operacional\TreinamentoNrController;
 use App\Http\Controllers\PapelController;
 use App\Http\Controllers\PermissaoController;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\Comercial\TabelaPrecoController;
-use App\Http\Controllers\Operacional\LtcatController;
-use App\Http\Controllers\Operacional\AprController;
-use App\Http\Controllers\Operacional\PaeController;
-use App\Http\Controllers\Operacional\TreinamentoNrController;
-use App\Http\Controllers\Comercial\TreinamentoNrController as ComercialTreinamentoNrController;
-use App\Http\Controllers\FuncaoController;
 use App\Http\Controllers\PropostaPublicController;
-use App\Http\Controllers\TarefaController;
-use App\Http\Controllers\AnexoController;
 use App\Http\Controllers\StorageProxyController;
-use App\Models\Servico;
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Cliente\ClienteDashboardController;
-use App\Http\Controllers\Cliente\ClienteFuncionarioController;
-use Illuminate\Http\Request;
+use App\Http\Controllers\TarefaController;
 use App\Models\Cliente;
-use \App\Http\Controllers\Comercial\PropostaController;
-
+use App\Models\Servico;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 
 // ==================== Controllers ====================
-
 
 // Proposta pÃºblica (sem login)
 Route::get('/proposta/{token}', [PropostaPublicController::class, 'show'])
@@ -99,6 +97,7 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
         if ($papelNome === 'cliente') {
             if ($user->cliente_id) {
                 $request->session()->put('portal_cliente_id', $user->cliente_id);
+
                 return redirect()->route('cliente.dashboard');
             }
 
@@ -120,7 +119,7 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
     })->name('dashboard');
 
     // ---------- Perfil ----------
-    Route::get('/profile',  [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
@@ -153,7 +152,7 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
 
             Route::post('{tarefa}/observacao', [
                 PainelController::class,
-                'salvarObservacao'
+                'salvarObservacao',
             ])->name('observacao');
 
             Route::delete('{tarefa}', [PainelController::class, 'destroy'])
@@ -206,7 +205,6 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
             Route::delete('{anexo}', [AnexoController::class, 'destroy'])
                 ->name('destroy');
         });
-
 
         // ======================================================
         //  FUNCIONÃRIOS DO CLIENTE
@@ -414,14 +412,14 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
         )->name('treinamentos-nr.funcionarios.store');
 
         Route::post('funcoes', [FuncaoController::class, 'storefast']);
-      });
+    });
 
     // ======================================================
     //                  CLIENTE (PAINEL)
     // ======================================================
     $portalServicoPermitido = function (int $clienteId, string $servicoNome): bool {
         $cliente = Cliente::find($clienteId);
-        if (!$cliente) {
+        if (! $cliente) {
             return false;
         }
 
@@ -429,7 +427,7 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
             ->where('nome', $servicoNome)
             ->value('id');
 
-        if (!$servicoId) {
+        if (! $servicoId) {
             return false;
         }
 
@@ -446,7 +444,7 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
             })
             ->first();
 
-        if (!$contrato) {
+        if (! $contrato) {
             return false;
         }
 
@@ -466,6 +464,7 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
     };
     $portalClienteAtual = function (): Cliente {
         $clienteId = (int) session('portal_cliente_id');
+
         return Cliente::findOrFail($clienteId);
     };
     Route::prefix('cliente')
@@ -541,7 +540,7 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
                     Route::get('/aso', function () use ($portalServicoPermitido, $portalClienteAtual) {
                         $cliente = $portalClienteAtual();
 
-                        if (!$portalServicoPermitido($cliente->id, 'ASO')) {
+                        if (! $portalServicoPermitido($cliente->id, 'ASO')) {
                             return redirect()
                                 ->route('cliente.dashboard')
                                 ->with('error', 'Servico ASO nao disponivel no contrato ativo.');
@@ -549,14 +548,14 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
 
                         return redirect()->route('operacional.kanban.aso.create', [
                             'cliente' => $cliente,
-                            'origem'  => 'cliente',
+                            'origem' => 'cliente',
                         ]);
                     })->name('aso');
 
                     Route::get('/pgr', function () use ($portalServicoPermitido, $portalClienteAtual) {
                         $cliente = $portalClienteAtual();
 
-                        if (!$portalServicoPermitido($cliente->id, 'PGR')) {
+                        if (! $portalServicoPermitido($cliente->id, 'PGR')) {
                             return redirect()
                                 ->route('cliente.dashboard')
                                 ->with('error', 'Servico PGR nao disponivel no contrato ativo.');
@@ -564,14 +563,14 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
 
                         return redirect()->route('operacional.kanban.pgr.tipo', [
                             'cliente' => $cliente->id,
-                            'origem'  => 'cliente'
+                            'origem' => 'cliente',
                         ]);
                     })->name('pgr');
 
                     Route::get('/pcmso', function () use ($portalServicoPermitido, $portalClienteAtual) {
                         $cliente = $portalClienteAtual();
 
-                        if (!$portalServicoPermitido($cliente->id, 'PCMSO')) {
+                        if (! $portalServicoPermitido($cliente->id, 'PCMSO')) {
                             return redirect()
                                 ->route('cliente.dashboard')
                                 ->with('error', 'Servico PCMSO nao disponivel no contrato ativo.');
@@ -579,14 +578,14 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
 
                         return redirect()->route('operacional.pcmso.tipo', [
                             'cliente' => $cliente,
-                            'origem'  => 'cliente',
+                            'origem' => 'cliente',
                         ]);
                     })->name('pcmso');
 
                     Route::get('/ltcat', function () use ($portalServicoPermitido, $portalClienteAtual) {
                         $cliente = $portalClienteAtual();
 
-                        if (!$portalServicoPermitido($cliente->id, 'LTCAT')) {
+                        if (! $portalServicoPermitido($cliente->id, 'LTCAT')) {
                             return redirect()
                                 ->route('cliente.dashboard')
                                 ->with('error', 'Servico LTCAT nao disponivel no contrato ativo.');
@@ -594,14 +593,14 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
 
                         return redirect()->route('operacional.ltcat.tipo', [
                             'cliente' => $cliente->id,
-                            'origem'  => 'cliente',
+                            'origem' => 'cliente',
                         ]);
                     })->name('ltcat');
 
                     Route::get('/apr', function () use ($portalServicoPermitido, $portalClienteAtual) {
                         $cliente = $portalClienteAtual();
 
-                        if (!$portalServicoPermitido($cliente->id, 'APR')) {
+                        if (! $portalServicoPermitido($cliente->id, 'APR')) {
                             return redirect()
                                 ->route('cliente.dashboard')
                                 ->with('error', 'Servico APR nao disponivel no contrato ativo.');
@@ -609,14 +608,14 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
 
                         return redirect()->route('operacional.apr.create', [
                             'cliente' => $cliente->id,
-                            'origem'  => 'cliente',
+                            'origem' => 'cliente',
                         ]);
                     })->name('apr');
 
                     Route::get('/treinamentos', function () use ($portalServicoPermitido, $portalClienteAtual) {
                         $cliente = $portalClienteAtual();
 
-                        if (!$portalServicoPermitido($cliente->id, 'Treinamentos NRs')) {
+                        if (! $portalServicoPermitido($cliente->id, 'Treinamentos NRs')) {
                             return redirect()
                                 ->route('cliente.dashboard')
                                 ->with('error', 'Servico Treinamentos NRs nao disponivel no contrato ativo.');
@@ -624,13 +623,12 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
 
                         return redirect()->route('operacional.treinamentos-nr.create', [
                             'cliente' => $cliente->id,
-                            'origem'  => 'cliente',
+                            'origem' => 'cliente',
                         ]);
                     })->name('treinamentos');
                 });
 
-    });
-
+        });
 
     Route::middleware(['auth'])
         ->prefix('comercial')
@@ -788,14 +786,14 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
 
             // Clientes (acesso comercial)
             Route::prefix('clientes')->name('clientes.')->group(function () {
-                Route::get('/',               [ClienteController::class, 'index'])->name('index');
-                Route::get('/create',         [ClienteController::class, 'create'])->name('create');
-                Route::post('/',              [ClienteController::class, 'store'])->name('store');
+                Route::get('/', [ClienteController::class, 'index'])->name('index');
+                Route::get('/create', [ClienteController::class, 'create'])->name('create');
+                Route::post('/', [ClienteController::class, 'store'])->name('store');
                 Route::get('/{cliente}/contrato-dinamico', [ClienteController::class, 'abrirContratoDinamico'])->name('contrato-dinamico');
-                Route::get('/{cliente}',      [ClienteController::class, 'show'])->name('show');
+                Route::get('/{cliente}', [ClienteController::class, 'show'])->name('show');
                 Route::get('/{cliente}/edit', [ClienteController::class, 'edit'])->name('edit');
-                Route::put('/{cliente}',      [ClienteController::class, 'update'])->name('update');
-                Route::delete('/{cliente}',   [ClienteController::class, 'destroy'])->name('destroy');
+                Route::put('/{cliente}', [ClienteController::class, 'update'])->name('update');
+                Route::delete('/{cliente}', [ClienteController::class, 'destroy'])->name('destroy');
                 Route::post('/{cliente}/parametros', [\App\Http\Controllers\ClienteParametroController::class, 'save'])
                     ->name('parametros.save');
                 Route::post('/{cliente}/parametros/pagamento', [\App\Http\Controllers\ClienteParametroController::class, 'savePagamento'])
@@ -842,7 +840,7 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
                     ->name('mover');
             });
 
-            //tabela de preco
+            // tabela de preco
             Route::name('tabela-precos.')->group(function () {
                 Route::get('/tabela-precos', [TabelaPrecoController::class, 'itensIndex'])
                     ->name('index');
@@ -852,7 +850,7 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
                 Route::post('/tabela-precos/desconto-proposta-rapida', [TabelaPrecoController::class, 'updateDescontoRapido'])
                     ->name('desconto-proposta-rapida');
 
-                //tabela de preco ITENS
+                // tabela de preco ITENS
                 Route::prefix('itens')->name('itens.')->group(function () {
                     Route::get('/', [TabelaPrecoController::class, 'itensIndex'])->name('index');
                     Route::get('/novo', [TabelaPrecoController::class, 'createItem'])->name('create');
@@ -862,7 +860,7 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
                 });
             });
 
-            //Esocial
+            // Esocial
             Route::prefix('esocial/faixas')->name('esocial.faixas.')->group(function () {
                 Route::get('/', [EsocialFaixaController::class, 'indexJson'])
                     ->name('json');
@@ -874,7 +872,7 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
                     ->name('destroy');
             });
 
-            //Treinamento NRs
+            // Treinamento NRs
             Route::name('treinamentos-nrs.')->group(function () {
                 Route::get('/treinamentos-nrs.json', [ComercialTreinamentoNrController::class, 'indexJson'])
                     ->name('json');
@@ -886,7 +884,7 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
                     ->name('destroy');
             });
 
-            //Exames
+            // Exames
             Route::prefix('exames')->name('exames.')->group(function () {
                 Route::get('/', [ExamesTabPrecoController::class, 'indexJson'])
                     ->name('indexJson');
@@ -979,12 +977,12 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
 
             // Agenda Comercial
             Route::prefix('agenda')->name('agenda.')->group(function () {
-            Route::get('/', [\App\Http\Controllers\Comercial\AgendaController::class, 'index'])->name('index');
-            Route::post('/', [\App\Http\Controllers\Comercial\AgendaController::class, 'store'])->name('store');
-            Route::put('/{tarefa}', [\App\Http\Controllers\Comercial\AgendaController::class, 'update'])->name('update');
-            Route::patch('/{tarefa}/concluir', [\App\Http\Controllers\Comercial\AgendaController::class, 'concluir'])->name('concluir');
-            Route::delete('/{tarefa}', [\App\Http\Controllers\Comercial\AgendaController::class, 'destroy'])->name('destroy');
-        });
+                Route::get('/', [\App\Http\Controllers\Comercial\AgendaController::class, 'index'])->name('index');
+                Route::post('/', [\App\Http\Controllers\Comercial\AgendaController::class, 'store'])->name('store');
+                Route::put('/{tarefa}', [\App\Http\Controllers\Comercial\AgendaController::class, 'update'])->name('update');
+                Route::patch('/{tarefa}/concluir', [\App\Http\Controllers\Comercial\AgendaController::class, 'concluir'])->name('concluir');
+                Route::delete('/{tarefa}', [\App\Http\Controllers\Comercial\AgendaController::class, 'destroy'])->name('destroy');
+            });
         });
 
     // Financeiro (somente view/UI)
@@ -1068,19 +1066,18 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
                 ->name('contas-pagar.itens.store');
         });
 
-
     // ======================================================
     //                  CLIENTES (CRUD)
     // ======================================================
     Route::prefix('master/clientes')->name('clientes.')->group(function () {
-        Route::get('/',               [ClienteController::class, 'index'])->name('index');
-        Route::get('/create',         [ClienteController::class, 'create'])->name('create');
-        Route::post('/',              [ClienteController::class, 'store'])->name('store');
+        Route::get('/', [ClienteController::class, 'index'])->name('index');
+        Route::get('/create', [ClienteController::class, 'create'])->name('create');
+        Route::post('/', [ClienteController::class, 'store'])->name('store');
         Route::get('/{cliente}/contrato-dinamico', [ClienteController::class, 'abrirContratoDinamico'])->name('contrato-dinamico');
-        Route::get('/{cliente}',      [ClienteController::class, 'show'])->name('show');
+        Route::get('/{cliente}', [ClienteController::class, 'show'])->name('show');
         Route::get('/{cliente}/edit', [ClienteController::class, 'edit'])->name('edit');
-        Route::put('/{cliente}',      [ClienteController::class, 'update'])->name('update');
-        Route::delete('/{cliente}',   [ClienteController::class, 'destroy'])->name('destroy');
+        Route::put('/{cliente}', [ClienteController::class, 'update'])->name('update');
+        Route::delete('/{cliente}', [ClienteController::class, 'destroy'])->name('destroy');
         Route::post('/{cliente}/parametros', [\App\Http\Controllers\ClienteParametroController::class, 'save'])
             ->name('parametros.save');
         Route::post('/{cliente}/parametros/pagamento', [\App\Http\Controllers\ClienteParametroController::class, 'savePagamento'])
@@ -1114,7 +1111,7 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
     // ======================================================
     //                     MASTER
     // ======================================================
-        Route::prefix('master')->name('master.')->group(function () {
+    Route::prefix('master')->name('master.')->group(function () {
 
         // Dashboard Master
         Route::get('/', [DashboardMaster::class, 'index'])->name('dashboard');
@@ -1200,7 +1197,7 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
         // PapÃ©is
         Route::resource('papeis', PapelController::class)
             ->parameters(['papeis' => 'papel'])
-            ->only(['index','store','update','destroy']);
+            ->only(['index', 'store', 'update', 'destroy']);
 
         Route::post('papeis/{papel}/permissoes', [PapelController::class, 'syncPermissoes'])
             ->name('papeis.permissoes.sync');
@@ -1208,7 +1205,7 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
         // PermissÃµes
         Route::resource('permissoes', PermissaoController::class)
             ->parameters(['permissoes' => 'permissao'])
-            ->only(['index','store','update','destroy']);
+            ->only(['index', 'store', 'update', 'destroy']);
 
         // UsuÃ¡rios
         Route::prefix('usuarios')->name('usuarios.')->group(function () {
@@ -1355,14 +1352,14 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
     // ======================================================
     //                TABELA DE PREÃ‡OS
     // ======================================================
-//    Route::prefix('master/tabela-precos')->name('tabela-precos.')->group(function () {
-//        Route::get('/', [TabelaPrecoController::class,'index'])->name('index');
-//
-//        Route::post('/itens',                 [TabelaPrecoItemController::class,'store'])->name('items.store');
-//        Route::put('/itens/{item}',           [TabelaPrecoItemController::class,'update'])->name('items.update');
-//        Route::patch('/itens/{item}/toggle',  [TabelaPrecoItemController::class,'toggle'])->name('items.toggle');
-//        Route::delete('/itens/{item}',        [TabelaPrecoItemController::class,'destroy'])->name('items.destroy');
-//    });
+    //    Route::prefix('master/tabela-precos')->name('tabela-precos.')->group(function () {
+    //        Route::get('/', [TabelaPrecoController::class,'index'])->name('index');
+    //
+    //        Route::post('/itens',                 [TabelaPrecoItemController::class,'store'])->name('items.store');
+    //        Route::put('/itens/{item}',           [TabelaPrecoItemController::class,'update'])->name('items.update');
+    //        Route::patch('/itens/{item}/toggle',  [TabelaPrecoItemController::class,'toggle'])->name('items.toggle');
+    //        Route::delete('/itens/{item}',        [TabelaPrecoItemController::class,'destroy'])->name('items.destroy');
+    //    });
 
     // ======================================================
     //                    APIs internas
@@ -1381,6 +1378,12 @@ Route::get('d/{token}', [TarefaController::class, 'downloadDocumento'])
 
 Route::get('p/{token}', [TarefaController::class, 'downloadPacotePublicoPorToken'])
     ->name('public.pacote');
+
+Route::get('a/{token}', [AnexoController::class, 'downloadPublico'])
+    ->name('public.anexo');
+
+Route::get('g/{token}', [PcmsoController::class, 'downloadPgrPublico'])
+    ->name('public.pcmso-pgr');
 
 Route::get('operacional/tarefas/{tarefa}/pacote', [TarefaController::class, 'downloadPacotePublico'])
     ->middleware('signed')
