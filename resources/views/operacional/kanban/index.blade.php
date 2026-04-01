@@ -1701,10 +1701,6 @@
                             5. DOCUMENTO FINAL DA TAREFA
                         </h3>
 
-                        <p id="modal-arquivo-descricao" class="text-[12px] text-emerald-800 mb-2">
-                            Documento principal da tarefa.
-                        </p>
-
                         <p id="modal-arquivo-status" class="text-[12px] text-emerald-900 font-semibold mb-2">
                             Documento final ainda não anexado.
                         </p>
@@ -1720,21 +1716,20 @@
                                  hover:text-emerald-900 underline hidden">
                             📎 Visualizar documento final
                         </a>
-                        <div class="mt-3 flex flex-col gap-2">
+                        <div
+                            id="modal-arquivo-dropzone"
+                            class="mt-3 rounded-2xl border-2 border-dashed border-emerald-300 bg-white/80 px-5 py-6 text-center transition cursor-pointer hover:bg-emerald-50"
+                        >
                             <input
                                 type="file"
                                 id="modal-arquivo-replace-input"
                                 class="hidden"
                                 accept=".pdf,.jpg,.jpeg,.png"
                             >
-                            <button
-                                type="button"
-                                id="modal-arquivo-replace-btn"
-                                class="inline-flex items-center justify-center px-3 py-2 rounded-lg
-                                   border border-emerald-200 bg-white text-emerald-700 text-xs font-semibold
-                                   hover:bg-emerald-50 transition">
-                                Anexar documento
-                            </button>
+                            <div class="flex flex-col items-center gap-2 text-emerald-700">
+                                <span class="text-sm font-semibold" id="modal-arquivo-dropzone-title">Arraste o arquivo aqui</span>
+                                <span class="text-[11px] text-emerald-800/90">ou clique para selecionar e anexar imediatamente</span>
+                            </div>
                             <p id="modal-arquivo-impacto" class="text-[11px] text-emerald-700/90">
                                 Disponivel para o cliente apos o envio.
                             </p>
@@ -1749,21 +1744,20 @@
                                class="inline-flex items-center gap-2 text-xs font-semibold text-emerald-700 hover:text-emerald-900 underline hidden">
                                 📎 Visualizar documento complementar
                             </a>
-                            <div class="mt-3 flex flex-col gap-2">
+                            <div
+                                id="modal-arquivo-complementar-dropzone"
+                                class="mt-3 rounded-2xl border-2 border-dashed border-emerald-300 bg-white/80 px-5 py-6 text-center transition cursor-pointer hover:bg-emerald-50"
+                            >
                                 <input
                                     type="file"
                                     id="modal-arquivo-complementar-input"
                                     class="hidden"
                                     accept=".pdf,.jpg,.jpeg,.png"
                                 >
-                                <button
-                                    type="button"
-                                    id="modal-arquivo-complementar-btn"
-                                    class="inline-flex items-center justify-center px-3 py-2 rounded-lg
-                                       border border-emerald-200 bg-white text-emerald-700 text-xs font-semibold
-                                       hover:bg-emerald-50 transition">
-                                    Anexar documento complementar
-                                </button>
+                                <div class="flex flex-col items-center gap-2 text-emerald-700">
+                                    <span class="text-sm font-semibold" id="modal-arquivo-complementar-dropzone-title">Arraste o PCMSO aqui</span>
+                                    <span class="text-[11px] text-emerald-800/90">ou clique para selecionar e anexar imediatamente</span>
+                                </div>
                             </div>
                         </div>
                         <div id="modal-arquivo-art-wrapper" class="mt-4 hidden border-t border-emerald-100 pt-4">
@@ -1776,32 +1770,31 @@
                                class="inline-flex items-center gap-2 text-xs font-semibold text-emerald-700 hover:text-emerald-900 underline hidden">
                                 📎 Visualizar ART
                             </a>
-                            <div class="mt-3 flex flex-col gap-2">
+                            <div
+                                id="modal-arquivo-art-dropzone"
+                                class="mt-3 rounded-2xl border-2 border-dashed border-emerald-300 bg-white/80 px-5 py-6 text-center transition cursor-pointer hover:bg-emerald-50"
+                            >
                                 <input
                                     type="file"
                                     id="modal-arquivo-art-input"
                                     class="hidden"
                                     accept=".pdf,.jpg,.jpeg,.png"
                                 >
-                                <button
-                                    type="button"
-                                    id="modal-arquivo-art-btn"
-                                    class="inline-flex items-center justify-center px-3 py-2 rounded-lg
-                                       border border-emerald-200 bg-white text-emerald-700 text-xs font-semibold
-                                       hover:bg-emerald-50 transition">
-                                    Anexar ART
-                                </button>
+                                <div class="flex flex-col items-center gap-2 text-emerald-700">
+                                    <span class="text-sm font-semibold" id="modal-arquivo-art-dropzone-title">Arraste a ART aqui</span>
+                                    <span class="text-[11px] text-emerald-800/90">ou clique para selecionar e anexar imediatamente</span>
+                                </div>
                             </div>
                         </div>
                     </section>
                     {{-- 5b. Documentos da tarefa (ASO, PGR, PCMSO etc) --}}
                     <section id="modal-docs-wrapper"
-                             class="bg-slate-50 border border-slate-200 rounded-xl p-4 mt-3 hidden">
-                        <h3 class="text-xs font-semibold text-slate-500 mb-2">
+                             class="bg-sky-50 border border-sky-200 rounded-xl p-4 mt-3 hidden">
+                        <h3 class="text-xs font-semibold text-sky-700 mb-2">
                             DOCUMENTOS DA TAREFA
                         </h3>
 
-                        <p class="text-[12px] text-slate-600 mb-2">
+                        <p class="text-[12px] text-sky-800/90 mb-2">
                             Lista de documentos anexados à tarefa (ASO, PGR, PCMSO, etc).
                         </p>
 
@@ -1829,21 +1822,11 @@
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 16V4m0 0l-4 4m4-4l4 4M4 16.5v1.25A2.25 2.25 0 0 0 6.25 20h11.5A2.25 2.25 0 0 0 20 17.75V16.5" />
                                 </svg>
-                                <div class="text-sm font-semibold">Arraste os certificados aqui</div>
-                                <div class="text-xs text-amber-600/80">ou clique para selecionar varios arquivos</div>
+                                <div class="text-sm font-semibold" id="modal-certificados-dropzone-title">Arraste os certificados aqui</div>
+                                <div class="text-xs text-amber-600/80">ou clique para selecionar varios arquivos e anexar imediatamente</div>
                             </div>
                         </div>
                         <ul id="modal-certificados-file-list" class="mt-3 space-y-1 text-xs text-amber-900 hidden"></ul>
-                        <div class="mt-3 flex justify-end">
-                            <button
-                                type="button"
-                                id="modal-certificados-upload-btn"
-                                class="inline-flex items-center justify-center px-3 py-2 rounded-lg
-                                   border border-amber-200 bg-white text-amber-700 text-xs font-semibold
-                                   hover:bg-amber-50 transition">
-                                Enviar certificados
-                            </button>
-                        </div>
                     </section>
 
                     {{-- 6. Adicionar observação interna --}}
@@ -2125,8 +2108,8 @@
             const certificadosWrapper = document.getElementById('modal-certificados-wrapper');
             const certificadosStatus = document.getElementById('modal-certificados-status');
             const certificadosInput = document.getElementById('modal-certificados-input');
-            const certificadosUploadBtn = document.getElementById('modal-certificados-upload-btn');
             const certificadosDropzone = document.getElementById('modal-certificados-dropzone');
+            const certificadosDropzoneTitle = document.getElementById('modal-certificados-dropzone-title');
             const certificadosFileList = document.getElementById('modal-certificados-file-list');
             const finalizarBtn = document.getElementById('modal-finalizar-btn');
             const reprecificarBtn = document.getElementById('modal-reprecificar-btn');
@@ -2171,17 +2154,20 @@
             const arquivoLink = document.getElementById('modal-arquivo-link');
             const btnNotificarCliente = document.getElementById('btn-notificar-cliente');
             const arquivoReplaceInput = document.getElementById('modal-arquivo-replace-input');
-            const arquivoReplaceBtn = document.getElementById('modal-arquivo-replace-btn');
+            const arquivoDropzone = document.getElementById('modal-arquivo-dropzone');
+            const arquivoDropzoneTitle = document.getElementById('modal-arquivo-dropzone-title');
             const arquivoComplementarWrapper = document.getElementById('modal-arquivo-complementar-wrapper');
             const arquivoComplementarStatus = document.getElementById('modal-arquivo-complementar-status');
             const arquivoComplementarLink = document.getElementById('modal-arquivo-complementar-link');
             const arquivoComplementarInput = document.getElementById('modal-arquivo-complementar-input');
-            const arquivoComplementarBtn = document.getElementById('modal-arquivo-complementar-btn');
+            const arquivoComplementarDropzone = document.getElementById('modal-arquivo-complementar-dropzone');
+            const arquivoComplementarDropzoneTitle = document.getElementById('modal-arquivo-complementar-dropzone-title');
             const arquivoArtWrapper = document.getElementById('modal-arquivo-art-wrapper');
             const arquivoArtStatus = document.getElementById('modal-arquivo-art-status');
             const arquivoArtLink = document.getElementById('modal-arquivo-art-link');
             const arquivoArtInput = document.getElementById('modal-arquivo-art-input');
-            const arquivoArtBtn = document.getElementById('modal-arquivo-art-btn');
+            const arquivoArtDropzone = document.getElementById('modal-arquivo-art-dropzone');
+            const arquivoArtDropzoneTitle = document.getElementById('modal-arquivo-art-dropzone-title');
             const arquivoDescricao = document.getElementById('modal-arquivo-descricao');
             const arquivoStatus = document.getElementById('modal-arquivo-status');
             const arquivoAjuda = document.getElementById('modal-arquivo-ajuda');
@@ -2226,6 +2212,95 @@
                     return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
                 }
                 return raw || '—';
+            }
+
+            function setDropzoneHighlight(element, active) {
+                if (!element) return;
+                element.classList.toggle('border-emerald-500', active);
+                element.classList.toggle('bg-emerald-100/70', active);
+            }
+
+            function bindImmediateUploadDropzone(dropzone, input, uploadHandler) {
+                if (!dropzone || !input) return;
+
+                dropzone.addEventListener('click', function () {
+                    if (dropzone.classList.contains('cursor-not-allowed')) return;
+                    input.value = '';
+                    input.click();
+                });
+
+                dropzone.addEventListener('dragover', function (event) {
+                    event.preventDefault();
+                    if (dropzone.classList.contains('cursor-not-allowed')) return;
+                    setDropzoneHighlight(dropzone, true);
+                });
+
+                dropzone.addEventListener('dragleave', function (event) {
+                    event.preventDefault();
+                    setDropzoneHighlight(dropzone, false);
+                });
+
+                dropzone.addEventListener('drop', function (event) {
+                    event.preventDefault();
+                    setDropzoneHighlight(dropzone, false);
+                    if (dropzone.classList.contains('cursor-not-allowed')) return;
+
+                    const file = event.dataTransfer?.files?.[0];
+                    if (!file) return;
+                    uploadHandler(file);
+                });
+
+                input.addEventListener('change', function () {
+                    const file = input.files?.[0];
+                    if (!file) return;
+                    uploadHandler(file);
+                });
+            }
+
+            function updateCardAnexosDataset(mutator) {
+                if (!detalhesCurrentCard || typeof mutator !== 'function') return;
+
+                let anexos = [];
+                try {
+                    anexos = detalhesCurrentCard.dataset.anexos
+                        ? JSON.parse(detalhesCurrentCard.dataset.anexos)
+                        : [];
+                } catch (error) {
+                    anexos = [];
+                }
+
+                const next = mutator(Array.isArray(anexos) ? anexos : []);
+                detalhesCurrentCard.dataset.anexos = JSON.stringify(Array.isArray(next) ? next : anexos);
+            }
+
+            function upsertAnexoNaTarefa(anexo) {
+                if (!anexo?.servico) return;
+
+                const servico = String(anexo.servico).toLowerCase();
+                updateCardAnexosDataset((anexos) => {
+                    const filtrados = anexos.filter((item) => String(item?.servico || '').toLowerCase() !== servico);
+                    filtrados.push(anexo);
+                    return filtrados;
+                });
+            }
+
+            function appendAnexosNaTarefa(anexosNovos) {
+                const itens = Array.isArray(anexosNovos) ? anexosNovos.filter(Boolean) : [];
+                if (!itens.length) return;
+
+                updateCardAnexosDataset((anexos) => {
+                    const existentes = Array.isArray(anexos) ? [...anexos] : [];
+                    const ids = new Set(existentes.map((item) => String(item?.id || '')));
+
+                    itens.forEach((item) => {
+                        const id = String(item?.id || '');
+                        if (id && ids.has(id)) return;
+                        existentes.push(item);
+                        if (id) ids.add(id);
+                    });
+
+                    return existentes;
+                });
             }
 
             function collectWhatsappLinks(card, fallbackDocumentoUrl = '') {
@@ -2564,9 +2639,11 @@
                                     ? 'PGR: Documento anexado.'
                                     : 'Documento final anexado.';
                             }
-                            if (arquivoReplaceBtn) {
-                                arquivoReplaceBtn.textContent = isPgrComPcmso ? 'Atualizar PGR' : 'Enviar nova versão';
-                                arquivoReplaceBtn.title = isPgrComPcmso
+                            if (arquivoDropzoneTitle) {
+                                arquivoDropzoneTitle.textContent = isPgrComPcmso ? 'Arraste um novo PGR aqui' : 'Arraste uma nova versão aqui';
+                            }
+                            if (arquivoDropzone) {
+                                arquivoDropzone.title = isPgrComPcmso
                                     ? 'Substitui o documento final do PGR'
                                     : 'Substitui o documento final atual da tarefa';
                             }
@@ -2584,9 +2661,11 @@
                                     ? 'PGR: Documento ainda não anexado.'
                                     : 'Documento final ainda não anexado.';
                             }
-                            if (arquivoReplaceBtn) {
-                                arquivoReplaceBtn.textContent = isPgrComPcmso ? 'Anexar PGR' : 'Anexar documento';
-                                arquivoReplaceBtn.title = isPgrComPcmso
+                            if (arquivoDropzoneTitle) {
+                                arquivoDropzoneTitle.textContent = isPgrComPcmso ? 'Arraste o PGR aqui' : 'Arraste o documento aqui';
+                            }
+                            if (arquivoDropzone) {
+                                arquivoDropzone.title = isPgrComPcmso
                                     ? 'Anexar o documento final do PGR'
                                     : 'Anexar o documento final da tarefa';
                             }
@@ -2597,7 +2676,7 @@
                             }
                         }
 
-                        if (arquivoComplementarWrapper && arquivoComplementarStatus && arquivoComplementarLink && arquivoComplementarBtn) {
+                        if (arquivoComplementarWrapper && arquivoComplementarStatus && arquivoComplementarLink) {
                             if (isPgrComPcmso) {
                                 arquivoComplementarWrapper.classList.remove('hidden');
 
@@ -2605,14 +2684,22 @@
                                     arquivoComplementarLink.href = urlComplementar;
                                     arquivoComplementarLink.classList.remove('hidden');
                                     arquivoComplementarStatus.textContent = 'PCMSO: Documento anexado.';
-                                    arquivoComplementarBtn.textContent = 'Atualizar PCMSO';
-                                    arquivoComplementarBtn.title = 'Substitui o documento final do PCMSO';
+                                    if (arquivoComplementarDropzoneTitle) {
+                                        arquivoComplementarDropzoneTitle.textContent = 'Arraste um novo PCMSO aqui';
+                                    }
+                                    if (arquivoComplementarDropzone) {
+                                        arquivoComplementarDropzone.title = 'Substitui o documento final do PCMSO';
+                                    }
                                 } else {
                                     arquivoComplementarLink.href = '#';
                                     arquivoComplementarLink.classList.add('hidden');
                                     arquivoComplementarStatus.textContent = 'PCMSO: Documento ainda não anexado.';
-                                    arquivoComplementarBtn.textContent = 'Anexar PCMSO';
-                                    arquivoComplementarBtn.title = 'Anexar o documento final do PCMSO';
+                                    if (arquivoComplementarDropzoneTitle) {
+                                        arquivoComplementarDropzoneTitle.textContent = 'Arraste o PCMSO aqui';
+                                    }
+                                    if (arquivoComplementarDropzone) {
+                                        arquivoComplementarDropzone.title = 'Anexar o documento final do PCMSO';
+                                    }
                                 }
                             } else {
                                 arquivoComplementarWrapper.classList.add('hidden');
@@ -2622,7 +2709,7 @@
                             }
                         }
 
-                        if (arquivoArtWrapper && arquivoArtStatus && arquivoArtLink && arquivoArtBtn) {
+                        if (arquivoArtWrapper && arquivoArtStatus && arquivoArtLink) {
                             if (isPgrComPcmso && requerArt) {
                                 arquivoArtWrapper.classList.remove('hidden');
 
@@ -2630,14 +2717,22 @@
                                     arquivoArtLink.href = urlArt;
                                     arquivoArtLink.classList.remove('hidden');
                                     arquivoArtStatus.textContent = 'ART: Documento anexado.';
-                                    arquivoArtBtn.textContent = 'Atualizar ART';
-                                    arquivoArtBtn.title = 'Substitui o documento final da ART';
+                                    if (arquivoArtDropzoneTitle) {
+                                        arquivoArtDropzoneTitle.textContent = 'Arraste uma nova ART aqui';
+                                    }
+                                    if (arquivoArtDropzone) {
+                                        arquivoArtDropzone.title = 'Substitui o documento final da ART';
+                                    }
                                 } else {
                                     arquivoArtLink.href = '#';
                                     arquivoArtLink.classList.add('hidden');
                                     arquivoArtStatus.textContent = 'ART: Documento ainda não anexado.';
-                                    arquivoArtBtn.textContent = 'Anexar ART';
-                                    arquivoArtBtn.title = 'Anexar o documento final da ART';
+                                    if (arquivoArtDropzoneTitle) {
+                                        arquivoArtDropzoneTitle.textContent = 'Arraste a ART aqui';
+                                    }
+                                    if (arquivoArtDropzone) {
+                                        arquivoArtDropzone.title = 'Anexar o documento final da ART';
+                                    }
                                 }
                             } else {
                                 arquivoArtWrapper.classList.add('hidden');
@@ -2645,10 +2740,6 @@
                                 arquivoArtLink.classList.add('hidden');
                                 arquivoArtStatus.textContent = 'Status: ART ainda não anexada.';
                             }
-                        }
-
-                        if (arquivoAjuda && isAsoTask && totalCertificados > 0 && !temDocumentoFinal) {
-                            arquivoAjuda.textContent += ' Após anexar o documento final do ASO, os certificados de treinamento serão liberados abaixo.';
                         }
 
                         if (arquivoStatus && isAsoTask && totalCertificados > 0 && temDocumentoFinal) {
@@ -2774,7 +2865,8 @@
                                                 class="rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] font-semibold text-rose-700 hover:bg-rose-100"
                                                 data-doc-delete-url="${a.delete_url}"
                                                 data-doc-id="${a.id || ''}"
-                                                data-doc-kind="${a.kind || 'anexo'}">
+                                                data-doc-kind="${a.kind || 'anexo'}"
+                                                data-doc-service="${a.servico || ''}">
                                                 Excluir
                                             </button>
                                         ` : ''}
@@ -2793,37 +2885,29 @@
                     const pendentes = card.dataset.certificadosPendentes === '1';
                     const isAso = card.dataset.isAso === '1';
                     const isTreinamentoTask = card.dataset.isTreinamentoTask === '1';
-                    const temDocumentoAso = !!card.dataset.arquivoClienteUrl;
 
                     if ((isAso || isTreinamentoTask) && total > 0) {
                         certificadosWrapper.classList.remove('hidden');
-                        if (certificadosUploadBtn) {
-                            const bloqueado = isAso && !temDocumentoAso;
-                            certificadosUploadBtn.disabled = bloqueado;
-                            certificadosUploadBtn.classList.toggle('opacity-60', bloqueado);
-                            certificadosUploadBtn.classList.toggle('cursor-not-allowed', bloqueado);
-                            if (certificadosDropzone) {
-                                certificadosDropzone.classList.toggle('opacity-60', bloqueado);
-                                certificadosDropzone.classList.toggle('cursor-not-allowed', bloqueado);
-                            }
+                        if (certificadosDropzone) {
+                            certificadosDropzone.classList.remove('opacity-60', 'cursor-not-allowed');
                         }
 
-                        if (isAso && !temDocumentoAso) {
-                            certificadosStatus.textContent = `Esta tarefa espera ${total} certificado(s). Anexe primeiro o documento final do ASO para liberar o envio.`;
-                        } else {
-                            certificadosStatus.textContent = pendentes
-                                ? `Aguardando certificados: ${enviados}/${total}.`
-                                : `Certificados concluídos: ${enviados}/${total}.`;
+                        certificadosStatus.textContent = pendentes
+                            ? `Aguardando certificados: ${enviados}/${total}.`
+                            : `Certificados concluídos: ${enviados}/${total}.`;
+                        if (certificadosDropzoneTitle) {
+                            certificadosDropzoneTitle.textContent = pendentes
+                                ? 'Arraste os certificados que faltam aqui'
+                                : 'Arraste mais certificados aqui';
                         }
                     } else {
                         certificadosWrapper.classList.add('hidden');
                         certificadosStatus.textContent = '—';
-                        if (certificadosUploadBtn) {
-                            certificadosUploadBtn.disabled = false;
-                            certificadosUploadBtn.classList.remove('opacity-60', 'cursor-not-allowed');
-                            if (certificadosDropzone) {
-                                certificadosDropzone.classList.remove('opacity-60', 'cursor-not-allowed');
-                            }
+                        if (certificadosDropzoneTitle) {
+                            certificadosDropzoneTitle.textContent = 'Arraste os certificados aqui';
+                        }
+                        if (certificadosDropzone) {
+                            certificadosDropzone.classList.remove('opacity-60', 'cursor-not-allowed');
                         }
                     }
                 }
@@ -3959,6 +4043,10 @@
 
                         if (data.documento_url) {
                             detalhesCurrentCard.dataset.pcmsoPgrUrl = data.documento_url;
+                            if (data.delete_url) {
+                                detalhesCurrentCard.dataset.pcmsoPgrDeleteUrl = data.delete_url;
+                            }
+                            upsertAnexoNaTarefa(data.anexo);
                             openDetalhesModal(detalhesCurrentCard);
                         }
 
@@ -4025,6 +4113,10 @@
 
                         if (data.documento_url) {
                             detalhesCurrentCard.dataset.artPgrUrl = data.documento_url;
+                            if (data.delete_url) {
+                                detalhesCurrentCard.dataset.artPgrDeleteUrl = data.delete_url;
+                            }
+                            upsertAnexoNaTarefa(data.anexo);
                             openDetalhesModal(detalhesCurrentCard);
                         }
 
@@ -4088,6 +4180,7 @@
                         detalhesCurrentCard.dataset.certificadosEnviados = String(enviados);
                         detalhesCurrentCard.dataset.certificadosTotal = String(total);
                         detalhesCurrentCard.dataset.certificadosPendentes = cert.pendente ? '1' : '0';
+                        appendAnexosNaTarefa(data.anexos || []);
                         if (data.status_label) {
                             detalhesCurrentCard.dataset.status = String(data.status_label);
                         }
@@ -4106,46 +4199,9 @@
                     });
             }
 
-            if (arquivoReplaceBtn && arquivoReplaceInput) {
-                arquivoReplaceBtn.addEventListener('click', function () {
-                    if (arquivoReplaceInput) {
-                        arquivoReplaceInput.value = '';
-                        arquivoReplaceInput.click();
-                    }
-                });
-
-                arquivoReplaceInput.addEventListener('change', function () {
-                    const file = arquivoReplaceInput.files?.[0];
-                    if (!file) return;
-                    uploadDocumentoClienteTemporario(file);
-                });
-            }
-
-            if (arquivoComplementarBtn && arquivoComplementarInput) {
-                arquivoComplementarBtn.addEventListener('click', function () {
-                    arquivoComplementarInput.value = '';
-                    arquivoComplementarInput.click();
-                });
-
-                arquivoComplementarInput.addEventListener('change', function () {
-                    const file = arquivoComplementarInput.files?.[0];
-                    if (!file) return;
-                    uploadDocumentoComplementar(file);
-                });
-            }
-
-            if (arquivoArtBtn && arquivoArtInput) {
-                arquivoArtBtn.addEventListener('click', function () {
-                    arquivoArtInput.value = '';
-                    arquivoArtInput.click();
-                });
-
-                arquivoArtInput.addEventListener('change', function () {
-                    const file = arquivoArtInput.files?.[0];
-                    if (!file) return;
-                    uploadDocumentoArt(file);
-                });
-            }
+            bindImmediateUploadDropzone(arquivoDropzone, arquivoReplaceInput, uploadDocumentoClienteTemporario);
+            bindImmediateUploadDropzone(arquivoComplementarDropzone, arquivoComplementarInput, uploadDocumentoComplementar);
+            bindImmediateUploadDropzone(arquivoArtDropzone, arquivoArtInput, uploadDocumentoArt);
 
             function resolveCardBorderColor(card, colunaEl) {
                 const colunaCor = colunaEl?.dataset?.colunaCor || '#38bdf8';
@@ -4171,6 +4227,7 @@
                     const url = btn.dataset.docDeleteUrl;
                     const docId = String(btn.dataset.docId || '');
                     const docKind = String(btn.dataset.docKind || 'anexo');
+                    const docService = String(btn.dataset.docService || '').toLowerCase();
                     if (!url) return;
 
                     const confirmado = await window.uiConfirm(
@@ -4215,6 +4272,11 @@
                             detalhesCurrentCard.dataset.pcmsoPgrUrl = '';
                         } else if (docKind === 'documento_art') {
                             detalhesCurrentCard.dataset.artPgrUrl = '';
+                        } else if (docService === 'certificado_treinamento') {
+                            const totalEsperado = Number(detalhesCurrentCard.dataset.certificadosTotal || '0');
+                            const enviadosAtualizados = Math.max(0, Number(detalhesCurrentCard.dataset.certificadosEnviados || '0') - 1);
+                            detalhesCurrentCard.dataset.certificadosEnviados = String(enviadosAtualizados);
+                            detalhesCurrentCard.dataset.certificadosPendentes = (totalEsperado > enviadosAtualizados) ? '1' : '0';
                         }
 
                         openDetalhesModal(detalhesCurrentCard);
@@ -4229,49 +4291,37 @@
             bindDocumentoDeleteList(docsList);
             bindDocumentoDeleteList(exclusaoAnexoList);
 
-            if (certificadosUploadBtn && certificadosInput) {
-                if (certificadosDropzone) {
-                    certificadosDropzone.addEventListener('click', function () {
-                        if (certificadosUploadBtn.disabled) return;
-                        certificadosInput.click();
-                    });
-
-                    certificadosDropzone.addEventListener('dragover', function (e) {
-                        e.preventDefault();
-                        if (certificadosUploadBtn.disabled) return;
-                        certificadosDropzone.classList.add('border-amber-400', 'bg-amber-100/70');
-                    });
-
-                    certificadosDropzone.addEventListener('dragleave', function (e) {
-                        e.preventDefault();
-                        certificadosDropzone.classList.remove('border-amber-400', 'bg-amber-100/70');
-                    });
-
-                    certificadosDropzone.addEventListener('drop', function (e) {
-                        e.preventDefault();
-                        certificadosDropzone.classList.remove('border-amber-400', 'bg-amber-100/70');
-                        if (certificadosUploadBtn.disabled) return;
-
-                        const files = e.dataTransfer?.files;
-                        if (!files?.length) return;
-
-                        const transfer = new DataTransfer();
-                        Array.from(files).forEach((file) => transfer.items.add(file));
-                        certificadosInput.files = transfer.files;
-                        renderCertificadosSelecionados(certificadosInput.files);
-                    });
-                }
-
-                certificadosInput.addEventListener('change', function () {
-                    renderCertificadosSelecionados(certificadosInput.files);
+            if (certificadosDropzone && certificadosInput) {
+                certificadosDropzone.addEventListener('click', function () {
+                    if (certificadosDropzone.classList.contains('cursor-not-allowed')) return;
+                    certificadosInput.value = '';
+                    certificadosInput.click();
                 });
 
-                certificadosUploadBtn.addEventListener('click', function () {
-                    if (!certificadosInput.files?.length) {
-                        certificadosInput.click();
-                        return;
-                    }
+                certificadosDropzone.addEventListener('dragover', function (e) {
+                    e.preventDefault();
+                    if (certificadosDropzone.classList.contains('cursor-not-allowed')) return;
+                    certificadosDropzone.classList.add('border-amber-400', 'bg-amber-100/70');
+                });
 
+                certificadosDropzone.addEventListener('dragleave', function (e) {
+                    e.preventDefault();
+                    certificadosDropzone.classList.remove('border-amber-400', 'bg-amber-100/70');
+                });
+
+                certificadosDropzone.addEventListener('drop', function (e) {
+                    e.preventDefault();
+                    certificadosDropzone.classList.remove('border-amber-400', 'bg-amber-100/70');
+                    if (certificadosDropzone.classList.contains('cursor-not-allowed')) return;
+
+                    const files = e.dataTransfer?.files;
+                    if (!files?.length) return;
+
+                    uploadCertificadosTreinamento(files);
+                });
+
+                certificadosInput.addEventListener('change', function () {
+                    if (!certificadosInput.files?.length) return;
                     uploadCertificadosTreinamento(certificadosInput.files);
                 });
             }
