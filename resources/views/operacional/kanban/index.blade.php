@@ -629,7 +629,7 @@
                                     data-whatsapp-bundle-url="{{ $tarefa->pacote_publico_link }}"
                                     data-prioridade="{{ ucfirst($tarefa->prioridade) }}"
                                     data-status="{{ $coluna->nome }}"
-                                    data-finalizado="{{ (!empty($tarefa->finalizado_em) || ($coluna->finaliza ?? false)) ? '1' : '0' }}"
+                                    data-finalizado="{{ ($coluna->finaliza ?? false) ? '1' : '0' }}"
                                     data-observacoes="{{ e($obs) }}"
 
                                     data-funcionario="{{ $funcionarioNome ?? '' }}"
