@@ -518,11 +518,9 @@ class PainelController extends Controller
         // Recarrega coluna para pegar o nome
         $tarefa->load('coluna');
 
-        if($tarefa->coluna->slug == 'finalizada'){
-            $tarefa->update([
-                'finalizado_em' => now(),
-            ]);
-        }
+        $tarefa->update([
+            'finalizado_em' => $tarefa->coluna->slug === 'finalizada' ? now() : null,
+        ]);
 
 
         // Cria log de movimentação

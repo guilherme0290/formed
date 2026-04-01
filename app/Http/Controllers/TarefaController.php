@@ -102,7 +102,7 @@ class TarefaController extends Controller
 
         $tarefa->update([
             'path_documento_cliente' => $path,
-            'documento_token' => Tarefa::gerarDocumentoTokenCurto(),
+            'documento_token' => $tarefa->documento_token ?: Tarefa::gerarDocumentoTokenCurto(),
         ]);
 
         return $this->finalizarTarefaPersistida($tarefa, $precificacaoService, $vendaService, $comissaoService);
@@ -183,7 +183,7 @@ class TarefaController extends Controller
 
         $tarefa->update([
             'path_documento_cliente' => $path,
-            'documento_token' => Tarefa::gerarDocumentoTokenCurto(),
+            'documento_token' => $tarefa->documento_token ?: Tarefa::gerarDocumentoTokenCurto(),
         ]);
 
         TarefaLog::create([
