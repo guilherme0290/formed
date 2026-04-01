@@ -287,17 +287,12 @@ class TarefaController extends Controller
             ], 422);
         }
 
-        if (($pendenciaInicial['exige_documento_base'] ?? false) && empty($tarefa->path_documento_cliente)) {
-            return response()->json([
-                'ok' => false,
-                'error' => 'Anexe primeiro o documento final do ASO para liberar os certificados.',
-            ], 422);
-        }
+        $anexosCriados = [];
 
         foreach ($request->file('arquivos', []) as $file) {
             $path = S3Helper::upload($file, 'anexos/'.$tarefa->id.'/certificados-treinamento');
 
-            Anexos::create([
+            $anexo = Anexos::create([
                 'empresa_id' => $tarefa->empresa_id,
                 'cliente_id' => $tarefa->cliente_id,
                 'tarefa_id' => $tarefa->id,
@@ -308,6 +303,16 @@ class TarefaController extends Controller
                 'mime_type' => $file->getClientMimeType(),
                 'tamanho' => $file->getSize(),
             ]);
+
+            $anexosCriados[] = [
+                'id' => $anexo->id,
+                'servico' => $anexo->servico,
+                'url' => $anexo->fresh()->url,
+                'delete_url' => route('operacional.anexos.destroy', $anexo),
+                'mime' => $anexo->mime_type,
+                'uploaded_by' => optional(auth()->user())->name ?? 'Sistema',
+                'tamanho' => $anexo->tamanho,
+            ];
         }
 
         $pendenciaAtual = $this->resolverPendenciaCertificadosTreinamento($tarefa->fresh());
@@ -316,6 +321,7 @@ class TarefaController extends Controller
             'ok' => true,
             'certificados' => $pendenciaAtual,
             'status_label' => $tarefa->fresh()->coluna?->nome,
+            'anexos' => $anexosCriados,
         ]);
     }
 
@@ -644,6 +650,15 @@ class TarefaController extends Controller
         return response()->json([
             'ok' => true,
             'documento_url' => $anexoExistente->fresh()->url,
+            'delete_url' => route('operacional.anexos.destroy', $anexoExistente),
+            'anexo' => [
+                'id' => $anexoExistente->id,
+                'servico' => $anexoExistente->servico,
+                'url' => $anexoExistente->fresh()->url,
+                'delete_url' => route('operacional.anexos.destroy', $anexoExistente),
+                'mime' => $anexoExistente->mime_type,
+                'uploaded_by' => optional(Auth::user())->name ?? 'Sistema',
+            ],
         ]);
     }
 
