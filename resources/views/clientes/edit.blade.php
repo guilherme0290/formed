@@ -205,8 +205,9 @@
                 </div>
 
                 <div>
-                    <label class="text-sm">Contato</label>
+                    <label class="text-sm">Contato *</label>
                     <input name="contato" value="{{ old('contato', $cliente->contato) }}"
+                           required
                            class="w-full border-gray-300 rounded-lg px-3 py-2 uppercase">
                     @error('contato')
                     <p class="text-sm text-red-600 mt-1">{{ $message }}</p>
@@ -974,6 +975,7 @@
                 if (name === 'cidade_id') return 'Selecione a cidade do cliente.';
                 if (name === 'documento_principal') return 'Informe o CPF ou CNPJ do cliente.';
                 if (name === 'razao_social') return 'Informe o nome do cliente.';
+                if (name === 'contato') return 'Informe o campo Contato do cliente.';
                 if (name === 'forma_pagamento') return 'Selecione a forma de pagamento.';
                 if (name === 'vencimento_servicos') return 'Informe o vencimento dos serviços.';
                 if (name === 'vendedor_id') return 'Selecione o vendedor responsável.';

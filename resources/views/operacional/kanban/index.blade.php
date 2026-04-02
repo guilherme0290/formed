@@ -3667,7 +3667,7 @@
                 hideModalWithoutReload();
                 closeOverlayAlerts();
 
-                const mensagemSucesso = data.message || 'Tarefa finalizada com sucesso.';
+                const mensagemSucesso = data.message || 'Tarefa finalizada com sucesso e movida para a coluna Finalizada.';
                 await window.uiAlert(mensagemSucesso, {
                         icon: 'success',
                         title: 'Sucesso',
@@ -3906,6 +3906,15 @@
                 });
             }
 
+            async function handleUploadTriggeredFinalization(card, data) {
+                if (!card || !data?.finalizada_total) {
+                    return false;
+                }
+
+                await handleFinalizacaoResponse(card, data);
+                return true;
+            }
+
             function getKanbanCards() {
                 return Array.from(document.querySelectorAll('.kanban-card'));
             }
@@ -3980,6 +3989,10 @@
                             openDetalhesModal(detalhesCurrentCard);
                         }
 
+                        if (await handleUploadTriggeredFinalization(detalhesCurrentCard, data)) {
+                            return;
+                        }
+
                         await showUploadSuccessAlert(data?.message || 'Documento anexado com sucesso.');
                     })
                     .catch((error) => {
@@ -4048,6 +4061,10 @@
                             }
                             upsertAnexoNaTarefa(data.anexo);
                             openDetalhesModal(detalhesCurrentCard);
+                        }
+
+                        if (await handleUploadTriggeredFinalization(detalhesCurrentCard, data)) {
+                            return;
                         }
 
                         await showUploadSuccessAlert(data?.message || 'Documento complementar anexado com sucesso.');
@@ -4120,6 +4137,10 @@
                             openDetalhesModal(detalhesCurrentCard);
                         }
 
+                        if (await handleUploadTriggeredFinalization(detalhesCurrentCard, data)) {
+                            return;
+                        }
+
                         await showUploadSuccessAlert(data?.message || 'Documento ART anexado com sucesso.');
                     })
                     .catch((error) => {
@@ -4168,7 +4189,7 @@
                         }
                         return data;
                     })
-                    .then((data) => {
+                    .then(async (data) => {
                         if (!data?.ok) {
                             window.uiAlert(data?.error || data?.message || 'Erro ao enviar certificados.');
                             return;
@@ -4190,6 +4211,12 @@
                         }
                         renderCertificadosSelecionados([]);
                         openDetalhesModal(detalhesCurrentCard);
+
+                        if (await handleUploadTriggeredFinalization(detalhesCurrentCard, data)) {
+                            return;
+                        }
+
+                        await showUploadSuccessAlert(data?.message || 'Certificados anexados com sucesso.');
                     })
                     .catch((error) => {
                         showUploadErrorAlert(error?.message, 'Erro ao enviar certificados.', error?.status, detalhesCurrentCard);

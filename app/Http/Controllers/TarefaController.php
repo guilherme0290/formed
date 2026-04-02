@@ -168,7 +168,13 @@ class TarefaController extends Controller
             ->deleteFileAfterSend(true);
     }
 
-    public function substituirDocumentoCliente(Request $request, Tarefa $tarefa)
+    public function substituirDocumentoCliente(
+        Request $request,
+        Tarefa $tarefa,
+        PrecificacaoService $precificacaoService,
+        VendaService $vendaService,
+        ComissaoService $comissaoService
+    )
     {
         $maxUploadMb = $this->resolveTaskUploadLimitMb($tarefa);
 
@@ -194,6 +200,10 @@ class TarefaController extends Controller
             'acao' => 'documento',
             'observacao' => 'Documento do cliente substituído (temporário)',
         ]);
+
+        if ($this->deveFinalizarAutomaticamentePorDocumentos($tarefa->fresh())) {
+            return $this->finalizarTarefaPersistida($tarefa->fresh(), $precificacaoService, $vendaService, $comissaoService);
+        }
 
         return response()->json([
             'ok' => true,
@@ -233,7 +243,13 @@ class TarefaController extends Controller
         return back()->with('ok', 'Documento removido com sucesso.');
     }
 
-    public function substituirDocumentoComplementar(Request $request, Tarefa $tarefa)
+    public function substituirDocumentoComplementar(
+        Request $request,
+        Tarefa $tarefa,
+        PrecificacaoService $precificacaoService,
+        VendaService $vendaService,
+        ComissaoService $comissaoService
+    )
     {
         if (! (bool) optional($tarefa->pgr)->com_pcms0) {
             return response()->json([
@@ -247,11 +263,20 @@ class TarefaController extends Controller
             tarefa: $tarefa,
             servico: 'documento_complementar_pgr_pcmso',
             pasta: 'tarefas-complementares',
-            observacao: 'Documento complementar do PGR + PCMSO anexado'
+            observacao: 'Documento complementar do PGR + PCMSO anexado',
+            precificacaoService: $precificacaoService,
+            vendaService: $vendaService,
+            comissaoService: $comissaoService
         );
     }
 
-    public function substituirDocumentoArt(Request $request, Tarefa $tarefa)
+    public function substituirDocumentoArt(
+        Request $request,
+        Tarefa $tarefa,
+        PrecificacaoService $precificacaoService,
+        VendaService $vendaService,
+        ComissaoService $comissaoService
+    )
     {
         if (! (bool) optional($tarefa->pgr)->com_art) {
             return response()->json([
@@ -265,11 +290,20 @@ class TarefaController extends Controller
             tarefa: $tarefa,
             servico: 'documento_art_pgr_pcmso',
             pasta: 'tarefas-art',
-            observacao: 'Documento ART do PGR + PCMSO anexado'
+            observacao: 'Documento ART do PGR + PCMSO anexado',
+            precificacaoService: $precificacaoService,
+            vendaService: $vendaService,
+            comissaoService: $comissaoService
         );
     }
 
-    public function uploadCertificadosTreinamento(Request $request, Tarefa $tarefa)
+    public function uploadCertificadosTreinamento(
+        Request $request,
+        Tarefa $tarefa,
+        PrecificacaoService $precificacaoService,
+        VendaService $vendaService,
+        ComissaoService $comissaoService
+    )
     {
         $request->validate([
             'arquivos' => ['required', 'array', 'min:1'],
@@ -316,6 +350,16 @@ class TarefaController extends Controller
         }
 
         $pendenciaAtual = $this->resolverPendenciaCertificadosTreinamento($tarefa->fresh());
+
+        $tarefaAtualizada = $tarefa->fresh();
+
+        if ($this->deveFinalizarAutomaticamentePorDocumentos($tarefaAtualizada)) {
+            $response = $this->finalizarTarefaPersistida($tarefaAtualizada, $precificacaoService, $vendaService, $comissaoService);
+            $payload = $response->getData(true);
+            $payload['anexos'] = $anexosCriados;
+
+            return response()->json($payload, $response->getStatusCode());
+        }
 
         return response()->json([
             'ok' => true,
@@ -399,6 +443,20 @@ class TarefaController extends Controller
         ];
     }
 
+    private function deveFinalizarAutomaticamentePorDocumentos(Tarefa $tarefa): bool
+    {
+        $tarefa = $tarefa->fresh(['coluna', 'pgr', 'servico']);
+
+        if (! $tarefa) {
+            return false;
+        }
+
+        $pendenciaDocumentosCombinados = $this->resolverPendenciaDocumentosCombinados($tarefa);
+        $pendenciaCertificados = $this->resolverPendenciaCertificadosTreinamento($tarefa);
+
+        return ! $pendenciaDocumentosCombinados['pendente'] && ! $pendenciaCertificados['pendente'];
+    }
+
     private function finalizarTarefaPersistida(Tarefa $tarefa, PrecificacaoService $precificacaoService, VendaService $vendaService, ComissaoService $comissaoService)
     {
         $pendenciaDocumentosCombinados = $this->resolverPendenciaDocumentosCombinados($tarefa);
@@ -429,7 +487,7 @@ class TarefaController extends Controller
                 (int) ($pendenciaCertificados['total_esperado'] ?? 0),
                 (int) ($pendenciaCertificados['enviados'] ?? 0)
             )
-            : 'Tarefa finalizada com sucesso.';
+            : 'Tarefa finalizada com sucesso e movida para a coluna Finalizada.';
 
         DB::beginTransaction();
 
@@ -601,7 +659,16 @@ class TarefaController extends Controller
         ];
     }
 
-    private function substituirDocumentoAdicional(Request $request, Tarefa $tarefa, string $servico, string $pasta, string $observacao)
+    private function substituirDocumentoAdicional(
+        Request $request,
+        Tarefa $tarefa,
+        string $servico,
+        string $pasta,
+        string $observacao,
+        PrecificacaoService $precificacaoService,
+        VendaService $vendaService,
+        ComissaoService $comissaoService
+    )
     {
         $maxUploadMb = $this->resolveAdditionalDocumentUploadLimitMb($tarefa, $servico);
 
@@ -646,6 +713,10 @@ class TarefaController extends Controller
             'acao' => 'documento',
             'observacao' => $observacao,
         ]);
+
+        if ($this->deveFinalizarAutomaticamentePorDocumentos($tarefa->fresh())) {
+            return $this->finalizarTarefaPersistida($tarefa->fresh(), $precificacaoService, $vendaService, $comissaoService);
+        }
 
         return response()->json([
             'ok' => true,

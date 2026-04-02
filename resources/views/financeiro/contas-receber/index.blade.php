@@ -454,7 +454,7 @@
                     </div>
                 </header>
 
-                <div class="m-4 flex flex-col h-[68vh] rounded-2xl border border-indigo-200 bg-indigo-50/40 shadow-inner">
+		                <div class="m-4 flex flex-col">
 
 
                     <form method="GET" class="px-4 md:px-5 pt-4 pb-3 border-b border-indigo-100 bg-white/70">
@@ -563,10 +563,9 @@
                         </div>
                     </div>
 
-                    <div class="flex-1 min-h-0 px-4 pb-4 md:px-5 md:pb-5">
-                        <div class="h-full min-h-0 mt-4 rounded-xl border border-indigo-200/80 bg-white/95 p-3 md:p-4 shadow-sm">
-                            <div class="h-full min-h-0 overflow-auto rounded-lg border border-slate-200">
-                                <table class="min-w-full divide-y divide-slate-100 text-sm">
+		                    <div class="mt-4">
+		                        <div class="max-h-[38rem] overflow-auto rounded-lg border border-slate-200 bg-white">
+	                                <table class="min-w-full divide-y divide-slate-100 text-sm">
                                     <thead class="bg-slate-50 text-slate-600 sticky top-0 z-10">
                                         <tr>
                                             <th class="px-4 py-3 text-left font-semibold">Nº Fatura</th>
@@ -697,9 +696,8 @@
                                         @endforelse
                                     </tbody>
                                 </table>
-                            </div>
-                        </div>
-                    </div>
+	                        </div>
+	                    </div>
 
                     <footer class="border-t border-slate-100 bg-white px-5 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                         <p class="text-sm text-slate-600">
