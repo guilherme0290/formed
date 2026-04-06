@@ -603,8 +603,8 @@
                                                 };
                                                 $podeEmailLinha = $canUpdate;
                                                 $statusRawLinha = strtoupper((string) ($conta->status ?? ''));
-                                                $isFaturadaLinha = in_array($statusRawLinha, ['FATURADA', 'FATURADO'], true);
-                                                $podeRegistrarBaixaLinha = $uiStatus === 'Aberta' && !$isFaturadaLinha && $canUpdate;
+                                                $isCanceladaLinha = $statusRawLinha === 'CANCELADO';
+                                                $podeRegistrarBaixaLinha = !$isCanceladaLinha && $uiStatus !== 'Baixada' && $canUpdate;
                                                 $podeExcluirBaixaLinha = $hasBaixa && $canUpdate;
                                                 $podeExcluirFaturaLinha = !$hasBaixa && $canDelete;
                                                 $badge = match ($uiStatus) {
@@ -663,7 +663,7 @@
                                                         <a href="{{ $detalheUrlLinha }}#cr-open-modal-baixa"
                                                            data-cr-open-modal-baixa-link
                                                            class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-xs font-semibold {{ $podeRegistrarBaixaLinha ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed pointer-events-none' }}"
-                                                           title="{{ $podeRegistrarBaixaLinha ? 'Registrar baixa' : (!$canUpdate ? 'Usuário sem permissão' : 'Registrar baixa disponível apenas para faturas em aberto.') }}"
+                                                           title="{{ $podeRegistrarBaixaLinha ? 'Registrar baixa' : (!$canUpdate ? 'Usuário sem permissão' : 'Registrar baixa disponível apenas para faturas abertas ou parciais.') }}"
                                                            aria-label="Registrar baixa">
                                                             <i data-lucide="banknote" class="h-4 w-4"></i>
                                                         </a>
@@ -816,14 +816,14 @@
                     <h2 class="text-sm font-semibold text-slate-800">2) Itens da fatura (com data)</h2>
                     <p class="text-xs text-slate-500 mt-1">Itens com data de realização em container fixo com rolagem interna</p>
 
-                    <div class="mt-4 flex flex-col h-[54vh] rounded-2xl border border-indigo-200 bg-indigo-50/40 shadow-inner">
+                    <div class="mt-4 flex flex-col rounded-2xl border border-indigo-200 bg-indigo-50/40 shadow-inner">
                         <div class="px-4 py-3 border-b border-indigo-200 bg-indigo-100/60 rounded-t-2xl">
                             <p class="text-xs font-semibold uppercase tracking-wide text-indigo-700">Container fixo de itens da fatura</p>
                             <p class="text-xs text-indigo-600 mt-1">Rolagem interna para leitura detalhada</p>
                         </div>
-                        <div class="flex-1 min-h-0 p-4 md:p-5">
-                            <div class="h-full min-h-0 rounded-xl border border-indigo-200/80 bg-white/95 p-3 md:p-4 shadow-sm">
-                                <div class="h-full min-h-0 overflow-auto rounded-lg border border-slate-200">
+                        <div class="p-4 md:p-5">
+                            <div class="rounded-xl border border-indigo-200/80 bg-white/95 p-3 md:p-4 shadow-sm">
+                                <div class="max-h-[36rem] overflow-auto rounded-lg border border-slate-200">
                                     <table class="min-w-full divide-y divide-slate-200 text-sm">
                                         <thead class="bg-slate-50 text-slate-600 sticky top-0 z-10">
                                             <tr>
@@ -944,8 +944,8 @@
 
                                 <button type="button"
                                         id="crAbrirModalBaixaDetalhe"
-                                        class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold shadow-sm {{ ($canUpdate && !$detalheIsBaixada && !$detalheIsFaturada) ? 'bg-gradient-to-r from-emerald-600 to-green-600 text-white hover:from-emerald-700 hover:to-green-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}"
-                                        @if(!$canUpdate || $detalheIsBaixada || $detalheIsFaturada) disabled title="{{ !$canUpdate ? 'Usuário sem permissão' : 'Fatura faturada/baixada não permite registrar baixa.' }}" @endif>
+                                        class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold shadow-sm {{ ($canUpdate && !$detalheIsBaixada) ? 'bg-gradient-to-r from-emerald-600 to-green-600 text-white hover:from-emerald-700 hover:to-green-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}"
+                                        @if(!$canUpdate || $detalheIsBaixada) disabled title="{{ !$canUpdate ? 'Usuário sem permissão' : 'Fatura baixada não permite registrar baixa.' }}" @endif>
                                     <span class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/20">
                                         <i data-lucide="banknote" class="h-3.5 w-3.5"></i>
                                     </span>
@@ -1015,7 +1015,7 @@
                             <div class="mt-4">
                                 <button type="button"
                                         class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold shadow-sm {{ $canUpdate ? 'bg-gradient-to-r from-emerald-600 to-green-600 text-white hover:from-emerald-700 hover:to-green-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}"
-                                        @if(!$canUpdate || $detalheIsBaixada || $detalheIsFaturada) disabled title="{{ !$canUpdate ? 'Usuário sem permissão' : 'Fatura faturada/baixada não permite registrar baixa.' }}" @else onclick="document.getElementById('crAbrirModalBaixaDetalhe')?.click()" @endif>
+                                        @if(!$canUpdate || $detalheIsBaixada) disabled title="{{ !$canUpdate ? 'Usuário sem permissão' : 'Fatura baixada não permite registrar baixa.' }}" @else onclick="document.getElementById('crAbrirModalBaixaDetalhe')?.click()" @endif>
                                     Registrar baixa
                                 </button>
                             </div>
@@ -1028,7 +1028,7 @@
                                 </p>
                                 <button type="button"
                                         class="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold shadow-sm {{ $canUpdate ? 'bg-gradient-to-r from-emerald-600 to-green-600 text-white hover:from-emerald-700 hover:to-green-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}"
-                                        @if(!$canUpdate || $detalheIsBaixada || $detalheIsFaturada) disabled title="{{ !$canUpdate ? 'Usuário sem permissão' : 'Fatura faturada/baixada não permite registrar baixa.' }}" @else onclick="document.getElementById('crAbrirModalBaixaDetalhe')?.click()" @endif>
+                                        @if(!$canUpdate || $detalheIsBaixada) disabled title="{{ !$canUpdate ? 'Usuário sem permissão' : 'Fatura baixada não permite registrar baixa.' }}" @else onclick="document.getElementById('crAbrirModalBaixaDetalhe')?.click()" @endif>
                                     Registrar nova baixa
                                 </button>
                             </div>
@@ -1255,9 +1255,10 @@
                                     <label class="text-xs font-semibold text-slate-600">Valor recebido</label>
                                     <div class="mt-2 relative">
                                         <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">R$</span>
-                                        <input type="number"
-                                               step="0.01"
+                                        <input type="text"
+                                               inputmode="decimal"
                                                name="valor"
+                                               data-money-input
                                                class="w-full rounded-xl border border-slate-200 bg-white text-slate-900 text-sm pl-10 pr-3 py-2.5 h-[44px] focus:border-emerald-300 focus:ring-emerald-100"
                                                placeholder="0,00"
                                                required />
@@ -1661,6 +1662,30 @@
             const fecharModalRelatorioVendasBtns = document.querySelectorAll('[data-cr-fechar-modal-relatorio-vendas]');
             const openModalBaixaLinks = document.querySelectorAll('[data-cr-open-modal-baixa-link]');
             const openModalEmailLinks = document.querySelectorAll('[data-cr-open-modal-email-link]');
+            const moneyInputs = document.querySelectorAll('[data-money-input]');
+
+            function formatMoneyValue(rawValue) {
+                const digits = String(rawValue || '').replace(/\D/g, '');
+                if (!digits) return '';
+
+                const cents = digits.padStart(3, '0');
+                const integerPart = cents.slice(0, -2).replace(/^0+(?=\d)/, '');
+                const normalizedInteger = integerPart === '' ? '0' : integerPart;
+                const formattedInteger = normalizedInteger.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+                const decimalPart = cents.slice(-2);
+
+                return `${formattedInteger},${decimalPart}`;
+            }
+
+            moneyInputs.forEach(function (input) {
+                input.addEventListener('input', function () {
+                    input.value = formatMoneyValue(input.value);
+                });
+
+                input.addEventListener('blur', function () {
+                    input.value = formatMoneyValue(input.value);
+                });
+            });
 
             function openModalBaixa() {
                 if (!modalBaixaDetalhe) return false;

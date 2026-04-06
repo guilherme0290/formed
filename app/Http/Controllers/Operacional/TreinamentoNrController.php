@@ -900,5 +900,3 @@ class TreinamentoNrController extends Controller
             ->all();
     }
 }
-
-
