@@ -86,7 +86,7 @@
                                 Serviços em aberto
                             </p>
                             <p class="mt-1 text-lg md:text-2xl font-semibold">
-                                R$ {{ number_format($faturaTotal ?? 0, 2, ',', '.') }}
+                                R$ {{ number_format($totalServicosEmAberto ?? 0, 2, ',', '.') }}
                             </p>
                             <p class="text-[11px] text-emerald-50/90 mt-1">
                                 Serviços em aberto

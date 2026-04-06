@@ -18,6 +18,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
@@ -179,6 +180,18 @@ class PropostaRapidaController extends Controller
             return back()->withErrors(['items_payload' => 'Itens da proposta inválidos.'])->withInput();
         }
 
+        $itens = array_map(function ($item) {
+            if (!is_array($item)) {
+                return $item;
+            }
+
+            if (array_key_exists('descricao', $item) && is_string($item['descricao'])) {
+                $item['descricao'] = Str::limit(trim($item['descricao']), 255, '');
+            }
+
+            return $item;
+        }, $itens);
+
         Validator::make(
             ['itens' => $itens],
             [
@@ -189,6 +202,22 @@ class PropostaRapidaController extends Controller
                 'itens.*.origem_id' => ['nullable', 'integer'],
                 'itens.*.valor_unitario' => ['required', 'numeric', 'min:0'],
                 'itens.*.quantidade' => ['required', 'integer', 'min:1'],
+            ],
+            [
+                'itens.required' => 'Adicione pelo menos um item à proposta.',
+                'itens.array' => 'Os itens da proposta estão inválidos.',
+                'itens.min' => 'Adicione pelo menos um item à proposta.',
+                'itens.*.categoria.required' => 'Um dos itens da proposta está sem categoria.',
+                'itens.*.categoria.in' => 'Um dos itens da proposta está com categoria inválida.',
+                'itens.*.nome.required' => 'Um dos itens da proposta está sem nome.',
+                'itens.*.nome.max' => 'O nome de um dos itens ultrapassa 255 caracteres.',
+                'itens.*.descricao.max' => 'A descrição de um dos itens ultrapassa 255 caracteres.',
+                'itens.*.valor_unitario.required' => 'Informe o valor unitário de todos os itens.',
+                'itens.*.valor_unitario.numeric' => 'O valor unitário de um dos itens está inválido.',
+                'itens.*.valor_unitario.min' => 'O valor unitário de um dos itens não pode ser negativo.',
+                'itens.*.quantidade.required' => 'Informe a quantidade de todos os itens.',
+                'itens.*.quantidade.integer' => 'A quantidade de um dos itens está inválida.',
+                'itens.*.quantidade.min' => 'A quantidade de cada item deve ser maior que zero.',
             ]
         )->validate();
 
@@ -333,7 +362,11 @@ class PropostaRapidaController extends Controller
                 ->where('empresa_id', $empresaId)
                 ->find($clienteId);
 
-            abort_if(!$cliente, 403, 'Cliente da proposta não encontrado para esta empresa.');
+            if (!$cliente) {
+                throw ValidationException::withMessages([
+                    'cliente_existente_id' => 'Cliente da proposta não encontrado para esta empresa.',
+                ]);
+            }
 
             return $cliente;
         }

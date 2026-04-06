@@ -137,15 +137,15 @@
                 <p class="text-xs text-amber-700 mt-2">{{ $qtdItensSemData }} item(ns) sem data de realização não aparecem nesta lista.</p>
             @endif
 
-            <div class="mt-4 flex flex-col h-[54vh] rounded-2xl border border-indigo-200 bg-indigo-50/40 shadow-inner">
+            <div class="mt-4 flex flex-col rounded-2xl border border-indigo-200 bg-indigo-50/40 shadow-inner">
                 <div class="px-4 py-3 border-b border-indigo-200 bg-indigo-100/60 rounded-t-2xl">
                     <p class="text-xs font-semibold uppercase tracking-wide text-indigo-700">Container fixo de itens da fatura</p>
                     <p class="text-xs text-indigo-600 mt-1">Rolagem interna para leitura detalhada dos itens</p>
                 </div>
 
-                <div class="flex-1 min-h-0 p-4 md:p-5">
-                    <div class="h-full min-h-0 rounded-xl border border-indigo-200/80 bg-white/95 p-3 md:p-4 shadow-sm">
-                        <div class="h-full min-h-0 overflow-auto rounded-lg border border-slate-200">
+                <div class="p-4 md:p-5">
+                    <div class="rounded-xl border border-indigo-200/80 bg-white/95 p-3 md:p-4 shadow-sm">
+                        <div class="max-h-[36rem] overflow-auto rounded-lg border border-slate-200">
                             <table class="min-w-full divide-y divide-slate-200 text-sm">
                                 <thead class="bg-slate-50 text-slate-600 sticky top-0 z-10">
                                     <tr>
@@ -270,7 +270,7 @@
                     @csrf
                     <div>
                         <label class="text-xs font-semibold text-slate-600">Valor recebido</label>
-                        <input type="number" step="0.01" name="valor" class="w-full rounded-lg border-slate-200 bg-white text-slate-900 text-sm" required />
+                        <input type="text" inputmode="decimal" name="valor" data-money-input class="w-full rounded-lg border-slate-200 bg-white text-slate-900 text-sm" placeholder="0,00" required />
                     </div>
 
                     <div>
@@ -342,6 +342,30 @@
             const modalRemocaoBloqueada = document.getElementById('modalRemocaoBloqueada');
             const fecharModalRemocaoBloqueada = document.getElementById('fecharModalRemocaoBloqueada');
             const formRemoverFatura = document.getElementById('formRemoverFatura');
+            const moneyInputs = document.querySelectorAll('[data-money-input]');
+
+            function formatMoneyValue(rawValue) {
+                const digits = String(rawValue || '').replace(/\D/g, '');
+                if (!digits) return '';
+
+                const cents = digits.padStart(3, '0');
+                const integerPart = cents.slice(0, -2).replace(/^0+(?=\d)/, '');
+                const normalizedInteger = integerPart === '' ? '0' : integerPart;
+                const formattedInteger = normalizedInteger.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+                const decimalPart = cents.slice(-2);
+
+                return `${formattedInteger},${decimalPart}`;
+            }
+
+            moneyInputs.forEach(function (input) {
+                input.addEventListener('input', function () {
+                    input.value = formatMoneyValue(input.value);
+                });
+
+                input.addEventListener('blur', function () {
+                    input.value = formatMoneyValue(input.value);
+                });
+            });
 
             if (abrirModalBaixa && modalBaixa) {
                 abrirModalBaixa.addEventListener('click', function () {
