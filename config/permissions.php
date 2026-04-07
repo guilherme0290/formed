@@ -8,6 +8,7 @@ return [
         'master.papeis.manage'       => 'Gerir papéis',
         'master.permissoes.manage'   => 'Gerir permissões',
         'master.usuarios.manage'     => 'Gerir usuários',
+        'master.activity-log.view'   => 'Visualizar trilha de auditoria',
 
         'master.tabela-precos.view'  => 'Ver tabela de preços',
         'master.tabela-precos.create'=> 'Criar itens tabela de preços',

@@ -115,6 +115,7 @@
                 'route' => 'javascript:void(0)',
                 'active' => request()->routeIs('master.acessos*')
                     || request()->routeIs('master.tabela-precos.*')
+                    || request()->routeIs('master.activity-log.*')
                     || request()->routeIs('comercial.funcoes.*'),
                 'children' => [
                     [
@@ -122,6 +123,12 @@
                         'icon' => 'fa-solid fa-key',
                         'route' => route('master.acessos'),
                         'active' => request()->routeIs('master.acessos*'),
+                    ],
+                    [
+                        'label' => 'Activity Log',
+                        'icon' => 'fa-solid fa-clock-rotate-left',
+                        'route' => route('master.activity-log.index'),
+                        'active' => request()->routeIs('master.activity-log.*'),
                     ],
                     [
                         'label' => 'Tabela de Preços',

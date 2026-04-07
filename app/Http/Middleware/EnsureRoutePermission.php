@@ -374,6 +374,10 @@ class EnsureRoutePermission
             return 'master.acessos.manage';
         }
 
+        if (str_starts_with($routeName, 'master.activity-log.')) {
+            return 'master.activity-log.view';
+        }
+
         if (str_starts_with($routeName, 'master.papeis.')) {
             return 'master.papeis.manage';
         }

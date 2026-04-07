@@ -22,6 +22,7 @@ use App\Http\Controllers\Comercial\TreinamentoNrController as ComercialTreinamen
 use App\Http\Controllers\FuncaoController;
 use App\Http\Controllers\Master\AcessosController;
 use App\Http\Controllers\Master\AgendaVendedorController;
+use App\Http\Controllers\Master\ActivityLogController;
 use App\Http\Controllers\Master\DashboardController as DashboardMaster;
 use App\Http\Controllers\Master\DashboardPreferenceController;
 use App\Http\Controllers\Master\EmailCaixaController;
@@ -1132,6 +1133,10 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
             ->name('relatorios');
         Route::get('/relatorios/pdf', [DashboardMaster::class, 'relatoriosPdf'])
             ->name('relatorios.pdf');
+        Route::get('/activity-log', [ActivityLogController::class, 'index'])
+            ->name('activity-log.index');
+        Route::get('/activity-log/{id}', [ActivityLogController::class, 'show'])
+            ->name('activity-log.show');
 
         // Agenda de Vendedores
         Route::get('/agenda-vendedores', [AgendaVendedorController::class, 'index'])
