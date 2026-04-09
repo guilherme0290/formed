@@ -6,6 +6,8 @@ use App\Models\ContaReceber;
 use App\Models\ContaReceberBaixa;
 use App\Models\ContaReceberItem;
 use App\Models\Venda;
+use App\Services\ComissaoService;
+use Carbon\Carbon;
 
 class ContaReceberService
 {
@@ -129,6 +131,11 @@ class ContaReceberService
             $this->atualizarStatusVenda($vendaId);
         }
 
+        app(ComissaoService::class)->sincronizarStatusPorVendas(
+            $vendaIds,
+            $pagoEm ? Carbon::parse($pagoEm) : now()
+        );
+
         return $valor - $restante;
     }
 
@@ -157,5 +164,7 @@ class ContaReceberService
         foreach ($vendaIds as $vendaId) {
             $this->atualizarStatusVenda($vendaId);
         }
+
+        app(ComissaoService::class)->sincronizarStatusPorVendas($vendaIds);
     }
 }

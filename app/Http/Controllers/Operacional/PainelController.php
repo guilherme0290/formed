@@ -46,6 +46,7 @@ class PainelController extends Controller
         // Filtros
         $filtroServico     = $request->input('servico_id');
         $filtroResponsavel = $request->input('responsavel_id');
+        $filtroVendedor    = $request->input('vendedor_id');
         $filtroCliente     = $request->input('cliente_id');
         $filtroColuna      = $request->input('coluna_id');
         $filtroDe          = $request->input('de');
@@ -140,6 +141,12 @@ class PainelController extends Controller
 
         if ($filtroCliente) {
             $tarefasQuery->where('cliente_id', $filtroCliente);
+        }
+
+        if ($filtroVendedor) {
+            $tarefasQuery->whereHas('cliente', function ($clienteQuery) use ($filtroVendedor) {
+                $clienteQuery->where('vendedor_id', $filtroVendedor);
+            });
         }
 
         if ($filtroTarefaId !== '') {
@@ -252,6 +259,14 @@ class PainelController extends Controller
             ->orderBy('razao_social')
             ->get(['id', 'razao_social', 'nome_fantasia']);
 
+        $vendedores = User::query()
+            ->where('empresa_id', $empresaId)
+            ->whereHas('papel', function ($query) {
+                $query->whereIn('nome', ['Master', 'Comercial']);
+            })
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
         $clienteAutocomplete = Cliente::query()
             ->where('empresa_id', $empresaId)
             ->orderBy('razao_social')
@@ -280,10 +295,12 @@ class PainelController extends Controller
             // filtros atuais (pra dar @selected e preencher inputs)
             'servicos'          => $servicos,
             'responsaveis'      => $responsaveis,
+            'vendedores'        => $vendedores,
             'clientes'          => $clientes,
             'clienteAutocomplete' => $clienteAutocomplete,
             'filtroServico'     => $filtroServico,
             'filtroResponsavel' => $filtroResponsavel,
+            'filtroVendedor'    => $filtroVendedor,
             'filtroCliente'     => $filtroCliente,
             'filtroColuna'      => $filtroColuna,
             'filtroDe'          => $filtroDe,

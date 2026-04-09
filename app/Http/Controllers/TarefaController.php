@@ -381,8 +381,11 @@ class TarefaController extends Controller
 
         if ($aso && (bool) $aso->vai_fazer_treinamento) {
             $codigos = (array) ($aso->treinamentos ?? []);
-            if (empty($codigos) && is_array($aso->treinamento_pacote) && ! empty($aso->treinamento_pacote['codigos'])) {
-                $codigos = (array) $aso->treinamento_pacote['codigos'];
+            if (is_array($aso->treinamento_pacote) && ! empty($aso->treinamento_pacote['codigos'])) {
+                $codigos = array_values(array_unique(array_merge(
+                    $codigos,
+                    (array) $aso->treinamento_pacote['codigos']
+                )));
             }
             $origem = 'aso';
             $exigeDocumentoBase = true;

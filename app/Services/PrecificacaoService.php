@@ -246,12 +246,11 @@ class PrecificacaoService
 
         if (is_array($treinamentosPayload) && ($treinamentosPayload['modo'] ?? null) === 'pacote') {
             $pacote = (array) ($treinamentosPayload['pacote'] ?? []);
-            $contratoItemId = (int) ($pacote['contrato_item_id'] ?? 0);
-
-            $itemContrato = $contrato->itens()
-                ->where('id', $contratoItemId)
-                ->where('ativo', true)
-                ->first();
+            $itemContrato = $this->resolverItemContratoPacote(
+                $contrato,
+                (int) $tarefa->servico_id,
+                $pacote
+            );
 
             if (!$itemContrato) {
                 throw ValidationException::withMessages([
@@ -387,12 +386,20 @@ class PrecificacaoService
     private function precificarTreinamentosAso(ClienteContrato $contrato, int $servicoTreinamentoId, AsoSolicitacoes $aso): array
     {
         $treinamentoPacote = (array) ($aso->treinamento_pacote ?? []);
+        $treinamentosAvulsos = array_values(array_filter(array_map(
+            fn ($codigo) => $this->normalizarCodigoTreinamento((string) $codigo),
+            (array) ($aso->treinamentos ?? [])
+        )));
+
+        $itensVenda = [];
+        $codigosPacote = [];
+
         if (!empty($treinamentoPacote)) {
-            $contratoItemId = (int) ($treinamentoPacote['contrato_item_id'] ?? 0);
-            $itemContrato = $contrato->itens()
-                ->where('id', $contratoItemId)
-                ->where('ativo', true)
-                ->first();
+            $itemContrato = $this->resolverItemContratoPacote(
+                $contrato,
+                $servicoTreinamentoId,
+                $treinamentoPacote
+            );
 
             if (!$itemContrato) {
                 throw ValidationException::withMessages([
@@ -412,45 +419,21 @@ class PrecificacaoService
                 $codigosPacote
             )));
 
-            if (!empty($codigosPacote)) {
-                $mapaContrato = $this->buildMapaContratoTreinamentos($contrato, $servicoTreinamentoId);
-                $rateioUnitario = $this->ratearValorEmPartes((float) $itemContrato->preco_unitario_snapshot, count($codigosPacote));
-                $itensVendaPacote = [];
-
-                foreach ($codigosPacote as $idx => $codigo) {
-                    $itemContratoTreino = $mapaContrato[$codigo] ?? null;
-                    $detalhe = $itemContratoTreino?->descricao_snapshot ?: $codigo;
-                    $descricao = $this->montarDescricaoVenda(
-                        $this->resolverNomeServico(null, $servicoTreinamentoId) ?: 'Treinamentos NRs',
-                        $detalhe
-                    );
-
-                    $itensVendaPacote[] = [
-                        'servico_id' => $servicoTreinamentoId,
-                        'descricao_snapshot' => $descricao,
-                        'preco_unitario_snapshot' => (float) ($rateioUnitario[$idx] ?? 0),
-                        'quantidade' => 1,
-                    ];
-                }
-
-                return $itensVendaPacote;
-            }
-
             $descricao = $this->montarDescricaoVenda(
                 $this->resolverNomeServico(null, $servicoTreinamentoId) ?: 'Treinamentos NRs',
                 $itemContrato->descricao_snapshot ?: ($treinamentoPacote['nome'] ?? 'Pacote de Treinamentos')
             );
 
-            return [[
+            $itensVenda[] = [
                 'servico_id' => $servicoTreinamentoId,
                 'descricao_snapshot' => $descricao,
                 'preco_unitario_snapshot' => (float) $itemContrato->preco_unitario_snapshot,
                 'quantidade' => 1,
-            ]];
+            ];
         }
 
-        $treinamentos = array_values((array) ($aso->treinamentos ?? []));
-        if (empty($treinamentos)) {
+        $treinamentos = array_values(array_diff($treinamentosAvulsos, $codigosPacote));
+        if (empty($itensVenda) && empty($treinamentos)) {
             throw ValidationException::withMessages([
                 'contrato' => 'Treinamento sem NRs informadas para precificação.',
             ]);
@@ -470,7 +453,6 @@ class PrecificacaoService
 
         $mapaContrato = $this->buildMapaContratoTreinamentos($contrato, $servicoTreinamentoId);
 
-        $itensVenda = [];
         foreach ($treinamentos as $codigo) {
             $codigo = $this->normalizarCodigoTreinamento((string) $codigo);
 
@@ -500,6 +482,39 @@ class PrecificacaoService
         }
 
         return $itensVenda;
+    }
+
+    private function resolverItemContratoPacote(ClienteContrato $contrato, int $servicoId, array $pacote): ?ClienteContratoItem
+    {
+        $contrato->loadMissing('itens');
+
+        $itensServico = $contrato->itens
+            ->where('servico_id', $servicoId)
+            ->where('ativo', true)
+            ->values();
+
+        $contratoItemId = (int) ($pacote['contrato_item_id'] ?? 0);
+        if ($contratoItemId > 0) {
+            $itemPorId = $itensServico->firstWhere('id', $contratoItemId);
+            if ($itemPorId) {
+                return $itemPorId;
+            }
+        }
+
+        $candidatos = collect([
+            trim((string) ($pacote['descricao'] ?? '')),
+            trim((string) ($pacote['nome'] ?? '')),
+        ])->filter()->unique()->values();
+
+        if ($candidatos->isEmpty()) {
+            return null;
+        }
+
+        return $itensServico->first(function ($item) use ($candidatos) {
+            $descricaoSnapshot = trim((string) ($item->descricao_snapshot ?? ''));
+
+            return $descricaoSnapshot !== '' && $candidatos->contains($descricaoSnapshot);
+        });
     }
 
     /**

@@ -66,7 +66,7 @@ class AsoController extends Controller
             'data_aso' => ['required', 'date_format:Y-m-d'],
             'unidade_id' => ['required', 'integer', Rule::in($unidadesPermitidasIds)],
             'vai_fazer_treinamento' => ['nullable', 'boolean'],
-            'treinamento_modo' => ['nullable', Rule::in(['avulsos', 'pacotes'])],
+            'treinamento_modo' => ['nullable', Rule::in(['avulsos', 'pacotes', 'ambos'])],
             'pacote_id' => ['nullable', 'integer', Rule::in($pacotesIds)],
             'treinamentos' => ['array'],
             'treinamentos.*' => ['string', Rule::in($treinamentosCodigos)],
@@ -412,7 +412,7 @@ class AsoController extends Controller
             'data_aso' => ['required', 'date_format:Y-m-d'],
             'unidade_id' => ['required', 'integer', Rule::in($unidadesPermitidasIds)],
             'vai_fazer_treinamento' => ['nullable', 'boolean'],
-            'treinamento_modo' => ['nullable', Rule::in(['avulsos', 'pacotes'])],
+            'treinamento_modo' => ['nullable', Rule::in(['avulsos', 'pacotes', 'ambos'])],
             'pacote_id' => ['nullable', 'integer', Rule::in($pacotesIds)],
             'treinamentos' => ['array'],
             'treinamentos.*' => ['string', Rule::in($treinamentosCodigos)],
@@ -904,7 +904,7 @@ class AsoController extends Controller
     private function resolvePacoteTreinamento(array $data, array $pacotesTreinamentos): ?array
     {
         $modo = $data['treinamento_modo'] ?? null;
-        if (empty($data['vai_fazer_treinamento']) || $modo !== 'pacotes') {
+        if (empty($data['vai_fazer_treinamento']) || !in_array($modo, ['pacotes', 'ambos'], true)) {
             return null;
         }
 
@@ -939,13 +939,16 @@ class AsoController extends Controller
             (array) ($data['treinamentos'] ?? [])
         )));
 
-        if ($modo === 'pacotes' && empty($pacoteSelecionado)) {
+        $requerPacote = in_array($modo, ['pacotes', 'ambos'], true);
+        $requerAvulsos = in_array($modo, ['avulsos', 'ambos'], true);
+
+        if ($requerPacote && empty($pacoteSelecionado)) {
             throw ValidationException::withMessages([
                 'pacote_id' => 'Selecione um pacote de treinamento para continuar.',
             ]);
         }
 
-        if ($modo !== 'pacotes' && empty($treinamentosSelecionados)) {
+        if ($requerAvulsos && empty($treinamentosSelecionados)) {
             throw ValidationException::withMessages([
                 'treinamentos' => 'Selecione pelo menos um treinamento NR para continuar.',
             ]);
@@ -1141,6 +1144,7 @@ class AsoController extends Controller
         $treinamentoServicoId = $this->treinamentoServicoId($empresaId);
         foreach ($pacotesOrigem as $item) {
             $descricao = trim((string) ($item->descricao ?? $item->nome ?? ''));
+            $nomePacote = trim((string) ($item->nome ?? ''));
             $treinamentosMeta = (array) ($item->meta['treinamentos'] ?? []);
             $codigos = collect($treinamentosMeta)
                 ->map(fn ($trein) => $trein['codigo'] ?? null)
@@ -1150,15 +1154,15 @@ class AsoController extends Controller
             $codigos = $this->normalizeTreinamentosValues($codigos);
 
             $contratoItem = $contrato->itens
-                ->first(function ($it) use ($treinamentoServicoId, $descricao) {
-                    return (int) $it->servico_id === (int) $treinamentoServicoId
-                        && trim((string) ($it->descricao_snapshot ?? '')) === $descricao;
-                });
+                ->first(function ($it) use ($treinamentoServicoId, $descricao, $nomePacote) {
+                    if ((int) $it->servico_id !== (int) $treinamentoServicoId) {
+                        return false;
+                    }
 
-            if (!$contratoItem) {
-                $contratoItem = $contrato->itens
-                    ->first(fn ($it) => (int) $it->servico_id === (int) $treinamentoServicoId);
-            }
+                    $descricaoSnapshot = trim((string) ($it->descricao_snapshot ?? ''));
+
+                    return $descricaoSnapshot !== '' && in_array($descricaoSnapshot, array_filter([$descricao, $nomePacote]), true);
+                });
 
             $pacotes[] = [
                 'contrato_item_id' => $contratoItem?->id,

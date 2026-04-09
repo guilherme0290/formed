@@ -86,7 +86,7 @@ class MinhasComissoesController extends Controller
 
         $anos = Comissao::query()
             ->leftJoin('clientes', 'clientes.id', '=', 'comissoes.cliente_id')
-            ->selectRaw('YEAR(COALESCE(comissoes.gerada_em, comissoes.created_at)) as ano')
+            ->selectRaw('YEAR(COALESCE(comissoes.competencia_em, DATE(comissoes.gerada_em), DATE(comissoes.created_at))) as ano')
             ->where('comissoes.empresa_id', $user->empresa_id)
             ->where(function ($q) use ($user) {
                 $q->where('comissoes.vendedor_id', $user->id)
@@ -117,7 +117,7 @@ class MinhasComissoesController extends Controller
     private function mesesResumo(int $vendedorId, int $empresaId, int $ano): Collection
     {
         $data = $this->baseQuery($vendedorId, $empresaId, $ano)
-            ->selectRaw('MONTH(COALESCE(comissoes.gerada_em, comissoes.created_at)) as mes')
+            ->selectRaw('MONTH(COALESCE(comissoes.competencia_em, DATE(comissoes.gerada_em), DATE(comissoes.created_at))) as mes')
             ->selectRaw("SUM(CASE WHEN comissoes.status != 'CANCELADA' THEN comissoes.valor_comissao ELSE 0 END) as total")
             ->selectRaw("SUM(CASE WHEN comissoes.status = 'PAGA' THEN comissoes.valor_comissao ELSE 0 END) as total_efetivado")
             ->selectRaw("SUM(CASE WHEN comissoes.status = 'PENDENTE' THEN comissoes.valor_comissao ELSE 0 END) as total_previsto")
@@ -191,10 +191,10 @@ class MinhasComissoesController extends Controller
                             ->where('clientes.vendedor_id', $vendedorId);
                     });
             })
-            ->whereYear(DB::raw('COALESCE(comissoes.gerada_em, comissoes.created_at)'), $ano);
+            ->whereYear(DB::raw('COALESCE(comissoes.competencia_em, DATE(comissoes.gerada_em), DATE(comissoes.created_at))'), $ano);
 
         if ($mes) {
-            $query->whereMonth(DB::raw('COALESCE(comissoes.gerada_em, comissoes.created_at)'), $mes);
+            $query->whereMonth(DB::raw('COALESCE(comissoes.competencia_em, DATE(comissoes.gerada_em), DATE(comissoes.created_at))'), $mes);
         }
 
         return $query;

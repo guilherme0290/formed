@@ -695,6 +695,7 @@ class TreinamentoNrController extends Controller
 
         foreach ($pacotesOrigem as $item) {
             $descricao = trim((string) ($item->descricao ?? $item->nome ?? ''));
+            $nomePacote = trim((string) ($item->nome ?? ''));
             $treinamentosMeta = (array) ($item->meta['treinamentos'] ?? []);
             $codigos = collect($treinamentosMeta)
                 ->map(fn ($trein) => $trein['codigo'] ?? null)
@@ -704,15 +705,15 @@ class TreinamentoNrController extends Controller
             $codigos = $this->normalizeTreinamentosCodigos($codigos);
 
             $contratoItem = $contratoAtivo->itens
-                ->first(function ($it) use ($servicoTreinamentoId, $descricao) {
-                    return (int) $it->servico_id === (int) $servicoTreinamentoId
-                        && trim((string) ($it->descricao_snapshot ?? '')) === $descricao;
-                });
+                ->first(function ($it) use ($servicoTreinamentoId, $descricao, $nomePacote) {
+                    if ((int) $it->servico_id !== (int) $servicoTreinamentoId) {
+                        return false;
+                    }
 
-            if (!$contratoItem) {
-                $contratoItem = $contratoAtivo->itens
-                    ->first(fn ($it) => (int) $it->servico_id === (int) $servicoTreinamentoId);
-            }
+                    $descricaoSnapshot = trim((string) ($it->descricao_snapshot ?? ''));
+
+                    return $descricaoSnapshot !== '' && in_array($descricaoSnapshot, array_filter([$descricao, $nomePacote]), true);
+                });
 
             $pacotes[] = [
                 'contrato_item_id' => $contratoItem?->id,

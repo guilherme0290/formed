@@ -122,7 +122,7 @@ class DashboardController extends Controller
             ->join('users', 'users.id', '=', 'comissoes.vendedor_id')
             ->join('papeis', 'papeis.id', '=', 'users.papel_id')
             ->where('comissoes.empresa_id', $empresaId)
-            ->whereBetween(DB::raw('DATE(COALESCE(comissoes.gerada_em, comissoes.created_at))'), [$inicioMes, $fimMes])
+            ->whereBetween(DB::raw('COALESCE(comissoes.competencia_em, DATE(comissoes.gerada_em), DATE(comissoes.created_at))'), [$inicioMes, $fimMes])
             ->whereRaw('LOWER(papeis.nome) LIKE ?', ['%comercial%'])
             ->where('comissoes.status', '!=', 'CANCELADA')
             ->select(
