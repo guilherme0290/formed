@@ -57,7 +57,7 @@
             <div class="flex-1">
                 <form method="GET" class="relative">
                     @php
-                        $temFiltrosAtivos = !empty($filtroBusca) || !empty($filtroServico) || !empty($filtroResponsavel) || !empty($filtroCliente) || !empty($filtroColuna) || !empty($filtroDe) || !empty($filtroAte) || !empty($filtroTarefaId);
+                        $temFiltrosAtivos = !empty($filtroBusca) || !empty($filtroServico) || !empty($filtroResponsavel) || !empty($filtroVendedor) || !empty($filtroCliente) || !empty($filtroColuna) || !empty($filtroDe) || !empty($filtroAte) || !empty($filtroTarefaId);
                     @endphp
                     <span class="absolute inset-y-0 left-3 flex items-center text-slate-400 text-sm">🔍</span>
                     <input type="text"
@@ -73,6 +73,7 @@
                          class="absolute z-20 mt-1 w-full max-h-64 overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg hidden"></div>
                     <input type="hidden" name="servico_id" value="{{ $filtroServico }}">
                     <input type="hidden" name="responsavel_id" value="{{ $filtroResponsavel }}">
+                    <input type="hidden" name="vendedor_id" value="{{ $filtroVendedor }}">
                     <input type="hidden" name="cliente_id" value="{{ $filtroCliente }}">
                     <input type="hidden" name="coluna_id" value="{{ $filtroColuna }}">
                     <input type="hidden" name="de" value="{{ $filtroDe }}">
@@ -145,6 +146,23 @@
                         @foreach($responsaveis as $resp)
                             <option value="{{ $resp->id }}" @selected($filtroResponsavel == $resp->id)>
                                 {{ $resp->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-500 tracking-wide mb-1">
+                        Vendedor
+                    </label>
+                    <select name="vendedor_id"
+                            class="w-full rounded-xl border border-slate-200 bg-slate-50/60 py-2 px-3 text-sm
+                               text-slate-700
+                               focus:bg-white focus:ring-2 focus:ring-sky-400 focus:border-sky-400">
+                        <option value="">Todos os vendedores</option>
+                        @foreach($vendedores as $vendedor)
+                            <option value="{{ $vendedor->id }}" @selected((string) $filtroVendedor === (string) $vendedor->id)>
+                                {{ $vendedor->name }}
                             </option>
                         @endforeach
                     </select>
@@ -458,11 +476,14 @@
                                                 static fn ($v) => trim((string) $v),
                                                 (array) ($aso->treinamentos ?? [])
                                             ))));
-                                            if (empty($codigosTreinamentosInformados) && is_array($aso->treinamento_pacote ?? null)) {
-                                                $codigosTreinamentosInformados = array_values(array_unique(array_filter(array_map(
-                                                    static fn ($v) => trim((string) $v),
-                                                    (array) ($aso->treinamento_pacote['codigos'] ?? [])
-                                                ))));
+                                            if (is_array($aso->treinamento_pacote ?? null)) {
+                                                $codigosTreinamentosInformados = array_values(array_unique(array_merge(
+                                                    $codigosTreinamentosInformados,
+                                                    array_filter(array_map(
+                                                        static fn ($v) => trim((string) $v),
+                                                        (array) ($aso->treinamento_pacote['codigos'] ?? [])
+                                                    ))
+                                                )));
                                             }
 
                                             $labelsTrein = [];
@@ -562,8 +583,11 @@
                                         if ($aso && $aso->vai_fazer_treinamento) {
                                             $codigosTreinamentos = [];
                                             $codigosTreinamentos = (array) ($aso->treinamentos ?? []);
-                                            if (empty($codigosTreinamentos) && is_array($aso->treinamento_pacote ?? null)) {
-                                                $codigosTreinamentos = (array) ($aso->treinamento_pacote['codigos'] ?? []);
+                                            if (is_array($aso->treinamento_pacote ?? null)) {
+                                                $codigosTreinamentos = array_merge(
+                                                    $codigosTreinamentos,
+                                                    (array) ($aso->treinamento_pacote['codigos'] ?? [])
+                                                );
                                             }
                                             $codigosTreinamentos = array_values(array_unique(array_filter(array_map(
                                                 static fn ($v) => trim((string) $v),

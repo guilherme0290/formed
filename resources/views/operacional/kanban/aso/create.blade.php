@@ -1467,24 +1467,23 @@
                 const blocoAvulsos = document.querySelector('[data-treinamento-mode="avulsos"]');
                 const pacotes = document.querySelectorAll('[data-treinamento-pacote]');
 
+                function applyButtonState(button, active) {
+                    if (!button) return;
+                    button.classList.toggle('bg-slate-900', active);
+                    button.classList.toggle('text-white', active);
+                    button.classList.toggle('border-slate-900', active);
+                    button.classList.toggle('bg-white', !active);
+                    button.classList.toggle('text-slate-700', !active);
+                    button.classList.toggle('border-slate-300', !active);
+                }
+
                 function setModoTreinamento(modo) {
                     if (modoInput) modoInput.value = modo;
                     if (blocoPacotes) blocoPacotes.classList.toggle('hidden', modo !== 'pacotes');
                     if (blocoAvulsos) blocoAvulsos.classList.toggle('hidden', modo !== 'avulsos');
 
-                    if (btnPacotes && btnAvulsos) {
-                        if (modo === 'pacotes') {
-                            btnPacotes.classList.add('bg-slate-900', 'text-white', 'border-slate-900');
-                            btnPacotes.classList.remove('bg-white', 'text-slate-700', 'border-slate-300');
-                            btnAvulsos.classList.add('bg-white', 'text-slate-700', 'border-slate-300');
-                            btnAvulsos.classList.remove('bg-slate-900', 'text-white', 'border-slate-900');
-                        } else {
-                            btnAvulsos.classList.add('bg-slate-900', 'text-white', 'border-slate-900');
-                            btnAvulsos.classList.remove('bg-white', 'text-slate-700', 'border-slate-300');
-                            btnPacotes.classList.add('bg-white', 'text-slate-700', 'border-slate-300');
-                            btnPacotes.classList.remove('bg-slate-900', 'text-white', 'border-slate-900');
-                        }
-                    }
+                    applyButtonState(btnPacotes, modo === 'pacotes');
+                    applyButtonState(btnAvulsos, modo === 'avulsos');
                 }
 
                 if (btnPacotes) btnPacotes.addEventListener('click', () => setModoTreinamento('pacotes'));
@@ -1523,17 +1522,15 @@
                     toggleCodigos(Array.from(new Set(todosCodigos)), false);
                 }
 
-                if (btnAvulsos) {
-                    btnAvulsos.addEventListener('click', () => limparPacotes());
-                }
-
                 pacotes.forEach(pacote => {
                     pacote.addEventListener('change', () => {
                         if (!pacote.checked) {
                             return;
                         }
+
                         limparPacotes();
                         pacote.checked = true;
+
                         let codigos = [];
                         try {
                             codigos = JSON.parse(pacote.dataset.codigos || '[]');

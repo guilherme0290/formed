@@ -20,14 +20,18 @@ class Comissao extends Model
         'percentual',
         'valor_comissao',
         'status',
+        'competencia_em',
         'gerada_em',
+        'paga_em',
     ];
 
     protected $casts = [
         'valor_base' => 'decimal:2',
         'percentual' => 'decimal:2',
         'valor_comissao' => 'decimal:2',
+        'competencia_em' => 'date',
         'gerada_em' => 'datetime',
+        'paga_em' => 'datetime',
     ];
 
     public function cliente(): BelongsTo
