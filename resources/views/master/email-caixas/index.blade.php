@@ -8,7 +8,7 @@
         $tab = request('tab', 'email');
     @endphp
 
-    <div class="w-full px-3 md:px-5 py-4 md:py-5 space-y-6">
+    <div class="w-full px-3 md:px-5 py-4 md:py-5 space-y-6 bg-gradient-to-b from-slate-50 via-white to-indigo-50/40 min-h-[calc(100vh-6rem)]">
         <div class="flex flex-wrap items-start justify-between gap-4">
             <div>
                 <h1 class="text-2xl font-semibold text-slate-900">
@@ -78,14 +78,14 @@
                     off-label="Inativo"
                     text-class="text-sm text-slate-700"
                 />
-                <div class="grid md:grid-cols-2 gap-4">
-                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm">
-                        <div class="border-b border-slate-200 px-4 py-3">
-                            <h2 class="text-sm font-semibold text-slate-800">Servidor SMTP & Autenticacao</h2>
+                <div class="grid md:grid-cols-3 gap-4">
+                    <div class="bg-white rounded-xl border border-indigo-100 shadow-sm shadow-indigo-100/40 overflow-hidden">
+                        <div class="border-b border-indigo-100 bg-gradient-to-r from-indigo-50 to-blue-50 px-4 py-3">
+                            <h2 class="text-sm font-semibold text-slate-800">Servidor SMTP e Autenticação</h2>
                         </div>
                         <div class="p-4 space-y-3 text-sm">
                             <div class="space-y-1">
-                                <label class="text-xs font-semibold text-slate-600">Nome da configuracao</label>
+                                <label class="text-xs font-semibold text-slate-600">Nome da configuração</label>
                                 <input type="text" name="nome" class="w-full rounded-lg border border-slate-200 px-3 py-2"
                                        value="{{ old('nome') }}" placeholder="Ex.: SMTP Principal Formed" required>
                             </div>
@@ -101,7 +101,7 @@
                                            value="{{ old('porta', 587) }}" min="1" max="65535" required>
                                 </div>
                                 <div class="space-y-1">
-                                    <label class="text-xs font-semibold text-slate-600">Seguranca</label>
+                                    <label class="text-xs font-semibold text-slate-600">Segurança</label>
                                     <select name="criptografia" class="w-full rounded-lg border border-slate-200 px-3 py-2">
                                         <option value="starttls" @selected(old('criptografia', 'starttls') === 'starttls')>STARTTLS</option>
                                         <option value="ssl" @selected(old('criptografia', 'starttls') === 'ssl')>SSL</option>
@@ -117,13 +117,13 @@
                         </div>
                     </div>
 
-                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm">
-                        <div class="border-b border-slate-200 px-4 py-3 flex items-center justify-between">
-                            <h2 class="text-sm font-semibold text-slate-800">Credenciais de Acesso (U - Usuario)</h2>
+                    <div class="bg-white rounded-xl border border-emerald-100 shadow-sm shadow-emerald-100/40 overflow-hidden">
+                        <div class="border-b border-emerald-100 bg-gradient-to-r from-emerald-50 to-cyan-50 px-4 py-3 flex items-center justify-between">
+                            <h2 class="text-sm font-semibold text-slate-800">Credenciais de Acesso (U - Usuário)</h2>
                         </div>
                         <div class="p-4 space-y-3 text-sm">
                             <div class="space-y-1">
-                                <label class="text-xs font-semibold text-slate-600">E-mail de Login / Usuario SMTP</label>
+                                <label class="text-xs font-semibold text-slate-600">E-mail de Login / Usuário SMTP</label>
                                 <input type="text" name="usuario" class="w-full rounded-lg border border-slate-200 px-3 py-2"
                                        value="{{ old('usuario') }}" placeholder="usuario@dominio.com">
                             </div>
@@ -138,13 +138,13 @@
                                     <input type="checkbox" name="requer_autenticacao" value="1"
                                            class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                                         {{ old('requer_autenticacao', '1') === '1' ? 'checked' : '' }}>
-                                    Autenticacao obrigatoria?
+                                    Autenticação obrigatória?
                                 </label>
                             </div>
                             <div class="flex flex-wrap items-center justify-center gap-3 pt-6">
                                 <button type="submit" formaction="{{ route('master.email-caixas.testar') }}"
                                         class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700">
-                                    Testar Conexao
+                                    Testar Conexão
                                 </button>
                                 <button type="submit"
                                         class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800">
@@ -158,15 +158,35 @@
                             </div>
                         </div>
                     </div>
+
+                    <div class="bg-white rounded-xl border border-amber-100 shadow-sm shadow-amber-100/40 overflow-hidden">
+                        <div class="border-b border-amber-100 bg-gradient-to-r from-amber-50 to-orange-50 px-4 py-3">
+                            <h2 class="text-sm font-semibold text-slate-800">Cópia em Enviados</h2>
+                        </div>
+                        <div class="p-4 space-y-3 text-sm">
+                            <div class="space-y-1">
+                                <label class="text-xs font-semibold text-slate-600">Pasta de enviados</label>
+                                <input type="text" name="imap_sent_folder" class="w-full rounded-lg border border-slate-200 px-3 py-2"
+                                       value="{{ old('imap_sent_folder', 'INBOX.Sent') }}" placeholder="INBOX.Sent">
+                                <p class="text-[11px] text-slate-500">Na Hostinger, normalmente use <strong>INBOX.Sent</strong>.</p>
+                            </div>
+
+                            <input type="hidden" name="imap_host" value="{{ old('imap_host') }}">
+                            <input type="hidden" name="imap_porta" value="{{ old('imap_porta') }}">
+                            <input type="hidden" name="imap_criptografia" value="{{ old('imap_criptografia') }}">
+                            <input type="hidden" name="imap_usuario" value="{{ old('imap_usuario') }}">
+                            <input type="hidden" name="imap_senha" value="{{ old('imap_senha') }}">
+                        </div>
+                    </div>
                 </div>
             </form>
 
             @php $totalCaixas = $caixas->count(); @endphp
 
-            <div class="bg-white border border-slate-200 shadow-sm p-5 space-y-4">
+            <div class="bg-white border border-violet-100 shadow-sm shadow-violet-100/40 p-5 space-y-4 rounded-2xl">
                 <div class="flex items-center justify-between">
                     <div>
-                        <h2 class="text-sm font-semibold text-slate-800">Email cadastrado</h2>
+                        <h2 class="text-sm font-semibold text-slate-800">E-mail cadastrado</h2>
                         <p class="text-[11px] text-slate-500">Selecione para editar ou remover.</p>
                     </div>
                     <span class="text-xs bg-slate-100 text-slate-700 px-3 py-1 rounded-full">{{ $totalCaixas }} caixa(s)</span>
@@ -195,7 +215,7 @@
                                         x-on:click="$dispatch('open-modal', 'email-caixa-teste-{{ $caixa->id }}')">
                                     Testar envio
                                 </button>
-                                <form method="POST" action="{{ route('master.email-caixas.destroy', $caixa) }}" data-confirm="Excluir este email?">
+                                <form method="POST" action="{{ route('master.email-caixas.destroy', $caixa) }}" data-confirm="Excluir este e-mail?">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit"
@@ -209,12 +229,12 @@
 
                         <x-modal name="email-caixa-{{ $caixa->id }}" :show="$isEditing" maxWidth="2xl">
                             <div class="px-6 py-4 border-b border-slate-200">
-                                <h3 class="text-sm font-semibold text-slate-800">Editar email de acesso</h3>
+                                <h3 class="text-sm font-semibold text-slate-800">Editar e-mail de acesso</h3>
                             </div>
                             <div class="px-6 py-4 space-y-4">
                                 @if ($isEditing && $errors->any())
                                     <div class="bg-rose-50 border border-rose-200 text-rose-700 px-3 py-2 rounded-lg text-xs">
-                                        <p class="font-semibold">Revise os campos deste email:</p>
+                                        <p class="font-semibold">Revise os campos deste e-mail:</p>
                                         <ul class="list-disc list-inside space-y-1">
                                             @foreach ($errors->all() as $error)
                                                 <li>{{ $error }}</li>
@@ -229,15 +249,81 @@
                                     @method('PUT')
                                     <input type="hidden" name="caixa_id" value="{{ $caixa->id }}">
 
-                                    <div class="space-y-1 text-sm">
-                                        <label class="text-xs font-semibold text-slate-600">E-mail de Login / Usuario SMTP</label>
-                                        <input type="text" name="usuario" class="w-full rounded-lg border border-slate-200 px-3 py-2"
-                                               value="{{ $isEditing ? old('usuario', $caixa->usuario) : $caixa->usuario }}" required>
-                                    </div>
-                                    <div class="space-y-1 text-sm">
-                                        <label class="text-xs font-semibold text-slate-600">Senha SMTP</label>
-                                        <input type="password" name="senha" class="w-full rounded-lg border border-slate-200 px-3 py-2"
-                                               value="{{ $isEditing ? old('senha') : '' }}" autocomplete="new-password">
+                                    <div class="grid gap-4 md:grid-cols-2">
+                                        <div class="space-y-3 rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+                                            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">SMTP</p>
+                                            <div class="space-y-1 text-sm">
+                                                <label class="text-xs font-semibold text-slate-600">Nome da configuração</label>
+                                                <input type="text" name="nome" class="w-full rounded-lg border border-slate-200 px-3 py-2"
+                                                       value="{{ $isEditing ? old('nome', $caixa->nome) : $caixa->nome }}" required>
+                                            </div>
+                                            <div class="space-y-1 text-sm">
+                                                <label class="text-xs font-semibold text-slate-600">Servidor SMTP</label>
+                                                <input type="text" name="host" class="w-full rounded-lg border border-slate-200 px-3 py-2"
+                                                       value="{{ $isEditing ? old('host', $caixa->host) : $caixa->host }}" required>
+                                            </div>
+                                            <div class="grid grid-cols-2 gap-3">
+                                                <div class="space-y-1 text-sm">
+                                                    <label class="text-xs font-semibold text-slate-600">Porta</label>
+                                                    <input type="number" name="porta" class="w-full rounded-lg border border-slate-200 px-3 py-2"
+                                                           value="{{ $isEditing ? old('porta', $caixa->porta) : $caixa->porta }}" min="1" max="65535" required>
+                                                </div>
+                                                <div class="space-y-1 text-sm">
+                                                    <label class="text-xs font-semibold text-slate-600">Segurança</label>
+                                                    <select name="criptografia" class="w-full rounded-lg border border-slate-200 px-3 py-2">
+                                                        <option value="starttls" @selected(($isEditing ? old('criptografia', $caixa->criptografia) : $caixa->criptografia) === 'starttls')>STARTTLS</option>
+                                                        <option value="ssl" @selected(($isEditing ? old('criptografia', $caixa->criptografia) : $caixa->criptografia) === 'ssl')>SSL</option>
+                                                        <option value="none" @selected(($isEditing ? old('criptografia', $caixa->criptografia) : $caixa->criptografia) === 'none')>Sem criptografia</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="space-y-1 text-sm">
+                                                <label class="text-xs font-semibold text-slate-600">Timeout</label>
+                                                <input type="number" name="timeout" class="w-full rounded-lg border border-slate-200 px-3 py-2"
+                                                       value="{{ $isEditing ? old('timeout', $caixa->timeout) : $caixa->timeout }}" min="1" max="600">
+                                            </div>
+                                            <div class="space-y-1 text-sm">
+                                                <label class="text-xs font-semibold text-slate-600">E-mail de Login / Usuário SMTP</label>
+                                                <input type="text" name="usuario" class="w-full rounded-lg border border-slate-200 px-3 py-2"
+                                                       value="{{ $isEditing ? old('usuario', $caixa->usuario) : $caixa->usuario }}" required>
+                                            </div>
+                                            <div class="space-y-1 text-sm">
+                                                <label class="text-xs font-semibold text-slate-600">Senha SMTP</label>
+                                                <input type="password" name="senha" class="w-full rounded-lg border border-slate-200 px-3 py-2"
+                                                       value="{{ $isEditing ? old('senha') : '' }}" autocomplete="new-password">
+                                            </div>
+                                            <label class="inline-flex items-center gap-2 text-slate-700 text-sm">
+                                                <input type="hidden" name="requer_autenticacao" value="0">
+                                                <input type="checkbox" name="requer_autenticacao" value="1" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                                       @checked((bool) ($isEditing ? old('requer_autenticacao', $caixa->requer_autenticacao) : $caixa->requer_autenticacao))>
+                                                Autenticação obrigatória?
+                                            </label>
+                                            <label class="inline-flex items-center gap-2 text-slate-700 text-sm">
+                                                <input type="hidden" name="ativo" value="0">
+                                                <input type="checkbox" name="ativo" value="1" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                                       @checked((bool) ($isEditing ? old('ativo', $caixa->ativo) : $caixa->ativo))>
+                                                Caixa ativa
+                                            </label>
+                                        </div>
+
+                                        <div class="space-y-3 rounded-xl border border-amber-200 bg-amber-50/60 p-4">
+                                            <p class="text-xs font-semibold uppercase tracking-wide text-amber-700">IMAP / Enviados</p>
+                                            <div class="space-y-1 text-sm">
+                                                <label class="text-xs font-semibold text-slate-600">Pasta de enviados</label>
+                                                <input type="text" name="imap_sent_folder" class="w-full rounded-lg border border-slate-200 px-3 py-2"
+                                                       value="{{ $isEditing ? old('imap_sent_folder', $caixa->imap_sent_folder ?: 'INBOX.Sent') : ($caixa->imap_sent_folder ?: 'INBOX.Sent') }}">
+                                            </div>
+                                            <div class="rounded-xl border border-amber-200 bg-white/80 px-3 py-3 text-[11px] text-amber-900 space-y-1">
+                                                <p class="font-semibold">Mesma conta da caixa</p>
+                                                <p>O sistema usa automaticamente o mesmo usuário e senha do SMTP para gravar uma cópia em <strong>Enviados</strong>.</p>
+                                                <p>Se o host SMTP estiver como `smtp.dominio.com`, ele tenta `imap.dominio.com` com porta `993`.</p>
+                                            </div>
+                                            <input type="hidden" name="imap_host" value="{{ $isEditing ? old('imap_host', $caixa->imap_host) : $caixa->imap_host }}">
+                                            <input type="hidden" name="imap_porta" value="{{ $isEditing ? old('imap_porta', $caixa->imap_porta) : $caixa->imap_porta }}">
+                                            <input type="hidden" name="imap_criptografia" value="{{ $isEditing ? old('imap_criptografia', $caixa->imap_criptografia) : $caixa->imap_criptografia }}">
+                                            <input type="hidden" name="imap_usuario" value="{{ $isEditing ? old('imap_usuario', $caixa->imap_usuario) : $caixa->imap_usuario }}">
+                                            <input type="hidden" name="imap_senha" value="">
+                                        </div>
                                     </div>
 
                                     <div class="flex flex-wrap items-center justify-end gap-2 text-sm">
@@ -257,7 +343,7 @@
 
                         <x-modal name="email-caixa-teste-{{ $caixa->id }}" :show="(int) ($caixaTesteId ?: session('smtp_send_id')) === $caixa->id" maxWidth="lg">
                             <div class="px-6 py-4 border-b border-slate-200">
-                                <h3 class="text-sm font-semibold text-slate-800">Enviar email de teste</h3>
+                                <h3 class="text-sm font-semibold text-slate-800">Enviar e-mail de teste</h3>
                             </div>
                             <div class="px-6 py-4 space-y-4">
                                 @if ((int) session('smtp_send_id') === $caixa->id && session('smtp_send_error'))
@@ -276,7 +362,7 @@
                                     <input type="hidden" name="caixa_teste_id" value="{{ $caixa->id }}">
 
                                     <div class="space-y-1 text-sm">
-                                        <label class="text-xs font-semibold text-slate-600">Email destino</label>
+                                        <label class="text-xs font-semibold text-slate-600">E-mail de destino</label>
                                         <input type="email" name="destino" class="w-full rounded-lg border border-slate-200 px-3 py-2"
                                                value="{{ $caixaTesteId === $caixa->id ? old('destino') : '' }}" placeholder="destino@dominio.com" required>
                                     </div>

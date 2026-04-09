@@ -5,7 +5,7 @@
     <h2 style="margin:0 0 12px; color:#1d4ed8;">Fatura #{{ $conta->id }}</h2>
     <p style="margin:0 0 10px;">Olá,</p>
     <p style="margin:0 0 14px;">
-        Segue em anexo a fatura <strong>#{{ $conta->id }}</strong> do cliente <strong>{{ $clienteNome }}</strong>.
+        Segue em anexo a fatura do cliente <strong>{{ $clienteNome }}</strong>.
     </p>
 
     <table cellpadding="0" cellspacing="0" style="border-collapse: collapse; width: 100%; max-width: 520px; margin-bottom: 14px;">
@@ -26,4 +26,3 @@
     <p style="margin:0 0 10px; color:#475569;">Em caso de dúvidas, responda este e-mail.</p>
     <p style="margin:0; color:#64748b; font-size:12px;">Mensagem automática do financeiro.</p>
 </div>
-

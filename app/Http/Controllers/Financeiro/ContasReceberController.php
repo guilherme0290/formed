@@ -8,6 +8,7 @@ use App\Models\Cliente;
 use App\Models\ClienteContrato;
 use App\Models\ContaReceber;
 use App\Models\ContaReceberItem;
+use App\Models\EmailCaixa;
 use App\Models\Empresa;
 use App\Models\ParametroCliente;
 use App\Models\Servico;
@@ -15,6 +16,7 @@ use App\Models\Tarefa;
 use App\Models\VendaItem;
 use App\Services\ContratoClienteService;
 use App\Services\ContaReceberService;
+use App\Services\ImapSentMailService;
 use App\Services\PrecificacaoService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -26,6 +28,9 @@ use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\Mailer\Mailer;
+use Symfony\Component\Mailer\Transport\Smtp\EsmtpTransport;
+use Symfony\Component\Mime\Email;
 
 class ContasReceberController extends Controller
 {
@@ -1065,14 +1070,64 @@ class ContasReceberController extends Controller
         $pdfBinary = $pdf->output();
         $pdfName = 'fatura-' . $contaReceber->id . '.pdf';
 
-        Mail::send('financeiro.contas-receber.mail-fatura', [
+        $caixaAtiva = EmailCaixa::query()
+            ->where('empresa_id', $request->user()->empresa_id ?? null)
+            ->where('ativo', true)
+            ->orderByDesc('id')
+            ->first();
+
+        if (!$caixaAtiva || empty($caixaAtiva->usuario)) {
+            return back()->with('error', 'Nenhuma caixa de e-mail ativa foi configurada. Cadastre e ative uma caixa em Master > Configuração > E-mail.');
+        }
+
+        $transport = $this->criarTransportEmailCaixa($caixaAtiva);
+        $mailer = new Mailer($transport);
+
+        $html = view('financeiro.contas-receber.mail-fatura', [
             'conta' => $contaReceber,
-        ], function ($message) use ($data, $assunto, $pdfBinary, $pdfName) {
-            $message->to($data['email_destino'])->subject($assunto);
-            $message->attachData($pdfBinary, $pdfName, ['mime' => 'application/pdf']);
-        });
+        ])->render();
+
+        $email = (new Email())
+            ->from((string) $caixaAtiva->usuario)
+            ->to($data['email_destino'])
+            ->subject($assunto)
+            ->html($html)
+            ->attach($pdfBinary, $pdfName, 'application/pdf');
+
+        $mailer->send($email);
+        app(ImapSentMailService::class)->appendToSentIfConfigured($caixaAtiva, $email);
 
         return back()->with('success', 'Fatura enviada por e-mail com sucesso.');
+    }
+
+    private function criarTransportEmailCaixa(EmailCaixa $emailCaixa): EsmtpTransport
+    {
+        $criptografia = $emailCaixa->criptografia === 'tls' ? 'starttls' : $emailCaixa->criptografia;
+        $tls = $criptografia === 'ssl';
+
+        $transport = new EsmtpTransport((string) $emailCaixa->host, (int) $emailCaixa->porta, $tls);
+
+        if (!empty($emailCaixa->timeout)) {
+            $stream = $transport->getStream();
+            if (method_exists($stream, 'setTimeout')) {
+                $stream->setTimeout((float) $emailCaixa->timeout);
+            }
+        }
+
+        if ($criptografia === 'starttls') {
+            $transport->setAutoTls(true);
+            $transport->setRequireTls(true);
+        } else {
+            $transport->setAutoTls(false);
+            $transport->setRequireTls(false);
+        }
+
+        if ($emailCaixa->requer_autenticacao) {
+            $transport->setUsername((string) $emailCaixa->usuario);
+            $transport->setPassword((string) $emailCaixa->senha);
+        }
+
+        return $transport;
     }
 
     private function buildFaturaPdf(ContaReceber $contaReceber)

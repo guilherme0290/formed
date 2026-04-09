@@ -1172,19 +1172,33 @@
         <div id="crModalEmailFatura" class="fixed inset-0 z-[91] hidden overflow-y-auto">
             <div class="absolute inset-0 bg-slate-900/50" data-cr-fechar-modal-email-fatura></div>
             <div class="absolute inset-0 flex items-center justify-center p-4">
-                <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-5 space-y-4 max-h-[90vh] overflow-y-auto">
+                <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-md p-5 space-y-4 max-h-[90vh] overflow-y-auto">
+                    <div id="crEmailFaturaLoading" class="absolute inset-0 z-10 hidden rounded-2xl bg-white/75 backdrop-blur-[1px]">
+                        <div class="flex h-full flex-col items-center justify-center gap-3 text-slate-700">
+                            <svg class="h-8 w-8 animate-spin text-sky-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                            </svg>
+                            <p class="text-sm font-semibold">Enviando fatura...</p>
+                        </div>
+                    </div>
                     <div class="flex items-center justify-between">
                         <h3 class="text-sm font-semibold text-slate-900">Enviar fatura por e-mail</h3>
                         <button type="button" data-cr-fechar-modal-email-fatura class="text-slate-400 hover:text-slate-600">✕</button>
                     </div>
 
-                    <form method="POST" action="{{ route('financeiro.contas-receber.enviar-email', $contaDetalheSelecionada) }}" class="space-y-3">
+                    <form id="crFormEnviarEmailFatura" method="POST" action="{{ route('financeiro.contas-receber.enviar-email', $contaDetalheSelecionada) }}" class="space-y-3">
                         @csrf
+                        @php
+                            $emailDestinoPadrao = collect($contaDetalheEmailOpcoes ?? [])
+                                ->firstWhere('tipo', 'cliente_fatura')['value']
+                                ?? (collect($contaDetalheEmailOpcoes ?? [])->firstWhere('tipo', 'financeiro')['value'] ?? '');
+                        @endphp
                         <div>
                             <label class="text-xs font-semibold text-slate-600">Destino</label>
                             <select name="email_destino" class="mt-1 w-full rounded-lg border-slate-200 bg-white text-slate-900 text-sm" required>
                                 @foreach(collect($contaDetalheEmailOpcoes ?? []) as $op)
-                                    <option value="{{ $op['value'] }}" @selected(($op['tipo'] ?? '') === 'financeiro')>{{ $op['label'] }}</option>
+                                    <option value="{{ $op['value'] }}" @selected(($op['value'] ?? '') === $emailDestinoPadrao)>{{ $op['label'] }}</option>
                                 @endforeach
                             </select>
                             <p class="mt-1 text-xs text-slate-500">O envio será realizado com a fatura em PDF anexada.</p>
@@ -1195,9 +1209,15 @@
                             <div class="mt-1">Emissão {{ optional($contaDetalheSelecionada->created_at)->format('d/m/Y') ?? '—' }} · Vencimento {{ optional($contaDetalheSelecionada->vencimento)->format('d/m/Y') ?? '—' }}</div>
                         </div>
 
-                        <button class="w-full px-4 py-2.5 rounded-xl text-sm font-semibold {{ $canUpdate ? 'bg-sky-600 text-white hover:bg-sky-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}"
+                        <button id="crBtnEnviarEmailFatura" class="w-full px-4 py-2.5 rounded-xl text-sm font-semibold {{ $canUpdate ? 'bg-sky-600 text-white hover:bg-sky-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}"
                                 @if(!$canUpdate) disabled title="Usuário sem permissão" @endif>
-                            Enviar fatura
+                            <span class="inline-flex items-center justify-center gap-2">
+                                <svg id="crBtnEnviarEmailFaturaSpinner" class="hidden h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                                </svg>
+                                <span id="crBtnEnviarEmailFaturaLabel">Enviar fatura</span>
+                            </span>
                         </button>
                     </form>
                 </div>
@@ -1657,6 +1677,11 @@
             const abrirModalEmailFatura = document.getElementById('crAbrirModalEmailFatura');
             const modalEmailFatura = document.getElementById('crModalEmailFatura');
             const fecharModalEmailFaturaBtns = document.querySelectorAll('[data-cr-fechar-modal-email-fatura]');
+            const formEnviarEmailFatura = document.getElementById('crFormEnviarEmailFatura');
+            const btnEnviarEmailFatura = document.getElementById('crBtnEnviarEmailFatura');
+            const btnEnviarEmailFaturaLabel = document.getElementById('crBtnEnviarEmailFaturaLabel');
+            const btnEnviarEmailFaturaSpinner = document.getElementById('crBtnEnviarEmailFaturaSpinner');
+            const loadingEmailFatura = document.getElementById('crEmailFaturaLoading');
             const abrirModalRelatorioVendas = document.getElementById('crAbrirModalRelatorioVendas');
             const modalRelatorioVendas = document.getElementById('crModalRelatorioVendas');
             const fecharModalRelatorioVendasBtns = document.querySelectorAll('[data-cr-fechar-modal-relatorio-vendas]');
@@ -1699,6 +1724,30 @@
                 if (abrirModalEmailFatura && abrirModalEmailFatura.disabled) return false;
                 modalEmailFatura.classList.remove('hidden');
                 return true;
+            }
+
+            if (formEnviarEmailFatura && btnEnviarEmailFatura) {
+                formEnviarEmailFatura.addEventListener('submit', function (event) {
+                    if (btnEnviarEmailFatura.disabled) {
+                        event.preventDefault();
+                        return;
+                    }
+
+                    btnEnviarEmailFatura.disabled = true;
+                    btnEnviarEmailFatura.classList.add('opacity-80', 'cursor-wait');
+
+                    if (btnEnviarEmailFaturaLabel) {
+                        btnEnviarEmailFaturaLabel.textContent = 'Enviando...';
+                    }
+
+                    if (btnEnviarEmailFaturaSpinner) {
+                        btnEnviarEmailFaturaSpinner.classList.remove('hidden');
+                    }
+
+                    if (loadingEmailFatura) {
+                        loadingEmailFatura.classList.remove('hidden');
+                    }
+                });
             }
 
             function openModalRelatorioVendas() {
