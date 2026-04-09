@@ -246,12 +246,11 @@ class PrecificacaoService
 
         if (is_array($treinamentosPayload) && ($treinamentosPayload['modo'] ?? null) === 'pacote') {
             $pacote = (array) ($treinamentosPayload['pacote'] ?? []);
-            $contratoItemId = (int) ($pacote['contrato_item_id'] ?? 0);
-
-            $itemContrato = $contrato->itens()
-                ->where('id', $contratoItemId)
-                ->where('ativo', true)
-                ->first();
+            $itemContrato = $this->resolverItemContratoPacote(
+                $contrato,
+                (int) $tarefa->servico_id,
+                $pacote
+            );
 
             if (!$itemContrato) {
                 throw ValidationException::withMessages([
@@ -396,11 +395,11 @@ class PrecificacaoService
         $codigosPacote = [];
 
         if (!empty($treinamentoPacote)) {
-            $contratoItemId = (int) ($treinamentoPacote['contrato_item_id'] ?? 0);
-            $itemContrato = $contrato->itens()
-                ->where('id', $contratoItemId)
-                ->where('ativo', true)
-                ->first();
+            $itemContrato = $this->resolverItemContratoPacote(
+                $contrato,
+                $servicoTreinamentoId,
+                $treinamentoPacote
+            );
 
             if (!$itemContrato) {
                 throw ValidationException::withMessages([
@@ -483,6 +482,39 @@ class PrecificacaoService
         }
 
         return $itensVenda;
+    }
+
+    private function resolverItemContratoPacote(ClienteContrato $contrato, int $servicoId, array $pacote): ?ClienteContratoItem
+    {
+        $contrato->loadMissing('itens');
+
+        $itensServico = $contrato->itens
+            ->where('servico_id', $servicoId)
+            ->where('ativo', true)
+            ->values();
+
+        $contratoItemId = (int) ($pacote['contrato_item_id'] ?? 0);
+        if ($contratoItemId > 0) {
+            $itemPorId = $itensServico->firstWhere('id', $contratoItemId);
+            if ($itemPorId) {
+                return $itemPorId;
+            }
+        }
+
+        $candidatos = collect([
+            trim((string) ($pacote['descricao'] ?? '')),
+            trim((string) ($pacote['nome'] ?? '')),
+        ])->filter()->unique()->values();
+
+        if ($candidatos->isEmpty()) {
+            return null;
+        }
+
+        return $itensServico->first(function ($item) use ($candidatos) {
+            $descricaoSnapshot = trim((string) ($item->descricao_snapshot ?? ''));
+
+            return $descricaoSnapshot !== '' && $candidatos->contains($descricaoSnapshot);
+        });
     }
 
     /**
