@@ -21,8 +21,25 @@ use Illuminate\Support\Facades\Password;
 
 class AcessosController extends Controller
 {
+    private function canManageTargetUser(User $actor, User $target): bool
+    {
+        if (!$target->is_protected) {
+            return true;
+        }
+
+        return (int) $actor->id === (int) $target->id;
+    }
+
+    private function deniedProtectedUserMessage(): string
+    {
+        return 'Usuário protegido: apenas o próprio usuário pode alterar este cadastro.';
+    }
+
     public function index(Request $r)
     {
+        /** @var User $authUser */
+        $authUser = $r->user();
+
         $tab = $r->get('tab','papeis');
         $senhaUserId = max(0, (int) $r->integer('user_id'));
 
@@ -32,6 +49,14 @@ class AcessosController extends Controller
         $tipo    = $r->string('tipo')->toString();   // <- filtro de tipo
 
         $usuarios = User::with(['papel', 'cliente'])
+            ->when(
+                !$authUser?->is_protected,
+                fn ($b) => $b->where('is_protected', false),
+                fn ($b) => $b->where(function ($q) use ($authUser) {
+                    $q->where('is_protected', false)
+                        ->orWhere('id', (int) $authUser->id);
+                })
+            )
             ->when($q, fn($b) => $b->where(fn($w) => $w
                 ->where('name','like',"%$q%")
                 ->orWhere('email','like',"%$q%")
@@ -58,10 +83,27 @@ class AcessosController extends Controller
         $papeis = Papel::with('permissoes')->orderBy('nome')->get();
         $senhaUsuarioSelecionado = null;
         if ($senhaUserId > 0) {
-            $senhaUsuarioSelecionado = User::query()->find($senhaUserId);
+            $senhaUsuarioSelecionado = User::query()
+                ->when(
+                    !$authUser?->is_protected,
+                    fn ($b) => $b->where('is_protected', false),
+                    fn ($b) => $b->where(function ($q) use ($authUser) {
+                        $q->where('is_protected', false)
+                            ->orWhere('id', (int) $authUser->id);
+                    })
+                )
+                ->find($senhaUserId);
         }
         $permissoes = \App\Models\Permissao::orderBy('escopo')->orderBy('nome')->get()->groupBy('escopo');
         $usuariosPermissoes = User::with(['papel', 'permissoesDiretas'])
+            ->when(
+                !$authUser?->is_protected,
+                fn ($b) => $b->where('is_protected', false),
+                fn ($b) => $b->where(function ($q) use ($authUser) {
+                    $q->where('is_protected', false)
+                        ->orWhere('id', (int) $authUser->id);
+                })
+            )
             ->orderBy('name')
             ->get();
 
@@ -103,6 +145,12 @@ class AcessosController extends Controller
 
     public function usuariosUpdate(Request $r, User $user)
     {
+        /** @var User $authUser */
+        $authUser = $r->user();
+        if (!$this->canManageTargetUser($authUser, $user)) {
+            return back()->with('erro', $this->deniedProtectedUserMessage());
+        }
+
         $r->merge(['ativo' => $r->has('ativo')]);
 
         $data = $r->validate([
@@ -132,6 +180,12 @@ class AcessosController extends Controller
 
     public function usuariosDestroy(User $user)
     {
+        /** @var User $authUser */
+        $authUser = request()->user();
+        if (!$this->canManageTargetUser($authUser, $user)) {
+            return back()->with('erro', $this->deniedProtectedUserMessage());
+        }
+
         $reasons = [];
 
         if (auth()->id() === $user->id) {
@@ -203,12 +257,24 @@ class AcessosController extends Controller
     // Ativa/Desativa
     public function usuariosToggle(User $user)
     {
+        /** @var User $authUser */
+        $authUser = request()->user();
+        if (!$this->canManageTargetUser($authUser, $user)) {
+            return back()->with('erro', $this->deniedProtectedUserMessage());
+        }
+
         $user->update(['ativo' => ! $user->ativo]);
         return back()->with('ok', $user->ativo ? 'Usuário ativado.' : 'Usuário desativado.');
     }
 
     public function usuariosReset(User $user)
     {
+        /** @var User $authUser */
+        $authUser = request()->user();
+        if (!$this->canManageTargetUser($authUser, $user)) {
+            return back()->with('err', $this->deniedProtectedUserMessage());
+        }
+
         // Envia link de redefiniÃ§Ã£o usando o Password Broker
         $status = \Illuminate\Support\Facades\Password::sendResetLink(['email' => $user->email]);
 
@@ -223,6 +289,12 @@ class AcessosController extends Controller
 
     public function usuariosSetPassword(Request $r, User $user)  // â tipos corretos
     {
+        /** @var User $authUser */
+        $authUser = $r->user();
+        if (!$this->canManageTargetUser($authUser, $user)) {
+            return back()->with('err', $this->deniedProtectedUserMessage());
+        }
+
         $data = $r->validate([
             'password' => ['required','string','min:6'],
         ]);
@@ -236,6 +308,12 @@ class AcessosController extends Controller
 
     public function usuariosSyncPermissoes(Request $request, User $user)
     {
+        /** @var User $authUser */
+        $authUser = $request->user();
+        if (!$this->canManageTargetUser($authUser, $user)) {
+            return back()->with('error', $this->deniedProtectedUserMessage());
+        }
+
         $papelNome = mb_strtolower((string) optional($user->papel)->nome);
         if ($papelNome === 'cliente') {
             return back()->with('error', 'Permissoes do Cliente sao fixas por regra do sistema.');

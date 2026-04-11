@@ -78,6 +78,10 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
             return redirect()->route('password.force');
         }
 
+        if ($user->isSuperUser()) {
+            return redirect()->route('master.dashboard');
+        }
+
         if ($papelNome === 'master') {
             return redirect()->route('master.dashboard');
         }

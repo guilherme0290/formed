@@ -17,7 +17,7 @@ class EnsureRoutePermission
             return $next($request);
         }
 
-        if ($user->hasPapel('Master')) {
+        if ($user->isSuperUser() || $user->hasPapel('Master')) {
             return $next($request);
         }
 
@@ -80,7 +80,7 @@ class EnsureRoutePermission
             return str_starts_with($routeName, 'financeiro.');
         }
 
-        if ($user->hasPapel('Master')) {
+        if ($user->isSuperUser() || $user->hasPapel('Master')) {
             return true;
         }
 
@@ -119,17 +119,7 @@ class EnsureRoutePermission
             $keys[] = str_replace('comercial.tabela-precos.', 'master.tabela-precos.', $permissionKey);
         }
 
-        $viaPapel = $user->papel()
-            ->whereHas('permissoes', fn ($q) => $q->whereIn('chave', $keys))
-            ->exists();
-
-        if ($viaPapel) {
-            return true;
-        }
-
-        return $user->permissoesDiretas()
-            ->whereIn('chave', $keys)
-            ->exists();
+        return $user->hasPermission($keys);
     }
 
     private function resolvePermissionKey(string $routeName, string $method): ?string

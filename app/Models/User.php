@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Traits\HasRoles;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -30,6 +31,7 @@ class User extends Authenticatable
         'must_change_password',
         'lgpd_accepted_at',
         'proposta_desconto_max_percentual',
+        'is_protected',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -45,7 +47,35 @@ class User extends Authenticatable
             'must_change_password' => 'boolean',
             'lgpd_accepted_at' => 'datetime',
             'proposta_desconto_max_percentual' => 'decimal:2',
+            'is_protected' => 'boolean',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::updating(function (self $user): void {
+            $actorId = auth()->id();
+
+            if (app()->runningInConsole()) {
+                return;
+            }
+
+            if ($user->is_protected && $actorId !== (int) $user->id) {
+                throw new AuthorizationException('Não é permitido alterar um usuário protegido.');
+            }
+        });
+
+        static::deleting(function (self $user): void {
+            $actorId = auth()->id();
+
+            if (app()->runningInConsole()) {
+                return;
+            }
+
+            if ($user->is_protected && $actorId !== (int) $user->id) {
+                throw new AuthorizationException('Não é permitido excluir um usuário protegido.');
+            }
+        });
     }
 
     public function empresa(): BelongsTo
@@ -77,6 +107,18 @@ class User extends Authenticatable
      */
     public function hasPapel(string|array $nome): bool
     {
+        if ($this->isSuperUser()) {
+            $nomes = is_array($nome) ? $nome : [$nome];
+            $nomesNormalizados = array_map(
+                fn ($n) => mb_strtolower(trim((string) $n)),
+                $nomes
+            );
+
+            if (in_array('master', $nomesNormalizados, true)) {
+                return true;
+            }
+        }
+
         $papel = $this->papel; // já usa o relacionamento carregado, se tiver
 
         if (!$papel) {
@@ -97,7 +139,33 @@ class User extends Authenticatable
     /** Atalhos semânticos */
     public function isMaster(): bool
     {
-        return $this->hasPapel('Master');
+        return $this->isSuperUser() || $this->hasPapel('Master');
+    }
+
+    public function isSuperUser(): bool
+    {
+        return (bool) $this->is_protected;
+    }
+
+    public function hasPermission(string|array $keys): bool
+    {
+        if ($this->isSuperUser()) {
+            return true;
+        }
+
+        $keys = is_array($keys) ? $keys : [$keys];
+
+        $viaPapel = $this->papel()
+            ->whereHas('permissoes', fn ($q) => $q->whereIn('chave', $keys))
+            ->exists();
+
+        if ($viaPapel) {
+            return true;
+        }
+
+        return $this->permissoesDiretas()
+            ->whereIn('chave', $keys)
+            ->exists();
     }
 
     public function isOperacional(): bool

@@ -48,6 +48,19 @@ class AuthenticatedSessionController extends Controller
             return redirect()->route('password.force');
         }
 
+        if ($user->isSuperUser()) {
+            if ($destino === 'operacional') {
+                return redirect()->route('operacional.kanban');
+            }
+            if ($destino === 'comercial') {
+                return redirect()->route('comercial.dashboard');
+            }
+            if ($destino === 'financeiro') {
+                return redirect()->route('financeiro.dashboard');
+            }
+            return redirect()->route('master.dashboard');
+        }
+
         // MASTER: pode ir a qualquer módulo exceto cliente
         if ($papelNome === 'master') {
             if ($destino === 'operacional') {
