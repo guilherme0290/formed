@@ -628,19 +628,26 @@ class PropostaController extends Controller
                     ->first();
                 abort_if(!$clienteGhe, 403);
             } elseif ($gheId > 0) {
-                if (isset($clienteGheCache['ghe:' . $gheId])) {
-                    $clienteGhe = $clienteGheCache['ghe:' . $gheId];
+                $cacheKey = 'ghe:' . $gheId . ':nome:' . mb_strtolower($gheNome);
+                if (isset($clienteGheCache[$cacheKey])) {
+                    $clienteGhe = $clienteGheCache[$cacheKey];
                 } else {
                     $ghe = Ghe::query()
                         ->where('empresa_id', $empresaId)
                         ->where('id', $gheId)
                         ->first();
                     abort_if(!$ghe, 403);
-                    $clienteGhe = ClienteGhe::query()
+
+                    $clienteGheQuery = ClienteGhe::query()
                         ->where('empresa_id', $empresaId)
                         ->where('cliente_id', $data['cliente_id'])
-                        ->where('ghe_id', $gheId)
-                        ->first();
+                        ->where('ghe_id', $gheId);
+
+                    if ($gheNome !== '') {
+                        $clienteGheQuery->where('nome', $gheNome);
+                    }
+
+                    $clienteGhe = $clienteGheQuery->first();
                     if (!$clienteGhe) {
                         $clienteGhe = ClienteGhe::create([
                             'empresa_id' => $empresaId,
@@ -668,7 +675,7 @@ class PropostaController extends Controller
                             ]);
                         }
                     }
-                    $clienteGheCache['ghe:' . $gheId] = $clienteGhe;
+                    $clienteGheCache[$cacheKey] = $clienteGhe;
                 }
             }
 

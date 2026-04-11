@@ -1175,7 +1175,7 @@ class ClienteController extends Controller
                 ],
                 'email'          => ['nullable', 'email', 'max:255'],
                 'telefone'       => ['nullable', 'string', 'max:30'],
-                'contato'        => ['nullable', 'string', 'max:120'],
+                'contato'        => ['required', 'string', 'max:120'],
                 'telefone_2'     => ['nullable', 'string', 'max:30'],
                 'tipo_cliente'   => ['required', Rule::in(['parceiro', 'final'])],
                 'observacao'     => [
@@ -1201,6 +1201,8 @@ class ClienteController extends Controller
                 'cnpj.required'         => 'Informe o CNPJ do cliente.',
                 'cnpj.max'              => 'O CNPJ está muito longo. Confira o número digitado.',
                 'email.email'           => 'Informe um e-mail válido (ex: nome@empresa.com).',
+                'contato.required'      => 'Informe o contato do cliente.',
+                'contato.max'           => 'O contato deve ter no máximo 120 caracteres.',
                 'tipo_cliente.required' => 'Selecione se o cliente Parceiro ou Final.',
                 'tipo_cliente.in'       => 'Tipo de cliente inválido.',
                 'observacao.required'   => 'Informe a observacao com os detalhes negociados para cliente parceiro.',

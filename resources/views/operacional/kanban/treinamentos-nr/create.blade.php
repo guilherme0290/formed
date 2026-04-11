@@ -195,11 +195,18 @@
                     @endphp
 
                     <div class="rounded-xl border border-indigo-200/80 bg-white/95 p-3 md:p-4 shadow-sm">
+                    @if(collect($funcionarios)->isEmpty())
+                        <div class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                            Não existe funcionário cadastrado para este cliente. Cadastre ao menos um colaborador para selecionar participantes do treinamento.
+                        </div>
+                    @endif
+
                     <div class="mb-3 grid grid-cols-1 md:grid-cols-[1fr,auto] gap-2 items-end">
                         <div>
                             <label class="block text-xs font-medium text-slate-600 mb-1">Filtrar por fun&ccedil;&atilde;o</label>
                             <select id="filtro-funcao-participante"
-                                    class="w-full rounded-lg border-slate-200 text-sm px-3 py-2">
+                                    class="w-full rounded-lg border-slate-200 text-sm px-3 py-2"
+                                    @disabled(collect($funcionarios)->isEmpty())>
                                 <option value="">Selecione a fun&ccedil;&atilde;o...</option>
                                 @foreach($funcoesFiltroParticipantes as $funcaoFiltro)
                                     <option value="{{ $funcaoFiltro }}">{{ $funcaoFiltro }}</option>
@@ -210,7 +217,8 @@
                         <label class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700">
                             <input type="checkbox"
                                    id="check-selecionar-todos-participantes"
-                                   class="h-4 w-4 rounded border-slate-300 text-indigo-600">
+                                   class="h-4 w-4 rounded border-slate-300 text-indigo-600"
+                                   @disabled(collect($funcionarios)->isEmpty())>
                             Selecionar todos
                         </label>
                     </div>
@@ -244,6 +252,11 @@
                                 </div>
                             </label>
                         @endforeach
+                        @if(collect($funcionarios)->isEmpty())
+                            <div class="sm:col-span-2 lg:col-span-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
+                                Nenhum funcionário cadastrado para este cliente.
+                            </div>
+                        @endif
                     </div>
                     </div>
 

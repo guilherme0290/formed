@@ -5,6 +5,7 @@
     @php
         $isEdit = isset($proposta) && $proposta;
         $propostaBase = $propostaBase ?? null;
+        $clienteModoDuplicacao = $clienteModoDuplicacao ?? null;
         $fonteProposta = $isEdit ? $proposta : $propostaBase;
         $duplicandoProposta = !$isEdit && $propostaBase;
         $clienteSelecionadoId = data_get($clienteSelecionado, 'id');
@@ -85,7 +86,7 @@
 
         @if($errosFormulario->isNotEmpty())
             <div class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                <div class="font-semibold">Corrija os campos obrigatórios:</div>
+                <div class="font-semibold">Corrija os campos do formulário:</div>
                 <ul class="mt-2 list-disc pl-5 space-y-1">
                     @foreach($errosFormulario as $error)
                         <li>{{ $error }}</li>
@@ -645,7 +646,7 @@
                     categoria: String(item.categoria || 'SERVICO').toUpperCase(),
                     origem_id: item.origem_id || null,
                     nome: item.nome || '',
-                    descricao: item.descricao || '',
+                    descricao: String(item.descricao || '').trim().slice(0, 255),
                     quantidade: Number(item.quantidade || 1),
                     valor_unitario: Number(item.valor_unitario || 0),
                 })),
@@ -706,7 +707,7 @@
                         categoria: String(base.categoria || 'SERVICO').toUpperCase(),
                         origem_id: base.origem_id || null,
                         nome: base.nome || '',
-                        descricao: base.descricao || '',
+                        descricao: this.normalizarDescricao(base.descricao),
                         quantidade: 1,
                         valor_unitario: Number(base.valor_unitario || 0),
                     });
@@ -741,13 +742,16 @@
                     const partes = valor.split(' - ');
                     return partes[0] || valor;
                 },
+                normalizarDescricao(value) {
+                    return String(value || '').trim().slice(0, 255);
+                },
                 descricaoSecundariaTreinamento(item) {
                     const nome = String(item?.nome || '');
                     const partes = nome.split(' - ');
                     if (partes.length > 1) {
-                        return `${item?.origem_id ? '#' + item.origem_id + ' — ' : ''}${partes.slice(1).join(' - ')}`;
+                        return this.normalizarDescricao(`${item?.origem_id ? '#' + item.origem_id + ' — ' : ''}${partes.slice(1).join(' - ')}`);
                     }
-                    return item?.descricao || '';
+                    return this.normalizarDescricao(item?.descricao || '');
                 },
                 abrirModalPacote(tipo) {
                     const itens = Array.isArray(this.catalogo?.[tipo]) ? this.catalogo[tipo] : [];
@@ -795,7 +799,7 @@
                         categoria,
                         origem_id: null,
                         nome: String(this.pacoteModal.nome || '').trim() || nomePadrao,
-                        descricao: selecionados.map((item) => item.nome).join(', '),
+                        descricao: this.normalizarDescricao(selecionados.map((item) => item.nome).join(', ')),
                         valor_unitario: valorUnitario,
                     });
 
@@ -833,7 +837,7 @@
                         categoria: item.categoria,
                         origem_id: item.origem_id || null,
                         nome: item.nome,
-                        descricao: item.descricao || null,
+                        descricao: this.normalizarDescricao(item.descricao) || null,
                         quantidade: Number(item.quantidade || 1),
                         valor_unitario: Number(item.valor_unitario || 0),
                     })));

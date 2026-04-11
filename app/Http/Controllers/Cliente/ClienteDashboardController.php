@@ -24,11 +24,14 @@ use App\Models\VendaItem;
 use App\Services\AsoGheService;
 use App\Services\ContratoClienteService;
 use App\Services\ContaReceberService;
+use App\Services\PrecificacaoService;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 
 class ClienteDashboardController extends Controller
 {
@@ -53,6 +56,7 @@ class ClienteDashboardController extends Controller
         }
         $temTabela = (bool) $tabela;
         $faturaTotal = $this->faturaTotal($cliente);
+        $totalServicosEmAberto = $this->totalServicosEmAberto($cliente);
 
         $totalPago = (float) ContaReceberItem::query()
             ->where('empresa_id', $cliente->empresa_id)
@@ -71,6 +75,7 @@ class ClienteDashboardController extends Controller
             'temTabela'    => $temTabela,
             'precos'       => $precos,
             'faturaTotal'  => $faturaTotal,
+            'totalServicosEmAberto' => $totalServicosEmAberto,
             'totalEmAndamento' => $totalEmAndamento,
             'contratoAtivo' => $contratoAtivo,
             'servicosContrato' => $servicosContrato,
@@ -147,6 +152,7 @@ class ClienteDashboardController extends Controller
             ->value('total');
 
         $totalFaturaAberto = $this->faturaTotal($cliente);
+        $totalServicosEmAberto = $this->totalServicosEmAberto($cliente);
         $totalPago = (float) ContaReceberItem::query()
             ->where('empresa_id', $cliente->empresa_id)
             ->where('cliente_id', $cliente->id)
@@ -200,6 +206,7 @@ class ClienteDashboardController extends Controller
                 $join->on('v.id', '=', 'cri.venda_id')
                     ->orOn('v.id', '=', 'vi.venda_id');
             })
+            ->leftJoin('tarefas as t', 't.id', '=', 'v.tarefa_id')
             ->leftJoin('contas_receber as cr', 'cr.id', '=', 'cri.conta_receber_id')
             ->leftJoinSub($baixasSub, 'baixas', function ($join) {
                 $join->on('cri.id', '=', 'baixas.conta_receber_item_id');
@@ -212,6 +219,8 @@ class ClienteDashboardController extends Controller
             ->selectRaw('cri.conta_receber_id as conta_receber_id')
             ->selectRaw('cr.id as fatura_numero')
             ->selectRaw('COALESCE(s.nome, cri.descricao, vi.descricao_snapshot, "Serviço") as servico')
+            ->selectRaw('COALESCE(vi.descricao_snapshot, cri.descricao, s.nome, "Serviço") as descricao_linha')
+            ->selectRaw('COALESCE(t.titulo, "") as titulo')
             ->selectRaw('v.tarefa_id as tarefa_id')
             ->selectRaw('cri.data_realizacao as data_realizacao')
             ->selectRaw('cri.vencimento as vencimento')
@@ -260,6 +269,8 @@ class ClienteDashboardController extends Controller
             ->selectRaw('NULL as conta_receber_id')
             ->selectRaw('NULL as fatura_numero')
             ->selectRaw('COALESCE(s.nome, vi.descricao_snapshot, "Serviço") as servico')
+            ->selectRaw('COALESCE(vi.descricao_snapshot, s.nome, "Serviço") as descricao_linha')
+            ->selectRaw('COALESCE(t.titulo, "") as titulo')
             ->selectRaw('t.id as tarefa_id')
             ->selectRaw('COALESCE(DATE(t.finalizado_em), DATE(v.created_at)) as data_realizacao')
             ->selectRaw('NULL as vencimento')
@@ -291,6 +302,7 @@ class ClienteDashboardController extends Controller
             ->orderByDesc('data_realizacao')
             ->get();
         $itens = $this->anexarDetalhesServicos($itens);
+        $itens = $this->consolidarItensFaturas($itens);
 
         return view('clientes.portal.index', [
             'activeTab' => 'faturas',
@@ -299,6 +311,7 @@ class ClienteDashboardController extends Controller
             'temTabela'    => $temTabela,
             'precos'       => $precos,
             'totalFaturaAberto' => $totalFaturaAberto,
+            'totalServicosEmAberto' => $totalServicosEmAberto,
             'totalPago' => $totalPago,
             'totalVencido' => $totalVencido,
             'itens'        => $itens,
@@ -753,6 +766,154 @@ class ClienteDashboardController extends Controller
         }
 
         return $total;
+    }
+
+    private function totalServicosEmAberto(Cliente $cliente): float
+    {
+        $empresaId = (int) $cliente->empresa_id;
+        $valorTotalFaturavelOuEmAberto = $this->faturaTotal($cliente);
+
+        $tarefasNaoFinalizadasAgrupadas = $this->buscarTarefasNaoFinalizadasAgrupadasPortal($empresaId, (int) $cliente->id);
+        $valorTotalServicosNaoFinalizados = (float) $tarefasNaoFinalizadasAgrupadas
+            ->sum(fn ($grupo) => (float) ($grupo['total'] ?? 0));
+
+        return $valorTotalFaturavelOuEmAberto + $valorTotalServicosNaoFinalizados;
+    }
+
+    private function buscarTarefasNaoFinalizadasAgrupadasPortal(int $empresaId, int $clienteId): \Illuminate\Support\Collection
+    {
+        return Tarefa::query()
+            ->with([
+                'cliente:id,razao_social,nome_fantasia',
+                'servico:id,nome',
+                'coluna:id,nome,slug,finaliza',
+                'funcionario:id,nome',
+                'asoSolicitacao.funcionario:id,nome,funcao_id',
+                'pcmsoSolicitacao:id,tarefa_id,tipo',
+                'pgrSolicitacao:id,tarefa_id,tipo,com_art,com_pcms0,obra_nome',
+                'treinamentoNrDetalhes:id,tarefa_id,treinamentos',
+            ])
+            ->where('empresa_id', $empresaId)
+            ->where('cliente_id', $clienteId)
+            ->whereNull('finalizado_em')
+            ->whereHas('coluna', function ($q) {
+                $q->where('finaliza', false)
+                    ->whereRaw("COALESCE(LOWER(slug), '') NOT LIKE 'cancel%'");
+            })
+            ->whereNotExists(function ($q) {
+                $q->select(DB::raw(1))
+                    ->from('vendas as v')
+                    ->whereColumn('v.tarefa_id', 'tarefas.id');
+            })
+            ->orderByDesc('updated_at')
+            ->get()
+            ->map(function (Tarefa $tarefa) {
+                $itensEstimados = collect($this->estimarItensTarefaNaoFinalizadaPortal($tarefa));
+
+                return [
+                    'tarefa' => $tarefa,
+                    'itens' => $itensEstimados,
+                    'total' => (float) $itensEstimados->sum('subtotal_snapshot'),
+                    'qtd_itens' => max(1, $itensEstimados->count()),
+                ];
+            })
+            ->values();
+    }
+
+    private function estimarItensTarefaNaoFinalizadaPortal(Tarefa $tarefa): array
+    {
+        if (!$tarefa->cliente_id || !$tarefa->empresa_id) {
+            return [];
+        }
+
+        $servicoNome = trim((string) ($tarefa->servico?->nome ?? ''));
+        $servicoNomeNormalizado = mb_strtolower($servicoNome);
+        $precificacao = app(PrecificacaoService::class);
+
+        try {
+            $itensVenda = match ($servicoNomeNormalizado) {
+                'aso' => $precificacao->precificarAso($tarefa)['itensVenda'] ?? [],
+                'pcmso' => $precificacao->precificarPcmso($tarefa)['itensVenda'] ?? [],
+                'treinamentos nrs' => $precificacao->precificarTreinamentosNr($tarefa)['itensVenda'] ?? [],
+                'pgr' => $precificacao->precificarPgr($tarefa)['itensVenda'] ?? [],
+                default => $this->estimarItensGenericosTarefaPortal($tarefa),
+            };
+        } catch (ValidationException) {
+            $itensVenda = $this->estimarItensGenericosTarefaPortal($tarefa);
+        }
+
+        if (empty($itensVenda)) {
+            return [[
+                'descricao_snapshot' => $servicoNome !== '' ? $servicoNome : ($tarefa->titulo ?: 'Serviço'),
+                'subtotal_snapshot' => 0.0,
+                'data_referencia' => $tarefa->created_at,
+            ]];
+        }
+
+        return collect($itensVenda)->map(function (array $item) use ($tarefa, $servicoNome) {
+            $quantidade = max(1, (int) ($item['quantidade'] ?? 1));
+            $subtotal = array_key_exists('subtotal_snapshot', $item)
+                ? (float) ($item['subtotal_snapshot'] ?? 0)
+                : null;
+            $valorUnitario = (float) ($item['preco_unitario_snapshot'] ?? 0);
+            $valorTotal = $subtotal ?? ($valorUnitario * $quantidade);
+
+            return [
+                'descricao_snapshot' => (string) ($item['descricao_snapshot'] ?? ($servicoNome !== '' ? $servicoNome : 'Serviço')),
+                'subtotal_snapshot' => $valorTotal,
+                'data_referencia' => $tarefa->created_at,
+            ];
+        })->all();
+    }
+
+    private function estimarItensGenericosTarefaPortal(Tarefa $tarefa): array
+    {
+        if (!$tarefa->cliente_id || !$tarefa->empresa_id || !$tarefa->servico_id) {
+            return [];
+        }
+
+        /** @var ContratoClienteService $contratoService */
+        $contratoService = app(ContratoClienteService::class);
+
+        $contrato = $contratoService->getContratoAtivo(
+            (int) $tarefa->cliente_id,
+            (int) $tarefa->empresa_id,
+            $tarefa->created_at ? Carbon::parse($tarefa->created_at) : null
+        );
+
+        $valor = 0.0;
+        if ($contrato) {
+            $valor = $this->resolverValorGenericoTarefaPortal($tarefa, $contrato);
+        }
+
+        if (!$contrato || $valor <= 0) {
+            $contrato = $contratoService->getContratoAtivo(
+                (int) $tarefa->cliente_id,
+                (int) $tarefa->empresa_id,
+                null
+            );
+            $valor = $contrato ? $this->resolverValorGenericoTarefaPortal($tarefa, $contrato) : 0.0;
+        }
+
+        if (!$contrato) {
+            return [];
+        }
+
+        return [[
+            'descricao_snapshot' => trim((string) ($tarefa->servico?->nome ?? $tarefa->titulo ?? 'Serviço')),
+            'subtotal_snapshot' => $valor,
+            'data_referencia' => $tarefa->created_at,
+        ]];
+    }
+
+    private function resolverValorGenericoTarefaPortal(Tarefa $tarefa, ClienteContrato $contrato): float
+    {
+        $item = $contrato->itens()
+            ->where('servico_id', $tarefa->servico_id)
+            ->where('ativo', true)
+            ->first();
+
+        return (float) ($item?->preco_unitario_snapshot ?? 0);
     }
 
     private function anexarValoresEmAndamento(?ClienteContrato $contratoAtivo, iterable $tarefas): float
@@ -1276,6 +1437,44 @@ class ClienteDashboardController extends Controller
             ->get()
             ->groupBy('tarefa_id');
 
+        $tarefasBase = Tarefa::query()
+            ->whereIn('id', $tarefaIds)
+            ->with('funcionario:id,nome')
+            ->get(['id', 'titulo', 'descricao', 'funcionario_id'])
+            ->keyBy('id');
+
+        $treinamentoResumoPorTarefa = $itens
+            ->filter(function ($item) {
+                $servico = mb_strtolower((string) ($item->servico ?? ''));
+                $descricao = mb_strtolower((string) ($item->descricao_linha ?? $item->descricao ?? ''));
+
+                return str_contains($servico, 'treinamento') || str_contains($descricao, 'treinamento');
+            })
+            ->groupBy(fn ($item) => (int) ($item->tarefa_id ?? 0))
+            ->map(function ($grupo) {
+                $codigos = $grupo
+                    ->map(function ($item) {
+                        $descricaoLinha = trim((string) ($item->descricao_linha ?? ''));
+                        if ($descricaoLinha === '') {
+                            return [];
+                        }
+
+                        $codigoTexto = preg_replace('/^Treinamentos NRs\s*-\s*/i', '', $descricaoLinha);
+
+                        return array_values(array_filter(array_map('trim', explode(',', (string) $codigoTexto))));
+                    })
+                    ->flatten()
+                    ->filter()
+                    ->unique()
+                    ->values()
+                    ->all();
+
+                return [
+                    'codigos' => $codigos,
+                    'qtd_itens' => $grupo->count(),
+                ];
+            });
+
         $mapTipo = [
             'admissional' => 'Admissional',
             'periodico' => 'Periódico',
@@ -1284,9 +1483,35 @@ class ClienteDashboardController extends Controller
             'retorno_trabalho' => 'Retorno ao Trabalho',
         ];
 
-        return $itens->map(function ($item) use ($dadosAso, $dadosPgr, $dadosPcmso, $dadosToxicologico, $treinamentoDetalhes, $treinamentoParticipantes, $mapTipo) {
+        return $itens->map(function ($item) use ($dadosAso, $dadosPgr, $dadosPcmso, $dadosToxicologico, $treinamentoDetalhes, $treinamentoParticipantes, $tarefasBase, $treinamentoResumoPorTarefa, $mapTipo) {
             $tarefaId = (int) ($item->tarefa_id ?? 0);
-            if ($tarefaId > 0 && $dadosAso->has($tarefaId)) {
+            $servicoAtual = mb_strtolower((string) ($item->servico ?? ''));
+            $descricaoAtual = mb_strtolower((string) ($item->descricao_linha ?? $item->descricao ?? ''));
+            $tituloAtual = mb_strtolower((string) ($item->titulo ?? ''));
+            $tarefaBase = $tarefaId > 0 ? $tarefasBase->get($tarefaId) : null;
+            $ehLinhaAso = str_contains($servicoAtual, 'aso');
+            $ehLinhaPgr = str_contains($servicoAtual, 'pgr');
+            $ehLinhaPcmso = str_contains($servicoAtual, 'pcms');
+            $ehLinhaArt = str_contains($servicoAtual, 'art');
+            $ehLinhaToxicologico = str_contains($servicoAtual, 'toxicol');
+            $ehLinhaTreinamento = str_contains($servicoAtual, 'treinamento');
+            $ehLinhaAso = $ehLinhaAso || str_contains($descricaoAtual, 'aso') || str_contains($tituloAtual, 'aso');
+            $ehLinhaPgr = $ehLinhaPgr || str_contains($descricaoAtual, 'pgr') || str_contains($tituloAtual, 'pgr');
+            $ehLinhaPcmso = $ehLinhaPcmso || str_contains($descricaoAtual, 'pcms') || str_contains($tituloAtual, 'pcms');
+            $ehLinhaArt = $ehLinhaArt || str_contains($descricaoAtual, 'art') || str_contains($tituloAtual, 'art');
+            $ehLinhaToxicologico = $ehLinhaToxicologico || str_contains($descricaoAtual, 'toxicol') || str_contains($tituloAtual, 'toxicol');
+            $ehLinhaTreinamento = $ehLinhaTreinamento
+                || str_contains($descricaoAtual, 'treinamento')
+                || str_contains($tituloAtual, 'treinamento');
+            if ($ehLinhaTreinamento) {
+                $ehLinhaAso = false;
+                $ehLinhaPgr = false;
+                $ehLinhaPcmso = false;
+                $ehLinhaArt = false;
+                $ehLinhaToxicologico = false;
+            }
+
+            if ($ehLinhaAso && $tarefaId > 0 && $dadosAso->has($tarefaId)) {
                 $aso = $dadosAso->get($tarefaId);
                 $tipo = $mapTipo[$aso->tipo_aso] ?? ($aso->tipo_aso ? ucfirst($aso->tipo_aso) : null);
                 $nome = $aso->funcionario?->nome;
@@ -1301,7 +1526,7 @@ class ClienteDashboardController extends Controller
                 }
             }
 
-            if ($tarefaId > 0 && $dadosPgr->has($tarefaId)) {
+            if (($ehLinhaPgr || $ehLinhaPcmso || $ehLinhaArt) && $tarefaId > 0 && $dadosPgr->has($tarefaId)) {
                 $pgr = $dadosPgr->get($tarefaId);
                 $tipoLabel = $pgr->tipo === 'especifico'
                     ? 'Específico'
@@ -1312,8 +1537,7 @@ class ClienteDashboardController extends Controller
                 $item->pgr_com_pcms0 = (bool) $pgr->com_pcms0;
                 $item->pgr_total = $pgr->total_trabalhadores;
                 $item->pgr_contratante = $pgr->contratante_nome;
-                $servicoAtual = mb_strtolower((string) ($item->servico ?? ''));
-                if (str_contains($servicoAtual, 'pgr')) {
+                if ($ehLinhaPgr) {
                     $tituloBase = $item->pgr_com_pcms0 ? 'PCMSO' : 'PGR';
                     $composicoes = [];
                     if ($item->pgr_com_art) {
@@ -1328,18 +1552,18 @@ class ClienteDashboardController extends Controller
                     } elseif ($tipoLabel) {
                         $item->servico_detalhe = $tituloBase . ' | ' . $tipoLabel . $sufixoComposicao;
                     }
-                } elseif (str_contains($servicoAtual, 'pcms')) {
+                } elseif ($ehLinhaPcmso) {
                     if ($pgr->obra_nome) {
                         $item->servico_detalhe = 'PCMSO - ' . $pgr->obra_nome;
                     }
-                } elseif (str_contains($servicoAtual, 'art')) {
+                } elseif ($ehLinhaArt) {
                     if ($pgr->obra_nome) {
                         $item->servico_detalhe = 'ART - ' . $pgr->obra_nome;
                     }
                 }
             }
 
-            if ($tarefaId > 0 && $dadosPcmso->has($tarefaId)) {
+            if ($ehLinhaPcmso && $tarefaId > 0 && $dadosPcmso->has($tarefaId)) {
                 $pcmso = $dadosPcmso->get($tarefaId);
                 $tipoLabel = $pcmso->tipo === 'especifico'
                     ? 'Específico'
@@ -1348,17 +1572,14 @@ class ClienteDashboardController extends Controller
                 $item->pcmso_tipo = $tipoLabel;
                 $item->pcmso_obra = $pcmso->obra_nome;
 
-                $servicoAtual = mb_strtolower((string) ($item->servico ?? ''));
-                if (str_contains($servicoAtual, 'pcms')) {
-                    if ($tipoLabel === 'Específico' && $pcmso->obra_nome) {
-                        $item->servico_detalhe = 'PCMSO - Específico - ' . $pcmso->obra_nome;
-                    } elseif ($tipoLabel) {
-                        $item->servico_detalhe = 'PCMSO | ' . $tipoLabel;
-                    }
+                if ($tipoLabel === 'Específico' && $pcmso->obra_nome) {
+                    $item->servico_detalhe = 'PCMSO - Específico - ' . $pcmso->obra_nome;
+                } elseif ($tipoLabel) {
+                    $item->servico_detalhe = 'PCMSO | ' . $tipoLabel;
                 }
             }
 
-            if ($tarefaId > 0 && $dadosToxicologico->has($tarefaId)) {
+            if ($ehLinhaToxicologico && $tarefaId > 0 && $dadosToxicologico->has($tarefaId)) {
                 $toxicologico = $dadosToxicologico->get($tarefaId);
                 $mapTiposToxicologico = [
                     'clt' => 'CLT',
@@ -1384,9 +1605,9 @@ class ClienteDashboardController extends Controller
                     . (!empty($item->toxicologico_tipo) ? ' | ' . $item->toxicologico_tipo : '');
             }
 
-            if ($tarefaId > 0 && $treinamentoDetalhes->has($tarefaId)) {
+            if ($ehLinhaTreinamento && $tarefaId > 0 && ($treinamentoDetalhes->has($tarefaId) || $tarefaBase)) {
                 $det = $treinamentoDetalhes->get($tarefaId);
-                $payload = $det->treinamentos ?? [];
+                $payload = $det?->treinamentos ?? [];
                 $modo = is_array($payload) ? ($payload['modo'] ?? 'avulso') : 'avulso';
                 $codigos = [];
                 $pacote = null;
@@ -1403,12 +1624,35 @@ class ClienteDashboardController extends Controller
                     ->sort()
                     ->values()
                     ->all();
+                if (empty($participantes) && !empty($tarefaBase?->funcionario?->nome)) {
+                    $participantes = [$tarefaBase->funcionario->nome];
+                }
+                if (empty($codigos)) {
+                    $descricaoLinha = trim((string) ($item->descricao_linha ?? ''));
+                    if ($descricaoLinha !== '') {
+                        $codigoTexto = preg_replace('/^Treinamentos NRs\s*-\s*/i', '', $descricaoLinha);
+                        $codigos = array_values(array_filter(array_map('trim', explode(',', (string) $codigoTexto))));
+                    }
+                }
+                $resumoTreinamento = $treinamentoResumoPorTarefa->get($tarefaId, ['codigos' => [], 'qtd_itens' => 0]);
+                if (!empty($resumoTreinamento['codigos'])) {
+                    $codigos = array_values(array_unique(array_merge($codigos, $resumoTreinamento['codigos'])));
+                }
+                if (empty($item->treinamento_pacote) && !empty($tarefaBase?->descricao) && preg_match('/Pacote:\s*([^|]+)/i', (string) $tarefaBase->descricao, $matches)) {
+                    $item->treinamento_pacote = trim((string) $matches[1]);
+                }
+                if (
+                    !empty($item->treinamento_pacote)
+                    || (int) ($resumoTreinamento['qtd_itens'] ?? 0) > 1
+                ) {
+                    $modo = 'pacote';
+                }
 
                 $item->treinamento_modo = $modo;
                 $item->treinamento_codigos = $codigos;
-                $item->treinamento_pacote = $pacote['nome'] ?? null;
-                $item->treinamento_local = $det->local_tipo;
-                $item->treinamento_unidade = $det->unidade?->nome ?? null;
+                $item->treinamento_pacote = $item->treinamento_pacote ?? ($pacote['nome'] ?? null);
+                $item->treinamento_local = $det?->local_tipo;
+                $item->treinamento_unidade = $det?->unidade?->nome ?? null;
                 $item->treinamento_participantes = $participantes;
                 $item->treinamento_qtd = count($participantes);
 
@@ -1424,6 +1668,77 @@ class ClienteDashboardController extends Controller
 
             return $item;
         });
+    }
+
+    private function consolidarItensFaturas(\Illuminate\Support\Collection $itens): \Illuminate\Support\Collection
+    {
+        if ($itens->isEmpty()) {
+            return $itens;
+        }
+
+        $itensPacote = $itens->filter(function ($item) {
+            return ($item->treinamento_modo ?? null) === 'pacote'
+                && !empty($item->treinamento_pacote)
+                && (int) ($item->tarefa_id ?? 0) > 0;
+        });
+
+        if ($itensPacote->isEmpty()) {
+            return $itens->values();
+        }
+
+        $gruposPacote = $itensPacote
+            ->groupBy(function ($item) {
+                $participantes = collect((array) ($item->treinamento_participantes ?? []))
+                    ->filter()
+                    ->sort()
+                    ->implode('|');
+
+                return implode(':', [
+                    (string) ($item->origem ?? ''),
+                    (int) ($item->conta_receber_id ?? 0),
+                    (int) ($item->tarefa_id ?? 0),
+                    trim((string) ($item->treinamento_pacote ?? '')),
+                    trim((string) $participantes),
+                    (string) ($item->data_realizacao ?? ''),
+                    (string) ($item->vencimento ?? ''),
+                    strtoupper((string) ($item->status ?? '')),
+                ]);
+            })
+            ->filter(fn ($grupo) => $grupo->count() > 1);
+
+        if ($gruposPacote->isEmpty()) {
+            return $itens->values();
+        }
+
+        $itensPorRef = $itens->keyBy(fn ($item) => ($item->origem ?? '') . ':' . ($item->ref_id ?? spl_object_id($item)));
+        $refsConsumidos = [];
+        $agregados = [];
+
+        foreach ($gruposPacote as $grupo) {
+            $primeiro = clone $grupo->first();
+            $primeiro->valor = (float) $grupo->sum(fn ($item) => (float) ($item->valor ?? 0));
+            $primeiro->valor_real = (float) $grupo->sum(fn ($item) => isset($item->valor_real) ? (float) $item->valor_real : (float) ($item->valor ?? 0));
+            $primeiro->total_baixado = (float) $grupo->sum(fn ($item) => (float) ($item->total_baixado ?? 0));
+            $primeiro->treinamento_codigos = $grupo->flatMap(function ($item) {
+                return collect((array) ($item->treinamento_codigos ?? []));
+            })->filter()->unique()->values()->all();
+            $primeiro->treinamento_qtd = count((array) ($primeiro->treinamento_participantes ?? []));
+
+            foreach ($grupo as $item) {
+                $refsConsumidos[] = ($item->origem ?? '') . ':' . ($item->ref_id ?? spl_object_id($item));
+            }
+
+            $agregados[] = $primeiro;
+        }
+
+        $restantes = $itensPorRef
+            ->except($refsConsumidos)
+            ->values();
+
+        return $restantes
+            ->concat($agregados)
+            ->sortByDesc(fn ($item) => (string) ($item->data_realizacao ?? ''))
+            ->values();
     }
 
 

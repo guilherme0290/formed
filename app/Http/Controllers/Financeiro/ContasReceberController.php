@@ -1364,6 +1364,10 @@ class ContasReceberController extends Controller
             abort(403);
         }
 
+        $request->merge([
+            'valor' => $this->normalizarValorMonetario($request->input('valor')),
+        ]);
+
         $formasPagamento = $this->formasPagamento();
         $data = $request->validate([
             'valor' => ['required', 'numeric', 'min:0.01'],
@@ -1456,6 +1460,23 @@ class ContasReceberController extends Controller
         $service->recalcularConta($contaReceber->fresh());
 
         return back()->with('success', 'Item avulso adicionado.');
+    }
+
+    private function normalizarValorMonetario(mixed $valor): mixed
+    {
+        if (!is_string($valor)) {
+            return $valor;
+        }
+
+        $valor = trim($valor);
+        if ($valor === '') {
+            return $valor;
+        }
+
+        $valor = str_replace('.', '', $valor);
+        $valor = str_replace(',', '.', $valor);
+
+        return $valor;
     }
 
     private function resolverVencimentoPropostoCliente(int $clienteId, ?int $empresaId, $baseDate = null): array

@@ -534,6 +534,35 @@
                 updateSelectedCount();
             }
 
+            function resetGheForm() {
+                GHE.dom.id.value = '';
+                GHE.dom.nome.value = '';
+
+                if (GHE.dom.protocolo) GHE.dom.protocolo.value = '';
+                if (GHE.dom.protocoloAdm) GHE.dom.protocoloAdm.value = '';
+                if (GHE.dom.protocoloPer) GHE.dom.protocoloPer.value = '';
+                if (GHE.dom.protocoloDem) GHE.dom.protocoloDem.value = '';
+                if (GHE.dom.protocoloMud) GHE.dom.protocoloMud.value = '';
+                if (GHE.dom.protocoloRet) GHE.dom.protocoloRet.value = '';
+
+                if (GHE.dom.funcoesSearchAvailable) GHE.dom.funcoesSearchAvailable.value = '';
+                if (GHE.dom.funcoesSearchSelected) GHE.dom.funcoesSearchSelected.value = '';
+                setSelectedFuncoes([]);
+
+                GHE.dom.baseAdm.value = '0.00';
+                GHE.dom.basePer.value = '0.00';
+                GHE.dom.baseDem.value = '0.00';
+                GHE.dom.baseFun.value = '0.00';
+                GHE.dom.baseRet.value = '0.00';
+                GHE.dom.fechadoAdm.value = '';
+                GHE.dom.fechadoPer.value = '';
+                GHE.dom.fechadoDem.value = '';
+                GHE.dom.fechadoFun.value = '';
+                GHE.dom.fechadoRet.value = '';
+
+                updateProtocoloResumo();
+            }
+
             function renderFuncoesSelect(selectEl, items) {
                 if (!selectEl) return;
                 selectEl.innerHTML = '';
@@ -742,6 +771,7 @@
                 }
                 ensureModalOverSidebar(GHE.dom.modalForm, 230);
                 GHE.dom.modalForm?.classList.remove('hidden');
+                resetGheForm();
                 GHE.dom.title.textContent = ghe ? 'Editar GHE' : 'Novo GHE';
                 GHE.dom.id.value = ghe?.id || '';
                 GHE.dom.nome.value = ghe?.nome || '';
@@ -757,9 +787,6 @@
                     if (GHE.dom.protocoloRet) GHE.dom.protocoloRet.value = protocolos?.retorno_trabalho?.id || '';
                 }
                 updateProtocoloResumo();
-                if (GHE.dom.funcoesSearchAvailable) GHE.dom.funcoesSearchAvailable.value = '';
-                if (GHE.dom.funcoesSearchSelected) GHE.dom.funcoesSearchSelected.value = '';
-                renderFuncoesList();
                 setSelectedFuncoes(ghe?.funcoes?.map(f => f.id) || []);
                 GHE.dom.baseAdm.value = Number(ghe?.base?.admissional || 0).toFixed(2);
                 GHE.dom.basePer.value = Number(ghe?.base?.periodico || 0).toFixed(2);
@@ -773,6 +800,7 @@
                 GHE.dom.fechadoRet.value = ghe?.preco_fechado?.retorno_trabalho ?? '';
             };
             window.closeGheForm = () => {
+                resetGheForm();
                 GHE.dom.modalForm?.classList.add('hidden');
                 if (GHE.state.reopenListAfterFormClose) {
                     GHE.dom.modal?.classList.remove('hidden');

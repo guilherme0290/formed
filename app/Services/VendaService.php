@@ -17,12 +17,6 @@ class VendaService
      */
     public function criarVendaPorTarefa(Tarefa $tarefa, ClienteContrato $contrato, ClienteContratoItem $item): Venda
     {
-        // evita duplicidade
-        $existing = Venda::where('tarefa_id', $tarefa->id)->first();
-        if ($existing) {
-            return $existing;
-        }
-
         return DB::transaction(function () use ($tarefa, $contrato, $item) {
             $total = (float) $item->preco_unitario_snapshot;
             $descricaoSnapshot = $this->montarDescricaoVenda(
@@ -30,16 +24,27 @@ class VendaService
                 $item->descricao_snapshot
             );
 
-            $venda = Venda::create([
+            $venda = Venda::firstOrCreate(
+                ['tarefa_id' => $tarefa->id],
+                [
+                    'empresa_id' => $tarefa->empresa_id,
+                    'cliente_id' => $tarefa->cliente_id,
+                    'contrato_id' => $contrato->id,
+                    'total' => $total,
+                    'status' => 'ABERTA',
+                ]
+            );
+
+            $venda->fill([
                 'empresa_id' => $tarefa->empresa_id,
                 'cliente_id' => $tarefa->cliente_id,
-                'tarefa_id' => $tarefa->id,
                 'contrato_id' => $contrato->id,
                 'total' => $total,
-                'status' => 'ABERTA',
-            ]);
+            ])->save();
 
-            VendaItem::create([
+            $venda->itens()->delete();
+
+            $venda->itens()->create([
                 'venda_id' => $venda->id,
                 'servico_id' => $item->servico_id,
                 'descricao_snapshot' => $descricaoSnapshot,
@@ -59,11 +64,6 @@ class VendaService
      */
     public function criarVendaPorTarefaItens(Tarefa $tarefa, ClienteContrato $contrato, array $itens): Venda
     {
-        $existing = Venda::where('tarefa_id', $tarefa->id)->first();
-        if ($existing) {
-            return $existing;
-        }
-
         return DB::transaction(function () use ($tarefa, $contrato, $itens) {
             $total = 0.0;
             foreach ($itens as $item) {
@@ -80,14 +80,25 @@ class VendaService
                 ? collect()
                 : Servico::query()->whereIn('id', $servicoIds)->pluck('nome', 'id');
 
-            $venda = Venda::create([
+            $venda = Venda::firstOrCreate(
+                ['tarefa_id' => $tarefa->id],
+                [
+                    'empresa_id' => $tarefa->empresa_id,
+                    'cliente_id' => $tarefa->cliente_id,
+                    'contrato_id' => $contrato->id,
+                    'total' => $total,
+                    'status' => 'ABERTA',
+                ]
+            );
+
+            $venda->fill([
                 'empresa_id' => $tarefa->empresa_id,
                 'cliente_id' => $tarefa->cliente_id,
-                'tarefa_id' => $tarefa->id,
                 'contrato_id' => $contrato->id,
                 'total' => $total,
-                'status' => 'ABERTA',
-            ]);
+            ])->save();
+
+            $venda->itens()->delete();
 
             foreach ($itens as $item) {
                 $preco = (float) ($item['preco_unitario_snapshot'] ?? 0);
@@ -105,8 +116,7 @@ class VendaService
                     $item['descricao_snapshot'] ?? null
                 );
 
-                VendaItem::create([
-                    'venda_id' => $venda->id,
+                $venda->itens()->create([
                     'servico_id' => $servicoId > 0 ? $servicoId : null,
                     'descricao_snapshot' => $descricaoSnapshot,
                     'preco_unitario_snapshot' => $preco,

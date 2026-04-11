@@ -370,15 +370,15 @@
                 <h2 class="text-sm font-semibold text-slate-800">2) Itens da fatura (com data)</h2>
                 <p class="text-xs text-slate-500 mt-1">Itens listados em container fixo com rolagem interna</p>
 
-                <div class="mt-4 flex flex-col h-[54vh] rounded-2xl border border-indigo-200 bg-indigo-50/40 shadow-inner">
+                <div class="mt-4 flex flex-col rounded-2xl border border-indigo-200 bg-indigo-50/40 shadow-inner">
                     <div class="px-4 py-3 border-b border-indigo-200 bg-indigo-100/60 rounded-t-2xl">
                         <p class="text-xs font-semibold uppercase tracking-wide text-indigo-700">Container fixo de itens da fatura</p>
                         <p class="text-xs text-indigo-600 mt-1">Visualização detalhada por item com data de realização</p>
                     </div>
 
-                    <div class="flex-1 min-h-0 p-4 md:p-5">
-                        <div class="h-full min-h-0 rounded-xl border border-indigo-200/80 bg-white/95 p-3 md:p-4 shadow-sm">
-                            <div class="h-full min-h-0 overflow-auto rounded-lg border border-slate-200">
+                    <div class="p-4 md:p-5">
+                        <div class="rounded-xl border border-indigo-200/80 bg-white/95 p-3 md:p-4 shadow-sm">
+                            <div class="max-h-[36rem] overflow-auto rounded-lg border border-slate-200">
                                 <table class="min-w-full divide-y divide-slate-200 text-sm">
                                     <thead class="bg-slate-50 text-slate-600 sticky top-0">
                                         <tr>

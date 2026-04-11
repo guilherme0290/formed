@@ -742,7 +742,7 @@
                     gruposExames: [],
                     gheCatalog: [],
                     gheConfigs: [], // [{cliente_ghe_id, ghe_id, ghe_nome, tipos:{tipo:{grupo_id, grupo_titulo, total_exames}}}]
-                    currentGhe: { cliente_ghe_id: null, ghe_id: null, ghe_nome: '', tipos: {} },
+                    currentGhe: { cliente_ghe_id: null, ghe_id: null, ghe_nome: '', _key: null, tipos: {} },
                 };
 
                 const INITIAL = @json($initialData);
@@ -989,7 +989,7 @@
                 }
 
                 function resetCurrentGheConfig() {
-                    state.currentGhe = { cliente_ghe_id: null, ghe_id: null, ghe_nome: '', tipos: {} };
+                    state.currentGhe = { cliente_ghe_id: null, ghe_id: null, ghe_nome: '', _key: null, tipos: {} };
                     if (el.gheSelect) el.gheSelect.value = '';
                     if (el.asoGheTitle) el.asoGheTitle.textContent = '—';
                     if (el.btnAddGheConfig) el.btnAddGheConfig.textContent = '+ Adicionar este GHE à lista';
@@ -1007,6 +1007,7 @@
                         cliente_ghe_id: ghe.cliente_ghe_id || ghe.id || null,
                         ghe_id: ghe.ghe_id || null,
                         ghe_nome: ghe.nome,
+                        _key: getGheConfigKey(ghe),
                         tipos: {},
                     };
                     if (el.asoGheTitle) el.asoGheTitle.textContent = ghe.nome || '—';
@@ -1212,10 +1213,25 @@
                     return result;
                 }
 
-                function getGheConfigKey(cfg) {
+                function buildGheConfigKey(cfg) {
                     if (cfg?.cliente_ghe_id) return `c:${cfg.cliente_ghe_id}`;
-                    if (cfg?.ghe_id) return `g:${cfg.ghe_id}`;
+                    if (cfg?.ghe_id) {
+                        const nome = String(cfg?.ghe_nome || '').trim().toLowerCase();
+                        return nome ? `g:${cfg.ghe_id}:n:${nome}` : `g:${cfg.ghe_id}`;
+                    }
                     return cfg?._key || uid();
+                }
+
+                function getGheConfigKey(cfg) {
+                    if (!cfg || typeof cfg !== 'object') return uid();
+                    if (!cfg._key) {
+                        cfg._key = buildGheConfigKey(cfg);
+                    }
+                    return cfg._key;
+                }
+
+                function getGheConfigRuntimeKey(cfg, index) {
+                    return `${getGheConfigKey(cfg)}:idx:${Number(index || 0)}`;
                 }
 
                 function normalizeItens(items) {
@@ -1268,6 +1284,7 @@
                                 cliente_ghe_id: raw.cliente_ghe_id || null,
                                 ghe_id: raw.ghe_id || null,
                                 ghe_nome: raw.ghe_nome || '',
+                                _key: key,
                                 tipos: {},
                             });
                         }
@@ -1469,6 +1486,7 @@
                         cliente_ghe_id: state.currentGhe.cliente_ghe_id || null,
                         ghe_id: state.currentGhe.ghe_id || null,
                         ghe_nome: gheNome,
+                        _key: getGheConfigKey(state.currentGhe),
                         tipos,
                     };
 
@@ -1488,83 +1506,60 @@
                 }
 
                 function syncAsoTipoItems() {
-                    const selected = new Map();
-                    state.gheConfigs.forEach(cfg => {
-                        const baseKey = getGheConfigKey(cfg);
+                    const fixedItems = state.itens.filter((it) => String(it?.tipo || '').toUpperCase() !== 'ASO_TIPO');
+                    const asoItems = [];
+
+                    state.gheConfigs.forEach((cfg, cfgIndex) => {
+                        const cfgKey = getGheConfigRuntimeKey(cfg, cfgIndex);
                         const tipos = cfg.tipos || {};
+
                         ASO_TYPES.forEach(({ key, label }) => {
                             const row = tipos[key];
                             if (!row?.grupo_id) return;
-                            const asoKey = `${baseKey}:${key}`;
-                            selected.set(asoKey, { cfg, row, tipo: key, label });
-                        });
-                    });
 
-                    const fixedItems = [];
-                    const asoByKey = new Map();
-                    state.itens.forEach(it => {
-                        const isAsoTipo = String(it?.tipo || '').toUpperCase() === 'ASO_TIPO';
-                        const asoKey = String(it?.meta?.aso_key || '').trim();
-                        if (!isAsoTipo) {
-                            fixedItems.push(it);
-                            return;
-                        }
-                        if (!asoKey || !selected.has(asoKey)) {
-                            return;
-                        }
-                        asoByKey.set(asoKey, it);
-                    });
-                    state.itens = fixedItems;
+                            const asoKey = `${cfgKey}:${key}:${Number(row.grupo_id || 0)}`;
+                            const descParts = [];
+                            if (cfg.ghe_nome) descParts.push(`GHE: ${cfg.ghe_nome}`);
+                            if (row.grupo_titulo) descParts.push(`Grupo: ${row.grupo_titulo}`);
 
-                    selected.forEach(({ cfg, row, tipo, label }, asoKey) => {
-                        let item = asoByKey.get(asoKey);
-                        if (!item) {
-                            item = {
+                            const item = {
                                 id: uid(),
                                 servico_id: SERVICO_ASO_ID ? Number(SERVICO_ASO_ID) : null,
                                 tipo: 'ASO_TIPO',
                                 nome: `ASO - ${label}`,
-                                descricao: null,
-                                valor_unitario: 0,
+                                descricao: descParts.length ? descParts.join(' | ') : null,
+                                valor_unitario: Number(row.total_exames || 0),
                                 quantidade: 1,
                                 prazo: '',
                                 acrescimo: 0,
                                 desconto: 0,
-                                meta: {},
+                                meta: {
+                                    aso_tipo: key,
+                                    aso_cfg_key: cfgKey,
+                                    grupo_id: row.grupo_id,
+                                    cliente_ghe_id: cfg.cliente_ghe_id || null,
+                                    ghe_id: cfg.ghe_id || null,
+                                    ghe_nome: cfg.ghe_nome || null,
+                                    aso_key: asoKey,
+                                },
                                 valor_total: 0,
                             };
-                            state.itens.push(item);
-                        }
 
-                        item.nome = `ASO - ${label}`;
-                        const descParts = [];
-                        if (cfg.ghe_nome) descParts.push(`GHE: ${cfg.ghe_nome}`);
-                        if (row.grupo_titulo) descParts.push(`Grupo: ${row.grupo_titulo}`);
-                        item.descricao = descParts.length ? descParts.join(' | ') : null;
-                        item.meta = {
-                            ...(item.meta || {}),
-                            aso_tipo: tipo,
-                            grupo_id: row.grupo_id,
-                            cliente_ghe_id: cfg.cliente_ghe_id || null,
-                            ghe_id: cfg.ghe_id || null,
-                            ghe_nome: cfg.ghe_nome || null,
-                            aso_key: asoKey,
-                        };
-                        item.quantidade = 1;
-                        item.valor_unitario = Number(row.total_exames || 0);
-                        recalcItemTotal(item);
+                            recalcItemTotal(item);
+                            asoItems.push(item);
+                        });
                     });
+
+                    state.itens = [...fixedItems, ...asoItems];
 
                     render();
                 }
 
                 function updateAsoConfigFromItem(item, value) {
-                    const asoKey = item?.meta?.aso_key || '';
-                    if (!asoKey) return;
-                    const [baseKey, tipo] = asoKey.split(':').length >= 3
-                        ? [asoKey.split(':').slice(0, 2).join(':'), asoKey.split(':').slice(2).join(':')]
-                        : asoKey.split(':');
-                    const cfg = state.gheConfigs.find(c => getGheConfigKey(c) === baseKey);
+                    const baseKey = String(item?.meta?.aso_cfg_key || '').trim();
+                    const tipo = String(item?.meta?.aso_tipo || '').trim();
+                    if (!baseKey || !tipo) return;
+                    const cfg = state.gheConfigs.find((c, idx) => getGheConfigRuntimeKey(c, idx) === baseKey);
                     if (!cfg || !cfg.tipos?.[tipo]) return;
                     cfg.tipos[tipo].total_exames = Number(value || 0);
                     renderGheConfigsTable();
@@ -2669,16 +2664,14 @@
                 function removeItem(itemId) {
                     const item = state.itens.find(x => x.id === itemId);
                     if (item?.meta?.aso_tipo) {
-                        const asoKey = item?.meta?.aso_key || '';
-                        if (asoKey) {
-                            const parts = asoKey.split(':');
-                            const baseKey = parts.length >= 3 ? parts.slice(0, 2).join(':') : parts[0];
-                            const tipo = parts.length >= 3 ? parts.slice(2).join(':') : parts[1];
-                            const cfg = state.gheConfigs.find(c => getGheConfigKey(c) === baseKey);
+                        const baseKey = String(item?.meta?.aso_cfg_key || '').trim();
+                        const tipo = String(item?.meta?.aso_tipo || '').trim();
+                        if (baseKey && tipo) {
+                            const cfg = state.gheConfigs.find((c, idx) => getGheConfigRuntimeKey(c, idx) === baseKey);
                             if (cfg && cfg.tipos?.[tipo]) {
                                 delete cfg.tipos[tipo];
                                 if (!Object.keys(cfg.tipos || {}).length) {
-                                    state.gheConfigs = state.gheConfigs.filter(c => getGheConfigKey(c) !== baseKey);
+                                    state.gheConfigs = state.gheConfigs.filter((c, idx) => getGheConfigRuntimeKey(c, idx) !== baseKey);
                                 }
                             }
                         }

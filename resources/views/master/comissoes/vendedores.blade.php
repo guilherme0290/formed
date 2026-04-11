@@ -32,10 +32,12 @@
                     </a>
                     <form method="GET" action="{{ route('master.comissoes.vendedores') }}" class="flex items-center gap-2">
                         <label class="text-xs font-semibold text-indigo-100">Vendedor</label>
-                        <select name="vendedor" class="px-2.5 py-1.5 rounded-lg border border-white/30 text-xs text-white bg-white/10">
+                        <select name="vendedor"
+                                onchange="this.form.submit()"
+                                class="px-2.5 py-1.5 rounded-lg border border-white/30 text-xs text-white bg-white/10">
                             <option value="" {{ empty($vendedorSelecionado) ? 'selected' : '' }}>Todos</option>
                             @foreach($vendedores as $id => $vend)
-                                <option value="{{ $id }}" {{ (int)$vendedorSelecionado === (int)$id ? 'selected' : '' }}>
+                                <option value="{{ $id }}" {{ (int) $vendedorSelecionado === (int) $id ? 'selected' : '' }}>
                                     {{ $vend->name ?? 'Vendedor '.$id }}
                                 </option>
                             @endforeach
