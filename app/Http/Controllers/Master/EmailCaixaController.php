@@ -6,11 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Models\EmailCaixa;
 use App\Models\Servico;
 use App\Models\ServicoTempo;
+use App\Models\WhatsappInstancia;
 use App\Services\ImapSentMailService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\Mailer\Mailer;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 use Symfony\Component\Mailer\Transport\Smtp\EsmtpTransport;
@@ -43,7 +45,20 @@ class EmailCaixaController extends Controller
             (int) (config('services.exame_id') ?? 0),
         ]);
 
-        return view('master.email-caixas.index', compact('caixas', 'servicos', 'tempos', 'excluirServicoIds'));
+        $whatsappInstancias = WhatsappInstancia::query()
+            ->where('empresa_id', $empresaId)
+            ->where('provider', 'evolution')
+            ->orderBy('tipo')
+            ->get()
+            ->keyBy('tipo');
+
+        return view('master.email-caixas.index', compact(
+            'caixas',
+            'servicos',
+            'tempos',
+            'excluirServicoIds',
+            'whatsappInstancias',
+        ));
     }
 
     public function store(Request $request): RedirectResponse
@@ -202,8 +217,9 @@ class EmailCaixaController extends Controller
         try {
             $this->executarTesteSmtp($this->getConfigFromModel($emailCaixa));
         } catch (TransportExceptionInterface $e) {
+            Log::warning('SMTP teste falhou', ['error' => $e->getMessage()]);
             return back()
-                ->with('smtp_error', 'Falha ao conectar: '.$e->getMessage());
+                ->with('smtp_error', 'Falha ao conectar: autenticação SMTP falhou (verifique usuário e senha).');
         } catch (\Throwable $e) {
             return back()
                 ->with('smtp_error', 'Erro inesperado ao testar conexão.');
@@ -253,9 +269,10 @@ class EmailCaixaController extends Controller
             $mailer->send($email);
             app(ImapSentMailService::class)->appendToSentIfConfigured($emailCaixa, $email);
         } catch (TransportExceptionInterface $e) {
+            Log::warning('SMTP envio de teste falhou', ['error' => $e->getMessage()]);
             return back()
                 ->with([
-                    'smtp_send_error' => 'Falha ao enviar: '.$e->getMessage(),
+                    'smtp_send_error' => 'Falha ao enviar: autenticação SMTP falhou (verifique usuário e senha).',
                     'smtp_send_id' => $emailCaixa->id,
                 ]);
         } catch (\Throwable $e) {

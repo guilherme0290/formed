@@ -581,20 +581,20 @@
                                     </thead>
                                     <tbody class="divide-y divide-slate-100">
                                         @forelse($contas as $conta)
-                                            @php
-                                                $total = (float) $conta->total;
-                                                $pago = (float) $conta->total_baixado;
-                                                $saldo = max(0, $total - $pago);
-                                                $hasBaixa = $pago > 0.0001;
-                                                $detalheUrlLinha = route('financeiro.contas-receber', array_merge(request()->query(), [
-                                                    'aba' => 'detalhe',
-                                                    'fatura_id' => $conta->id,
-                                                ]));
-                                                $telefoneWhatsappLinha = preg_replace('/\D+/', '', (string) ($conta->cliente->telefone ?? ''));
-                                                if (in_array(strlen($telefoneWhatsappLinha), [10, 11], true)) {
-                                                    $telefoneWhatsappLinha = '55' . $telefoneWhatsappLinha;
-                                                }
-                                                $whatsUrlLinha = $telefoneWhatsappLinha !== '' ? route('financeiro.contas-receber.whatsapp', $conta) : null;
+                                                @php
+                                                    $total = (float) $conta->total;
+                                                    $pago = (float) $conta->total_baixado;
+                                                    $saldo = max(0, $total - $pago);
+                                                    $hasBaixa = $pago > 0.0001;
+                                                    $detalheUrlLinha = route('financeiro.contas-receber', array_merge(request()->query(), [
+                                                        'aba' => 'detalhe',
+                                                        'fatura_id' => $conta->id,
+                                                    ]));
+                                                    $telefoneWhatsappLinha = preg_replace('/\D+/', '', (string) ($conta->cliente->telefone ?? ''));
+                                                    if (in_array(strlen($telefoneWhatsappLinha), [10, 11], true)) {
+                                                        $telefoneWhatsappLinha = '55' . $telefoneWhatsappLinha;
+                                                    }
+                                                    $whatsUrlLinha = $telefoneWhatsappLinha !== '' ? route('financeiro.contas-receber.whatsapp', $conta) : null;
                                                 $uiStatus = match (true) {
                                                     strtoupper((string) $conta->status) === 'CANCELADO' => 'Cancelada',
                                                     $saldo <= 0.0001 && $total > 0 => 'Baixada',
@@ -643,22 +643,34 @@
                                                             <i data-lucide="printer" class="h-4 w-4"></i>
                                                         </a>
 
-                                                        <a href="{{ $whatsUrlLinha ?: '#' }}"
-                                                           target="_blank"
-                                                           rel="noopener"
-                                                           class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-xs font-semibold {{ $whatsUrlLinha ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed pointer-events-none' }}"
-                                                           title="{{ $whatsUrlLinha ? 'Enviar fatura via WhatsApp' : 'Telefone 1 do cliente não informado.' }}"
-                                                           aria-label="WhatsApp">
-                                                            <i class="fa-brands fa-whatsapp text-sm"></i>
-                                                        </a>
+                                                        @php
+                                                            $podeWhatsappLinha = (bool) $whatsUrlLinha;
+                                                            $paramEmailClienteLinha = trim((string) ($parametroClienteEmailPorCliente[$conta->cliente_id] ?? ''));
+                                                            $emailFinanceiroLinha = trim((string) ($conta->empresa?->email ?? ''));
+                                                            $emailClienteLinha = trim((string) ($conta->cliente->email ?? ''));
+                                                            $emailDestinoPadraoLinha = $paramEmailClienteLinha ?: $emailFinanceiroLinha ?: $emailClienteLinha;
+                                                            $podeEmailLinha = $canUpdate && $emailDestinoPadraoLinha !== '';
+                                                        @endphp
+                                                                <button type="button"
+                                                            @if($podeWhatsappLinha) data-whatsapp-route="{{ $whatsUrlLinha }}" @endif
+                                                            class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-xs font-semibold {{ $podeWhatsappLinha ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}"
+                                                            title="{{ $podeWhatsappLinha ? 'Enviar fatura via WhatsApp' : 'Telefone 1 do cliente não informado.' }}"
+                                                            aria-label="WhatsApp"
+                                                            @if(!$podeWhatsappLinha) disabled @endif>
+                                                           <i class="fa-brands fa-whatsapp text-sm"></i>
+                                                       </button>
 
-                                                        <a href="{{ $detalheUrlLinha }}#cr-open-modal-email"
-                                                           data-cr-open-modal-email-link
-                                                           class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-xs font-semibold {{ $podeEmailLinha ? 'bg-sky-600 text-white hover:bg-sky-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed pointer-events-none' }}"
-                                                           title="{{ $podeEmailLinha ? 'Enviar fatura por e-mail' : 'Usuário sem permissão' }}"
-                                                           aria-label="Enviar por e-mail">
+                                                        <button type="button"
+                                                            @if($podeEmailLinha)
+                                                                data-financeiro-email-route="{{ route('financeiro.contas-receber.enviar-email', $conta) }}"
+                                                                data-financeiro-email-destino="{{ $emailDestinoPadraoLinha }}"
+                                                            @endif
+                                                            class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-xs font-semibold {{ $podeEmailLinha ? 'bg-sky-600 text-white hover:bg-sky-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed pointer-events-none' }}"
+                                                            title="{{ $podeEmailLinha ? 'Enviar fatura por e-mail' : 'Destino de e-mail não configurado ou permissão negada' }}"
+                                                            aria-label="Enviar por e-mail"
+                                                            @if(!$podeEmailLinha) disabled @endif>
                                                             <i data-lucide="mail" class="h-4 w-4"></i>
-                                                        </a>
+                                                        </button>
 
                                                         <a href="{{ $detalheUrlLinha }}#cr-open-modal-baixa"
                                                            data-cr-open-modal-baixa-link
@@ -908,18 +920,23 @@
                                     Imprimir
                                 </a>
 
-                                <a href="{{ $whatsUrl ?: '#' }}"
-                                   target="_blank" rel="noopener"
-                                   class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm {{ $whatsUrl ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white hover:from-emerald-600 hover:to-emerald-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed pointer-events-none' }}"
-                                   @if(!$whatsUrl) title="Telefone 1 do cliente não informado." @endif>
+                                @php $podeWhatsappDetalhe = (bool) $whatsUrl; @endphp
+                                <button type="button"
+                                        @if($podeWhatsappDetalhe) data-whatsapp-route="{{ $whatsUrl }}" @endif
+                                        class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm {{ $podeWhatsappDetalhe ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white hover:from-emerald-600 hover:to-emerald-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}"
+                                        aria-label="Enviar fatura via WhatsApp"
+                                        title="{{ $podeWhatsappDetalhe ? 'Enviar fatura via WhatsApp' : 'Telefone 1 do cliente não informado.' }}"
+                                        @if(!$podeWhatsappDetalhe) disabled @endif>
                                     <span class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/20">
                                         <i class="fa-brands fa-whatsapp text-xs"></i>
                                     </span>
                                     WhatsApp
-                                </a>
+                                </button>
 
                                 <button type="button"
                                         id="crAbrirModalEmailFatura"
+                                        data-email-options='@json($emailOpcoesFatura ?? [])'
+                                        data-email-route="{{ route('financeiro.contas-receber.enviar-email', $contaDetalheSelecionada) }}"
                                         class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm {{ ($canUpdate && $emailOpcoesFatura->isNotEmpty()) ? 'bg-gradient-to-r from-sky-600 to-cyan-600 text-white hover:from-sky-700 hover:to-cyan-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}"
                                         @if(!$canUpdate || $emailOpcoesFatura->isEmpty()) disabled title="{{ !$canUpdate ? 'Usuário sem permissão' : 'Nenhum e-mail disponível (financeiro/cliente).' }}" @endif>
                                     <span class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/20">
@@ -1828,6 +1845,199 @@
                 }
                 if (window.location.hash === '#cr-open-modal-email') {
                     openModalEmail();
+                }
+            });
+
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+            const whatsappSendingClass = ['cursor-wait', 'opacity-70'];
+            const emailSendingClass = ['cursor-wait', 'opacity-70'];
+
+            const quickEmailBtn = document.getElementById('crAbrirModalEmailFatura');
+            const emailOptionsData = quickEmailBtn?.dataset?.emailOptions ?? '[]';
+            const parsedEmailOptions = (() => {
+                try {
+                    return JSON.parse(emailOptionsData);
+                } catch (err) {
+                    return [];
+                }
+            })();
+            const quickEmailRoute = quickEmailBtn?.dataset?.emailRoute || '';
+            const quickEmailSpinner = document.getElementById('crBtnEnviarEmailFaturaSpinner');
+            const quickEmailLabel = document.getElementById('crBtnEnviarEmailFaturaLabel');
+
+            const setEmailButtonState = (loading) => {
+                if (!quickEmailBtn) return;
+                quickEmailBtn.disabled = loading;
+                quickEmailBtn.classList.toggle('cursor-wait', loading);
+                quickEmailBtn.classList.toggle('opacity-70', loading);
+                if (quickEmailSpinner) {
+                    quickEmailSpinner.classList.toggle('hidden', !loading);
+                }
+                if (quickEmailLabel) {
+                    quickEmailLabel.textContent = loading ? 'Enviando...' : 'Enviar fatura';
+                }
+            };
+
+            const defaultEmail = parsedEmailOptions.find((opt) => (opt['tipo'] ?? '') === 'cliente_fatura')?.['value']
+                || parsedEmailOptions[0]?.['value'];
+
+            const toggleFinanceiroEmailButton = (button, sending) => {
+                if (!button) return;
+                button.disabled = sending;
+                button.classList.toggle('cursor-wait', sending);
+                button.classList.toggle('opacity-70', sending);
+                if (sending) {
+                    button.dataset.financeiroEmailSending = '1';
+                } else {
+                    delete button.dataset.financeiroEmailSending;
+                }
+            };
+
+            const enviarFinanceiroEmail = async (button) => {
+                const route = button.getAttribute('data-financeiro-email-route') || '';
+                const destino = button.getAttribute('data-financeiro-email-destino') || '';
+                if (!route || !destino) {
+                    await window.uiAlert('Não foi possível enviar o e-mail: verifique se o destino está configurado.', {
+                        title: 'Erro',
+                        icon: 'error',
+                    });
+                    return;
+                }
+
+                toggleFinanceiroEmailButton(button, true);
+                try {
+                    const formData = new FormData();
+                    formData.append('email_destino', destino);
+                    formData.append('_token', csrfToken);
+
+                    const response = await fetch(route, {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                        },
+                        body: formData,
+                    });
+                    const data = await response.json().catch(() => ({}));
+                    if (!response.ok || data.ok === false) {
+                        throw new Error(data.message || 'Não foi possível enviar o e-mail.');
+                    }
+
+                    await window.uiAlert(data.message || 'E-mail enviado com sucesso.', {
+                        title: 'Sucesso',
+                        icon: 'success',
+                    });
+                } catch (error) {
+                    await window.uiAlert(error.message || 'Não foi possível enviar o e-mail.', {
+                        title: 'Erro',
+                        icon: 'error',
+                    });
+                } finally {
+                    toggleFinanceiroEmailButton(button, false);
+                }
+            };
+
+            const toggleWhatsappButton = (button, sending) => {
+                if (sending) {
+                    button.dataset.whatsappSending = '1';
+                    button.disabled = true;
+                    button.classList.add(...whatsappSendingClass);
+                } else {
+                    delete button.dataset.whatsappSending;
+                    button.disabled = false;
+                    button.classList.remove(...whatsappSendingClass);
+                }
+            };
+
+            const enviarWhatsappFinanceiro = async (button) => {
+                const route = button.getAttribute('data-whatsapp-route');
+                if (!route) return;
+
+                toggleWhatsappButton(button, true);
+                try {
+                    const response = await fetch(route, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': csrfToken,
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                    });
+                    const data = await response.json().catch(() => ({}));
+                    if (!response.ok || data.ok === false) {
+                        throw new Error(data.message || 'Não foi possível enviar via WhatsApp.');
+                    }
+
+                    await window.uiAlert(data.message || 'Mensagem enviada com sucesso pelo WhatsApp.', {
+                        title: 'Sucesso',
+                        icon: 'success',
+                    });
+                } catch (error) {
+                    await window.uiAlert(error.message || 'Não foi possível enviar via WhatsApp.', {
+                        title: 'Erro',
+                        icon: 'error',
+                    });
+                } finally {
+                    toggleWhatsappButton(button, false);
+                }
+            };
+
+            document.addEventListener('click', function (event) {
+                const trigger = event.target.closest('[data-whatsapp-route]');
+                if (!trigger) return;
+                event.preventDefault();
+                if (trigger.dataset.whatsappSending === '1') return;
+                enviarWhatsappFinanceiro(trigger);
+            });
+
+            document.addEventListener('click', function (event) {
+                const emailTrigger = event.target.closest('[data-financeiro-email-route]');
+                if (!emailTrigger) return;
+                event.preventDefault();
+                if (emailTrigger.dataset.financeiroEmailSending === '1') return;
+                enviarFinanceiroEmail(emailTrigger);
+            });
+
+            quickEmailBtn?.addEventListener('click', async function (event) {
+                event.preventDefault();
+                if (!quickEmailRoute || quickEmailBtn.disabled) {
+                    openModalEmail();
+                    return;
+                }
+
+                if (!defaultEmail) {
+                    openModalEmail();
+                    return;
+                }
+
+                setEmailButtonState(true);
+                try {
+                    const formData = new FormData();
+                    formData.append('email_destino', defaultEmail);
+                    formData.append('_token', csrfToken);
+
+                    const response = await fetch(quickEmailRoute, {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                        },
+                        body: formData,
+                    });
+                    const data = await response.json().catch(() => ({}));
+                    if (!response.ok || data.ok === false) {
+                        throw new Error(data.message || 'O envio falhou.');
+                    }
+
+                    await window.uiAlert(data.message || 'E-mail enviado com sucesso.', {
+                        title: 'Sucesso',
+                        icon: 'success',
+                    });
+                } catch (error) {
+                    await window.uiAlert('O envio não foi concluído: verifique usuário/senha do SMTP antes de tentar novamente.', {
+                        title: 'Erro',
+                        icon: 'error',
+                    });
+                } finally {
+                    setEmailButtonState(false);
                 }
             });
 

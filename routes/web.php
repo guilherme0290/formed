@@ -25,6 +25,7 @@ use App\Http\Controllers\Master\AgendaVendedorController;
 use App\Http\Controllers\Master\DashboardController as DashboardMaster;
 use App\Http\Controllers\Master\DashboardPreferenceController;
 use App\Http\Controllers\Master\EmailCaixaController;
+use App\Http\Controllers\Master\WhatsappInstanciaController;
 use App\Http\Controllers\Operacional\AprController;
 use App\Http\Controllers\Operacional\AsoController;
 use App\Http\Controllers\Operacional\FuncionarioController;
@@ -143,6 +144,9 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
             ->name('parametros.funcoes.store');
 
         Route::prefix('tarefas')->name('tarefas.')->group(function () {
+            Route::post('whatsapp/enviar', [PainelController::class, 'enviarWhatsapp'])
+                ->name('whatsapp.enviar');
+
             // Drag & Drop Kanban
             Route::post('{tarefa}/mover', [PainelController::class, 'mover'])
                 ->name('mover');
@@ -1018,7 +1022,7 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
                 ->name('contas-receber.show');
             Route::get('/contas-receber/{contaReceber}/impressao', [\App\Http\Controllers\Financeiro\ContasReceberController::class, 'impressao'])
                 ->name('contas-receber.impressao');
-            Route::get('/contas-receber/{contaReceber}/whatsapp', [\App\Http\Controllers\Financeiro\ContasReceberController::class, 'whatsapp'])
+            Route::post('/contas-receber/{contaReceber}/whatsapp', [\App\Http\Controllers\Financeiro\ContasReceberController::class, 'whatsapp'])
                 ->name('contas-receber.whatsapp');
             Route::put('/contas-receber/{contaReceber}/datas', [\App\Http\Controllers\Financeiro\ContasReceberController::class, 'updateDatas'])
                 ->name('contas-receber.update-datas');
@@ -1186,6 +1190,15 @@ Route::middleware(['auth', 'route.permission'])->group(function () {
                 ->name('enviar-teste');
             Route::put('/{emailCaixa}', [EmailCaixaController::class, 'update'])->name('update');
             Route::delete('/{emailCaixa}', [EmailCaixaController::class, 'destroy'])->name('destroy');
+
+            Route::prefix('whatsapp')->name('whatsapp.')->group(function () {
+                Route::post('/', [WhatsappInstanciaController::class, 'store'])->name('store');
+                Route::post('/{tipo}/instance', [WhatsappInstanciaController::class, 'createInstance'])->name('instance');
+                Route::post('/{tipo}/connect', [WhatsappInstanciaController::class, 'connect'])->name('connect');
+                Route::get('/{tipo}/status', [WhatsappInstanciaController::class, 'status'])->name('status');
+                Route::post('/{tipo}/restart', [WhatsappInstanciaController::class, 'restart'])->name('restart');
+                Route::post('/{tipo}/logout', [WhatsappInstanciaController::class, 'logout'])->name('logout');
+            });
         });
 
         Route::post('/tempo-tarefas', [\App\Http\Controllers\Master\TempoTarefasController::class, 'store'])
@@ -1393,8 +1406,10 @@ Route::get('/storage-local', [StorageProxyController::class, 'show'])
     ->middleware('signed')
     ->name('storage.proxy');
 
-Route::get('/publico/faturas/impressao', [\App\Http\Controllers\Financeiro\ContasReceberController::class, 'impressaoPublica'])
-    ->middleware('signed')
-    ->name('financeiro.contas-receber.impressao-publica');
+        Route::get('/publico/faturas/impressao', [\App\Http\Controllers\Financeiro\ContasReceberController::class, 'impressaoPublica'])
+            ->middleware('signed')
+            ->name('financeiro.contas-receber.impressao-publica');
+Route::get('/f/{token}', [\App\Http\Controllers\Financeiro\ContasReceberController::class, 'linkPublica'])
+    ->name('financeiro.contas-receber.link-publica');
 
 require __DIR__.'/auth.php';

@@ -4,45 +4,17 @@ import Alpine from 'alpinejs';
 
 import Sortable from 'sortablejs';
 
+import Swal from 'sweetalert2';
+
+window.Swal = Swal;
+
 window.Alpine = Alpine;
 
 Alpine.start();
 
 window.Sortable = Sortable;
 
-const ensureSwalLoaded = (() => {
-    let promise = null;
-
-    return () => {
-        if (window.Swal) return Promise.resolve(window.Swal);
-        if (promise) return promise;
-
-        promise = new Promise((resolve) => {
-            let settled = false;
-            const finish = () => {
-                if (settled) return;
-                settled = true;
-                resolve(window.Swal || null);
-            };
-
-            let script = document.getElementById('swal-cdn-script');
-            if (!script) {
-                script = document.createElement('script');
-                script.id = 'swal-cdn-script';
-                script.src = 'https://cdn.jsdelivr.net/npm/sweetalert2@11';
-                script.async = true;
-                document.head.appendChild(script);
-            }
-
-            script.addEventListener('load', finish, { once: true });
-            script.addEventListener('error', finish, { once: true });
-
-            window.setTimeout(finish, 2500);
-        });
-
-        return promise;
-    };
-})();
+const ensureSwalLoaded = () => Promise.resolve(window.Swal || null);
 
 window.renderLucideIcons = (root = document) => {
     if (!window.lucide || typeof window.lucide.createIcons !== 'function') return false;

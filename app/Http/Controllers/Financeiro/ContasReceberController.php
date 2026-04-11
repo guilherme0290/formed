@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Cliente;
 use App\Models\ClienteContrato;
 use App\Models\ContaReceber;
+use App\Models\FaturaLink;
 use App\Models\ContaReceberItem;
 use App\Models\EmailCaixa;
 use App\Models\Empresa;
@@ -14,20 +15,25 @@ use App\Models\ParametroCliente;
 use App\Models\Servico;
 use App\Models\Tarefa;
 use App\Models\VendaItem;
+use App\Models\WhatsappInstancia;
 use App\Services\ContratoClienteService;
 use App\Services\ContaReceberService;
 use App\Services\ImapSentMailService;
 use App\Services\PrecificacaoService;
+use App\Services\WhatsappEvolutionService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Crypt;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\Mailer\Exception\TransportException;
 use Symfony\Component\Mailer\Mailer;
 use Symfony\Component\Mailer\Transport\Smtp\EsmtpTransport;
 use Symfony\Component\Mime\Email;
@@ -164,7 +170,7 @@ class ContasReceberController extends Controller
         }
 
         $contasQuery = ContaReceber::query()
-            ->with('cliente')
+            ->with(['cliente', 'empresa'])
             ->where('empresa_id', $empresaId)
             ->orderByDesc('id');
 
@@ -293,6 +299,25 @@ class ContasReceberController extends Controller
 
         $contas = $contasQuery->paginate(10)->withQueryString();
 
+        $clienteIds = $contas->pluck('cliente_id')->filter()->unique()->values()->all();
+        $parametroClienteEmailPorCliente = [];
+        if (!empty($clienteIds)) {
+            $parametrosCliente = ParametroCliente::query()
+                ->where('empresa_id', $empresaId)
+                ->whereIn('cliente_id', $clienteIds)
+                ->orderBy('cliente_id')
+                ->orderByDesc('id')
+                ->get()
+                ->unique('cliente_id');
+
+            $parametroClienteEmailPorCliente = $parametrosCliente
+                ->mapWithKeys(fn (ParametroCliente $param) => [
+                    $param->cliente_id => trim((string) ($param->email_envio_fatura ?? '')),
+                ])
+                ->filter()
+                ->toArray();
+        }
+
         $clienteAutocomplete = $clientes
             ->pluck('razao_social')
             ->filter()
@@ -373,6 +398,7 @@ class ContasReceberController extends Controller
             'abaAtiva' => in_array($abaAtiva, ['vendas', 'faturas', 'detalhe'], true) ? $abaAtiva : 'vendas',
             'contaDetalhe' => $contaDetalhe,
             'contaDetalheEmailOpcoes' => $contaDetalheEmailOpcoes,
+            'parametroClienteEmailPorCliente' => $parametroClienteEmailPorCliente,
             'contaDetalheVencimentoSugerido' => $contaDetalheVencimentoSugerido,
             'contaDetalheVencimentoDiaParametro' => $contaDetalheVencimentoDiaParametro,
             'formasPagamento' => $this->formasPagamento(),
@@ -1011,14 +1037,20 @@ class ContasReceberController extends Controller
         }
 
         $contaReceber = ContaReceber::query()->findOrFail($contaReceberId);
-        $contaReceber->load(['cliente', 'empresa', 'itens.venda', 'itens.vendaItem', 'itens.servico', 'baixas']);
-
-        $pdf = $this->buildFaturaPdf($contaReceber);
-
-        return $pdf->stream('fatura-' . $contaReceber->id . '.pdf');
+        return $this->streamFaturaPdf($contaReceber);
     }
 
-    public function whatsapp(Request $request, ContaReceber $contaReceber): RedirectResponse
+    public function linkPublica(string $token)
+    {
+        $link = FaturaLink::query()
+            ->where('token', $token)
+            ->where('expires_at', '>', now())
+            ->firstOrFail();
+
+        return $this->streamFaturaPdf($link->contaReceber);
+    }
+
+    public function whatsapp(Request $request, ContaReceber $contaReceber, WhatsappEvolutionService $whatsappService): JsonResponse
     {
         if ($contaReceber->empresa_id !== ($request->user()->empresa_id ?? null)) {
             abort(403);
@@ -1032,27 +1064,87 @@ class ContasReceberController extends Controller
         }
 
         if ($telefone === '') {
-            return back()->with('error', 'Telefone 1 do cliente não informado para envio via WhatsApp.');
+            return response()->json([
+                'ok' => false,
+                'message' => 'Telefone 1 do cliente não informado para envio via WhatsApp.',
+            ], 422);
         }
 
-        $downloadUrl = URL::temporarySignedRoute(
-            'financeiro.contas-receber.impressao-publica',
-            now()->addDays(7),
-            ['token' => Crypt::encryptString((string) $contaReceber->id)]
-        );
-        $mensagem = rawurlencode(sprintf(
-            "Olá! Segue a fatura #%d.\nEmissão: %s\nVencimento: %s\nValor total: R$ %s\nLink para download: %s",
-            (int) $contaReceber->id,
-            optional($contaReceber->created_at)->format('d/m/Y') ?? '—',
-            optional($contaReceber->vencimento)->format('d/m/Y') ?? '—',
-            number_format((float) ($contaReceber->total ?? 0), 2, ',', '.'),
-            $downloadUrl
-        ));
+        $instancia = WhatsappInstancia::query()
+            ->daEmpresa($request->user()->empresa_id ?? 0)
+            ->doTipo(WhatsappInstancia::TIPO_FINANCEIRO)
+            ->where('ativo', true)
+            ->first();
 
-        return redirect()->away('https://wa.me/' . $telefone . '?text=' . $mensagem);
+        if (!$instancia || blank($instancia->instance_name)) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Instância de WhatsApp financeiro não está vinculada.',
+            ], 422);
+        }
+
+        if (($instancia->last_state ?? 'closed') !== 'open') {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Instância de WhatsApp financeiro não está conectada.',
+            ], 422);
+        }
+
+        $link = $this->buildFaturaLink($contaReceber);
+        $mensagem = implode("\n", [
+            'Olá! Segue abaixo a fatura enviada pela Formed.',
+            '',
+            'Link:',
+            "Fatura:{$link}",
+        ]);
+
+        $resultado = $whatsappService->sendText(
+            $instancia,
+            $instancia->instance_name,
+            $telefone,
+            $mensagem
+        );
+
+        $providerMetaOk = $resultado['provider']['_meta']['ok'] ?? false;
+        if (!($resultado['ok'] ?? false) && !$providerMetaOk) {
+            Log::warning('WA financeiro falhou', [
+                'empresa_id' => $request->user()->empresa_id,
+                'instance_name' => $instancia->instance_name,
+                'telefone' => $telefone,
+                'response' => $resultado,
+            ]);
+            return response()->json([
+                'ok' => false,
+                'message' => 'Não foi possível enviar pela Evolution neste momento.',
+                'provider' => $resultado,
+            ], 422);
+        }
+
+        Log::info('WA financeiro enviado com sucesso', [
+            'empresa_id' => $request->user()->empresa_id,
+            'instance_name' => $instancia->instance_name,
+            'telefone' => $telefone,
+        ]);
+
+        return response()->json([
+            'ok' => true,
+            'message' => 'Mensagem enviada com sucesso.',
+        ]);
     }
 
-    public function enviarFaturaEmail(Request $request, ContaReceber $contaReceber): RedirectResponse
+    public function link(Request $request, ContaReceber $contaReceber): JsonResponse
+    {
+        if ($contaReceber->empresa_id !== ($request->user()->empresa_id ?? null)) {
+            abort(403);
+        }
+
+        return response()->json([
+            'ok' => true,
+            'link' => $this->buildFaturaLink($contaReceber),
+        ]);
+    }
+
+    public function enviarFaturaEmail(Request $request, ContaReceber $contaReceber): RedirectResponse|JsonResponse
     {
         if ($contaReceber->empresa_id !== ($request->user()->empresa_id ?? null)) {
             abort(403);
@@ -1094,10 +1186,36 @@ class ContasReceberController extends Controller
             ->html($html)
             ->attach($pdfBinary, $pdfName, 'application/pdf');
 
-        $mailer->send($email);
-        app(ImapSentMailService::class)->appendToSentIfConfigured($caixaAtiva, $email);
+        try {
+            $mailer->send($email);
+            app(ImapSentMailService::class)->appendToSentIfConfigured($caixaAtiva, $email);
 
-        return back()->with('success', 'Fatura enviada por e-mail com sucesso.');
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'ok' => true,
+                    'message' => 'Fatura enviada por e-mail com sucesso.',
+                ]);
+            }
+
+            return back()->with('success', 'Fatura enviada por e-mail com sucesso.');
+        } catch (TransportException $ex) {
+            Log::warning('Erro ao enviar fatura por e-mail', [
+                'empresa_id' => $request->user()->empresa_id,
+                'conta_receber_id' => $contaReceber->id,
+                'exception' => $ex->getMessage(),
+            ]);
+
+            $friendlyMessage = 'Não foi possível autenticar no servidor de e-mail. Verifique usuário e senha antes de tentar novamente.';
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'ok' => false,
+                    'message' => $friendlyMessage,
+                ], 422);
+            }
+
+            return back()->with('error', $friendlyMessage);
+        }
     }
 
     private function criarTransportEmailCaixa(EmailCaixa $emailCaixa): EsmtpTransport
@@ -1561,5 +1679,34 @@ class ContasReceberController extends Controller
         }
 
         return ['dia' => $dia, 'data' => $proposta];
+    }
+
+    private function buildFaturaLink(ContaReceber $contaReceber): string
+    {
+        $link = FaturaLink::query()
+            ->where('conta_receber_id', $contaReceber->id)
+            ->where('expires_at', '>', now())
+            ->orderByDesc('expires_at')
+            ->first();
+
+        if (!$link) {
+            FaturaLink::query()->where('conta_receber_id', $contaReceber->id)->delete();
+            $link = FaturaLink::create([
+                'conta_receber_id' => $contaReceber->id,
+                'token' => Str::random(32),
+                'expires_at' => now()->addDays(7),
+            ]);
+        }
+
+        return route('financeiro.contas-receber.link-publica', $link->token);
+    }
+
+    private function streamFaturaPdf(ContaReceber $contaReceber)
+    {
+        $contaReceber->load(['cliente', 'empresa', 'itens.venda', 'itens.vendaItem', 'itens.servico', 'baixas']);
+
+        $pdf = $this->buildFaturaPdf($contaReceber);
+
+        return $pdf->stream('fatura-' . $contaReceber->id . '.pdf');
     }
 }
