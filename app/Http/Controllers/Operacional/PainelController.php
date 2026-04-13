@@ -18,10 +18,12 @@ use App\Models\TarefaLog;
 use App\Models\TreinamentoNR;
 use App\Models\User;
 use App\Models\Anexos;
+use App\Models\WhatsappInstancia;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Psy\Util\Str;
 use App\Services\PrecificacaoService;
@@ -29,6 +31,7 @@ use App\Services\VendaService;
 use App\Services\ComissaoService;
 use App\Services\ContaReceberService;
 use Illuminate\Http\JsonResponse;
+use App\Services\WhatsappEvolutionService;
 
 class PainelController extends Controller
 {
@@ -1084,7 +1087,72 @@ class PainelController extends Controller
         ]];
     }
 
+    public function enviarWhatsapp(Request $request, WhatsappEvolutionService $whatsappService): JsonResponse
+    {
+        $empresaId = $request->user()->empresa_id;
 
+        $data = $request->validate([
+            'telefone' => ['required', 'string', 'max:30'],
+            'mensagem' => ['required', 'string'],
+        ]);
 
+        $telefone = preg_replace('/\D+/', '', $data['telefone']) ?: '';
+        if (in_array(strlen($telefone), [10, 11], true)) {
+            $telefone = '55'.$telefone;
+        }
 
+        if ($telefone === '') {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Telefone do cliente não informado.',
+            ], 422);
+        }
+
+        $instancia = WhatsappInstancia::query()
+            ->daEmpresa($empresaId)
+            ->doTipo(WhatsappInstancia::TIPO_OPERACIONAL)
+            ->where('ativo', true)
+            ->first();
+
+        if (!$instancia || blank($instancia->instance_name)) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Instância operacional do WhatsApp não está vinculada.',
+            ], 422);
+        }
+
+        if (($instancia->last_state ?? 'closed') !== 'open') {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Instância operacional do WhatsApp não está conectada.',
+            ], 422);
+        }
+
+        $resultado = $whatsappService->sendText(
+            $instancia,
+            $instancia->instance_name,
+            $telefone,
+            $data['mensagem']
+        );
+
+        $providerMetaOk = $resultado['provider']['_meta']['ok'] ?? false;
+        if (!($resultado['ok'] ?? false) && !$providerMetaOk) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Não foi possível enviar pela Evolution neste momento.',
+                'provider' => $resultado,
+            ], 422);
+        }
+
+        Log::info('WA operacional enviado com sucesso', [
+            'empresa_id' => $empresaId,
+            'instance_name' => $instancia->instance_name,
+            'telefone' => $telefone,
+        ]);
+
+        return response()->json([
+            'ok' => true,
+            'message' => 'Mensagem enviada com sucesso pela Evolution.',
+        ]);
+    }
 }

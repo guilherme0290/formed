@@ -35,6 +35,11 @@ return [
         ],
     ],
 
+    'evolution' => [
+        'base_url' => env('EVOLUTION_API_BASE_URL'),
+        'api_key' => env('EVOLUTION_API_KEY'),
+    ],
+
     'treinamento_id' => env('FORMED_SERVICO_TREINAMENTO_ID', 8),
     'esocial_id'     => env('FORMED_SERVICO_ESOCIAL_ID'),
     'exame_id'       => env('FORMED_SERVICO_EXAME_ID'),
