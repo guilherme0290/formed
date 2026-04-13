@@ -6,8 +6,10 @@ use App\Models\WhatsappInstancia;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\RequestException;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use InvalidArgumentException;
 
 class WhatsappEvolutionService
@@ -117,10 +119,38 @@ class WhatsappEvolutionService
 
         $json = $response->throw()->json();
 
+        $pairingCode = data_get($json, 'pairingCode')
+            ?? data_get($json, 'code')
+            ?? data_get($json, 'pairing.code')
+            ?? data_get($json, 'pairingCode.code')
+            ?? data_get($json, 'connection.pairingCode');
+
+        $base64 = data_get($json, 'base64')
+            ?? data_get($json, 'qrcode.base64')
+            ?? data_get($json, 'qr.base64')
+            ?? data_get($json, 'data.base64')
+            ?? data_get($json, 'data.qrcode.base64')
+            ?? data_get($json, 'qrcode')
+            ?? data_get($json, 'qr')
+            ?? data_get($json, 'data.qr');
+
+        if (is_string($base64) && Str::startsWith($base64, 'data:image')) {
+            $base64 = preg_replace('#^data:image/[^;]+;base64,#', '', $base64) ?: $base64;
+        }
+
+        Log::info('WA connect response', [
+            'empresa_id' => $instancia->empresa_id,
+            'instance_name' => $instanceName,
+            'has_pairing_code' => filled($pairingCode),
+            'has_base64' => filled($base64),
+            'response_keys' => array_keys($json),
+        ]);
+
         return [
-            'pairingCode' => $json['pairingCode'] ?? ($json['code'] ?? null),
-            'code' => $json['code'] ?? null,
-            'base64' => $json['base64'] ?? null,
+            'pairingCode' => $pairingCode,
+            'code' => data_get($json, 'code'),
+            'base64' => $base64,
+            'raw' => $json,
         ];
     }
 
@@ -152,7 +182,18 @@ class WhatsappEvolutionService
         ]);
 
         $response = $this->client($instancia)
-            ->post($this->baseUrl($instancia)."/instance/restart/{$instanceName}");
+            ->put($this->baseUrl($instancia)."/instance/restart/{$instanceName}");
+
+        if ($this->shouldFallbackRestartToConnect($response)) {
+            Log::info('WA restart fallback to connect', [
+                'empresa_id' => $instancia->empresa_id,
+                'instance_name' => $instanceName,
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            return $this->connect($instanceName, $instancia);
+        }
 
         if (!$response->successful()) {
             Log::warning('WA restart failed', [
@@ -175,7 +216,7 @@ class WhatsappEvolutionService
         ]);
 
         $response = $this->client($instancia)
-            ->post($this->baseUrl($instancia)."/instance/logout/{$instanceName}");
+            ->delete($this->baseUrl($instancia)."/instance/logout/{$instanceName}");
 
         if (!$response->successful()) {
             Log::warning('WA logout failed', [
@@ -278,5 +319,17 @@ class WhatsappEvolutionService
             'closed' => 'closed',
             default => $raw ?: 'closed',
         };
+    }
+
+    protected function shouldFallbackRestartToConnect(Response $response): bool
+    {
+        if ($response->status() !== 404) {
+            return false;
+        }
+
+        $body = Str::lower($response->body());
+
+        return Str::contains($body, 'cannot put /instance/restart/')
+            || Str::contains($body, 'cannot post /instance/restart/');
     }
 }

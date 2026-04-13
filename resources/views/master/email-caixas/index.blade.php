@@ -59,7 +59,7 @@
             </a>
         </div>
 
-        @if (session('ok'))
+        @if (session('ok') && $tab !== 'whatsapp')
             <div class="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-xl text-sm">
                 {{ session('ok') }}
             </div>
@@ -86,105 +86,144 @@
                     off-label="Inativo"
                     text-class="text-sm text-slate-700"
                 />
-                <div class="grid md:grid-cols-3 gap-4">
-                    <div class="bg-white rounded-xl border border-indigo-100 shadow-sm shadow-indigo-100/40 overflow-hidden">
-                        <div class="border-b border-indigo-100 bg-gradient-to-r from-indigo-50 to-blue-50 px-4 py-3">
-                            <h2 class="text-sm font-semibold text-slate-800">Servidor SMTP e Autenticação</h2>
-                        </div>
-                        <div class="p-4 space-y-3 text-sm">
-                            <div class="space-y-1">
-                                <label class="text-xs font-semibold text-slate-600">Nome da configuração</label>
-                                <input type="text" name="nome" class="w-full rounded-lg border border-slate-200 px-3 py-2"
-                                       value="{{ old('nome') }}" placeholder="Ex.: SMTP Principal Formed" required>
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="border-b border-slate-200 bg-gradient-to-r from-slate-50 to-indigo-50 px-5 py-4">
+                        <h2 class="text-base font-semibold text-slate-900">Nova configuração de e-mail</h2>
+                        <p class="mt-1 text-sm text-slate-500">Preencha em ordem: servidor, login e opções avançadas. Depois teste a conexão antes de salvar.</p>
+                    </div>
+
+                    <div class="p-5 space-y-6">
+                        <section class="space-y-4">
+                            <div class="flex items-center gap-3">
+                                <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-sm font-semibold text-white">1</span>
+                                <div>
+                                    <h3 class="text-sm font-semibold text-slate-800">Servidor SMTP</h3>
+                                    <p class="text-xs text-slate-500">Dados do provedor de e-mail usado para envio.</p>
+                                </div>
                             </div>
-                            <div class="space-y-1">
-                                <label class="text-xs font-semibold text-slate-600">Servidor SMTP (Host)</label>
-                                <input type="text" name="host" class="w-full rounded-lg border border-slate-200 px-3 py-2"
-                                       value="{{ old('host') }}" placeholder="smtp.dominio.com" required>
-                            </div>
-                            <div class="grid grid-cols-2 gap-3">
+
+                            <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                                <div class="space-y-1 md:col-span-2">
+                                    <label class="text-xs font-semibold text-slate-600">Nome interno</label>
+                                    <input type="text" name="nome" class="w-full rounded-lg border border-slate-200 px-3 py-2"
+                                           value="{{ old('nome') }}" placeholder="Ex.: SMTP Principal Formed" required>
+                                </div>
+                                <div class="space-y-1 md:col-span-2">
+                                    <label class="text-xs font-semibold text-slate-600">Servidor SMTP</label>
+                                    <input type="text" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-slate-600"
+                                           value="smtp.hostinger.com" readonly disabled>
+                                    <input type="hidden" name="host" value="smtp.hostinger.com">
+                                    <p class="text-[11px] text-slate-500">Configuração fixa da Hostinger.</p>
+                                </div>
                                 <div class="space-y-1">
                                     <label class="text-xs font-semibold text-slate-600">Porta</label>
-                                    <input type="number" name="porta" class="w-full rounded-lg border border-slate-200 px-3 py-2"
-                                           value="{{ old('porta', 587) }}" min="1" max="65535" required>
+                                    <input type="number" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-slate-600"
+                                           value="465" readonly disabled>
+                                    <input type="hidden" name="porta" value="465">
+                                    <p class="text-[11px] text-slate-500">Configuração fixa da Hostinger.</p>
                                 </div>
                                 <div class="space-y-1">
                                     <label class="text-xs font-semibold text-slate-600">Segurança</label>
-                                    <select name="criptografia" class="w-full rounded-lg border border-slate-200 px-3 py-2">
-                                        <option value="starttls" @selected(old('criptografia', 'starttls') === 'starttls')>STARTTLS</option>
-                                        <option value="ssl" @selected(old('criptografia', 'starttls') === 'ssl')>SSL</option>
-                                        <option value="none" @selected(old('criptografia', 'starttls') === 'none')>Sem criptografia</option>
-                                    </select>
+                                    <input type="text" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-slate-600"
+                                           value="SSL" readonly disabled>
+                                    <input type="hidden" name="criptografia" value="ssl">
+                                    <p class="text-[11px] text-slate-500">Configuração fixa da Hostinger para porta `465`.</p>
+                                </div>
+                                <div class="space-y-1">
+                                    <label class="text-xs font-semibold text-slate-600">Timeout</label>
+                                    <input type="number" name="timeout" class="w-full rounded-lg border border-slate-200 px-3 py-2"
+                                           value="{{ old('timeout', 30) }}" min="1" max="600">
+                                    <p class="text-[11px] text-slate-500">Tempo máximo de espera em segundos.</p>
                                 </div>
                             </div>
-                            <div class="space-y-1">
-                                <label class="text-xs font-semibold text-slate-600">Timeout (segundos)</label>
-                                <input type="number" name="timeout" class="w-full rounded-lg border border-slate-200 px-3 py-2"
-                                       value="{{ old('timeout', 30) }}" min="1" max="600">
-                            </div>
-                        </div>
-                    </div>
+                        </section>
 
-                    <div class="bg-white rounded-xl border border-emerald-100 shadow-sm shadow-emerald-100/40 overflow-hidden">
-                        <div class="border-b border-emerald-100 bg-gradient-to-r from-emerald-50 to-cyan-50 px-4 py-3 flex items-center justify-between">
-                            <h2 class="text-sm font-semibold text-slate-800">Credenciais de Acesso (U - Usuário)</h2>
-                        </div>
-                        <div class="p-4 space-y-3 text-sm">
-                            <div class="space-y-1">
-                                <label class="text-xs font-semibold text-slate-600">E-mail de Login / Usuário SMTP</label>
-                                <input type="text" name="usuario" class="w-full rounded-lg border border-slate-200 px-3 py-2"
-                                       value="{{ old('usuario') }}" placeholder="usuario@dominio.com">
+                        <section class="space-y-4 border-t border-slate-100 pt-5">
+                            <div class="flex items-center gap-3">
+                                <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-600 text-sm font-semibold text-white">2</span>
+                                <div>
+                                    <h3 class="text-sm font-semibold text-slate-800">Login SMTP</h3>
+                                    <p class="text-xs text-slate-500">Credenciais usadas pelo servidor para autenticar o envio.</p>
+                                </div>
                             </div>
-                            <div class="space-y-1">
-                                <label class="text-xs font-semibold text-slate-600">Senha SMTP</label>
-                                <input type="password" name="senha" class="w-full rounded-lg border border-slate-200 px-3 py-2"
-                                       value="{{ old('senha') }}" autocomplete="new-password">
+
+                            <div class="grid gap-4 md:grid-cols-2">
+                                <div class="space-y-1">
+                                    <label class="text-xs font-semibold text-slate-600">Usuário SMTP</label>
+                                    <input type="text" name="usuario" class="w-full rounded-lg border border-slate-200 px-3 py-2"
+                                           value="{{ old('usuario') }}" placeholder="usuario@dominio.com">
+                                </div>
+                                <div class="space-y-1">
+                                    <label class="text-xs font-semibold text-slate-600">Senha SMTP</label>
+                                    <input type="password" name="senha" class="w-full rounded-lg border border-slate-200 px-3 py-2"
+                                           value="{{ old('senha') }}" autocomplete="new-password">
+                                </div>
                             </div>
-                            <div class="flex flex-wrap items-center gap-4 text-sm">
+
+                            <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
                                 <input type="hidden" name="requer_autenticacao" value="0">
-                                <label class="inline-flex items-center gap-2 text-slate-700">
+                                <label class="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
                                     <input type="checkbox" name="requer_autenticacao" value="1"
                                            class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                                         {{ old('requer_autenticacao', '1') === '1' ? 'checked' : '' }}>
-                                    Autenticação obrigatória?
+                                    Exigir autenticação
                                 </label>
                             </div>
-                            <div class="flex flex-wrap items-center justify-center gap-3 pt-6">
-                                <button type="submit" formaction="{{ route('master.email-caixas.testar') }}"
-                                        class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700">
-                                    Testar Conexão
-                                </button>
-                                <button type="submit"
-                                        class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800">
-                                    Salvar Configurações
-                                </button>
-                                @if (session('smtp_ok'))
-                                    <span class="text-xs text-emerald-600 font-semibold">{{ session('smtp_ok') }}</span>
-                                @elseif (session('smtp_error'))
-                                    <span class="text-xs text-rose-600 font-semibold">{{ session('smtp_error') }}</span>
-                                @endif
+                        </section>
+
+                        <section class="space-y-4 border-t border-slate-100 pt-5">
+                            <div class="flex items-center gap-3">
+                                <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-amber-500 text-sm font-semibold text-white">3</span>
+                                <div>
+                                    <h3 class="text-sm font-semibold text-slate-800">Opções avançadas</h3>
+                                    <p class="text-xs text-slate-500">Use apenas se o provedor precisar de configuração extra.</p>
+                                </div>
                             </div>
-                        </div>
+
+                            <div class="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
+                                <div class="space-y-1 max-w-xl">
+                                    <label class="text-xs font-semibold text-slate-600">Pasta de enviados</label>
+                                    <input type="text" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-slate-600"
+                                           value="INBOX.Sent" readonly disabled>
+                                    <input type="hidden" name="imap_sent_folder" value="INBOX.Sent">
+                                    <p class="text-[11px] text-slate-500">Configuração fixa da Hostinger.</p>
+                                </div>
+
+                                <input type="hidden" name="imap_host" value="{{ old('imap_host') }}">
+                                <input type="hidden" name="imap_porta" value="{{ old('imap_porta') }}">
+                                <input type="hidden" name="imap_criptografia" value="{{ old('imap_criptografia') }}">
+                                <input type="hidden" name="imap_usuario" value="{{ old('imap_usuario') }}">
+                                <input type="hidden" name="imap_senha" value="{{ old('imap_senha') }}">
+                            </div>
+                        </section>
                     </div>
 
-                    <div class="bg-white rounded-xl border border-amber-100 shadow-sm shadow-amber-100/40 overflow-hidden">
-                        <div class="border-b border-amber-100 bg-gradient-to-r from-amber-50 to-orange-50 px-4 py-3">
-                            <h2 class="text-sm font-semibold text-slate-800">Cópia em Enviados</h2>
-                        </div>
-                        <div class="p-4 space-y-3 text-sm">
-                            <div class="space-y-1">
-                                <label class="text-xs font-semibold text-slate-600">Pasta de enviados</label>
-                                <input type="text" name="imap_sent_folder" class="w-full rounded-lg border border-slate-200 px-3 py-2"
-                                       value="{{ old('imap_sent_folder', 'INBOX.Sent') }}" placeholder="INBOX.Sent">
-                                <p class="text-[11px] text-slate-500">Na Hostinger, normalmente use <strong>INBOX.Sent</strong>.</p>
+                    <div class="border-t border-slate-200 bg-slate-50/80 px-5 py-4">
+                        <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                            <div class="text-xs text-slate-500">
+                                Fluxo recomendado: preencher, testar conexão e depois salvar.
                             </div>
-
-                            <input type="hidden" name="imap_host" value="{{ old('imap_host') }}">
-                            <input type="hidden" name="imap_porta" value="{{ old('imap_porta') }}">
-                            <input type="hidden" name="imap_criptografia" value="{{ old('imap_criptografia') }}">
-                            <input type="hidden" name="imap_usuario" value="{{ old('imap_usuario') }}">
-                            <input type="hidden" name="imap_senha" value="{{ old('imap_senha') }}">
+                            <div class="flex flex-wrap items-center gap-3">
+                                <button type="submit" formaction="{{ route('master.email-caixas.testar') }}"
+                                        class="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
+                                    Testar conexão
+                                </button>
+                                <button type="submit"
+                                        class="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+                                    Salvar configuração
+                                </button>
+                            </div>
                         </div>
+
+                        @if (session('smtp_ok'))
+                            <div class="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                                {{ session('smtp_ok') }}
+                            </div>
+                        @elseif (session('smtp_error'))
+                            <div class="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                                {{ session('smtp_error') }}
+                            </div>
+                        @endif
                     </div>
                 </div>
             </form>
@@ -267,22 +306,22 @@
                                             </div>
                                             <div class="space-y-1 text-sm">
                                                 <label class="text-xs font-semibold text-slate-600">Servidor SMTP</label>
-                                                <input type="text" name="host" class="w-full rounded-lg border border-slate-200 px-3 py-2"
-                                                       value="{{ $isEditing ? old('host', $caixa->host) : $caixa->host }}" required>
+                                                <input type="text" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-slate-600"
+                                                       value="smtp.hostinger.com" readonly disabled>
+                                                <input type="hidden" name="host" value="smtp.hostinger.com">
                                             </div>
                                             <div class="grid grid-cols-2 gap-3">
                                                 <div class="space-y-1 text-sm">
                                                     <label class="text-xs font-semibold text-slate-600">Porta</label>
-                                                    <input type="number" name="porta" class="w-full rounded-lg border border-slate-200 px-3 py-2"
-                                                           value="{{ $isEditing ? old('porta', $caixa->porta) : $caixa->porta }}" min="1" max="65535" required>
+                                                    <input type="number" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-slate-600"
+                                                           value="465" readonly disabled>
+                                                    <input type="hidden" name="porta" value="465">
                                                 </div>
                                                 <div class="space-y-1 text-sm">
                                                     <label class="text-xs font-semibold text-slate-600">Segurança</label>
-                                                    <select name="criptografia" class="w-full rounded-lg border border-slate-200 px-3 py-2">
-                                                        <option value="starttls" @selected(($isEditing ? old('criptografia', $caixa->criptografia) : $caixa->criptografia) === 'starttls')>STARTTLS</option>
-                                                        <option value="ssl" @selected(($isEditing ? old('criptografia', $caixa->criptografia) : $caixa->criptografia) === 'ssl')>SSL</option>
-                                                        <option value="none" @selected(($isEditing ? old('criptografia', $caixa->criptografia) : $caixa->criptografia) === 'none')>Sem criptografia</option>
-                                                    </select>
+                                                    <input type="text" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-slate-600"
+                                                           value="SSL" readonly disabled>
+                                                    <input type="hidden" name="criptografia" value="ssl">
                                                 </div>
                                             </div>
                                             <div class="space-y-1 text-sm">
@@ -314,14 +353,15 @@
                                             </label>
                                         </div>
 
-                                        <div class="space-y-3 rounded-xl border border-amber-200 bg-amber-50/60 p-4">
-                                            <p class="text-xs font-semibold uppercase tracking-wide text-amber-700">IMAP / Enviados</p>
-                                            <div class="space-y-1 text-sm">
-                                                <label class="text-xs font-semibold text-slate-600">Pasta de enviados</label>
-                                                <input type="text" name="imap_sent_folder" class="w-full rounded-lg border border-slate-200 px-3 py-2"
-                                                       value="{{ $isEditing ? old('imap_sent_folder', $caixa->imap_sent_folder ?: 'INBOX.Sent') : ($caixa->imap_sent_folder ?: 'INBOX.Sent') }}">
-                                            </div>
-                                            <div class="rounded-xl border border-amber-200 bg-white/80 px-3 py-3 text-[11px] text-amber-900 space-y-1">
+                                        <div class="space-y-3 rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+                                            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">IMAP / Enviados</p>
+                                        <div class="space-y-1 text-sm">
+                                            <label class="text-xs font-semibold text-slate-600">Pasta de enviados</label>
+                                            <input type="text" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-slate-600"
+                                                   value="INBOX.Sent" readonly disabled>
+                                            <input type="hidden" name="imap_sent_folder" value="INBOX.Sent">
+                                        </div>
+                                            <div class="rounded-xl border border-slate-200 bg-white px-3 py-3 text-[11px] text-slate-600 space-y-1">
                                                 <p class="font-semibold">Mesma conta da caixa</p>
                                                 <p>O sistema usa automaticamente o mesmo usuário e senha do SMTP para gravar uma cópia em <strong>Enviados</strong>.</p>
                                                 <p>Se o host SMTP estiver como `smtp.dominio.com`, ele tenta `imap.dominio.com` com porta `993`.</p>
@@ -410,7 +450,7 @@
                 $whatsappCards = [
                     \App\Models\WhatsappInstancia::TIPO_FINANCEIRO => [
                         'label' => 'Financeiro',
-                        'description' => 'Vincule a instância já criada na Evolution para envio financeiro e cobranças.',
+                        'description' => '',
                         'iconBg' => 'bg-emerald-50',
                         'iconText' => 'text-emerald-600',
                         'numero' => old('financeiro_numero', $whatsappFinanceiro->numero ?? ''),
@@ -419,7 +459,7 @@
                     ],
                     \App\Models\WhatsappInstancia::TIPO_OPERACIONAL => [
                         'label' => 'Operacional',
-                        'description' => 'Vincule a instância já criada na Evolution para avisos operacionais e notificações.',
+                        'description' => '',
                         'iconBg' => 'bg-sky-50',
                         'iconText' => 'text-sky-600',
                         'numero' => old('operacional_numero', $whatsappOperacional->numero ?? ''),
@@ -428,6 +468,27 @@
                     ],
                 ];
                 $whatsappHasConfig = filled($whatsappBaseUrl) && $whatsappApiKeyConfigured;
+                $formatWhatsappError = function (?string $message, string $tipo) {
+                    $message = trim((string) $message);
+                    if ($message === '') {
+                        return '';
+                    }
+
+                    $tipoLabel = $tipo === \App\Models\WhatsappInstancia::TIPO_FINANCEIRO ? 'financeiro' : 'operacional';
+                    $messageLower = \Illuminate\Support\Str::lower($message);
+
+                    if (\Illuminate\Support\Str::contains($messageLower, 'no query results for model')) {
+                        return '';
+                    }
+
+                    if (\Illuminate\Support\Str::contains($messageLower, 'nenhuma instância de whatsapp')
+                        || \Illuminate\Support\Str::contains($messageLower, 'nenhuma instancia de whatsapp')
+                        || \Illuminate\Support\Str::contains($messageLower, 'vinculada para esta empresa')) {
+                        return '';
+                    }
+
+                    return $message;
+                };
             @endphp
 
             @if($whatsappConfigErrors->isNotEmpty())
@@ -446,8 +507,8 @@
                       class="rounded-2xl border border-emerald-100 bg-white shadow-sm shadow-emerald-100/40 overflow-hidden">
                     @csrf
                     <div class="border-b border-emerald-100 bg-gradient-to-r from-emerald-50 via-white to-cyan-50 px-5 py-4">
-                        <h2 class="text-sm font-semibold text-slate-800">Credenciais da Evolution API</h2>
-                        <p class="mt-1 text-xs text-slate-500">As instâncias são criadas diretamente na Evolution. Aqui a Formed só vincula os números e opera a conexão.</p>
+                        <h2 class="text-sm font-semibold text-slate-800">Configuração do WhatsApp</h2>
+                        <p class="mt-1 text-xs text-slate-500">Informe os números de WhatsApp que serão usados no Financeiro e no Operacional.</p>
                     </div>
                     <div class="p-5 space-y-4 text-sm">
                         <x-toggle-ativo
@@ -472,8 +533,10 @@
                                             <i class="fa-brands fa-whatsapp text-lg"></i>
                                         </div>
                                         <div>
-                                            <div class="text-sm font-semibold text-slate-900">Instância {{ $card['label'] }}</div>
-                                            <div class="text-xs text-slate-500">{{ $card['description'] }}</div>
+                                            <div class="text-sm font-semibold text-slate-900">WhatsApp {{ $card['label'] }}</div>
+                                            @if(!blank($card['description']))
+                                                <div class="text-xs text-slate-500">{{ $card['description'] }}</div>
+                                            @endif
                                         </div>
                                     </div>
                                     <div class="space-y-1">
@@ -485,8 +548,9 @@
                             @endforeach
                         </div>
 
-                        <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
-                            A Formed trabalhará com <strong>2 instâncias por empresa</strong>, uma para <strong>financeiro</strong> e outra para <strong>operacional</strong>. As instâncias devem existir previamente na Evolution. Nesta tela, você apenas vincula os números e usa os botões de conectar, atualizar status, reiniciar e logout.
+                        <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600 space-y-1">
+                            <p>Sua empresa usa 2 instâncias de WhatsApp: <strong>Financeiro</strong> e <strong>Operacional</strong>.</p>
+                            <p>Aqui você informa os números, salva e controla a conexão de cada uma.</p>
                         </div>
 
                         <div class="flex items-center justify-end">
@@ -503,14 +567,15 @@
                         @php
                             $instancia = $card['instancia'];
                             $state = strtolower((string) ($instancia->last_state ?? 'closed'));
-                            $instanceNameAtual = $instancia?->instance_name ?: $card['instance_name'];
-                            $hasInstance = filled($instanceNameAtual);
-                            $canUseCard = $whatsappHasConfig
-                                && ($hasInstance || filled($card['numero']))
-                                && ($instancia?->ativo ?? $whatsappAtivo);
+                            $hasLinkedConfig = filled($instancia?->id);
+                            $hasNumero = filled($card['numero']);
+                            $buttonsEnabled = $whatsappHasConfig;
                         @endphp
 
-                        <div class="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden" data-whatsapp-card="{{ $tipo }}">
+                        <div class="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden"
+                             data-whatsapp-card="{{ $tipo }}"
+                             data-linked-config="{{ $hasLinkedConfig ? '1' : '0' }}"
+                             data-has-number="{{ $hasNumero ? '1' : '0' }}">
                             <div class="px-5 py-5 border-b border-slate-100">
                                 <div class="flex flex-wrap items-start justify-between gap-4">
                                     <div class="flex items-center gap-4 min-w-0">
@@ -520,9 +585,10 @@
                                         <div class="min-w-0">
                                             <div class="text-2xl font-semibold text-slate-900 truncate">
                                                 WhatsApp - {{ $card['label'] }}
-                                                <span class="text-slate-500 text-lg" data-instance-name>{{ $instanceNameAtual ? '#'.$instanceNameAtual : 'Não criada' }}</span>
                                             </div>
-                                            <div class="text-sm text-slate-500">{{ $card['description'] }}</div>
+                                            @if(!blank($card['description']))
+                                                <div class="text-sm text-slate-500">{{ $card['description'] }}</div>
+                                            @endif
                                         </div>
                                     </div>
 
@@ -538,31 +604,31 @@
                             <div class="px-5 py-5 space-y-5">
                                 <div class="flex flex-wrap items-center gap-3">
                                     <button type="button"
-                                            class="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 {{ $hasInstance ? '' : 'opacity-60 cursor-not-allowed' }}"
+                                            class="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 {{ $buttonsEnabled ? '' : 'opacity-60 cursor-not-allowed' }}"
                                             data-action="restart"
-                                            @if(!$hasInstance) data-lock-disabled="1" @endif
-                                            @disabled(!$hasInstance)>
+                                            @if(!$buttonsEnabled) data-lock-disabled="1" @endif
+                                            @disabled(!$buttonsEnabled)>
                                         Reiniciar
                                     </button>
                                     <button type="button"
-                                            class="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 {{ $hasInstance ? '' : 'opacity-60 cursor-not-allowed' }}"
+                                            class="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 {{ $buttonsEnabled ? '' : 'opacity-60 cursor-not-allowed' }}"
                                             data-action="logout"
-                                            @if(!$hasInstance) data-lock-disabled="1" @endif
-                                            @disabled(!$hasInstance)>
+                                            @if(!$buttonsEnabled) data-lock-disabled="1" @endif
+                                            @disabled(!$buttonsEnabled)>
                                         Logout
                                     </button>
                                     <button type="button"
-                                            class="rounded-2xl bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-600 {{ $hasInstance ? '' : 'opacity-60 cursor-not-allowed' }}"
+                                            class="rounded-2xl bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-600 {{ $buttonsEnabled ? '' : 'opacity-60 cursor-not-allowed' }}"
                                             data-action="connect"
-                                            @if(!$hasInstance) data-lock-disabled="1" @endif
-                                            @disabled(!$hasInstance)>
+                                            @if(!$buttonsEnabled) data-lock-disabled="1" @endif
+                                            @disabled(!$buttonsEnabled)>
                                         Conectar e gerar QR
                                     </button>
                                     <button type="button"
-                                            class="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 {{ $hasInstance ? '' : 'opacity-60 cursor-not-allowed' }}"
+                                            class="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 {{ $buttonsEnabled ? '' : 'opacity-60 cursor-not-allowed' }}"
                                             data-action="status"
-                                            @if(!$hasInstance) data-lock-disabled="1" @endif
-                                            @disabled(!$hasInstance)>
+                                            @if(!$buttonsEnabled) data-lock-disabled="1" @endif
+                                            @disabled(!$buttonsEnabled)>
                                         Atualizar status
                                     </button>
                                 </div>
@@ -581,10 +647,6 @@
                                 <div class="text-sm text-slate-600">
                                     Estado atual:
                                     <span class="font-semibold text-slate-900" data-state-text>{{ strtoupper($state ?: 'closed') }}</span>
-                                </div>
-
-                                <div class="@if(blank($instancia?->last_error)) hidden @endif rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700" data-error-box>
-                                    {{ $instancia?->last_error }}
                                 </div>
 
                                 <div class="hidden items-center gap-3 text-slate-500" data-loading-row>
@@ -906,7 +968,6 @@
                             instanceName: card.querySelector('[data-instance-name]'),
                             lastStatusAt: card.querySelector('[data-last-status-at]'),
                             stateText: card.querySelector('[data-state-text]'),
-                            errorBox: card.querySelector('[data-error-box]'),
                             loadingRow: card.querySelector('[data-loading-row]'),
                             qrWrap: card.querySelector('[data-qr-wrap]'),
                             qrImg: card.querySelector('[data-qr-img]'),
@@ -918,17 +979,58 @@
                         let pollTimer = null;
 
                         const routeFor = (action) => routeTemplates[action].replace('__TIPO__', tipo);
+                        const hasLinkedConfig = () => card.getAttribute('data-linked-config') === '1';
+                        const hasNumeroInformado = () => card.getAttribute('data-has-number') === '1';
+                        const notify = (message, options = {}) => {
+                            if (!message) return Promise.resolve();
+                            if (typeof window.uiAlert === 'function') {
+                                return window.uiAlert(message, options);
+                            }
+                            window.alert(message);
+                            return Promise.resolve();
+                        };
+                        const confirmAction = async ({ title, text }) => {
+                            if (window.Swal && typeof window.Swal.fire === 'function') {
+                                const result = await window.Swal.fire({
+                                    icon: 'question',
+                                    title,
+                                    text,
+                                    showCancelButton: true,
+                                    confirmButtonText: 'OK',
+                                    cancelButtonText: 'Cancelar',
+                                    reverseButtons: true,
+                                });
 
-                        const setError = (message = '') => {
-                            if (!elements.errorBox) return;
-                            if (message) {
-                                elements.errorBox.textContent = message;
-                                show(elements.errorBox);
-                            } else {
-                                elements.errorBox.textContent = '';
-                                hide(elements.errorBox);
+                                return !!result.isConfirmed;
+                            }
+
+                            return window.confirm(text);
+                        };
+                        const translateState = (state) => {
+                            const normalized = String(state || '').toLowerCase();
+
+                            switch (normalized) {
+                                case 'open':
+                                case 'online':
+                                    return 'Conectado';
+                                case 'connecting':
+                                    return 'Conectando';
+                                case 'qr':
+                                    return 'QR Code';
+                                case 'pairing':
+                                    return 'Pareando';
+                                case 'close':
+                                case 'closed':
+                                case 'offline':
+                                    return 'Desconectado';
+                                case 'restart':
+                                    return 'Reiniciando';
+                                default:
+                                    return normalized ? normalized.charAt(0).toUpperCase() + normalized.slice(1) : 'Desconectado';
                             }
                         };
+
+                        const setError = () => {};
 
                         const setStatus = (state, label) => {
                             if (!elements.statusBadge || !elements.statusLabel) return;
@@ -939,19 +1041,19 @@
                             if (state === 'open') {
                                 dot.className = 'h-2.5 w-2.5 rounded-full bg-emerald-500';
                                 elements.statusBadge.classList.add('border-emerald-200', 'bg-emerald-50', 'text-emerald-700');
-                                elements.statusLabel.textContent = label || 'ONLINE';
+                                elements.statusLabel.textContent = label || translateState(state);
                             } else if (state === 'connecting' || state === 'qr' || state === 'pairing') {
                                 dot.className = 'h-2.5 w-2.5 rounded-full bg-amber-400';
                                 elements.statusBadge.classList.add('border-amber-200', 'bg-amber-50', 'text-amber-700');
-                                elements.statusLabel.textContent = label || 'CONNECTING';
+                                elements.statusLabel.textContent = label || translateState(state);
                             } else {
                                 dot.className = 'h-2.5 w-2.5 rounded-full bg-slate-300';
                                 elements.statusBadge.classList.add('border-slate-200', 'bg-slate-50', 'text-slate-600');
-                                elements.statusLabel.textContent = label || 'CLOSED';
+                                elements.statusLabel.textContent = label || translateState(state);
                             }
 
                             if (elements.stateText) {
-                                elements.stateText.textContent = (label || state || 'closed').toUpperCase();
+                                elements.stateText.textContent = label || translateState(state);
                             }
                             if (elements.lastStatusAt) {
                                 elements.lastStatusAt.textContent = formatNow();
@@ -986,6 +1088,7 @@
                         };
 
                         const updateButtonsAfterCreate = () => {
+                            card.setAttribute('data-linked-config', '1');
                             const createButton = card.querySelector('[data-action="create"]');
                             if (createButton) {
                                 createButton.disabled = true;
@@ -1009,7 +1112,7 @@
                                 try {
                                     const data = await requestJson(routeFor('status'), 'GET');
                                     const state = data.state || 'closed';
-                                    setStatus(state, state === 'open' ? 'ONLINE' : String(state).toUpperCase());
+                                    setStatus(state, translateState(state));
 
                                     if (state === 'open' && pollTimer) {
                                         clearInterval(pollTimer);
@@ -1037,53 +1140,110 @@
                                 const data = await requestJson(routeFor(action), method);
 
                                 if (action === 'create') {
-                                    if (elements.instanceName) {
-                                        elements.instanceName.textContent = `#${data.instance?.name || 'Instância criada'}`;
-                                    }
                                     updateButtonsAfterCreate();
-                                    setStatus(data.instance?.state || 'closed', String(data.instance?.state || 'closed').toUpperCase());
+                                    setStatus(data.instance?.state || 'closed', translateState(data.instance?.state || 'closed'));
                                 }
 
                                 if (action === 'connect') {
+                                    let hasConnectionData = false;
+
                                     if (data.base64) {
                                         elements.qrImg.src = String(data.base64).startsWith('data:image')
                                             ? data.base64
                                             : `data:image/png;base64,${data.base64}`;
                                         show(elements.qrWrap);
-                                        setStatus('qr', 'QR');
+                                        setStatus('qr', 'QR Code');
+                                        hasConnectionData = true;
                                     }
 
                                     const code = data.pairingCode || data.code || '';
                                     if (code) {
                                         elements.pairingCode.textContent = code;
                                         show(elements.pairingWrap);
-                                        setStatus('pairing', 'PAIRING');
+                                        setStatus('pairing', 'Pareando');
+                                        hasConnectionData = true;
                                     }
 
                                     startPolling();
+
+                                    if (hasConnectionData) {
+                                        await notify('Conexão iniciada. Use o QR Code ou o código de pareamento para concluir.', {
+                                            icon: 'success',
+                                            title: 'Sucesso',
+                                        });
+                                    } else {
+                                        await notify('A conexão foi iniciada, mas a Evolution não devolveu QR Code nem código de pareamento. Atualize o status e verifique a conexão da instância.', {
+                                            icon: 'error',
+                                            title: 'Atenção',
+                                        });
+                                    }
                                 }
 
                                 if (action === 'status') {
                                     const state = data.state || 'closed';
-                                    setStatus(state, state === 'open' ? 'ONLINE' : String(state).toUpperCase());
+                                    setStatus(state, translateState(state));
+                                    await notify(`Status atualizado: ${translateState(state)}.`, {
+                                        icon: 'success',
+                                        title: 'Sucesso',
+                                    });
                                 }
 
                                 if (action === 'restart') {
-                                    setStatus('connecting', 'RESTART');
+                                    let hasConnectionData = false;
+
+                                    if (data.base64) {
+                                        elements.qrImg.src = String(data.base64).startsWith('data:image')
+                                            ? data.base64
+                                            : `data:image/png;base64,${data.base64}`;
+                                        show(elements.qrWrap);
+                                        setStatus('qr', 'QR Code');
+                                        hasConnectionData = true;
+                                    }
+
+                                    const code = data.pairingCode || data.code || '';
+                                    if (code) {
+                                        elements.pairingCode.textContent = code;
+                                        show(elements.pairingWrap);
+                                        setStatus('pairing', 'Pareando');
+                                        hasConnectionData = true;
+                                    }
+
+                                    if (!hasConnectionData) {
+                                        setStatus('connecting', 'Reiniciando');
+                                    }
+
                                     startPolling();
+                                    await notify(
+                                        hasConnectionData
+                                            ? 'Reconexão iniciada. Use o QR Code ou o código de pareamento para concluir.'
+                                            : 'Reinício da conexão solicitado com sucesso.',
+                                        {
+                                            icon: 'success',
+                                            title: 'Sucesso',
+                                        }
+                                    );
                                 }
 
                                 if (action === 'logout') {
                                     hide(elements.qrWrap);
                                     hide(elements.pairingWrap);
-                                    setStatus('closed', 'CLOSED');
+                                    setStatus('closed', 'Desconectado');
                                     if (pollTimer) {
                                         clearInterval(pollTimer);
                                         pollTimer = null;
                                     }
+                                    await notify('Logout realizado com sucesso.', {
+                                        icon: 'success',
+                                        title: 'Sucesso',
+                                    });
                                 }
                             } catch (error) {
-                                setError(error.message || 'Falha ao processar a instância.');
+                                const message = error.message || 'Falha ao processar a instância.';
+                                setError(message);
+                                await notify(message, {
+                                    icon: 'error',
+                                    title: 'Atenção',
+                                });
                             } finally {
                                 setBusy(false);
                             }
@@ -1110,17 +1270,35 @@
                             }
 
                             button.addEventListener('click', async () => {
+                                if (!hasNumeroInformado()) {
+                                    await notify('Informe o número de WhatsApp e salve a configuração antes de continuar.', {
+                                        icon: 'error',
+                                        title: 'Atenção',
+                                    });
+                                    return;
+                                }
+
+                                if (!hasLinkedConfig()) {
+                                    await notify('Salve a configuração do WhatsApp antes de usar esta ação.', {
+                                        icon: 'error',
+                                        title: 'Atenção',
+                                    });
+                                    return;
+                                }
+
                                 if (action === 'restart') {
-                                    const canProceed = typeof window.swalConfirm === 'function'
-                                        ? await window.swalConfirm({ title: `Reiniciar ${tipo}?`, text: 'Deseja reiniciar a conexão agora?' })
-                                        : window.confirm('Deseja reiniciar a conexão agora?');
+                                    const canProceed = await confirmAction({
+                                        title: `Reiniciar ${tipo}?`,
+                                        text: 'Deseja reiniciar a conexão agora?',
+                                    });
                                     if (!canProceed) return;
                                 }
 
                                 if (action === 'logout') {
-                                    const canProceed = typeof window.swalConfirm === 'function'
-                                        ? await window.swalConfirm({ title: `Fazer logout de ${tipo}?`, text: 'Será necessário reconectar depois.' })
-                                        : window.confirm('Será necessário reconectar depois. Deseja continuar?');
+                                    const canProceed = await confirmAction({
+                                        title: `Fazer logout de ${tipo}?`,
+                                        text: 'Será necessário reconectar depois. Deseja continuar?',
+                                    });
                                     if (!canProceed) return;
                                 }
 
