@@ -155,7 +155,7 @@ class WhatsappInstanciaController extends Controller
         }
 
         try {
-            $service->restart($instancia->instance_name, $instancia);
+            $json = $service->restart($instancia->instance_name, $instancia);
 
             $instancia->update([
                 'last_state' => 'connecting',
@@ -163,7 +163,7 @@ class WhatsappInstanciaController extends Controller
                 'last_error' => null,
             ]);
 
-            return response()->json(['ok' => true, 'tipo' => $instancia->tipo]);
+            return response()->json(['ok' => true, 'tipo' => $instancia->tipo] + $json);
         } catch (Throwable $e) {
             return $this->handleThrowable($instancia, $e);
         }

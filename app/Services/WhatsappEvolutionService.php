@@ -6,6 +6,7 @@ use App\Models\WhatsappInstancia;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\RequestException;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -183,6 +184,17 @@ class WhatsappEvolutionService
         $response = $this->client($instancia)
             ->put($this->baseUrl($instancia)."/instance/restart/{$instanceName}");
 
+        if ($this->shouldFallbackRestartToConnect($response)) {
+            Log::info('WA restart fallback to connect', [
+                'empresa_id' => $instancia->empresa_id,
+                'instance_name' => $instanceName,
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            return $this->connect($instanceName, $instancia);
+        }
+
         if (!$response->successful()) {
             Log::warning('WA restart failed', [
                 'empresa_id' => $instancia->empresa_id,
@@ -307,5 +319,17 @@ class WhatsappEvolutionService
             'closed' => 'closed',
             default => $raw ?: 'closed',
         };
+    }
+
+    protected function shouldFallbackRestartToConnect(Response $response): bool
+    {
+        if ($response->status() !== 404) {
+            return false;
+        }
+
+        $body = Str::lower($response->body());
+
+        return Str::contains($body, 'cannot put /instance/restart/')
+            || Str::contains($body, 'cannot post /instance/restart/');
     }
 }

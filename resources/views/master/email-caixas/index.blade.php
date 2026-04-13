@@ -1189,12 +1189,39 @@
                                 }
 
                                 if (action === 'restart') {
-                                    setStatus('connecting', 'Reiniciando');
+                                    let hasConnectionData = false;
+
+                                    if (data.base64) {
+                                        elements.qrImg.src = String(data.base64).startsWith('data:image')
+                                            ? data.base64
+                                            : `data:image/png;base64,${data.base64}`;
+                                        show(elements.qrWrap);
+                                        setStatus('qr', 'QR Code');
+                                        hasConnectionData = true;
+                                    }
+
+                                    const code = data.pairingCode || data.code || '';
+                                    if (code) {
+                                        elements.pairingCode.textContent = code;
+                                        show(elements.pairingWrap);
+                                        setStatus('pairing', 'Pareando');
+                                        hasConnectionData = true;
+                                    }
+
+                                    if (!hasConnectionData) {
+                                        setStatus('connecting', 'Reiniciando');
+                                    }
+
                                     startPolling();
-                                    await notify('Reinício da conexão solicitado com sucesso.', {
-                                        icon: 'success',
-                                        title: 'Sucesso',
-                                    });
+                                    await notify(
+                                        hasConnectionData
+                                            ? 'Reconexão iniciada. Use o QR Code ou o código de pareamento para concluir.'
+                                            : 'Reinício da conexão solicitado com sucesso.',
+                                        {
+                                            icon: 'success',
+                                            title: 'Sucesso',
+                                        }
+                                    );
                                 }
 
                                 if (action === 'logout') {
