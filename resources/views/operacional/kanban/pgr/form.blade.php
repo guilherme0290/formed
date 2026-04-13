@@ -420,7 +420,7 @@
 
                             <button type="submit"
                                     class="flex-1 inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700">
-                                {{ $modo === 'edit' ? 'Atualizar Solicitação PGR' : 'Solicitar PGR' }}
+                                {{ $modo === 'edit' ? 'Próximo' : 'Solicitar PGR' }}
                             </button>
                         </div>
                     </div>
@@ -551,7 +551,7 @@
                         <div class="mt-4 pt-4 border-t border-slate-100">
                             <button type="submit"
                                     class="w-full px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium shadow-sm">
-                                {{ $modo === 'edit' ? 'Atualizar Solicitação PGR' : 'Solicitar PGR' }}
+                                {{ $modo === 'edit' ? 'Próximo' : 'Solicitar PGR' }}
                             </button>
                         </div>
                     </div>

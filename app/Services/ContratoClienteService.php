@@ -62,9 +62,6 @@ class ContratoClienteService
         }
 
         $isEspecifico = str_contains($texto, 'especific');
-        if ($tipo === 'especifico' && !$isEspecifico) {
-            return -1;
-        }
 
         if ($tipo === 'matriz' && $isEspecifico) {
             return -1;
@@ -73,7 +70,7 @@ class ContratoClienteService
         $score = 0;
 
         if ($tipo === 'especifico') {
-            $score += 100;
+            $score += $isEspecifico ? 100 : 40;
             if ($descricao !== '' && str_contains($descricao, 'pcmso') && str_contains($descricao, 'especific')) {
                 $score += 20;
             }
