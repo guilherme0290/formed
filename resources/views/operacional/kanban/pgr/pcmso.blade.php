@@ -32,12 +32,6 @@
             </div>
 
             <div class="px-4 sm:px-5 md:px-6 py-5 md:py-6">
-                @if($errors->any())
-                    <div class="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
-                        {{ $errors->first() }}
-                    </div>
-                @endif
-
                 <form method="POST" action="{{ route('operacional.kanban.pgr.pcmso.store', ['tarefa' => $tarefa, 'origem' => $origem]) }}" class="space-y-3">
                     @csrf
                     <input type="hidden" name="origem" value="{{ $origem }}">
@@ -59,3 +53,18 @@
         </div>
     </div>
 @endsection
+
+@push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const validationMessage = @json($errors->any() ? $errors->first() : null);
+
+            if (validationMessage && typeof window.uiAlert === 'function') {
+                window.uiAlert(validationMessage, {
+                    icon: 'error',
+                    title: 'Atenção'
+                });
+            }
+        });
+    </script>
+@endpush
