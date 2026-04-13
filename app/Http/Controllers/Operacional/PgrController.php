@@ -244,84 +244,33 @@ class PgrController extends Controller
                 ]);
         }
 
-        $tipoLabel = $data['tipo'] === 'matriz' ? 'Matriz' : 'Específico';
         $artInfo = $this->artInfoParaCliente($cliente);
         $valorArt  = $data['com_art'] ? ($artInfo['valor'] ?? 500.00) : null;
 
-        DB::transaction(function () use (
-            $data,
-            $pgr,
-            $tarefa,
-            $tipoLabel,
-            $totalTrabalhadores,
-            $valorArt,
-            $usuario
-        ) {
-            // Atualiza PGR
-            $pgr->update([
-                'tipo'                => $data['tipo'],
-                'com_art'             => (bool) $data['com_art'],
-                'qtd_homens'          => $data['qtd_homens'],
-                'qtd_mulheres'        => $data['qtd_mulheres'],
-                'total_trabalhadores' => $totalTrabalhadores,
-                'funcoes'             => $data['funcoes'],
-                'valor_art'           => $valorArt,
-
-                'contratante_nome'    => $data['contratante_nome'] ?? null,
-                'contratante_cnpj'    => $data['contratante_cnpj'] ?? null,
-                'obra_nome'           => $data['obra_nome'] ?? null,
-                'obra_endereco'       => $data['obra_endereco'] ?? null,
-                'obra_cej_cno'        => $data['obra_cej_cno'] ?? null,
-                'obra_turno_trabalho' => $data['obra_turno_trabalho'] ?? null,
-            ]);
-
-            // Monta descrição amigável considerando se já tem PCMSO
-            $descricao = "PGR - {$tipoLabel}";
-            if ($pgr->com_art) {
-                $descricao .= ' (COM ART)';
-            }
-            if ($pgr->com_pcms0) {
-                $descricao .= ' + PCMSO';
-            }
-
-            $tarefa->update([
-                'titulo'    => "PGR - {$tipoLabel}",
-                'descricao' => $descricao,
-            ]);
-
-            // log
-            TarefaLog::create([
-                'tarefa_id'      => $tarefa->id,
-                'user_id'        => $usuario->id,
-                'de_coluna_id'   => $tarefa->coluna_id,
-                'para_coluna_id' => $tarefa->coluna_id,
-                'acao'           => 'atualizado',
-                'observacao'     => 'Dados do PGR atualizados.',
-            ]);
-        });
-
-        if ($request->hasFile('anexos')) {
-            Anexos::salvarDoRequest($request, 'anexos', [
-                'empresa_id'     => $empresaId,
-                'cliente_id'     => $cliente?->id,
-                'tarefa_id'      => $tarefa->id,
-                'funcionario_id' => null,
-                'uploaded_by'    => $usuario->id,
-                'servico'        => 'PGR',
-                'subpath'        => 'anexos-custom/' . $empresaId,
-            ]);
-        }
+        $request->session()->put($this->pendingPgrUpdateSessionKey($tarefa->id), [
+            'tipo'                => $data['tipo'],
+            'com_art'             => (bool) $data['com_art'],
+            'qtd_homens'          => (int) $data['qtd_homens'],
+            'qtd_mulheres'        => (int) $data['qtd_mulheres'],
+            'total_trabalhadores' => $totalTrabalhadores,
+            'funcoes'             => $data['funcoes'],
+            'valor_art'           => $valorArt,
+            'contratante_nome'    => $data['contratante_nome'] ?? null,
+            'contratante_cnpj'    => $data['contratante_cnpj'] ?? null,
+            'obra_nome'           => $data['obra_nome'] ?? null,
+            'obra_endereco'       => $data['obra_endereco'] ?? null,
+            'obra_cej_cno'        => $data['obra_cej_cno'] ?? null,
+            'obra_turno_trabalho' => $data['obra_turno_trabalho'] ?? null,
+        ]);
 
         $origem = $request->query('origem', $request->input('origem'));
-        if ($origem === 'cliente' || $usuario->isCliente()) {
-            return redirect()
-                ->route('cliente.agendamentos')
-                ->with('ok', 'PGR atualizado com sucesso.');
-        }
-
         return redirect()
-            ->route('operacional.kanban')
-            ->with('ok', 'PGR atualizado com sucesso.');
+            ->route('operacional.kanban.pgr.pcmso', [
+                'tarefa' => $tarefa->id,
+                'origem' => $origem,
+                'modo' => 'edit',
+            ])
+            ->with('ok', 'Dados do PGR validados. Avance para confirmar se a solicitação terá PCMSO.');
     }
 
 
@@ -542,6 +491,7 @@ class PgrController extends Controller
             'pgr'     => $pgr,
             'cliente' => $cliente,
             'origem'  => $request->query('origem', $request->input('origem')),
+            'modo'    => $request->query('modo', $request->input('modo', 'create')),
         ]);
     }
 
@@ -557,35 +507,40 @@ class PgrController extends Controller
 
         $data = $request->validate([
             'com_pcms0' => ['required', 'boolean'],
+            'modo' => ['nullable', 'in:create,edit'],
         ]);
+        $modo = $request->query('modo', $request->input('modo', 'create'));
 
         $pgr = $tarefa->pgr;
         abort_if(!$pgr, 404);
 
-        if (!empty($data['com_pcms0'])) {
-            $contratoService = app(\App\Services\ContratoClienteService::class);
-            $contrato = $contratoService
-                ->getContratoAtivo($tarefa->cliente_id, $empresaId, null);
-
-            $servicoPcmsoId = \App\Models\Servico::query()
-                ->where('empresa_id', $empresaId)
-                ->where('nome', 'PCMSO')
-                ->value('id');
-
-            $itemPcmso = $contrato
-                ? $contratoService->findPcmsoItem($contrato, $pgr->tipo ?? 'matriz')
-                : null;
-
-            if (!$contrato || !$servicoPcmsoId || !$itemPcmso || (float) $itemPcmso->preco_unitario_snapshot <= 0) {
-                return back()
-                    ->withErrors(['com_pcms0' => 'Serviço PCMSO não contratado. Converse com o comercial.'])
-                    ->withInput();
-            }
+        if (!empty($data['com_pcms0']) && !$this->clientePodeSolicitarPcmso($tarefa, $pgr->tipo ?? 'matriz')) {
+            return back()
+                ->withErrors(['com_pcms0' => 'Serviço PCMSO não contratado. Converse com o comercial.'])
+                ->withInput();
         }
 
-        $pgr->update([
-            'com_pcms0' => (bool)$data['com_pcms0'],
-        ]);
+        if ($modo === 'edit') {
+            $pendencia = $request->session()->pull($this->pendingPgrUpdateSessionKey($tarefa->id));
+
+            if (!is_array($pendencia)) {
+                return redirect()
+                    ->route('operacional.kanban.pgr.editar', [
+                        'tarefa' => $tarefa->id,
+                        'origem' => $request->query('origem', $request->input('origem')),
+                    ])
+                    ->withErrors([
+                        'com_pcms0' => 'A confirmação da atualização expirou. Refaça a edição do PGR e avance novamente.',
+                    ]);
+            }
+
+            $this->aplicarAtualizacaoPgrPendente($tarefa, $pgr, $pendencia, (bool) $data['com_pcms0'], $usuario->id);
+            $pgr->refresh();
+        } else {
+            $pgr->update([
+                'com_pcms0' => (bool) $data['com_pcms0'],
+            ]);
+        }
 
         // monta uma descrição mais amigável pra aparecer no modal
         $descricao = "PGR - " . ($pgr->tipo === 'matriz' ? 'Matriz' : 'Específico');
@@ -602,6 +557,22 @@ class PgrController extends Controller
         ]);
 
         $origem = $request->query('origem', $request->input('origem'));
+        $mensagemAtualizacao = (bool) $data['com_pcms0']
+            ? 'PGR atualizado com sucesso e configurado como PGR + PCMSO.'
+            : 'PGR atualizado com sucesso e configurado como apenas PGR.';
+
+        if ($modo === 'edit') {
+            if ($origem === 'cliente' || $usuario->isCliente()) {
+                return redirect()
+                    ->route('cliente.agendamentos')
+                    ->with('ok', $mensagemAtualizacao);
+            }
+
+            return redirect()
+                ->route('operacional.kanban')
+                ->with('ok', $mensagemAtualizacao);
+        }
+
         if ($origem === 'cliente' || $usuario->isCliente()) {
             return redirect()
                 ->route('cliente.agendamentos')
@@ -611,6 +582,86 @@ class PgrController extends Controller
         return redirect()
             ->route('operacional.kanban')
             ->with('ok', 'Tarefa PGR criada e enviada para a coluna Pendente.');
+    }
+
+    private function clientePodeSolicitarPcmso(Tarefa $tarefa, string $tipo): bool
+    {
+        $contratoService = app(ContratoClienteService::class);
+        $contrato = $contratoService->getContratoAtivo($tarefa->cliente_id, $tarefa->empresa_id, null);
+
+        if (!$contrato) {
+            return false;
+        }
+
+        $servicoPcmsoId = Servico::query()
+            ->where('empresa_id', $tarefa->empresa_id)
+            ->where('nome', 'PCMSO')
+            ->value('id');
+
+        if (!$servicoPcmsoId) {
+            return false;
+        }
+
+        $itemPcmso = $contratoService->findPcmsoItem($contrato, $tipo);
+
+        return (bool) $itemPcmso && (float) $itemPcmso->preco_unitario_snapshot > 0;
+    }
+
+    private function pendingPgrUpdateSessionKey(int $tarefaId): string
+    {
+        return 'pgr.edit.pending.'.$tarefaId;
+    }
+
+    private function aplicarAtualizacaoPgrPendente(
+        Tarefa $tarefa,
+        PgrSolicitacoes $pgr,
+        array $pendencia,
+        bool $comPcmso,
+        int $userId
+    ): void {
+        $tipo = $pendencia['tipo'] ?? $pgr->tipo ?? 'matriz';
+        $tipoLabel = $tipo === 'matriz' ? 'Matriz' : 'Específico';
+
+        DB::transaction(function () use ($tarefa, $pgr, $pendencia, $comPcmso, $userId, $tipoLabel) {
+            $pgr->update([
+                'tipo'                => $pendencia['tipo'] ?? $pgr->tipo,
+                'com_art'             => (bool) ($pendencia['com_art'] ?? $pgr->com_art),
+                'com_pcms0'           => $comPcmso,
+                'qtd_homens'          => (int) ($pendencia['qtd_homens'] ?? $pgr->qtd_homens),
+                'qtd_mulheres'        => (int) ($pendencia['qtd_mulheres'] ?? $pgr->qtd_mulheres),
+                'total_trabalhadores' => (int) ($pendencia['total_trabalhadores'] ?? $pgr->total_trabalhadores),
+                'funcoes'             => $pendencia['funcoes'] ?? $pgr->funcoes,
+                'valor_art'           => $pendencia['valor_art'] ?? $pgr->valor_art,
+                'contratante_nome'    => $pendencia['contratante_nome'] ?? null,
+                'contratante_cnpj'    => $pendencia['contratante_cnpj'] ?? null,
+                'obra_nome'           => $pendencia['obra_nome'] ?? null,
+                'obra_endereco'       => $pendencia['obra_endereco'] ?? null,
+                'obra_cej_cno'        => $pendencia['obra_cej_cno'] ?? null,
+                'obra_turno_trabalho' => $pendencia['obra_turno_trabalho'] ?? null,
+            ]);
+
+            $descricao = "PGR - {$tipoLabel}";
+            if ($pgr->com_art) {
+                $descricao .= ' (COM ART)';
+            }
+            if ($pgr->com_pcms0) {
+                $descricao .= ' + PCMSO';
+            }
+
+            $tarefa->update([
+                'titulo'    => "PGR - {$tipoLabel}",
+                'descricao' => $descricao,
+            ]);
+
+            TarefaLog::create([
+                'tarefa_id'      => $tarefa->id,
+                'user_id'        => $userId,
+                'de_coluna_id'   => $tarefa->coluna_id,
+                'para_coluna_id' => $tarefa->coluna_id,
+                'acao'           => 'atualizado',
+                'observacao'     => 'Dados do PGR atualizados.',
+            ]);
+        });
     }
 
     private function artInfoParaCliente(Cliente $cliente): array
