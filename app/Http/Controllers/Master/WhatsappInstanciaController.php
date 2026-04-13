@@ -9,6 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use RuntimeException;
 use Throwable;
 
 class WhatsappInstanciaController extends Controller
@@ -82,7 +83,11 @@ class WhatsappInstanciaController extends Controller
 
     public function connect(Request $request, string $tipo, WhatsappEvolutionService $service): JsonResponse
     {
-        $instancia = $this->getInstanciaDaEmpresa($request, $tipo);
+        try {
+            $instancia = $this->getInstanciaDaEmpresa($request, $tipo);
+        } catch (RuntimeException $e) {
+            return $this->errorResponse($e->getMessage());
+        }
 
         if (blank($instancia->instance_name)) {
             return $this->errorResponse('Crie a instância antes de tentar conectar.');
@@ -105,7 +110,11 @@ class WhatsappInstanciaController extends Controller
 
     public function status(Request $request, string $tipo, WhatsappEvolutionService $service): JsonResponse
     {
-        $instancia = $this->getInstanciaDaEmpresa($request, $tipo);
+        try {
+            $instancia = $this->getInstanciaDaEmpresa($request, $tipo);
+        } catch (RuntimeException $e) {
+            return $this->errorResponse($e->getMessage());
+        }
 
         if (blank($instancia->instance_name)) {
             return response()->json([
@@ -135,7 +144,11 @@ class WhatsappInstanciaController extends Controller
 
     public function restart(Request $request, string $tipo, WhatsappEvolutionService $service): JsonResponse
     {
-        $instancia = $this->getInstanciaDaEmpresa($request, $tipo);
+        try {
+            $instancia = $this->getInstanciaDaEmpresa($request, $tipo);
+        } catch (RuntimeException $e) {
+            return $this->errorResponse($e->getMessage());
+        }
 
         if (blank($instancia->instance_name)) {
             return $this->errorResponse('Crie a instância antes de tentar reiniciar.');
@@ -158,7 +171,11 @@ class WhatsappInstanciaController extends Controller
 
     public function logout(Request $request, string $tipo, WhatsappEvolutionService $service): JsonResponse
     {
-        $instancia = $this->getInstanciaDaEmpresa($request, $tipo);
+        try {
+            $instancia = $this->getInstanciaDaEmpresa($request, $tipo);
+        } catch (RuntimeException $e) {
+            return $this->errorResponse($e->getMessage());
+        }
 
         if (blank($instancia->instance_name)) {
             return $this->errorResponse('Crie a instância antes de tentar desconectar.');
@@ -185,10 +202,17 @@ class WhatsappInstanciaController extends Controller
 
         $empresaId = $request->user()->empresa_id ?? 1;
 
-        return WhatsappInstancia::query()
+        $instancia = WhatsappInstancia::query()
             ->daEmpresa($empresaId)
             ->doTipo($tipo)
-            ->firstOrFail();
+            ->first();
+
+        if ($instancia) {
+            return $instancia;
+        }
+
+        $tipoLabel = $tipo === WhatsappInstancia::TIPO_FINANCEIRO ? 'financeiro' : 'operacional';
+        throw new RuntimeException("Nenhuma instância de WhatsApp {$tipoLabel} foi vinculada para esta empresa.");
     }
 
     protected function handleThrowable(WhatsappInstancia $instancia, Throwable $e): JsonResponse
@@ -210,12 +234,36 @@ class WhatsappInstanciaController extends Controller
         $message = $e->getMessage();
         $messageLower = strtolower($message);
 
+        if (str_contains($messageLower, 'cannot put /instance/restart/')) {
+            return 'A opção de reiniciar não está disponível na versão atual da Evolution deste ambiente.';
+        }
+
+        if (str_contains($messageLower, 'cannot post /instance/restart/')) {
+            return 'A opção de reiniciar não está disponível na versão atual da Evolution deste ambiente.';
+        }
+
+        if (str_contains($messageLower, 'cannot delete /instance/logout/')) {
+            return 'A opção de logout não está disponível na versão atual da Evolution deste ambiente.';
+        }
+
+        if (str_contains($messageLower, 'cannot post /instance/logout/')) {
+            return 'A opção de logout não está disponível na versão atual da Evolution deste ambiente.';
+        }
+
+        if (str_contains($messageLower, 'instance is not connected')) {
+            return 'Este WhatsApp já está desconectado.';
+        }
+
         if (str_contains($messageLower, 'invalid integration')) {
             return 'A Evolution recusou a integração. Verifique a URL base e a API Key administrativa informadas.';
         }
 
         if (str_contains($messageLower, 'unauthorized')) {
             return 'A Evolution recusou a autenticação. Verifique se a API Key informada é válida para esta URL.';
+        }
+
+        if (str_contains($messageLower, 'no query results for model')) {
+            return 'Nenhuma instância de WhatsApp foi vinculada para esta empresa.';
         }
 
         return $message;

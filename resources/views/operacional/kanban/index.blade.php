@@ -2466,15 +2466,30 @@
             }
 
             async function confirmarFallbackWhatsapp(payload) {
-                const swalConfirm = typeof window.swalConfirm === 'function'
-                    ? window.swalConfirm
-                    : (opts) => Promise.resolve(window.confirm(opts?.text || 'Abrir WhatsApp Web?'));
-                const confirmed = await swalConfirm({
-                    title: 'Abrir WhatsApp Web?',
-                    text: 'O envio automático pela API falhou. Deseja abrir o WhatsApp Web para concluir manualmente?',
-                    confirmButtonText: 'Abrir WhatsApp',
-                    cancelButtonText: 'Cancelar',
-                });
+                if (window.Swal && typeof window.Swal.close === 'function') {
+                    window.Swal.close();
+                }
+
+                await new Promise((resolve) => window.setTimeout(resolve, 80));
+
+                let confirmed = false;
+
+                if (window.Swal && typeof window.Swal.fire === 'function') {
+                    const result = await window.Swal.fire({
+                        icon: 'warning',
+                        title: 'Abrir WhatsApp Web?',
+                        text: 'Não foi possível concluir o envio automático. Verifique se o WhatsApp operacional está conectado. Deseja abrir o WhatsApp Web para concluir manualmente?',
+                        showCancelButton: true,
+                        confirmButtonText: 'Abrir WhatsApp',
+                        cancelButtonText: 'Cancelar',
+                        reverseButtons: true,
+                        target: document.body,
+                    });
+
+                    confirmed = !!result?.isConfirmed;
+                } else {
+                    confirmed = window.confirm('Não foi possível concluir o envio automático. Verifique se o WhatsApp operacional está conectado. Deseja abrir o WhatsApp Web para concluir manualmente?');
+                }
 
                 if (!confirmed) {
                     return false;
@@ -2485,7 +2500,76 @@
                 return true;
             }
 
-            async function showSuccessPopup(message) {
+            async function notificarClienteWhatsapp(card, arquivoUrl = '') {
+                const links = collectWhatsappLinks(card, arquivoUrl);
+                if (!links.length) {
+                    await window.uiAlert('Nenhum documento anexado para enviar.');
+                    return false;
+                }
+
+                const payload = buildWhatsappMensagem(card, arquivoUrl);
+                if (!payload) {
+                    await window.uiAlert('Telefone do cliente não informado.');
+                    return false;
+                }
+
+                const loadingPopup = (window.Swal && typeof window.Swal.fire === 'function')
+                    ? window.Swal.fire({
+                        title: 'Enviando WhatsApp',
+                        text: 'Aguarde enquanto a mensagem é enviada.',
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                        showConfirmButton: false,
+                        target: document.body,
+                        backdrop: true,
+                        didOpen: () => {
+                            window.Swal.showLoading();
+                        },
+                    })
+                    : null;
+
+                try {
+                    await enviarWhatsappOperacional(payload);
+                    if (window.Swal && typeof window.Swal.close === 'function') {
+                        window.Swal.close();
+                    }
+                    closeOverlayAlerts();
+                    await showSuccessPopup('Mensagem enviada com sucesso pelo WhatsApp operacional.', { reload: false });
+                    return true;
+                } catch (_error) {
+                    if (window.Swal && typeof window.Swal.close === 'function') {
+                        window.Swal.close();
+                    }
+                    await confirmarFallbackWhatsapp(payload);
+                    return false;
+                }
+            }
+
+            async function askToNotifyCliente(message) {
+                if (window.Swal && typeof window.Swal.fire === 'function') {
+                    const result = await window.Swal.fire({
+                        icon: 'question',
+                        title: 'Notificar cliente?',
+                        html: `<div class="text-slate-600">${message}</div><div class="mt-3 text-slate-800 font-medium">Deseja notificar o cliente agora?</div>`,
+                        showCancelButton: true,
+                        confirmButtonText: 'Notificar cliente',
+                        cancelButtonText: 'Fechar',
+                        reverseButtons: true,
+                        target: document.body,
+                        backdrop: true,
+                        returnFocus: false,
+                        focusConfirm: false,
+                    });
+
+                    return !!result?.isConfirmed;
+                }
+
+                return window.confirm(`${message}\n\nDeseja notificar o cliente agora?`);
+            }
+
+            async function showSuccessPopup(message, options = {}) {
+                const shouldReload = options.reload !== false;
+
                 if (window.Swal && typeof window.Swal.fire === 'function') {
                     await window.Swal.fire({
                         icon: 'success',
@@ -2497,12 +2581,16 @@
                         returnFocus: false,
                         focusConfirm: false,
                     });
-                    window.location.reload();
+                    if (shouldReload) {
+                        window.location.reload();
+                    }
                     return;
                 }
 
                 alert(message);
-                window.location.reload();
+                if (shouldReload) {
+                    window.location.reload();
+                }
             }
 
             function getDocumentoFinalAjuda(card) {
@@ -3584,17 +3672,6 @@
             if (btnNotificarCliente) {
                 btnNotificarCliente.addEventListener('click', async function () {
                     if (!detalhesCurrentCard) return;
-                    const links = collectWhatsappLinks(detalhesCurrentCard);
-                    if (!links.length) {
-                        window.uiAlert('Nenhum documento anexado para enviar.');
-                        return;
-                    }
-
-                    const payload = buildWhatsappMensagem(detalhesCurrentCard);
-                    if (!payload) {
-                        window.uiAlert('Telefone do cliente não informado.');
-                        return;
-                    }
 
                     if (modal) {
                         modal.classList.add('hidden');
@@ -3604,35 +3681,7 @@
                     document.body.classList.remove('overflow-hidden');
                     closeOverlayAlerts();
                     closeOverlayAlerts();
-
-                    const loadingPopup = (window.Swal && typeof window.Swal.fire === 'function')
-                        ? window.Swal.fire({
-                            title: 'Enviando WhatsApp',
-                            text: 'Aguarde enquanto a mensagem é enviada.',
-                            allowOutsideClick: false,
-                            allowEscapeKey: false,
-                            showConfirmButton: false,
-                            target: document.body,
-                            backdrop: true,
-                            didOpen: () => {
-                                window.Swal.showLoading();
-                            },
-                        })
-                        : null;
-
-                    try {
-                        await enviarWhatsappOperacional(payload);
-                        if (window.Swal && typeof window.Swal.close === 'function') {
-                            window.Swal.close();
-                        }
-                        closeOverlayAlerts();
-                        await showSuccessPopup('Mensagem enviada com sucesso pelo WhatsApp operacional.');
-                    } catch (_error) {
-                        if (window.Swal && typeof window.Swal.close === 'function') {
-                            window.Swal.close();
-                        }
-                        await confirmarFallbackWhatsapp(payload);
-                    }
+                    await notificarClienteWhatsapp(detalhesCurrentCard);
                 });
             }
 
@@ -3791,13 +3840,18 @@
                 closeOverlayAlerts();
 
                 const mensagemSucesso = data.message || 'Tarefa finalizada com sucesso e movida para a coluna Finalizada.';
-                await showSuccessPopup(mensagemSucesso);
 
                 const finalColumn = document.querySelector('.kanban-column[data-coluna-slug="finalizada"], .kanban-column[data-coluna-slug="finalizadas"]');
                 if (finalColumn) {
                     moveCardToColumn(card, finalColumn.dataset.colunaId, 'Finalizada');
                     notifyCardMovement(`Tarefa movida para Finalizada.`);
                 }
+
+                const confirmouNotificacao = await askToNotifyCliente(mensagemSucesso);
+                if (confirmouNotificacao) {
+                    await notificarClienteWhatsapp(card, data.documento_url || '');
+                }
+                window.location.reload();
             }
 
             [finalizarCloseBtn, finalizarCloseXBtn].forEach((btn) => {
@@ -3833,13 +3887,8 @@
                         return;
                     }
 
-                    const abrirWhatsapp = finalizarNotificar && finalizarNotificar.checked;
-
                     const formData = new FormData();
                     formData.append('arquivo_cliente', finalizarArquivo.files[0]);
-                    if (finalizarNotificar && finalizarNotificar.checked) {
-                        formData.append('notificar', '1');
-                    }
 
                     fetch(finalizarUrl, {
                         method: 'POST',
@@ -3874,27 +3923,6 @@
                                     || 'Erro ao finalizar tarefa.';
                                 window.uiAlert(error);
                                 return;
-                            }
-
-                            if (data.finalizada_total && finalizarNotificar && finalizarNotificar.checked) {
-                                const arquivoUrl = data.documento_url || '';
-                                const payload = buildWhatsappMensagem(finalizarCurrentCard, arquivoUrl);
-
-                                if (payload) {
-                                    let enviadoViaApi = false;
-
-                                    try {
-                                        await enviarWhatsappOperacional(payload);
-                                        enviadoViaApi = true;
-                                    } catch (_error) {
-                                        await confirmarFallbackWhatsapp(payload);
-                                    }
-
-                                    if (enviadoViaApi) {
-                                        closeOverlayAlerts();
-                                        await showSuccessPopup('Mensagem enviada com sucesso pelo WhatsApp operacional.');
-                                    }
-                                }
                             }
 
                             finalizarSkipReloadOnClose = !data.finalizada_total && !!data?.certificados?.pendente;

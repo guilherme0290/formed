@@ -646,9 +646,8 @@
                                                         @php
                                                             $podeWhatsappLinha = (bool) $whatsUrlLinha;
                                                             $paramEmailClienteLinha = trim((string) ($parametroClienteEmailPorCliente[$conta->cliente_id] ?? ''));
-                                                            $emailFinanceiroLinha = trim((string) ($conta->empresa?->email ?? ''));
                                                             $emailClienteLinha = trim((string) ($conta->cliente->email ?? ''));
-                                                            $emailDestinoPadraoLinha = $paramEmailClienteLinha ?: $emailFinanceiroLinha ?: $emailClienteLinha;
+                                                            $emailDestinoPadraoLinha = $paramEmailClienteLinha ?: $emailClienteLinha;
                                                             $podeEmailLinha = $canUpdate && $emailDestinoPadraoLinha !== '';
                                                         @endphp
                                                                 <button type="button"
@@ -937,6 +936,8 @@
                                         id="crAbrirModalEmailFatura"
                                         data-email-options='@json($emailOpcoesFatura ?? [])'
                                         data-email-route="{{ route('financeiro.contas-receber.enviar-email', $contaDetalheSelecionada) }}"
+                                        data-email-box-active="{{ !empty($caixaEmailAtivaDisponivel) ? '1' : '0' }}"
+                                        data-email-box-message="Nenhuma caixa de e-mail ativa foi configurada. Cadastre e ative uma caixa em Master > Configuração > E-mail."
                                         class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm {{ ($canUpdate && $emailOpcoesFatura->isNotEmpty()) ? 'bg-gradient-to-r from-sky-600 to-cyan-600 text-white hover:from-sky-700 hover:to-cyan-700' : 'bg-slate-200 text-slate-500 cursor-not-allowed' }}"
                                         @if(!$canUpdate || $emailOpcoesFatura->isEmpty()) disabled title="{{ !$canUpdate ? 'Usuário sem permissão' : 'Nenhum e-mail disponível (financeiro/cliente).' }}" @endif>
                                     <span class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/20">
@@ -1739,6 +1740,10 @@
             function openModalEmail() {
                 if (!modalEmailFatura) return false;
                 if (abrirModalEmailFatura && abrirModalEmailFatura.disabled) return false;
+                if (quickEmailBtn?.dataset?.emailBoxActive !== '1') {
+                    showQuickEmailBoxAlert();
+                    return false;
+                }
                 modalEmailFatura.classList.remove('hidden');
                 return true;
             }
@@ -1862,8 +1867,26 @@
                 }
             })();
             const quickEmailRoute = quickEmailBtn?.dataset?.emailRoute || '';
+            const quickEmailBoxActive = quickEmailBtn?.dataset?.emailBoxActive === '1';
+            const quickEmailBoxMessage = quickEmailBtn?.dataset?.emailBoxMessage || 'Nenhuma caixa de e-mail ativa foi configurada.';
             const quickEmailSpinner = document.getElementById('crBtnEnviarEmailFaturaSpinner');
             const quickEmailLabel = document.getElementById('crBtnEnviarEmailFaturaLabel');
+            let quickEmailBoxAlertOpen = false;
+
+            async function showQuickEmailBoxAlert() {
+                if (quickEmailBoxAlertOpen) return;
+                quickEmailBoxAlertOpen = true;
+                try {
+                    await window.uiAlert?.(quickEmailBoxMessage, {
+                        title: 'Erro',
+                        icon: 'error',
+                    });
+                } finally {
+                    window.setTimeout(() => {
+                        quickEmailBoxAlertOpen = false;
+                    }, 150);
+                }
+            }
 
             const setEmailButtonState = (loading) => {
                 if (!quickEmailBtn) return;
@@ -1918,7 +1941,7 @@
                         body: formData,
                     });
                     const data = await response.json().catch(() => ({}));
-                    if (!response.ok || data.ok === false) {
+                    if (!response.ok || data.ok !== true) {
                         throw new Error(data.message || 'Não foi possível enviar o e-mail.');
                     }
 
@@ -1999,6 +2022,10 @@
 
             quickEmailBtn?.addEventListener('click', async function (event) {
                 event.preventDefault();
+                if (!quickEmailBoxActive) {
+                    await showQuickEmailBoxAlert();
+                    return;
+                }
                 if (!quickEmailRoute || quickEmailBtn.disabled) {
                     openModalEmail();
                     return;
@@ -2023,7 +2050,7 @@
                         body: formData,
                     });
                     const data = await response.json().catch(() => ({}));
-                    if (!response.ok || data.ok === false) {
+                    if (!response.ok || data.ok !== true) {
                         throw new Error(data.message || 'O envio falhou.');
                     }
 

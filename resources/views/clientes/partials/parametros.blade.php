@@ -89,7 +89,7 @@
         $routeFuncoesUpdate = route($funcoesCrudPrefix . '.update', ['funcao' => '__ID__']);
         $routeFuncoesDestroy = route($funcoesCrudPrefix . '.destroy', ['funcao' => '__ID__']);
         $clienteTemGheComFuncoes = (bool) ($clienteTemGheComFuncoes ?? false);
-        $parametroTabInicial = old('parametro_tab', $clienteTemGheComFuncoes ? 'aso-tipos' : 'funcoes');
+        $parametroTabInicial = old('parametro_tab', 'servicos');
     @endphp
 <div class="w-full mx-auto px-4 sm:px-6 lg:px-8 py-6" data-tabs-scope="parametro">
         <form id="parametroForm" method="POST" novalidate

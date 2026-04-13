@@ -299,6 +299,13 @@ class ContasReceberController extends Controller
 
         $contas = $contasQuery->paginate(10)->withQueryString();
 
+        $caixaEmailAtivaDisponivel = EmailCaixa::query()
+            ->where('empresa_id', $empresaId)
+            ->where('ativo', true)
+            ->whereNotNull('usuario')
+            ->where('usuario', '!=', '')
+            ->exists();
+
         $clienteIds = $contas->pluck('cliente_id')->filter()->unique()->values()->all();
         $parametroClienteEmailPorCliente = [];
         if (!empty($clienteIds)) {
@@ -314,7 +321,6 @@ class ContasReceberController extends Controller
                 ->mapWithKeys(fn (ParametroCliente $param) => [
                     $param->cliente_id => trim((string) ($param->email_envio_fatura ?? '')),
                 ])
-                ->filter()
                 ->toArray();
         }
 
@@ -366,26 +372,20 @@ class ContasReceberController extends Controller
                 ->latest('id')
                 ->first();
 
-            $emailFinanceiro = trim((string) ($contaDetalhe->empresa?->email ?? ''));
             $emailClienteFatura = trim((string) ($parametroCliente?->email_envio_fatura ?? ''));
+            $emailCliente = trim((string) ($contaDetalhe->cliente?->email ?? ''));
+            $emailDestino = $emailClienteFatura !== '' ? $emailClienteFatura : $emailCliente;
 
-            if ($emailFinanceiro !== '') {
+            if ($emailDestino !== '') {
+                $normalized = mb_strtolower($emailDestino);
+                $tipo = $emailClienteFatura !== '' ? 'cliente_fatura' : 'cliente';
+                $label = $emailClienteFatura !== '' ? 'Cliente (fatura)' : 'Cliente';
+
                 $contaDetalheEmailOpcoes[] = [
-                    'value' => mb_strtolower($emailFinanceiro),
-                    'label' => 'Financeiro (' . mb_strtolower($emailFinanceiro) . ')',
-                    'tipo' => 'financeiro',
+                    'value' => $normalized,
+                    'label' => $label . ' (' . $normalized . ')',
+                    'tipo' => $tipo,
                 ];
-            }
-            if ($emailClienteFatura !== '') {
-                $normalized = mb_strtolower($emailClienteFatura);
-                $jaExiste = collect($contaDetalheEmailOpcoes)->contains(fn ($opt) => ($opt['value'] ?? '') === $normalized);
-                if (!$jaExiste) {
-                    $contaDetalheEmailOpcoes[] = [
-                        'value' => $normalized,
-                        'label' => 'Cliente (fatura) (' . $normalized . ')',
-                        'tipo' => 'cliente_fatura',
-                    ];
-                }
             }
         }
 
@@ -419,6 +419,7 @@ class ContasReceberController extends Controller
                 'data_inicio' => $faturasDataInicio,
                 'data_fim' => $faturasDataFim,
             ],
+            'caixaEmailAtivaDisponivel' => $caixaEmailAtivaDisponivel,
             'totaisFaturas' => $totaisFaturas,
         ]);
     }
@@ -1079,14 +1080,14 @@ class ContasReceberController extends Controller
         if (!$instancia || blank($instancia->instance_name)) {
             return response()->json([
                 'ok' => false,
-                'message' => 'Instância de WhatsApp financeiro não está vinculada.',
+                'message' => 'Nenhuma instância de WhatsApp financeiro está configurada. Cadastre e ative uma instância em Master > Configuração > WhatsApp.',
             ], 422);
         }
 
         if (($instancia->last_state ?? 'closed') !== 'open') {
             return response()->json([
                 'ok' => false,
-                'message' => 'Instância de WhatsApp financeiro não está conectada.',
+                'message' => 'A instância de WhatsApp financeiro não está conectada. Verifique a conexão em Master > Configuração > WhatsApp.',
             ], 422);
         }
 
@@ -1169,7 +1170,16 @@ class ContasReceberController extends Controller
             ->first();
 
         if (!$caixaAtiva || empty($caixaAtiva->usuario)) {
-            return back()->with('error', 'Nenhuma caixa de e-mail ativa foi configurada. Cadastre e ative uma caixa em Master > Configuração > E-mail.');
+            $message = 'Nenhuma caixa de e-mail ativa foi configurada. Cadastre e ative uma caixa em Master > Configuração > E-mail.';
+
+            if ($request->expectsJson() || $request->wantsJson()) {
+                return response()->json([
+                    'ok' => false,
+                    'message' => $message,
+                ], 422);
+            }
+
+            return back()->with('error', $message);
         }
 
         $transport = $this->criarTransportEmailCaixa($caixaAtiva);
