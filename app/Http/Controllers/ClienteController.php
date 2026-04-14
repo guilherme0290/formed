@@ -8,6 +8,8 @@ use App\Models\ClienteContrato;
 use App\Models\ClienteContratoItem;
 use App\Models\ClienteContratoLog;
 use App\Models\ClienteGheFuncao;
+use App\Models\ContaReceber;
+use App\Models\ContaReceberItem;
 use App\Models\Estado;
 use App\Models\Funcao;
 use App\Models\Funcionario;
@@ -1126,6 +1128,38 @@ class ClienteController extends Controller
         $this->authorizeComercialAction('delete');
         $this->authorizeCliente($cliente);
 
+        $temTarefasAtivas = Tarefa::query()
+            ->where('cliente_id', $cliente->id)
+            ->whereNull('finalizado_em')
+            ->whereHas('coluna', function ($query) {
+                $query->whereRaw("COALESCE(LOWER(slug), '') NOT LIKE 'cancel%'");
+            })
+            ->exists();
+
+        if ($temTarefasAtivas) {
+            return back()->with(
+                'erro',
+                'Não é possível excluir este cliente porque existem tarefas ativas vinculadas a ele. Finalize ou cancele essas tarefas antes de prosseguir.'
+            );
+        }
+
+        $temFaturasVinculadas = ContaReceber::query()
+            ->where('cliente_id', $cliente->id)
+            ->where('status', '!=', 'CANCELADO')
+            ->exists();
+
+        $temItensFinanceirosVinculados = ContaReceberItem::query()
+            ->where('cliente_id', $cliente->id)
+            ->where('status', '!=', 'CANCELADO')
+            ->exists();
+
+        if ($temFaturasVinculadas || $temItensFinanceirosVinculados) {
+            return back()->with(
+                'erro',
+                'Não é possível excluir este cliente porque existem faturas ou itens financeiros vinculados a ele. Realize a baixa total e/ou cancele os lançamentos antes de prosseguir.'
+            );
+        }
+
         try {
             $cliente->delete();
 
@@ -1134,6 +1168,13 @@ class ClienteController extends Controller
                 ->with('ok', 'Cliente excluído com sucesso!');
         } catch (\Throwable $e) {
             report($e);
+
+            if ($e instanceof \Illuminate\Database\QueryException) {
+                return back()->with(
+                    'erro',
+                    'Não é possível excluir este cliente porque ainda existem vínculos ativos ou financeiros relacionados a ele. Verifique tarefas, faturas e lançamentos antes de prosseguir.'
+                );
+            }
 
             return back()
                 ->with('erro', 'Não foi possível excluir o cliente.');
