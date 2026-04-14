@@ -50,7 +50,11 @@ class LoginRequest extends FormRequest
 
         $isEmail = str_contains($login, '@');
         if ($isEmail) {
-            $credentials = ['email' => $login, 'password' => $this->input('password')];
+            $credentials = [
+                'email' => $login,
+                'password' => $this->input('password'),
+                'ativo' => true,
+            ];
         } else {
             $documento = preg_replace('/\D+/', '', $login);
             if (!in_array(strlen($documento), [11, 14], true)) {
@@ -58,7 +62,11 @@ class LoginRequest extends FormRequest
                     'login' => 'Informe um CPF ou CNPJ válido.',
                 ]);
             }
-            $credentials = ['documento' => $documento, 'password' => $this->input('password')];
+            $credentials = [
+                'documento' => $documento,
+                'password' => $this->input('password'),
+                'ativo' => true,
+            ];
         }
 
         if (! Auth::attempt($credentials, $this->boolean('remember'))) {
