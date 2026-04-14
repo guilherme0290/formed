@@ -2,6 +2,7 @@
 @php($canCreate = $canCreate ?? false)
 @php($canUpdate = $canUpdate ?? false)
 @php($canDelete = $canDelete ?? false)
+@php($tabelaPrecosRoutePrefix = request()->routeIs('master.*') ? 'master' : 'comercial')
 
 <div id="modalProtocolos" data-overlay-root="true" class="fixed inset-0 z-[240] hidden bg-black/50 overflow-y-auto" style="z-index: 240;">
     <div class="min-h-full w-full flex items-center justify-center p-4 md:p-6">
@@ -160,6 +161,7 @@
                     destroy:(id) => @json(route($routePrefix.'.protocolos-exames.destroy', ['protocolo' => '__ID__'])).replace('__ID__', id),
                     clientes: @json(route($routePrefix.'.protocolos-exames.clientesJson')),
                     exames: @json(route($routePrefix.'.exames.indexJson')),
+                    novoExameRedirect: @json(route($tabelaPrecosRoutePrefix.'.tabela-precos.itens.index', ['open' => 'novo-exame'])),
                 },
                 state: {
                     protocolos: [],
@@ -207,6 +209,25 @@
             function buildListUrl() {
                 const url = new URL(PROTOCOLOS.urls.list, window.location.origin);
                 const clienteId = getCurrentClienteId();
+
+                if (clienteId) {
+                    url.searchParams.set('cliente_id', String(clienteId));
+                }
+
+                return url.toString();
+            }
+
+            function buildNovoExameRedirectUrl() {
+                const url = new URL(PROTOCOLOS.urls.novoExameRedirect, window.location.origin);
+                const returnUrl = new URL(window.location.href);
+                const clienteId = getCurrentClienteId();
+
+                returnUrl.searchParams.set('tab', 'parametros');
+                returnUrl.searchParams.delete('open');
+                returnUrl.searchParams.delete('cliente_id');
+
+                url.searchParams.set('return_to', returnUrl.toString());
+                url.searchParams.set('return_open', 'novo-grupo');
 
                 if (clienteId) {
                     url.searchParams.set('cliente_id', String(clienteId));
@@ -628,10 +649,23 @@
             PROTOCOLOS.dom.btnNovoExame?.addEventListener('click', () => {
                 if (!PERMS.create) return deny('Usuário sem permissão para criar.');
                 if (typeof window.openExameForm !== 'function') {
-                    return alertBox('err', 'Modal de exames não está disponível.');
+                    window.location.assign(buildNovoExameRedirectUrl());
+                    return;
                 }
                 window.openExameForm(null);
             });
+
+            async function handleAutoOpenFromQuery() {
+                const url = new URL(window.location.href);
+                if (url.searchParams.get('open') !== 'novo-grupo') return;
+
+                const clienteId = Number(url.searchParams.get('cliente_id') || 0) || null;
+                url.searchParams.delete('open');
+                url.searchParams.delete('cliente_id');
+                window.history.replaceState({}, document.title, url.toString());
+
+                await window.openProtocolosModal({ clienteId, openForm: true });
+            }
             window.addEventListener('exames:updated', async () => {
                 if (!PROTOCOLOS.dom.modalForm || PROTOCOLOS.dom.modalForm.classList.contains('hidden')) return;
                 const selected = selectedExameIdsFromChecklist();
@@ -657,6 +691,8 @@
                     window.closeProtocolosModal?.();
                 }
             });
+
+            handleAutoOpenFromQuery();
         })();
     </script>
 @endpush
