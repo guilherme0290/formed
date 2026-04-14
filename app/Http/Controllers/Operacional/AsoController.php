@@ -238,17 +238,19 @@ class AsoController extends Controller
             return $tarefa;
         });
 
-        $origem = $request->query('origem');
-
-        if ($origem === 'cliente') {
-            return redirect()
-                ->route('cliente.agendamentos')
-                ->with('ok', "Agendamento ASO criado com sucesso para {$tarefa->titulo}.");
-        }
-
         return redirect()
-            ->route('operacional.kanban')
-            ->with('ok', "Tarefa ASO agendada {$tarefa->titulo}.");
+            ->route('operacional.kanban.aso.create', [
+                'cliente' => $cliente,
+                'origem' => $request->query('origem'),
+            ])
+            ->with('aso_success_prompt', [
+                'message' => "ASO criado com sucesso para {$tarefa->titulo}.",
+                'continue_url' => route('operacional.kanban.aso.create', [
+                    'cliente' => $cliente,
+                    'origem' => $request->query('origem'),
+                ]),
+                'exit_url' => route('operacional.kanban'),
+            ]);
     }
 
     public function edit(Tarefa $tarefa, Request $request)
