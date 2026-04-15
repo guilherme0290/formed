@@ -146,6 +146,12 @@
                 }
             };
 
+            const AUTO_OPEN_CONTEXT = {
+                returnTo: null,
+                returnOpen: null,
+                clienteId: null,
+            };
+
             function ensureModalOverSidebar(modalEl, zIndexValue) {
                 if (!modalEl) return;
                 const overlayRoot = document.getElementById('app-overlay-root');
@@ -361,6 +367,18 @@
                         return alertBox('err', json?.message || 'Erro ao salvar exame.');
                     }
 
+                    if (!isEdit && AUTO_OPEN_CONTEXT.returnTo) {
+                        const returnUrl = new URL(AUTO_OPEN_CONTEXT.returnTo, window.location.origin);
+                        if (AUTO_OPEN_CONTEXT.returnOpen) {
+                            returnUrl.searchParams.set('open', AUTO_OPEN_CONTEXT.returnOpen);
+                        }
+                        if (AUTO_OPEN_CONTEXT.clienteId) {
+                            returnUrl.searchParams.set('cliente_id', String(AUTO_OPEN_CONTEXT.clienteId));
+                        }
+                        window.location.assign(returnUrl.toString());
+                        return;
+                    }
+
                     closeExameForm();
                     await loadExames();
                     alertBox('ok', isEdit ? 'Exame atualizado.' : 'Exame criado.');
@@ -406,6 +424,29 @@
             window.openExameForm = openExameForm;
             window.closeExameForm = closeExameForm;
 
+            async function handleAutoOpenFromQuery() {
+                const url = new URL(window.location.href);
+                if (url.searchParams.get('open') !== 'novo-exame') return;
+
+                AUTO_OPEN_CONTEXT.returnTo = url.searchParams.get('return_to') || null;
+                AUTO_OPEN_CONTEXT.returnOpen = url.searchParams.get('return_open') || null;
+                AUTO_OPEN_CONTEXT.clienteId = Number(url.searchParams.get('cliente_id') || 0) || null;
+
+                url.searchParams.delete('open');
+                url.searchParams.delete('return_to');
+                url.searchParams.delete('return_open');
+                url.searchParams.delete('cliente_id');
+                window.history.replaceState({}, document.title, url.toString());
+
+                try {
+                    await window.openExamesModal();
+                } catch (err) {
+                    console.error(err);
+                }
+
+                window.openExameForm(null);
+            }
+
             EXAMES.dom.form?.addEventListener('submit', saveExame);
 
             // fechar clicando fora e ESC
@@ -419,6 +460,8 @@
                     if(EXAMES.dom.modalForm && !EXAMES.dom.modalForm.classList.contains('hidden')) closeExameForm();
                 }
             });
+
+            handleAutoOpenFromQuery();
 
         })();
     </script>

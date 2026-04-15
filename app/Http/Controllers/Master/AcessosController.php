@@ -119,8 +119,6 @@ class AcessosController extends Controller
 
     public function usuariosStore(Request $r)
     {
-        $r->merge(['ativo' => $r->has('ativo')]);
-
         $data = $r->validate([
             'name'      => ['required','string','max:255'],
             'email'     => ['required','email','max:255','unique:users,email'],
@@ -150,8 +148,6 @@ class AcessosController extends Controller
         if (!$this->canManageTargetUser($authUser, $user)) {
             return back()->with('erro', $this->deniedProtectedUserMessage());
         }
-
-        $r->merge(['ativo' => $r->has('ativo')]);
 
         $data = $r->validate([
             'name'      => ['required','string','max:255'],

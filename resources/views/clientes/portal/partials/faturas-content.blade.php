@@ -91,9 +91,9 @@
                 <p class="text-[11px] text-blue-700/80">Faturas em aberto e servicos pendentes</p>
             </div>
 
-            <div class="rounded-xl border border-blue-200 bg-blue-50/80 px-4 py-3">
-                <p class="text-[11px] uppercase tracking-wide text-blue-700">Vencidos</p>
-                <p class="mt-1 text-2xl font-semibold text-blue-800">R$ {{ number_format($totalVencido ?? 0, 2, ',', '.') }}</p>
+            <div class="rounded-xl border border-rose-200 bg-rose-50/80 px-4 py-3">
+                <p class="text-[11px] uppercase tracking-wide text-rose-700">Vencidos</p>
+                <p class="mt-1 text-2xl font-semibold text-rose-800">R$ {{ number_format($totalVencido ?? 0, 2, ',', '.') }}</p>
             </div>
         </div>
 
@@ -281,9 +281,14 @@
                                                 }
 
                                                 $status = strtoupper((string) ($item->status ?? ''));
+                                                $faturaStatus = strtoupper((string) ($item->fatura_status ?? ''));
+                                                $isFaturaPaga = (int) ($item->conta_receber_id ?? 0) > 0
+                                                    && $faturaStatus !== 'CANCELADO'
+                                                    && (float) ($item->fatura_total ?? 0) > 0
+                                                    && (float) ($item->fatura_total_baixado ?? 0) >= (float) ($item->fatura_total ?? 0);
                                                 $vencimento = !empty($item->vencimento) ? \Carbon\Carbon::parse($item->vencimento) : null;
                                                 $isAndamento = $status === '' || $status === 'EM ANDAMENTO';
-                                                $vencido = !$isAndamento && ($vencimento?->lt(now()->startOfDay()) ?? false);
+                                                $vencido = !$isAndamento && !$isFaturaPaga && ($vencimento?->lt(now()->startOfDay()) ?? false);
                                                 $valorExibicao = $status === 'BAIXADO'
                                                     ? (float) ($item->valor ?? 0)
                                                     : (isset($item->valor_real) ? (float) $item->valor_real : (float) ($item->valor ?? 0));
@@ -292,11 +297,12 @@
 
                                                 $badge = match (true) {
                                                     $isAndamento => 'bg-sky-50 text-sky-700 border-sky-100',
-                                                    $status === 'BAIXADO' => 'bg-emerald-50 text-emerald-700 border-emerald-100',
+                                                    $isFaturaPaga => 'bg-emerald-50 text-emerald-700 border-emerald-100',
                                                     $vencido => 'bg-rose-50 text-rose-700 border-rose-100',
+                                                    $status === 'BAIXADO' => 'bg-emerald-50 text-emerald-700 border-emerald-100',
                                                     default => 'bg-amber-50 text-amber-700 border-amber-100',
                                                 };
-                                                $label = $isAndamento ? 'Em andamento' : ($vencido ? 'Vencido' : ($status === 'BAIXADO' ? 'Pago' : 'Em aberto'));
+                                                $label = $isAndamento ? 'Em andamento' : ($isFaturaPaga ? 'Pago' : ($vencido ? 'Vencido' : ($status === 'BAIXADO' ? 'Pago' : 'Em aberto')));
                                             @endphp
 
                                             <div class="grid grid-cols-12 gap-3 px-4 py-3 text-xs text-slate-700 {{ $loop->even ? 'bg-slate-50/60' : 'bg-white' }} hover:bg-slate-100/70">

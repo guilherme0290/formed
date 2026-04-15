@@ -255,15 +255,21 @@
                                     $temDetalheTrein = !empty($item->treinamento_modo) || !empty($item->treinamento_codigos) || !empty($item->treinamento_pacote) || !empty($item->treinamento_participantes);
                                     $temDetalhe = $temDetalheAso || $temDetalhePgr || $temDetalhePcmso || $temDetalheTrein;
                                     $status = strtoupper((string) $item->status);
+                                    $faturaStatus = strtoupper((string) ($item->fatura_status ?? ''));
+                                    $isFaturaPaga = (int) ($item->conta_receber_id ?? 0) > 0
+                                        && $faturaStatus !== 'CANCELADO'
+                                        && (float) ($item->fatura_total ?? 0) > 0
+                                        && (float) ($item->fatura_total_baixado ?? 0) >= (float) ($item->fatura_total ?? 0);
                                     $vencimento = $item->vencimento ? \Carbon\Carbon::parse($item->vencimento) : null;
-                                    $vencido = $vencimento?->lt(now()->startOfDay()) ?? false;
+                                    $vencido = !$isFaturaPaga && ($vencimento?->lt(now()->startOfDay()) ?? false);
                                     $valorReal = isset($item->valor_real) ? (float) $item->valor_real : (float) $item->valor;
                                     $badge = match(true) {
-                                        $status === 'BAIXADO' => 'bg-emerald-50 text-emerald-700 border-emerald-100',
+                                        $isFaturaPaga => 'bg-emerald-50 text-emerald-700 border-emerald-100',
                                         $vencido => 'bg-rose-50 text-rose-700 border-rose-100',
+                                        $status === 'BAIXADO' => 'bg-emerald-50 text-emerald-700 border-emerald-100',
                                         default => 'bg-amber-50 text-amber-700 border-amber-100',
                                     };
-                                    $label = $vencido ? 'Vencido' : ($status === 'BAIXADO' ? 'Pago' : 'Em aberto');
+                                    $label = $isFaturaPaga ? 'Pago' : ($vencido ? 'Vencido' : ($status === 'BAIXADO' ? 'Pago' : 'Em aberto'));
                                 @endphp
                                 <tr class="hover:bg-slate-50/60">
                                     <td class="px-4 py-3 text-slate-700">

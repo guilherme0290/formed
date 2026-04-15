@@ -156,6 +156,28 @@ class ContasReceberController extends Controller
             ->orderByDesc('id')
             ->get();
 
+        $contasClienteResumoQuery = ContaReceber::query()
+            ->where('empresa_id', $empresaId);
+
+        if ($clienteId) {
+            $contasClienteResumoQuery->where('cliente_id', $clienteId);
+        } elseif (!empty($clientesBuscaIds)) {
+            $contasClienteResumoQuery->whereIn('cliente_id', $clientesBuscaIds);
+        } elseif ($clienteBusca !== '') {
+            $contasClienteResumoQuery->whereRaw('1 = 0');
+        }
+
+        $totaisClienteFaturas = [
+            'total_faturas_criadas' => (float) (clone $contasClienteResumoQuery)
+                ->where('status', '!=', 'CANCELADO')
+                ->sum('total'),
+            'total_pendente' => (float) (clone $contasClienteResumoQuery)
+                ->sum(DB::raw('CASE WHEN status = \'CANCELADO\' THEN 0 WHEN COALESCE(total,0) - COALESCE(total_baixado,0) > 0 THEN COALESCE(total,0) - COALESCE(total_baixado,0) ELSE 0 END')),
+            'qtd_faturas' => (int) (clone $contasClienteResumoQuery)
+                ->where('status', '!=', 'CANCELADO')
+                ->count(),
+        ];
+
         $tarefasNaoFinalizadasAgrupadas = collect();
         if ($statusFinalizacao !== 'finalizadas') {
             $tarefasNaoFinalizadasAgrupadas = $this->buscarTarefasNaoFinalizadasAgrupadas(
@@ -291,7 +313,7 @@ class ContasReceberController extends Controller
         $totaisFaturas = [
             'faturas_com_baixa_registrada' => (float) (clone $contasTotaisQuery)
                 ->whereRaw('COALESCE(total_baixado, 0) > 0')
-                ->sum('total'),
+                ->sum('total_baixado'),
             'valor_em_aberto' => (float) (clone $contasTotaisQuery)->sum(
                 DB::raw('CASE WHEN status = \'CANCELADO\' THEN 0 WHEN COALESCE(total,0) - COALESCE(total_baixado,0) > 0 THEN COALESCE(total,0) - COALESCE(total_baixado,0) ELSE 0 END')
             ),
@@ -421,6 +443,7 @@ class ContasReceberController extends Controller
             ],
             'caixaEmailAtivaDisponivel' => $caixaEmailAtivaDisponivel,
             'totaisFaturas' => $totaisFaturas,
+            'totaisClienteFaturas' => $totaisClienteFaturas,
         ]);
     }
 

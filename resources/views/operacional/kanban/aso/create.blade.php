@@ -92,7 +92,7 @@
     // Email para envio do ASO
     $emailAso = old(
         'email_aso',
-        $aso->email_aso ?? ''
+        $aso->email_aso ?? ($cliente->email ?? '')
     );
 
     $pcmsoElaboradoFormed = (int) old(
@@ -118,6 +118,7 @@
         ->first(function ($message) {
             return str_contains((string) $message, 'Selecione pelo menos um treinamento NR para continuar.');
         });
+    $asoSuccessPrompt = session('aso_success_prompt');
     $errosVisiveis = $errors->all();
     if ($mensagemErroAsoDuplicado) {
         $errosVisiveis = array_values(array_filter($errosVisiveis, function ($message) use ($mensagemErroAsoDuplicado) {
@@ -913,6 +914,30 @@
     </div>
 
     @push('scripts')
+        @if(!$isEdit && !empty($asoSuccessPrompt))
+            <script>
+                document.addEventListener('DOMContentLoaded', async function () {
+                    const asoSuccessPrompt = @json($asoSuccessPrompt);
+                    if (!asoSuccessPrompt) {
+                        return;
+                    }
+
+                    const shouldContinue = await window.uiConfirm(
+                        'ASO criado com sucesso. Deseja continuar agendando ASO para este cliente?',
+                        {
+                            icon: 'success',
+                            title: 'Sucesso',
+                            confirmText: 'Sim',
+                            cancelText: 'Não',
+                        }
+                    );
+
+                    window.location.href = shouldContinue
+                        ? (asoSuccessPrompt.continue_url || @json(route('operacional.kanban.aso.create', ['cliente' => $cliente, 'origem' => $origem])))
+                        : (asoSuccessPrompt.exit_url || @json(route('operacional.kanban')));
+                });
+            </script>
+        @endif
         <script>
             document.addEventListener('DOMContentLoaded', function () {
                 const duplicateAsoError = @json($mensagemErroAsoDuplicado);

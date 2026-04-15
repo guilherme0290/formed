@@ -225,6 +225,9 @@ class ClienteDashboardController extends Controller
             ->selectRaw('cri.data_realizacao as data_realizacao')
             ->selectRaw('cri.vencimento as vencimento')
             ->selectRaw('cri.status as status')
+            ->selectRaw('cr.status as fatura_status')
+            ->selectRaw('COALESCE(cr.total, 0) as fatura_total')
+            ->selectRaw('COALESCE(cr.total_baixado, 0) as fatura_total_baixado')
             ->selectRaw('cri.valor as valor')
             ->selectRaw('COALESCE(baixas.total_baixado, 0) as total_baixado')
             ->selectRaw('GREATEST(cri.valor - COALESCE(baixas.total_baixado, 0), 0) as valor_real');
@@ -275,6 +278,9 @@ class ClienteDashboardController extends Controller
             ->selectRaw('COALESCE(DATE(t.finalizado_em), DATE(v.created_at)) as data_realizacao')
             ->selectRaw('NULL as vencimento')
             ->selectRaw("'ABERTO' as status")
+            ->selectRaw('NULL as fatura_status')
+            ->selectRaw('0 as fatura_total')
+            ->selectRaw('0 as fatura_total_baixado')
             ->selectRaw('vi.subtotal_snapshot as valor')
             ->selectRaw('0 as total_baixado')
             ->selectRaw('vi.subtotal_snapshot as valor_real');
