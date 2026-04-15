@@ -631,14 +631,20 @@
                                                 $podeRegistrarBaixaLinha = !$isCanceladaLinha && $uiStatus !== 'Baixada' && $canUpdate;
                                                 $podeExcluirBaixaLinha = $hasBaixa && $canUpdate;
                                                 $podeExcluirFaturaLinha = !$hasBaixa && $canDelete;
-                                                $badge = match ($uiStatus) {
+                                                $vencimentoLinha = $conta->vencimento?->copy()?->startOfDay();
+                                                $isAtrasadaLinha = !$isCanceladaLinha
+                                                    && $saldo > 0.0001
+                                                    && ($vencimentoLinha?->lt(now()->startOfDay()) ?? false);
+                                                $badge = $isAtrasadaLinha
+                                                    ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                                    : match ($uiStatus) {
                                                     'Baixada' => 'bg-emerald-50 text-emerald-700 border-emerald-100',
                                                     'Parcial' => 'bg-sky-50 text-sky-700 border-sky-100',
                                                     'Aberta' => 'bg-amber-50 text-amber-700 border-amber-100',
                                                     default => 'bg-slate-100 text-slate-700 border-slate-200',
                                                 };
                                             @endphp
-                                            <tr class="odd:bg-white even:bg-slate-50/60 hover:bg-indigo-50/30">
+                                            <tr class="{{ $isAtrasadaLinha ? 'bg-rose-50/80 hover:bg-rose-100/80' : 'odd:bg-white even:bg-slate-50/60 hover:bg-indigo-50/30' }}">
                                                 <td class="px-4 py-3 text-slate-800 font-semibold">#{{ $conta->id }}</td>
                                                 <td class="px-4 py-3 text-slate-700">{{ $conta->cliente->razao_social ?? $conta->cliente->nome_fantasia ?? 'Cliente' }}</td>
                                                 <td class="px-4 py-3 text-slate-600">{{ optional($conta->created_at)->format('d/m/Y') ?? '—' }}</td>
