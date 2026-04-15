@@ -250,7 +250,7 @@
                 </article>
 
                 <article class="rounded-2xl border border-fuchsia-100 bg-fuchsia-50 px-4 py-4 shadow-sm min-h-[136px] flex flex-col items-center justify-center">
-                    <p class="text-center text-xs uppercase tracking-wide font-semibold text-fuchsia-700">Total geral da operação</p>
+                    <p class="text-center text-xs uppercase tracking-wide font-semibold text-fuchsia-700">Total geral pendente da operação</p>
                     <p class="mt-1 text-center text-2xl font-semibold text-fuchsia-900">
                         R$ {{ number_format($valorTotalOperacao, 2, ',', '.') }}
                     </p>

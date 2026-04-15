@@ -199,6 +199,13 @@ class ContasReceberController extends Controller
         $faturasClienteId = $request->input('faturas_cliente_id');
         $faturasClienteBusca = trim((string) $request->input('faturas_cliente', ''));
         $faturasClientesBuscaIds = [];
+
+        if (!$faturasClienteId && $faturasClienteBusca === '' && ($clienteId || $clienteBusca !== '')) {
+            $faturasClienteId = $clienteId;
+            $faturasClienteBusca = $clienteBusca;
+            $faturasClientesBuscaIds = $clientesBuscaIds;
+        }
+
         if (!$faturasClienteId && $faturasClienteBusca !== '') {
             $faturasClienteId = Cliente::query()
                 ->where('empresa_id', $empresaId)
